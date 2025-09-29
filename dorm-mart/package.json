@@ -2,6 +2,7 @@
   "name": "dorm-mart",
   "version": "0.1.0",
   "private": true,
+  "homepage": "/CSE442/2025-Fall/cse-442j",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
