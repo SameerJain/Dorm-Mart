@@ -3,6 +3,7 @@ import RootLayout from './pages/RootLayout';
 import ItemDetailPage from './pages/PurchaseHistory/ItemDetailPage';
 import PurchaseHistoryPage from './pages/PurchaseHistory/PurchaseHistoryPage';
 import PurchaseHistoryLayout from './pages/PurchaseHistory/PurchaseHistoryLayout';
+import AccountCreatePage from './pages/AccountCreation/index.jsx'
 
 export const router = createBrowserRouter([
   {
@@ -18,6 +19,10 @@ export const router = createBrowserRouter([
         ],
       },
     ],
+  },
+  {
+    path:"/create-account",
+    element: <AccountCreatePage />,
   },
 ]);
 
