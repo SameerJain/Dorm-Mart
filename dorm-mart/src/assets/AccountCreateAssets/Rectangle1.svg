@@ -1,9 +1,9 @@
-<svg width="1019" height="1024" viewBox="0 0 1019 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1391" height="1080" viewBox="0 0 1391 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g filter="url(#filter0_g_268_3)">
-<rect x="59" width="960" height="1024" fill="#153243"/>
+<rect x="59" width="1332" height="1077" fill="#153243"/>
 </g>
 <defs>
-<filter id="filter0_g_268_3" x="0.400002" y="-58.6" width="1077.2" height="1141.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<filter id="filter0_g_268_3" x="0.400002" y="-58.6" width="1449.2" height="1194.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feFlood flood-opacity="0" result="BackgroundImageFix"/>
 <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
 <feTurbulence type="fractalNoise" baseFrequency="0.90909087657928467 0.90909087657928467" numOctaves="3" seed="7424" />

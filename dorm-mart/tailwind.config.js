@@ -1,10 +1,14 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    "./src/**/*.{html,js,ts,jsx,tsx}"
-  ],
+export default {
+  content: ["./public/index.html", "./src/**/*.{js,jsx}"],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sirin: ['"Sirin Stencil"', "serif"],
+        tai: ['"Tai Heritage Pro"', "serif"],
+        taprom: ["Taprom", "cursive"],
+      },
+    },
   },
   plugins: [],
-}
+};
