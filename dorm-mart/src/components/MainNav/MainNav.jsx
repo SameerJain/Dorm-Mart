@@ -36,10 +36,10 @@ function MainNav() {
                       </div>
                     </div>
                 <ul className="mr-2 flex items-center gap-4">
-                    <Icon to="/notification" src={notificationIcon} alt="Notification"/>
-                    <Icon tp="/chat" src={chatIcon} alt="Chat"/> 
-                    <Icon to="/purchase-history" src={userIcon} alt="User Selection"/> 
-                    <Icon to="setting" src={settingIcon} alt="Setting"/>
+                    <Icon to="/app/notification" src={notificationIcon} alt="Notification"/>
+                    <Icon tp="/app/chat" src={chatIcon} alt="Chat"/> 
+                    <Icon to="/app/purchase-history" src={userIcon} alt="User Selection"/> 
+                    <Icon to="/app/setting" src={settingIcon} alt="Setting"/>
                 </ul>
             </div>
         </nav>
