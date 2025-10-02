@@ -29,6 +29,7 @@ function PurchaseHistoryPage() {
           }, 500);
 
         } catch (err) {
+          setIsFetching(false)
           if (err.name === "AbortError") return;
           console.error(err);
         }
@@ -71,7 +72,7 @@ function PurchaseHistoryPage() {
         {/* List of items */}
         <ul className="space-y-4">
           {purchasedItems.map((item, index) => (
-              <PurchasedItem key={index} id={item.id} title={item.title} seller={item.seller} date={item.date} />
+              <PurchasedItem key={index} id={item.id} title={item.title} seller={item.seller} date={item.date} image={item.image} />
           ))}
           {/* repeat <li> for more items */}
         </ul>
