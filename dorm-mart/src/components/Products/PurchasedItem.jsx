@@ -1,13 +1,12 @@
 import { Link } from "react-router-dom";
-import puppy from '../../assets/icons/puppy.jpg'
 
+function PurchasedItem({ id, title, seller, date, image}) {
 
-function PurchasedItem({ id, title, seller, date}) {
     return <>
       <li className="flex items-stretch justify-between p-4 border rounded-lg bg-gray-200 shadow">
         {/* Left: image */}
         <img
-          src={puppy}
+          src={image}
           alt="Item"
           className="h-40 w-40 object-cover rounded"
         />
@@ -28,7 +27,7 @@ function PurchasedItem({ id, title, seller, date}) {
       <Link
         to={`item-detail/${id}`}
         state={{ id: id, title: title, seller: seller, date: date }}
-        className="self-center ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        className="self-center ml-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
       >
         View Details
       </Link>
