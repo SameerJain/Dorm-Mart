@@ -8,7 +8,7 @@ import filterIcon from '../../assets/icons/icons8-filter-96.png';
 
 function MainNav() {
     return (
-        <nav className="bg-blue-800 text-slate-100">
+        <nav className="bg-blue-600 text-slate-100">
             <div className="mx-auto flex items-center gap-4 p-3">
                 <div className="ml-4 text-4xl font-serif font-semibold">Dorm Mart</div>
                     <div className="flex-1 mx-5">
