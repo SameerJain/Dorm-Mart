@@ -14,6 +14,7 @@ async function fetchPurchasedItems(signal) {
 function PurchaseHistoryPage() {
     const [purchasedItems, setPurchasedItems] = useState([])
     const [isFetching, setIsFetching] = useState()
+    const [error, setError] = useState()
 
     useEffect(() => {
       setIsFetching(true)
@@ -22,7 +23,7 @@ function PurchaseHistoryPage() {
       async function loadPurchasedItems() {
         try {
           const res = await fetchPurchasedItems(controller.signal);
-          console.log(res);
+          setError(false)
           setPurchasedItems(res);
 
           setTimeout(() => {
@@ -30,6 +31,8 @@ function PurchaseHistoryPage() {
           }, 500);
 
         } catch (err) {
+          setIsFetching(false)
+          setError(true)
           if (err.name === "AbortError") return;
           console.error(err);
         }
@@ -63,11 +66,18 @@ function PurchaseHistoryPage() {
           </p>
         )}
 
-        {!isFetching && purchasedItems.length === 0 && (
+        {!error && !isFetching && purchasedItems.length === 0 && (
           <p className="flex justify-center items-center text-gray-500 text-lg italic py-4">
             No purchase history exists.
           </p>
         )}
+
+        {error && purchasedItems.length === 0 && (
+          <p className="flex justify-center items-center text-gray-500 text-lg italic py-4">
+            Failed to retrieve purchase history.
+          </p>
+        )}
+
 
         {/* List of items */}
         <ul className="space-y-4">
