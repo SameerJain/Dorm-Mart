@@ -26,7 +26,7 @@ function PurchasedItem({ id, title, seller, date, image}) {
         {/* Right: button */}
       <Link
         to={`item-detail/${id}`}
-        state={{ id: id, title: title, seller: seller, date: date }}
+        state={{ id: id, title: title, seller: seller, date: date, image: image }}
         className="self-center ml-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
       >
         View Details
