@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
-
 function PurchasedItem({ id, title, seller, date, image}) {
+
     return <>
       <li className="flex items-stretch justify-between p-4 border rounded-lg bg-gray-200 shadow">
         {/* Left: image */}
