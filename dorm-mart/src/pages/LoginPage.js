@@ -22,7 +22,11 @@ function LoginPage() {
           <div className="flex-1 flex flex-col justify-center items-center p-8">
             {/* Title */}
             <div className="text-center">
-              <h1 className="text-6xl font-serif text-white mb-2">Dorm Mart</h1>
+              <h1 className="text-8xl font-serif text-white mb-4 flex items-center justify-center space-x-4">
+                <span>Dorm</span>
+                <span>Mart</span>
+              </h1>
+              <h2 className="text-2xl font-light text-white opacity-90">Wastage Who?</h2>
             </div>
           </div>
           
@@ -49,7 +53,7 @@ function LoginPage() {
                     <label className="block text-sm text-gray-300 mb-2">University Email Address</label>
                     <input 
                       type="email" 
-                      className="w-full px-4 py-3 bg-gray-200 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                       placeholder=""
                     />
                   </div>
@@ -59,7 +63,7 @@ function LoginPage() {
                     <label className="block text-sm text-gray-300 mb-2">Password</label>
                     <input 
                       type="password" 
-                      className="w-full px-4 py-3 bg-gray-200 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                       placeholder=""
                     />
                   </div>
@@ -67,7 +71,7 @@ function LoginPage() {
                   {/* Login button with arrow */}
                   <button 
                     type="submit"
-                    className="w-full bg-blue-800 hover:bg-blue-900 text-white py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+                    className="w-full bg-blue-800 hover:bg-blue-900 text-white py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg"
                   >
                     <span>Login</span>
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -79,9 +83,9 @@ function LoginPage() {
                 {/* Links */}
                 <div className="mt-6 text-center">
                   <div className="flex items-center justify-center space-x-2 text-sm text-white">
-                    <a href="#" className="hover:underline">create account</a>
+                    <a href="#" className="hover:underline hover:text-blue-400 transition-colors duration-200">create account</a>
                     <span className="w-1 h-1 bg-black rounded-full"></span>
-                    <a href="#" className="hover:underline">forgot password?</a>
+                    <a href="#" className="hover:underline hover:text-blue-400 transition-colors duration-200">forgot password?</a>
                   </div>
                 </div>
               </div>
