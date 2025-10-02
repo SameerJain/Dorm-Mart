@@ -6,11 +6,23 @@ import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout
 import ProductListingPage from "./pages/ProductListing/ProductListingPage";
 
 
-export const router = createBrowserRouter([
+/* hashRouter adds # in front of each url path
+ Request: https://example.com/#/app/purchase-history.
+ Server only sees https://example.com/ and serves index.html.
+ The part after # (/app/purchase-history) is handled by JS routing in client-side */
+
+export const router = createHashRouter([
+  // Login is the default route
+  {
+    path: "/",
+    element: <LoginPage />,
+  },
+  // Main application lives under /app
   {
     path: "/",
     element: <RootLayout />,
     children: [
+      { index: true, element: <HomePage /> },
       {
         path: "/product-listing",
         children: [
