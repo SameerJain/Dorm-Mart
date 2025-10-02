@@ -2,14 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
+/* Only reset text-like inputs, not checkboxes/radios */
+/* @layer base {
   button,
-  input,
+  input:not([type="checkbox"]):not([type="radio"]),
   select,
   textarea {
     @apply appearance-none bg-transparent border-0 outline-none;
   }
+}*/
+
+@layer base {
+  button {
+    @apply appearance-none bg-transparent border-0 outline-none;
+  }
 }
+
 
 @tailwind components;
 @tailwind utilities;
@@ -19,10 +27,12 @@
     all: unset;
   }
 }
+
 html, body, #root {
   height: 100vh;
   overflow: hidden; /* no scroll bars, anything past the viewport is cut */
 }
+
 :root {
   --animate-spin: spin 1s linear infinite;
 }
@@ -57,75 +67,34 @@ html, body, #root {
   }
 }
 
+/* --- animations (unchanged) --- */
 @keyframes image-glow {
-  0% {
-    opacity: 0;
-    animation-timing-function: cubic-bezier(0.74, 0.25, 0.76, 1);
-  }
-
-  10% {
-    opacity: 0.7;
-    animation-timing-function: cubic-bezier(0.12, 0.01, 0.08, 0.99);
-  }
-
-  to {
-    opacity: 0.4;
-  }
+  0% { opacity: 0; animation-timing-function: cubic-bezier(0.74, 0.25, 0.76, 1); }
+  10% { opacity: 0.7; animation-timing-function: cubic-bezier(0.12, 0.01, 0.08, 0.99); }
+  to  { opacity: 0.4; }
 }
 
 @keyframes fade-in {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  0% { opacity: 0; transform: translateY(-10px); }
+  to  { opacity: 1; transform: none; }
 }
 
 @keyframes fade-up {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  0% { opacity: 0; transform: translateY(20px); }
+  to  { opacity: 1; transform: none; }
 }
 
 @keyframes shimmer {
-  0%,
-  90%,
-  to {
-    background-position: calc(-100% - var(--shimmer-width)) 0;
-  }
-
-  30%,
-  60% {
-    background-position: calc(100% + var(--shimmer-width)) 0;
-  }
+  0%, 90%, to { background-position: calc(-100% - var(--shimmer-width)) 0; }
+  30%, 60%    { background-position: calc(100% + var(--shimmer-width)) 0; }
 }
 
 @keyframes marquee {
-  0% {
-    transform: translate(0);
-  }
-
-  to {
-    transform: translateX(calc(-100% - var(--gap)));
-  }
+  0% { transform: translate(0); }
+  to { transform: translateX(calc(-100% - var(--gap))); }
 }
 
 @keyframes marquee-vertical {
-  0% {
-    transform: translateY(0);
-  }
-
-  to {
-    transform: translateY(calc(-100% - var(--gap)));
-  }
+  0% { transform: translateY(0); }
+  to { transform: translateY(calc(-100% - var(--gap))); }
 }
