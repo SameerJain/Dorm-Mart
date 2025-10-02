@@ -4,7 +4,6 @@ import { Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
 
-
 async function fetchPurchasedItems(signal) {
   const BASE = process.env.REACT_APP_API_BASE
   const r = await fetch(`${BASE}/purchasedItems.php`, { signal });
