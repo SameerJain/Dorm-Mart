@@ -4,6 +4,7 @@ import { Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
 
+
 async function fetchPurchasedItems(signal) {
   const BASE = process.env.REACT_APP_API_BASE
   const r = await fetch(`${BASE}/purchasedItems.php`, { signal });
@@ -22,6 +23,7 @@ function PurchaseHistoryPage() {
       async function loadPurchasedItems() {
         try {
           const res = await fetchPurchasedItems(controller.signal);
+          console.log(res);
           setPurchasedItems(res);
 
           setTimeout(() => {
@@ -71,7 +73,7 @@ function PurchaseHistoryPage() {
         {/* List of items */}
         <ul className="space-y-4">
           {purchasedItems.map((item, index) => (
-              <PurchasedItem key={index} id={item.id} title={item.title} seller={item.seller} date={item.date} />
+              <PurchasedItem key={index} id={item.id} title={item.title} seller={item.seller} date={item.date} image={item.image} />
           ))}
           {/* repeat <li> for more items */}
         </ul>

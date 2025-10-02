@@ -1,13 +1,12 @@
 import { Link } from "react-router-dom";
-import puppy from '../../assets/icons/puppy.jpg'
 
 
-function PurchasedItem({ id, title, seller, date}) {
+function PurchasedItem({ id, title, seller, date, image}) {
     return <>
       <li className="flex items-stretch justify-between p-4 border rounded-lg bg-gray-200 shadow">
         {/* Left: image */}
         <img
-          src={puppy}
+          src={image}
           alt="Item"
           className="h-40 w-40 object-cover rounded"
         />
