@@ -31,6 +31,7 @@ function PurchaseHistoryPage() {
           }, 500);
 
         } catch (err) {
+          setIsFetching(false)
           if (err.name === "AbortError") return;
           console.error(err);
         }
