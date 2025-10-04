@@ -1,5 +1,7 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createHashRouter, RouterProvider } from "react-router-dom";
 import RootLayout from "./pages/RootLayout";
+import LoginPage from "./pages/LoginPage";
+import HomePage from "./pages/HomePage";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage";
 import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
@@ -19,12 +21,12 @@ export const router = createHashRouter([
   },
   // Main application lives under /app
   {
-    path: "/",
+    path: "/app",
     element: <RootLayout />,
     children: [
       { index: true, element: <HomePage /> },
       {
-        path: "/product-listing",
+        path: "product-listing",
         children: [
           { index: true, element: <ProductListingPage /> },
           { path: "new", element: <ProductListingPage key="new" /> },
@@ -32,7 +34,7 @@ export const router = createHashRouter([
         ],
       },
       {
-        path: "/purchase-history",
+        path: "purchase-history",
         element: <PurchaseHistoryLayout />,
         children: [
           { index: true, element: <PurchaseHistoryPage /> },
