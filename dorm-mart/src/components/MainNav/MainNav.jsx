@@ -37,7 +37,7 @@ function MainNav() {
                     </div>
                 <ul className="mr-2 flex items-center gap-4">
                     <Icon to="/app/notification" src={notificationIcon} alt="Notification"/>
-                    <Icon tp="/app/chat" src={chatIcon} alt="Chat"/> 
+                    <Icon to="/app/chat" src={chatIcon} alt="Chat"/> 
                     <Icon to="/app/purchase-history" src={userIcon} alt="User Selection"/> 
                     <Icon to="/app/setting" src={settingIcon} alt="Setting"/>
                 </ul>
