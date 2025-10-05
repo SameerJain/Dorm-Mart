@@ -18,16 +18,17 @@ export const router = createHashRouter([
     path: "/",
     element: <LoginPage />,
   },
-  {
-    path: "/db_test",
-    element: <DbTestPage />
-  },
   // Main application lives under /app
   {
     path: "/app",
     element: <RootLayout />,
     children: [
+
       { index: true, element: <HomePage /> },
+      {
+        path: "db_test",
+        element: <DbTestPage />
+      },
       {
         path: "purchase-history",
         element: <PurchaseHistoryLayout />,
