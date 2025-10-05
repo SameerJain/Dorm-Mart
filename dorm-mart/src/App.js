@@ -5,7 +5,7 @@ import HomePage from './pages/HomePage';
 import ItemDetailPage from './pages/PurchaseHistory/ItemDetailPage';
 import PurchaseHistoryPage from './pages/PurchaseHistory/PurchaseHistoryPage';
 import PurchaseHistoryLayout from './pages/PurchaseHistory/PurchaseHistoryLayout';
-import DbTestPage from './pages/DbTestPage';
+import DbTestPage from './pages/dbTestPage';
 
 /* hashRouter adds # in front of each url path
  Request: https://example.com/#/app/purchase-history.
