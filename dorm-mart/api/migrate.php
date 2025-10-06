@@ -4,6 +4,8 @@ header('Content-Type: application/json');
 // reuse your existing env loader + $conn creation
 require __DIR__ . '/db_connect.php'; // or paste your env+mysqli code here
 
+$conn = db();
+
 // create a table that records which migration files have been applied
 $conn->query("
   CREATE TABLE IF NOT EXISTS schema_migrations (

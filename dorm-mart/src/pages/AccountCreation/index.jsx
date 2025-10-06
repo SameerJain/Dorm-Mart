@@ -277,8 +277,8 @@ function CreateAccountPage() {
                   <span className="w-1 h-1 bg-black rounded-full" />
                   <a
                     href="#"
+                    onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }}
                     className="hover:underline hover:text-blue-300 transition-colors duration-200"
-                    onClick={(e)=>e.preventDefault()}
                   >
                     forgot password?
                   </a>
