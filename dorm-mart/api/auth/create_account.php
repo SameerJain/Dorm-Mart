@@ -193,7 +193,8 @@ if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
     exit;
 }
 
-$conn = require "../db_connect.php";
+require "../db_connect.php";
+$conn = db();
 try {
   $chk = $conn->prepare('SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1');
 $chk->bind_param('s', $email);
