@@ -4,6 +4,8 @@ import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage";
 import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
 import CreateAccount from './pages/AccountCreation/index.jsx'
+import LoginPage from "./pages/LoginPage";
+import HomePage from "./pages/HomePage";
 
 
 /* hashRouter adds # in front of each url path
@@ -12,16 +14,29 @@ import CreateAccount from './pages/AccountCreation/index.jsx'
  The part after # (/app/purchase-history) is handled by JS routing in client-side */
 
 export const router = createHashRouter([
-
+  // Login is the default route
   {
-    path: "/create-account",
-    element: <CreateAccount />,
+    path: "/",
+    element: <LoginPage />,
+  },
+  {
+    path:"/create-account",
+    element: <CreateAccount .>,
   },
   // Main application lives under /app
   {
     path: "/app",
     element: <RootLayout />,
     children: [
+      { index: true, element: <HomePage /> },
+      {
+        path: "product-listing",
+        children: [
+          { index: true, element: <ProductListingPage /> },
+          { path: "new", element: <ProductListingPage key="new" /> },
+          { path: "edit/:id", element: <ProductListingPage key="edit" /> },
+        ],
+      },
       {
         path: "purchase-history",
         element: <PurchaseHistoryLayout />,
