@@ -201,8 +201,8 @@ $chk->bind_param('s', $email);
 $chk->execute();
 $chk->store_result();                   // needed to use num_rows without fetching
 if ($chk->num_rows > 0) {
-  http_response_code(409);
-  echo json_encode(['ok'=>false, 'error'=>'An account with this email already exists']);
+  http_response_code(200);
+  echo json_encode(['ok'=>true]);
   exit;
 }
 $chk->close();
@@ -257,7 +257,7 @@ echo json_encode([
 } catch (Throwable $e) {
   // Log $e->getMessage() server-side
   http_response_code(500);
-  echo json_encode(['ok'=>false, 'error'=>$e->getMessage()]);
+  echo json_encode(['ok'=>false, 'error'=>"There was an error"]);
 }
 
 
