@@ -2,32 +2,63 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react'
 import backgroundImage from '../assets/images/login-page-left-side-background.jpg';
 
+
 function ForgotPasswordPage() {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [isValid, setIsValid] = useState(false);
     const [message, setMessage] = useState("");
-    const [isLoading, setIsLoading] = useState(false)
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleForgotPassword = (e) => {
+    async function sendTemporaryPassword(email, signal) {
+    const BASE = process.env.REACT_APP_API_BASE || "/api";
+    const r = await fetch(`${BASE}/send-temporary-password.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+        signal,
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+    }
+
+    const handleForgotPassword = async (e) => {
         e.preventDefault();
-        // Navigate to main page when arrow is clicked
 
         const valid = emailValidation(email);
         setIsValid(valid);
-
         if (!valid) {
             setMessage("Email must be a valid UB email address");
             return;
         }
 
-        setIsLoading(true)
-        setMessage("Check your email for the temporary password!")
-        
-        setTimeout(() => {
-            setIsLoading(false);
-            navigate('/login');
-        }, 3000);
+        setIsLoading(true);
+        setMessage("");
+
+        try {
+            const ac = new AbortController();
+            const data = await sendTemporaryPassword(email, ac.signal);
+
+            if (!data?.success) {
+                setIsValid(false);
+                setMessage("Something went wrong, please try again later.");
+                setIsLoading(false);               // stop spinner on failure
+                return;
+            }
+
+            setIsValid(true);
+            setMessage("Temporary password is sent to your email!");
+
+            setTimeout(() => {
+                setIsLoading(false);               // keep spinner during the delay
+                navigate("/login");
+            }, 3000);
+        } catch (err) {
+            console.error(err);
+            setIsValid(false);
+            setMessage("Something went wrong, please try again later.");
+            setIsLoading(false);                 // stop spinner on network error
+        }
     };
 
     function emailValidation(email) {
