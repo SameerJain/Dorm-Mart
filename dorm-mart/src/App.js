@@ -6,9 +6,6 @@ import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
 import ProductListingPage from "./pages/ProductListing/ProductListingPage.jsx";
 import CreateAccount from './pages/AccountCreation/index.jsx'
-import LoginPage from "./pages/LoginPage";
-import HomePage from "./pages/HomePage";
-
 
 /* hashRouter adds # in front of each url path
  Request: https://example.com/#/app/purchase-history.
