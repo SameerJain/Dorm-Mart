@@ -1,13 +1,61 @@
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import backgroundImage from '../assets/images/login-page-left-side-background.jpg';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Navigate to main page when arrow is clicked
-    navigate('/app');
+    setError('');
+    setLoading(true);
+
+    // Client-side validation
+    if (!email.trim()) {
+      setError('Please input a valid email address');
+      setLoading(false);
+      return;
+    }
+
+    if (!password.trim()) {
+      setError('Please input a password');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/login.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.ok) {
+        // Store login state in localStorage
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('userEmail', email.trim());
+        
+        // Navigate to main page on successful login
+        navigate('/app');
+      } else {
+        setError(data.error || 'Login failed');
+      }
+    } catch (error) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -57,13 +105,22 @@ function LoginPage() {
               
               {/* Login form */}
               <form onSubmit={handleLogin} className="space-y-6">
+                {/* Error message */}
+                {error && (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg text-sm">
+                    {error}
+                  </div>
+                )}
+                
                 {/* Email input */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-300 mb-2">University Email Address</label>
                   <input 
                     type="email" 
-                    className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
-                    placeholder=""
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200"
+                    placeholder="student@university.edu"
                   />
                 </div>
                 
@@ -72,17 +129,20 @@ function LoginPage() {
                   <label className="block text-sm font-semibold text-gray-300 mb-2">Password</label>
                   <input 
                     type="password" 
-                    className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
-                    placeholder=""
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200"
+                    placeholder="SecurePass123"
                   />
                 </div>
                 
                 {/* Login button with arrow */}
                 <button 
                   type="submit"
-                  className="w-1/3 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto"
+                  disabled={loading}
+                  className="w-1/3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white py-2 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto"
                 >
-                  <span>Login</span>
+                  <span>{loading ? 'Logging in...' : 'Login'}</span>
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
