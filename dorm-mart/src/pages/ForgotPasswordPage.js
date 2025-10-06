@@ -6,7 +6,8 @@ function ForgotPasswordPage() {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [isValid, setIsValid] = useState(false);
-    const [errorMsg, setRrrorMsg] = useState("");
+    const [message, setMessage] = useState("");
+    const [isLoading, setIsLoading] = useState(false)
 
     const handleForgotPassword = (e) => {
         e.preventDefault();
@@ -16,17 +17,33 @@ function ForgotPasswordPage() {
         setIsValid(valid);
 
         if (!valid) {
-            setRrrorMsg("Email must be a valid UB email address");
+            setMessage("Email must be a valid UB email address");
             return;
         }
 
-        navigate('/login');
+        setIsLoading(true)
+        setMessage("Check your email for the temporary password!")
+        
+        setTimeout(() => {
+            setIsLoading(false);
+            navigate('/login');
+        }, 3000);
     };
 
     function emailValidation(email) {
-        // Basic format: some text + @buffalo.edu (case-insensitive)
-        const pattern = /^[A-Za-z0-9]+@buffalo\.edu$/i
-        return pattern.test(email.trim());
+        const pattern = /^[A-Za-z0-9]{1,15}@buffalo\.edu$/i;
+        const trimmed = email.trim();
+
+        // Must match pattern first
+        if (!pattern.test(trimmed)) return false;
+
+        // Extract part before @
+        const localPart = trimmed.split('@')[0];
+
+        // Reject if only numbers
+        if (/^\d+$/.test(localPart)) return false;
+
+        return true;
     }
 
   return (
@@ -87,12 +104,56 @@ function ForgotPasswordPage() {
                     placeholder="ubname@buffalo.edu"
                   />
                 </div>
-                {/* email validation msg */}
-                <p className="text-red-500 text-sm font-medium text-center">
-                {errorMsg}
+                {message && (
+                <p
+                    className={`text-sm font-medium text-center ${
+                    isValid ? 'text-green-500' : 'text-red-500'
+                    }`}
+                >
+                    {message}
                 </p>
+                )}
+                
                 {/* request button with arrow */}
-                <button type="submit" className="w-80 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto" > <span>Send Temporary Password</span> <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"> <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /> </svg> </button>
+                <button
+                type="submit"
+                disabled={isLoading}
+                className="w-80 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto"
+                >
+                {isLoading ? (
+                    <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    >
+                    <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                    ></circle>
+                    <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    ></path>
+                    </svg>
+                ) : (
+                    <>
+                    <span>Send Temporary Password</span>
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                        fillRule="evenodd"
+                        d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                        />
+                    </svg>
+                    </>
+                )}
+                </button>
               </form>
 
 
