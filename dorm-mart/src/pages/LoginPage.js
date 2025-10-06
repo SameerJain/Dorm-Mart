@@ -100,7 +100,13 @@ function LoginPage() {
                     create account
                   </a>
                   <span className="w-1 h-1 bg-black rounded-full"></span>
-                  <a href="#" className="hover:underline hover:text-blue-400 transition-colors duration-200">forgot password?</a>
+                  <a 
+                    href="#" 
+                    onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }}
+                    className="hover:underline hover:text-blue-400 transition-colors duration-200"
+                  >
+                    forgot password?
+                  </a>
                 </div>
               </div>
             </div>
