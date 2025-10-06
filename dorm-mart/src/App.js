@@ -1,10 +1,13 @@
-import { createHashRouter, RouterProvider } from "react-router-dom";
+import { createHashRouter, RouterProvider, Navigate } from "react-router-dom";
 import RootLayout from "./pages/RootLayout";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
-import ProductListingPage from "./pages/ProductListing/ProductListingPage";
+import ProductListingPage from "./pages/ProductListing/ProductListingPage.jsx";
+import CreateAccount from './pages/AccountCreation/index.jsx'
+import LoginPage from "./pages/LoginPage";
+import HomePage from "./pages/HomePage";
 
 
 /* hashRouter adds # in front of each url path
@@ -14,9 +17,16 @@ import ProductListingPage from "./pages/ProductListing/ProductListingPage";
 
 export const router = createHashRouter([
   // Login is the default route
+
+  // redirect default hash `#/` to `#/login`
+  { path: "/", element: <Navigate to="/login" replace /> },
   {
-    path: "/",
+    path: "/login",
     element: <LoginPage />,
+  },
+  {
+    path:"/create-account",
+    element: <CreateAccount />,
   },
   // Main application lives under /app
   {
@@ -46,5 +56,4 @@ export const router = createHashRouter([
 function App() {
   return <RouterProvider router={router} />;
 }
-
 export default App;
