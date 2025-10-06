@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 
 
 async function fetchPurchasedItems(signal) {
-  const BASE = process.env.REACT_APP_API_BASE
-  const r = await fetch(`${BASE}/purchasedItems.php`, { signal });
+  const BASE = (process.env.REACT_APP_API_BASE || "/api");
+  const r = await fetch(`${BASE}/fetch-transacted-items.php`, { signal });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return await r.json();
 }
@@ -15,7 +15,7 @@ function PurchaseHistoryPage() {
     const [purchasedItems, setPurchasedItems] = useState([])
     const [isFetching, setIsFetching] = useState()
     const [error, setError] = useState()
-
+     
     useEffect(() => {
       setIsFetching(true)
       const controller = new AbortController();
@@ -24,7 +24,7 @@ function PurchaseHistoryPage() {
         try {
           const res = await fetchPurchasedItems(controller.signal);
           setError(false)
-          setPurchasedItems(res);
+          setPurchasedItems(res.data);
 
           setTimeout(() => {
             setIsFetching(false);
@@ -82,7 +82,7 @@ function PurchaseHistoryPage() {
         {/* List of items */}
         <ul className="space-y-4">
           {purchasedItems.map((item, index) => (
-              <PurchasedItem key={index} id={item.id} title={item.title} seller={item.seller} date={item.date} image={item.image} />
+              <PurchasedItem key={index} id={item.id} title={item.title} seller={item.sold_by} date={item.transacted_at} image={item.image_url} />
           ))}
           {/* repeat <li> for more items */}
         </ul>
@@ -93,4 +93,4 @@ function PurchaseHistoryPage() {
 }
 
 
-export default PurchaseHistoryPage
+export default PurchaseHistoryPage;

@@ -92,9 +92,21 @@ function LoginPage() {
               {/* Links */}
               <div className="mt-6 text-center">
                 <div className="flex items-center justify-center space-x-2 text-base text-white">
-                  <a href="#" className="hover:underline hover:text-blue-400 transition-colors duration-200">create account</a>
+                  <a 
+                    href="#" 
+                    onClick={(e) => { e.preventDefault(); navigate('/create-account'); }}
+                    className="hover:underline hover:text-blue-400 transition-colors duration-200"
+                  >
+                    create account
+                  </a>
                   <span className="w-1 h-1 bg-black rounded-full"></span>
-                  <a href="#" className="hover:underline hover:text-blue-400 transition-colors duration-200">forgot password?</a>
+                  <a 
+                    href="#" 
+                    onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }}
+                    className="hover:underline hover:text-blue-400 transition-colors duration-200"
+                  >
+                    forgot password?
+                  </a>
                 </div>
               </div>
             </div>
