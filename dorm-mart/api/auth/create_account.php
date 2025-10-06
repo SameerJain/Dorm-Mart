@@ -225,7 +225,7 @@ $ins = $conn->prepare($sql);
 */
 $promotional = $promos ? 1 : 0;
 $ins->bind_param(
-  'ssiisiss',
+  'ssiisis',
   $firstName,
   $lastName,
   $gradMonth,

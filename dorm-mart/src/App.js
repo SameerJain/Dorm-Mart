@@ -3,6 +3,7 @@ import { createHashRouter, RouterProvider, Navigate } from "react-router-dom";
 import RootLayout from "./pages/RootLayout";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
+import ForgotPasswordPage from './pages/ForgotPasswordPage.js'
 import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
 import ProductListingPage from "./pages/ProductListing/ProductListingPage.jsx";
@@ -17,7 +18,7 @@ export const router = createHashRouter([
   // Auth
   { path: "/login", element: <LoginPage /> },
   { path: "/create-account", element: <CreateAccount /> },
-
+  { path:"/forgot-password", element: <ForgotPasswordPage />},
   // Main app
   {
     path: "/app",
