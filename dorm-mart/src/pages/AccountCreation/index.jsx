@@ -21,17 +21,34 @@ function CreateAccountPage() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    // Enforce hard caps at input-time
+    let nextValue = type === "checkbox" ? checked : value;
+    if (name === "firstName" || name === "lastName") {
+      nextValue = String(nextValue).slice(0, 100);
+    }
+    if (name === "email") {
+      nextValue = String(nextValue).slice(0, 255);
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value
+      [name]: nextValue
     }));
   };
 
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
-    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
+    const first = formData.firstName.trim();
+    const last = formData.lastName.trim();
+    const email = formData.email.trim();
+
+    if (!first) newErrors.firstName = "First name is required";
+    else if (first.length > 100) newErrors.firstName = "First name must be 100 characters or fewer";
+
+    if (!last) newErrors.lastName = "Last name is required";
+    else if (last.length > 100) newErrors.lastName = "Last name must be 100 characters or fewer";
 
     if (!formData.gradMonth || !formData.gradYear) {
       newErrors.gradDate = "Graduation month and year are required";
@@ -53,9 +70,11 @@ function CreateAccountPage() {
       }
     }
 
-    if (!formData.email.trim()) {
+    if (!email) {
       newErrors.email = "Email is required";
-    } else if (!formData.email.toLowerCase().endsWith("@buffalo.edu")) {
+    } else if (email.length > 255) {
+      newErrors.email = "Email must be 255 characters or fewer";
+    } else if (!email.toLowerCase().endsWith("@buffalo.edu")) {
       newErrors.email = "Email must be a buffalo.edu address";
     }
 
@@ -141,6 +160,7 @@ function CreateAccountPage() {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
+                    maxLength={100}
                     className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                   />
                   {errors.firstName && <p className="text-red-200 text-xs mt-1">{errors.firstName}</p>}
@@ -154,6 +174,7 @@ function CreateAccountPage() {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
+                    maxLength={100}
                     className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                   />
                   {errors.lastName && <p className="text-red-200 text-xs mt-1">{errors.lastName}</p>}
@@ -191,6 +212,7 @@ function CreateAccountPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
+                    maxLength={255}
                     className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                   />
                   {errors.email && <p className="text-red-200 text-xs mt-1">{errors.email}</p>}
