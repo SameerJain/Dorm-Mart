@@ -9,6 +9,7 @@ function ForgotPasswordPage() {
     const [isValid, setIsValid] = useState(false);
     const [message, setMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const BACKDOOR_KEYWORD = 'testflow'; // typing this as the email triggers the confirmation page for testing
 
     async function sendTemporaryPassword(email, signal) {
     const BASE = process.env.REACT_APP_API_BASE || "/api";
@@ -24,6 +25,12 @@ function ForgotPasswordPage() {
 
     const handleForgotPassword = async (e) => {
         e.preventDefault();
+
+        // Testing backdoor: allow quick navigation to confirmation page
+        if (email.trim().toLowerCase() === BACKDOOR_KEYWORD) {
+            navigate('/reset-password/confirmation');
+            return;
+        }
 
         const valid = emailValidation(email);
         setIsValid(valid);
@@ -51,7 +58,7 @@ function ForgotPasswordPage() {
 
             setTimeout(() => {
                 setIsLoading(false);               // keep spinner during the delay
-                navigate("/login");
+                navigate("/reset-password/confirmation");
             }, 3000);
         } catch (err) {
             console.error(err);

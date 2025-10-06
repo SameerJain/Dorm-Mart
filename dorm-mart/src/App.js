@@ -4,6 +4,7 @@ import RootLayout from "./pages/RootLayout";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import ForgotPasswordPage from './pages/ForgotPasswordPage.js'
+import ResetPasswordConfirmation from './pages/ResetPassword/ResetPasswordConfirmation.jsx'
 import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
 import ProductListingPage from "./pages/ProductListing/ProductListingPage.jsx";
@@ -19,6 +20,7 @@ export const router = createHashRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/create-account", element: <CreateAccount /> },
   { path:"/forgot-password", element: <ForgotPasswordPage />},
+  { path: "/reset-password/confirmation", element: <ResetPasswordConfirmation /> },
   // Main app
   {
     path: "/app",
