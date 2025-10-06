@@ -71,7 +71,7 @@ function CreateAccountPage() {
 
     setLoading(true);
     try {
-      await fetch('/api/create-account', {
+      await fetch(`api/auth/create_account.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
