@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import backgroundImage from '../assets/images/login-page-left-side-background.jpg';
 
 function ForgotPasswordPage() {
@@ -31,7 +31,7 @@ function ForgotPasswordPage() {
     };
 
     function emailValidation(email) {
-        const pattern = /^[A-Za-z0-9]{1,15}@buffalo\.edu$/i;
+        const pattern = /^[A-Za-z0-9]{1,12}@buffalo\.edu$/i;
         const trimmed = email.trim();
 
         // Must match pattern first
