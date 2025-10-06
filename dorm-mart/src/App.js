@@ -7,9 +7,8 @@ import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
 import ProductListingPage from "./pages/ProductListing/ProductListingPage.jsx";
 import CreateAccount from "./pages/AccountCreation/index.jsx";
-import LoginPage from "./pages/LoginPage";
-import HomePage from "./pages/HomePage";
 import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
+import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 
 export const router = createHashRouter([
   // redirect default hash `#/` to `#/login`
