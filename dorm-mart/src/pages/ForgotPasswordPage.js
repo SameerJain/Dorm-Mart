@@ -12,7 +12,7 @@ function ForgotPasswordPage() {
 
     async function sendTemporaryPassword(email, signal) {
     const BASE = process.env.REACT_APP_API_BASE || "/api";
-    const r = await fetch(`${BASE}/send-temporary-password.php`, {
+    const r = await fetch(`${BASE}/forgot-password-request.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
