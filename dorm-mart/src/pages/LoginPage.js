@@ -1,12 +1,63 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import backgroundImage from '../assets/images/login-page-left-side-background.jpg';
+import { setAuthToken, isAuthenticated } from '../utils/auth';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  // Redirect to app if already logged in
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate('/app');
+    }
+  }, [navigate]);
 
   const handleLogin = (e) => {
     e.preventDefault();
-    // Navigate to main page when arrow is clicked
+    setError(''); // Clear previous errors
+
+    // Frontend validation only - no backend calls yet
+    
+    // Check if both fields are empty
+    if (email.trim() === '' && password.trim() === '') {
+      setError('Missing required fields');
+      return;
+    }
+
+    // Check if email is empty
+    if (email.trim() === '') {
+      setError('Please input a valid email address');
+      return;
+    }
+
+    // Check if password is empty
+    if (password.trim() === '') {
+      setError('Please input a password');
+      return;
+    }
+
+    // Frontend-only credential validation (temporary until backend is integrated)
+    // For testing purposes, accept specific valid credentials
+    const validEmail = 'student@university.edu';
+    const validPassword = 'SecurePass123!';
+    
+    if (email !== validEmail || password !== validPassword) {
+      setError('Invalid credentials');
+      return;
+    }
+
+    // Validation passed - generate auth token
+    // (In real app, this token would come from backend)
+    const token = btoa(`${email}:${Date.now()}`); // Simple base64 encoded token
+    
+    // Set auth_token cookie with far-future expiration
+    setAuthToken(token);
+    
+    // Navigate to the main app
     navigate('/app');
   };
 
@@ -55,6 +106,13 @@ function LoginPage() {
                 <h2 className="text-4xl font-serif text-white">Log In</h2>
               </div>
               
+              {/* Error message display */}
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                  <p className="text-sm">{error}</p>
+                </div>
+              )}
+
               {/* Login form */}
               <form onSubmit={handleLogin} className="space-y-6">
                 {/* Email input */}
@@ -62,6 +120,8 @@ function LoginPage() {
                   <label className="block text-sm font-semibold text-gray-300 mb-2">University Email Address</label>
                   <input 
                     type="email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                     placeholder=""
                   />
@@ -72,6 +132,8 @@ function LoginPage() {
                   <label className="block text-sm font-semibold text-gray-300 mb-2">Password</label>
                   <input 
                     type="password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                     placeholder=""
                   />
