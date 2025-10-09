@@ -79,9 +79,9 @@ function LoginPage() {
         {/* Branding content */}
         <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 lg:p-8">
           <div className="text-center w-full px-4">
-            <h1 className="text-6xl lg:text-8xl xl:text-9xl font-serif text-white mb-4 lg:mb-6 flex items-center justify-center space-x-2 lg:space-x-6 overflow-hidden">
-              <span className="whitespace-nowrap">Dorm</span>
-              <span className="whitespace-nowrap">Mart</span>
+            <h1 className="text-6xl lg:text-8xl xl:text-9xl font-serif text-white mb-4 lg:mb-6 flex flex-col lg:flex-row items-center justify-center lg:space-x-6 leading-tight lg:leading-normal">
+              <span>Dorm</span>
+              <span>Mart</span>
             </h1>
             <h2 className="text-2xl lg:text-3xl xl:text-4xl font-light text-white opacity-90">Wastage Who?</h2>
           </div>
