@@ -111,9 +111,9 @@ function CreateAccountPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
-      {/* Left side - Background image with branding (hidden on mobile, 50% on desktop) */}
-      <div className="hidden md:block md:w-1/2 relative min-h-screen">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-gray-50">
+      {/* Left side - Background image with branding (hidden on mobile/tablet, 50% on desktop) */}
+      <div className="hidden lg:block lg:w-1/2 relative min-h-screen">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${backgroundImage})` }}
@@ -130,16 +130,16 @@ function CreateAccountPage() {
         </div>
       </div>
 
-      {/* Right side - Create Account form (full width on mobile, 50% on desktop) */}
-      <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 min-h-screen" style={{ backgroundColor: '#364156' }}>
-        {/* Mobile branding header (visible only on mobile) */}
-        <div className="md:hidden mb-6 text-center">
+      {/* Right side - Create Account form (full width on mobile/tablet, 50% on desktop) */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start lg:justify-center p-4 sm:p-8 h-screen overflow-y-auto" style={{ backgroundColor: '#364156' }}>
+        {/* Mobile branding header (visible only on mobile/tablet) */}
+        <div className="lg:hidden mb-6 text-center w-full">
           <h1 className="text-5xl font-serif text-white mb-2">
             Dorm Mart
           </h1>
           <h2 className="text-xl font-light text-white opacity-90">Wastage Who?</h2>
         </div>
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md py-4">
           <div className="p-4 sm:p-8 rounded-lg relative" style={{ backgroundColor: '#3d3eb5' }}>
             {/* Torn paper effect */}
             <div
@@ -294,7 +294,7 @@ function CreateAccountPage() {
               </form>
 
               {/* Links */}
-              <div className="mt-4 sm:mt-6 text-center">
+              <div className="mt-4 sm:mt-6 mb-4 sm:mb-8 text-center">
                 <div className="flex items-center justify-center space-x-2 text-sm sm:text-base text-white">
                   <a
                     href="#"
