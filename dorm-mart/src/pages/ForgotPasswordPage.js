@@ -86,9 +86,9 @@ function ForgotPasswordPage() {
     }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Background image with branding (50%) */}
-      <div className="w-1/2 relative">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
+      {/* Left side - Background image with branding (hidden on mobile, 50% on desktop) */}
+      <div className="hidden md:block md:w-1/2 relative min-h-screen">
         {/* Background image */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -101,21 +101,28 @@ function ForgotPasswordPage() {
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         
         {/* Branding content */}
-        <div className="relative z-10 h-full flex flex-col justify-center items-center p-8">
-          <div className="text-center">
-            <h1 className="text-9xl font-serif text-white mb-6 flex items-center justify-center space-x-6">
-              <span>Dorm</span>
-              <span>Mart</span>
+        <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 lg:p-8">
+          <div className="text-center w-full px-4">
+            <h1 className="text-6xl lg:text-8xl xl:text-9xl font-serif text-white mb-4 lg:mb-6 flex items-center justify-center space-x-2 lg:space-x-6 overflow-hidden">
+              <span className="whitespace-nowrap">Dorm</span>
+              <span className="whitespace-nowrap">Mart</span>
             </h1>
-            <h2 className="text-4xl font-light text-white opacity-90">Wastage Who?</h2>
+            <h2 className="text-2xl lg:text-3xl xl:text-4xl font-light text-white opacity-90">Wastage Who?</h2>
           </div>
         </div>
       </div>
       
-      {/* Right side - forgot password form (50%) */}
-      <div className="w-1/2 flex items-center justify-center p-8" style={{backgroundColor: '#364156'}}>
+      {/* Right side - forgot password form (full width on mobile, 50% on desktop) */}
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 min-h-screen" style={{backgroundColor: '#364156'}}>
+        {/* Mobile branding header (visible only on mobile) */}
+        <div className="md:hidden mb-6 text-center">
+          <h1 className="text-5xl font-serif text-white mb-2">
+            Dorm Mart
+          </h1>
+          <h2 className="text-xl font-light text-white opacity-90">Wastage Who?</h2>
+        </div>
         <div className="w-full max-w-md">
-          <div className="p-8 rounded-lg relative" style={{backgroundColor: '#3d3eb5'}}>
+          <div className="p-4 sm:p-8 rounded-lg relative" style={{backgroundColor: '#3d3eb5'}}>
             {/* Torn paper effect */}
             <div className="absolute inset-0 rounded-lg" 
                  style={{
@@ -125,13 +132,13 @@ function ForgotPasswordPage() {
             
             <div className="relative z-10">
               {/* Header with dot */}
-              <div className="text-center mb-8">
+              <div className="text-center mb-6 sm:mb-8">
                 <div className="w-3 h-3 bg-black rounded-full mx-auto mb-4"></div>
-                <h2 className="text-4xl font-serif text-white">Forgot Pasword? </h2>
+                <h2 className="text-3xl sm:text-4xl font-serif text-white">Forgot Password? </h2>
               </div>
               
               {/* forgot password form */}
-              <form onSubmit={handleForgotPasswordRequest} noValidate className="space-y-6">
+              <form onSubmit={handleForgotPasswordRequest} noValidate className="space-y-4 sm:space-y-6">
                 {/* email input input */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-300 mb-2">University Email Address</label>
@@ -153,7 +160,7 @@ function ForgotPasswordPage() {
                 <button
                 type="submit"
                 disabled={isLoading}
-                className="w-80 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto"
+                className="w-full sm:w-80 bg-blue-500 hover:bg-blue-600 text-white py-2 sm:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto"
                 >
                 {isLoading ? (
                     <svg
@@ -193,8 +200,8 @@ function ForgotPasswordPage() {
 
 
               {/* Links */}
-              <div className="mt-6 text-center">
-                <div className="flex items-center justify-center space-x-2 text-base text-white">
+              <div className="mt-4 sm:mt-6 text-center">
+                <div className="flex items-center justify-center space-x-2 text-sm sm:text-base text-white">
                   <a 
                     href="#" 
                     onClick={(e) => { e.preventDefault(); navigate('/create-account'); }}
