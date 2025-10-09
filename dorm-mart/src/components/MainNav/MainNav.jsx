@@ -42,7 +42,12 @@ function MainNav() {
     return (
         <nav className="bg-blue-600 text-slate-100">
             <div className="mx-auto flex items-center gap-4 p-3">
-                <div className="ml-4 text-4xl font-serif font-semibold">Dorm Mart</div>
+                <button 
+                    onClick={() => navigate('/app')}
+                    className="ml-4 text-4xl font-serif font-semibold cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0 text-slate-100"
+                >
+                    Dorm Mart
+                </button>
                     <div className="flex-1 mx-5">
                       <div className="flex h-15 items-center overflow-hidden rounded-full bg-white shadow-inner">
                         {/* Search icon */}
