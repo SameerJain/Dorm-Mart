@@ -33,10 +33,15 @@ function LoginPage() {
     }
 
     // Additional validation can be added here later
-    // For now, if validation passes, we don't do anything
-    // (Backend integration will be added later)
+    // For now, if validation passes, we simulate login (frontend-only)
+    // Backend integration will be added later
     
-    console.log('Validation passed - ready for backend integration');
+    // Store login state in localStorage (frontend-only authentication)
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userEmail', email);
+    
+    // Navigate to the main app
+    navigate('/app');
   };
 
   return (
