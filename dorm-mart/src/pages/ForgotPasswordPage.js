@@ -7,11 +7,11 @@ function ForgotPasswordPage() {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [isValid, setIsValid] = useState(false);
-    const [message, setMessage] = useState("");
+    const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const BACKDOOR_KEYWORD = 'testflow'; // typing this as the email triggers the confirmation page for testing
 
-    async function sendTemporaryPassword(email, signal) {
+    async function sendForgotPasswordRequest(email, signal) {
     const BASE = process.env.REACT_APP_API_BASE || "/api";
     const r = await fetch(`${BASE}/forgot-password-request.php`, {
         method: "POST",
@@ -23,47 +23,48 @@ function ForgotPasswordPage() {
     return r.json();
     }
 
-    const handleForgotPassword = async (e) => {
+    const handleForgotPasswordRequest = async (e) => {
         e.preventDefault();
 
         // Testing backdoor: allow quick navigation to confirmation page
         if (email.trim().toLowerCase() === BACKDOOR_KEYWORD) {
-            navigate('/reset-password/confirmation');
+            navigate('/forgot-password/confirmation');
             return;
         }
 
         const valid = emailValidation(email);
         setIsValid(valid);
         if (!valid) {
-            setMessage("Email must be a valid UB email address");
+            setError("Email must be a valid UB email address");
             return;
         }
 
         setIsLoading(true);
-        setMessage("");
+        setError("");
 
         try {
             const ac = new AbortController();
-            const data = await sendTemporaryPassword(email, ac.signal);
+            const data = await sendForgotPasswordRequest(email, ac.signal);
 
             if (!data?.success) {
                 setIsValid(false);
-                setMessage("Something went wrong, please try again later.");
+                setError("Something went wrong, please try again later.");
                 setIsLoading(false);               // stop spinner on failure
                 return;
             }
 
             setIsValid(true);
-            setMessage("Temporary password is sent to your email!");
+            // on success, don't show any msg
+            setError("");
 
             setTimeout(() => {
                 setIsLoading(false);               // keep spinner during the delay
-                navigate("/reset-password/confirmation");
-            }, 3000);
+                navigate("/forgot-password/confirmation");
+            }, 2000);
         } catch (err) {
             console.error(err);
             setIsValid(false);
-            setMessage("Something went wrong, please try again later.");
+            setError("Something went wrong, please try again later.");
             setIsLoading(false);                 // stop spinner on network error
         }
     };
@@ -130,7 +131,7 @@ function ForgotPasswordPage() {
               </div>
               
               {/* forgot password form */}
-              <form onSubmit={handleForgotPassword} noValidate className="space-y-6">
+              <form onSubmit={handleForgotPasswordRequest} noValidate className="space-y-6">
                 {/* email input input */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-300 mb-2">University Email Address</label>
@@ -142,13 +143,9 @@ function ForgotPasswordPage() {
                     placeholder="ubname@buffalo.edu"
                   />
                 </div>
-                {message && (
-                <p
-                    className={`text-sm font-medium text-center ${
-                    isValid ? 'text-green-500' : 'text-red-500'
-                    }`}
-                >
-                    {message}
+                {error && (
+                <p className="text-sm font-medium text-center text-red-500">
+                    {error}
                 </p>
                 )}
                 
@@ -181,7 +178,7 @@ function ForgotPasswordPage() {
                     </svg>
                 ) : (
                     <>
-                    <span>Send Temporary Password</span>
+                    <span>Send password reset link</span>
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path
                         fillRule="evenodd"
