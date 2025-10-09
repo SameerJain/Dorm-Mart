@@ -1,12 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import backgroundImage from '../assets/images/login-page-left-side-background.jpg';
+import { setAuthToken, isAuthenticated } from '../utils/auth';
 
 function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+
+  // Redirect to app if already logged in
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate('/app');
+    }
+  }, [navigate]);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -32,13 +40,22 @@ function LoginPage() {
       return;
     }
 
-    // Additional validation can be added here later
-    // For now, if validation passes, we simulate login (frontend-only)
-    // Backend integration will be added later
+    // Frontend-only credential validation (temporary until backend is integrated)
+    // For testing purposes, accept specific valid credentials
+    const validEmail = 'student@university.edu';
+    const validPassword = 'SecurePass123!';
     
-    // Store login state in localStorage (frontend-only authentication)
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userEmail', email);
+    if (email !== validEmail || password !== validPassword) {
+      setError('Invalid credentials');
+      return;
+    }
+
+    // Validation passed - generate auth token
+    // (In real app, this token would come from backend)
+    const token = btoa(`${email}:${Date.now()}`); // Simple base64 encoded token
+    
+    // Set auth_token cookie with far-future expiration
+    setAuthToken(token);
     
     // Navigate to the main app
     navigate('/app');

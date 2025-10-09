@@ -7,6 +7,7 @@ import settingIcon from '../../assets/icons/icons8-setting-96.png'
 import Icon from './Icon'
 import searchIcon from '../../assets/icons/icons8-search-96.png';
 import filterIcon from '../../assets/icons/icons8-filter-96.png';
+import { removeAuthToken } from '../../utils/auth';
 
 function MainNav() {
     const [showDropdown, setShowDropdown] = useState(false);
@@ -31,9 +32,8 @@ function MainNav() {
     }, [showDropdown]);
 
     const handleLogout = () => {
-        // Clear authentication state
-        localStorage.removeItem('isLoggedIn');
-        localStorage.removeItem('userEmail');
+        // Remove auth_token cookie
+        removeAuthToken();
         
         // Redirect to login page
         navigate('/login');
