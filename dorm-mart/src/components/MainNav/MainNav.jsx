@@ -44,7 +44,7 @@ function MainNav() {
             <div className="mx-auto flex items-center gap-4 p-3">
                 <button 
                     onClick={() => navigate('/app')}
-                    className="ml-4 text-4xl font-serif font-semibold cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0 text-slate-100"
+                    className="ml-4 text-4xl font-serif font-semibold cursor-pointer hover:scale-105 hover:opacity-90 hover:drop-shadow-lg transition-all duration-200 bg-transparent border-none p-0 text-slate-100"
                 >
                     Dorm Mart
                 </button>
