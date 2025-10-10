@@ -11,8 +11,11 @@ import { removeAuthToken } from '../../utils/auth';
 
 function MainNav() {
     const [showDropdown, setShowDropdown] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [showMobileUserDropdown, setShowMobileUserDropdown] = useState(false);
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
+    const mobileMenuRef = useRef(null);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -20,16 +23,20 @@ function MainNav() {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setShowDropdown(false);
             }
+            if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
+                setShowMobileMenu(false);
+                setShowMobileUserDropdown(false);
+            }
         };
 
-        if (showDropdown) {
+        if (showDropdown || showMobileMenu) {
             document.addEventListener('mousedown', handleClickOutside);
         }
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [showDropdown]);
+    }, [showDropdown, showMobileMenu]);
 
     const handleLogout = () => {
         // Remove auth_token cookie
@@ -72,7 +79,9 @@ function MainNav() {
                         </button>
                       </div>
                     </div>
-                <ul className="mr-1 sm:mr-2 flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink-0">
+                
+                {/* Desktop navigation - hidden on mobile */}
+                <ul className="mr-1 sm:mr-2 hidden md:flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink-0">
                     <Icon to="/app/notification" src={notificationIcon} alt="Notification"/>
                     <Icon to="/app/chat" src={chatIcon} alt="Chat"/> 
                     
@@ -100,6 +109,79 @@ function MainNav() {
                     
                     <Icon to="/app/setting" src={settingIcon} alt="Setting"/>
                 </ul>
+
+                {/* Mobile hamburger menu - visible only on mobile */}
+                <div className="mr-2 md:hidden relative" ref={mobileMenuRef}>
+                    <button
+                        onClick={() => setShowMobileMenu(!showMobileMenu)}
+                        className="flex flex-col justify-center items-center w-8 h-8 gap-1.5"
+                        aria-label="Menu"
+                    >
+                        <span className="w-6 h-0.5 bg-white"></span>
+                        <span className="w-6 h-0.5 bg-white"></span>
+                        <span className="w-6 h-0.5 bg-white"></span>
+                    </button>
+
+                    {/* Mobile menu dropdown */}
+                    {showMobileMenu && (
+                        <div className="absolute right-0 mt-2 w-56 bg-blue-600 rounded-lg shadow-lg py-2 z-50 border-2 border-blue-400">
+                            <button
+                                onClick={() => {
+                                    navigate('/app/notification');
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <img src={notificationIcon} alt="" className="h-6 w-6" />
+                                <span>Notification</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    navigate('/app/chat');
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <img src={chatIcon} alt="" className="h-6 w-6" />
+                                <span>Chat</span>
+                            </button>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowMobileUserDropdown(!showMobileUserDropdown)}
+                                    className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                                >
+                                    <img src={userIcon} alt="" className="h-6 w-6" />
+                                    <span>User Profile</span>
+                                </button>
+                                {/* Nested dropdown for logout */}
+                                {showMobileUserDropdown && (
+                                    <div className="mt-1 mx-2 bg-blue-500 rounded-md shadow-inner">
+                                        <button
+                                            onClick={() => {
+                                                handleLogout();
+                                                setShowMobileMenu(false);
+                                                setShowMobileUserDropdown(false);
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors rounded-md"
+                                        >
+                                            Log Out
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => {
+                                    navigate('/app/setting');
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <img src={settingIcon} alt="" className="h-6 w-6" />
+                                <span>Settings</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         </nav>
     )
