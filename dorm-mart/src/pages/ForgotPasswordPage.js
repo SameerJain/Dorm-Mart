@@ -113,16 +113,16 @@ function ForgotPasswordPage() {
       </div>
       
       {/* Right side - forgot password form (full width on mobile, 50% on desktop) */}
-      <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 min-h-screen" style={{backgroundColor: '#364156'}}>
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 min-h-screen" style={{backgroundColor: '#364156'}}>
         {/* Mobile branding header (visible only on mobile) */}
-        <div className="md:hidden mb-6 text-center">
-          <h1 className="text-5xl font-serif text-white mb-2">
+        <div className="md:hidden mb-4 sm:mb-6 text-center">
+          <h1 className="text-3xl xs:text-4xl sm:text-5xl font-serif text-white mb-2">
             Dorm Mart
           </h1>
-          <h2 className="text-xl font-light text-white opacity-90">Wastage Who?</h2>
+          <h2 className="text-base xs:text-lg sm:text-xl font-light text-white opacity-90">Wastage Who?</h2>
         </div>
-        <div className="w-full max-w-md">
-          <div className="p-4 sm:p-8 rounded-lg relative" style={{backgroundColor: '#3d3eb5'}}>
+        <div className="w-full max-w-md px-2 sm:px-0">
+          <div className="p-6 sm:p-8 rounded-lg relative" style={{backgroundColor: '#3d3eb5'}}>
             {/* Torn paper effect */}
             <div className="absolute inset-0 rounded-lg" 
                  style={{
@@ -134,24 +134,24 @@ function ForgotPasswordPage() {
               {/* Header with dot */}
               <div className="text-center mb-6 sm:mb-8">
                 <div className="w-3 h-3 bg-black rounded-full mx-auto mb-4"></div>
-                <h2 className="text-3xl sm:text-4xl font-serif text-white">Forgot Password? </h2>
+                <h2 className="text-2xl xs:text-3xl sm:text-4xl font-serif text-white">Forgot Password? </h2>
               </div>
               
               {/* forgot password form */}
               <form onSubmit={handleForgotPasswordRequest} noValidate className="space-y-4 sm:space-y-6">
                 {/* email input input */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-300 mb-2">University Email Address</label>
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-300 mb-2">University Email Address</label>
                   <input 
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                     placeholder="ubname@buffalo.edu"
                   />
                 </div>
                 {error && (
-                <p className="text-sm font-medium text-center text-red-500">
+                <p className="text-xs sm:text-sm font-medium text-center text-red-500 px-2">
                     {error}
                 </p>
                 )}
@@ -160,7 +160,7 @@ function ForgotPasswordPage() {
                 <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full sm:w-80 bg-blue-500 hover:bg-blue-600 text-white py-2 sm:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto"
+                className="w-full max-w-sm bg-blue-500 hover:bg-blue-600 text-white py-2.5 sm:py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto text-sm sm:text-base"
                 >
                 {isLoading ? (
                     <svg
@@ -185,8 +185,8 @@ function ForgotPasswordPage() {
                     </svg>
                 ) : (
                     <>
-                    <span>Send password reset link</span>
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <span className="whitespace-nowrap">Send password reset link</span>
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path
                         fillRule="evenodd"
                         d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
@@ -200,20 +200,20 @@ function ForgotPasswordPage() {
 
 
               {/* Links */}
-              <div className="mt-4 sm:mt-6 text-center">
-                <div className="flex items-center justify-center space-x-2 text-sm sm:text-base text-white">
+              <div className="mt-4 sm:mt-6 text-center px-2">
+                <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:text-sm md:text-base text-white">
                   <a 
                     href="#" 
                     onClick={(e) => { e.preventDefault(); navigate('/create-account'); }}
-                    className="hover:underline hover:text-blue-400 transition-colors duration-200"
+                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap"
                   >
                     Create account
                   </a>
-                  <span className="w-1 h-1 bg-black rounded-full"></span>
+                  <span className="w-1 h-1 bg-black rounded-full hidden xs:block"></span>
                   <a 
                     href="#" 
                     onClick={(e) => { e.preventDefault(); navigate('/login'); }}
-                    className="hover:underline hover:text-blue-400 transition-colors duration-200"
+                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap"
                   >
                     Go back to login
                   </a>
