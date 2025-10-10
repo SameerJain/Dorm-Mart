@@ -40,12 +40,6 @@ export const router = createHashRouter([
           { path: "edit/:id", element: <ProductListingPage key="edit" /> },
         ],
       },
-
-      // Purchase History
-      {
-        path: "db_test",
-        element: <DbTestPage />
-      },
       {
         path: "purchase-history",
         element: <PurchaseHistoryLayout />,
