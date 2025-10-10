@@ -111,29 +111,36 @@ function CreateAccountPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Background image with branding (50%) */}
-      <div className="w-1/2 relative">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-gray-50">
+      {/* Left side - Background image with branding (hidden on mobile/tablet, 50% on desktop) */}
+      <div className="hidden lg:block lg:w-1/2 relative min-h-screen">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${backgroundImage})` }}
         />
         <div className="absolute inset-0 bg-black bg-opacity-40" />
-        <div className="relative z-10 h-full flex flex-col justify-center items-center p-8">
-          <div className="text-center">
-            <h1 className="text-9xl font-serif text-white mb-6 flex items-center justify-center space-x-6">
-              <span>Dorm</span>
-              <span>Mart</span>
+        <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 lg:p-8">
+          <div className="text-center w-full px-4">
+            <h1 className="text-6xl lg:text-8xl xl:text-9xl font-serif text-white mb-4 lg:mb-6 flex items-center justify-center space-x-2 lg:space-x-6 overflow-hidden">
+              <span className="whitespace-nowrap">Dorm</span>
+              <span className="whitespace-nowrap">Mart</span>
             </h1>
-            <h2 className="text-4xl font-light text-white opacity-90">Wastage Who?</h2>
+            <h2 className="text-2xl lg:text-3xl xl:text-4xl font-light text-white opacity-90">Wastage Who?</h2>
           </div>
         </div>
       </div>
 
-      {/* Right side - Create Account form (50%) */}
-      <div className="w-1/2 flex items-center justify-center p-8" style={{ backgroundColor: '#364156' }}>
-        <div className="w-full max-w-md">
-          <div className="p-8 rounded-lg relative" style={{ backgroundColor: '#3d3eb5' }}>
+      {/* Right side - Create Account form (full width on mobile/tablet, 50% on desktop) */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start lg:justify-center p-4 sm:p-8 h-screen overflow-y-auto" style={{ backgroundColor: '#364156' }}>
+        {/* Mobile branding header (visible only on mobile/tablet) */}
+        <div className="lg:hidden mb-6 text-center w-full">
+          <h1 className="text-5xl font-serif text-white mb-2">
+            Dorm Mart
+          </h1>
+          <h2 className="text-xl font-light text-white opacity-90">Wastage Who?</h2>
+        </div>
+        <div className="w-full max-w-md py-4">
+          <div className="p-4 sm:p-8 rounded-lg relative" style={{ backgroundColor: '#3d3eb5' }}>
             {/* Torn paper effect */}
             <div
               className="absolute inset-0 rounded-lg"
@@ -145,13 +152,13 @@ function CreateAccountPage() {
 
             <div className="relative z-10">
               {/* Header with dot */}
-              <div className="text-center mb-8">
+              <div className="text-center mb-6 sm:mb-8">
                 <div className="w-3 h-3 bg-black rounded-full mx-auto mb-4" />
-                <h2 className="text-4xl font-serif text-white">Create Account</h2>
+                <h2 className="text-3xl sm:text-4xl font-serif text-white">Create Account</h2>
               </div>
 
               {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 {/* First Name */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-200 mb-2">First Name</label>
@@ -269,7 +276,7 @@ function CreateAccountPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`w-1/3 text-white py-2 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 font-medium mx-auto
+                  className={`w-full sm:w-1/2 md:w-1/3 text-white py-2 sm:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 font-medium mx-auto
                     ${loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 hover:scale-105 hover:shadow-lg'}
                   `}
                 >
@@ -287,8 +294,8 @@ function CreateAccountPage() {
               </form>
 
               {/* Links */}
-              <div className="mt-6 text-center">
-                <div className="flex items-center justify-center space-x-2 text-base text-white">
+              <div className="mt-4 sm:mt-6 mb-4 sm:mb-8 text-center">
+                <div className="flex items-center justify-center space-x-2 text-sm sm:text-base text-white">
                   <a
                     href="#"
                     onClick={(e) => { e.preventDefault(); navigate('/login'); }}

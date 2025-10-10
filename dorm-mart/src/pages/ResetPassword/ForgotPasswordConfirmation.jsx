@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
-function ResetPasswordConfirmation() {
+function ForgotPasswordConfirmation() {
   const navigate = useNavigate();
 
   return (
@@ -11,7 +11,7 @@ function ResetPasswordConfirmation() {
         <div className="p-6 sm:p-8">
           <h3 className="text-xl sm:text-2xl font-serif text-white mb-3 text-center">Check Your Email</h3>
           <p className="text-sm sm:text-base text-white/90 text-center leading-relaxed">
-            If an account using the email does not already exist, a temporary password has been sent to the email.
+            A link to reset your password is sent to your email.
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <button
@@ -27,6 +27,6 @@ function ResetPasswordConfirmation() {
   );
 }
 
-export default ResetPasswordConfirmation;
+export default ForgotPasswordConfirmation;
 
 

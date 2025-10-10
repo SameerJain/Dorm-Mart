@@ -13,7 +13,7 @@ function HomePage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Link 
-              to="/purchase-history" 
+              to="/app/purchase-history" 
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-lg text-center transition-colors"
             >
               View Purchase History

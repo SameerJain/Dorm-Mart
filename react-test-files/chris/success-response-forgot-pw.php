@@ -1,4 +1,4 @@
 {
   "success": true,
-  "message": "Temporary password sent successfully."
+  "message": "Check the email to reset your password!"
 }
