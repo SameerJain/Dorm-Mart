@@ -20,6 +20,7 @@ connect to the altitude server\
 5. upload build, migrations, api, and .env.local to /serve/dorm-mart
 6. navigate to localhost/serve/dor-mart
 7. you now should have the app running on your local apache server
+8. make sure to migrate to apply db schema to your local mysql
 
 # How does the server serve the app?
 1. `"homepage": "/CSE442/2025-Fall/cse-442j",`

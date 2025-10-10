@@ -18,7 +18,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "_comment_start-local": "used to enforce locally running react to load .env.development",
+    "_commint_start-local": "used to enforce locally running react to load .env.development",
     "start-local": "env-cmd -f .env.development bash -c 'echo Using $REACT_APP_API_BASE && react-scripts start'",
     "build": "react-scripts build",
     "_comment_build-local": "used to build local server app",
