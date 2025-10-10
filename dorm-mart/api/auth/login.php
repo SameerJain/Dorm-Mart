@@ -51,6 +51,8 @@ try {
 
     if ($result->num_rows === 0) {
         // Generic auth failure response (no existence leak)
+        $stmt->close();
+        $conn->close();
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
         exit;
@@ -58,19 +60,29 @@ try {
 
     $row = $result->fetch_assoc();
     $stmt->close();
-
+    
     $hash = $row['hash_pass'] ?? '';
     if (!is_string($hash) || $hash === '' || !password_verify($password, $hash)) {
+        $conn->close();
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
         exit;
     }
 
-    // Success. Issue a simple session-like token placeholder (can be replaced later)
-    // For now, do not set cookies; just return ok:true. No secrets leaked.
+    // Success - return user_id for frontend use
+    $userId = $row['user_id'];
+    $conn->close();
+    
     http_response_code(200);
-    echo json_encode(['ok' => true]);
+    echo json_encode([
+        'ok' => true,
+        'user_id' => $userId
+    ]);
 } catch (Throwable $e) {
+    if (isset($conn)) {
+        $conn->close();
+    }
+    // Log error server-side (optional): error_log($e->getMessage());
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Server error']);
 }
