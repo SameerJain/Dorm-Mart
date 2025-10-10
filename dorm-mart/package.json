@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "_comment_homepage": "homepage specifiation allows routing to the project files from the server root",
-  "homepage": "/CSE442/2025-Fall/cse-442j",
+  "homepage": ".",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
@@ -18,9 +18,13 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "_comment_start-local": "used to enforce locally running react to load .env.development",
+    "start-local": "env-cmd -f .env.development bash -c 'echo Using $REACT_APP_API_BASE && react-scripts start'",
     "build": "react-scripts build",
-    "_comment_build-local": "used to create build for local server",
+    "_comment_build-local": "used to build local server app",
     "build-local": "env-cmd -f .env.local bash -c 'echo Using $REACT_APP_API_BASE && PUBLIC_URL=/serve/dorm-mart react-scripts build'",
+    "_comment_build-prod": "used to build prod server app",
+    "build-prod":  "env-cmd -f .env.production bash -c 'echo Building prod && PUBLIC_URL=/CSE442/2025-Fall/cse-442j react-scripts build'",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -46,5 +50,7 @@
     "autoprefixer": "^10.4.21",
     "env-cmd": "^11.0.0",
     "postcss": "^8.5.6"
-  }
+  },
+  "_comment_proxy": "used to connect local react to locally running php server",
+  "proxy": "http://localhost:8080"
 }

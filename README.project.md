@@ -1,15 +1,18 @@
 # POSIX demo
-- copy any necessary file into your server
-
+copy any necessary file into your server\
 `scp -r [specify file or server] sooseokk@aptitude.cse.buffalo.edu:/data/web/CSE442/2025-Fall/cse-442j`
-- connect to the altitude server
-
+connect to the altitude server\
 `ssh sooseokk@aptitude.cse.buffalo.edu`
 
-# how to run PHP localhost server
-php -S localhost:8080 -t .
+# How to run React and php server locally
+1. `npm run start-local`
+2. `php -S localhost:8080 -t .`
 
-# How to simulate the server locally
+# Uploading the app to aptitude server
+1. `npm run build-prod`
+2. upload build, migrations, api, and .env.production to the aptitude server
+
+# How to simulate the apache server locally
 1. create /serve/dorm-mart folder in htdocs direcoty
 2. navigate to your project located in htdocs
 3. `npm install` to download env-cmd library
