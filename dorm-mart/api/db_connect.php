@@ -5,6 +5,7 @@ function db(): mysqli {
     $root = dirname(__DIR__); 
     // load whichever exists 
     $devEnvFile = "$root/.env.development";
+    $localEnvFile = "$root/.env.local";
     $prodEnvFile = "$root/.env.production";
     
     // load whichever exists
@@ -12,7 +13,9 @@ function db(): mysqli {
         $envFile = $devEnvFile;
     } elseif (file_exists($prodEnvFile)) {
         $envFile = $prodEnvFile;
-    } else {
+    } elseif (file_exists($localEnvFile)){
+        $envFile = $localEnvFile;
+    }else {
         echo json_encode(["success" => false, "message" => "No .env file found"]);
         exit;
     }
@@ -33,13 +36,7 @@ function db(): mysqli {
 
     // db connection
     $conn = new mysqli($servername, $username, $password, $dbname);
-
-    // if ($conn->connect_error) {
-    //     echo "Database connection failed: " . $conn->connect_error . "\n";
-    // } else {
-    //     echo "Database connection was successful\n";
-    // }
-
+    
     return $conn;
 }
 ?>
