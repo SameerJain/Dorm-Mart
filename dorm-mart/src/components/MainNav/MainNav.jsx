@@ -46,6 +46,10 @@ function MainNav() {
         navigate('/login');
     };
 
+    const handlePurchaseHistory = () => {
+        navigate('/app/purchase-history')
+    }
+
     return (
         <nav className="bg-blue-600 text-slate-100">
             <div className="mx-auto flex items-center gap-1 sm:gap-2 md:gap-4 p-2 md:p-3">
@@ -102,6 +106,12 @@ function MainNav() {
                                     className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors"
                                 >
                                     Log Out
+                                </button>
+                                                                <button
+                                    onClick={handlePurchaseHistory}
+                                    className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors"
+                                >
+                                    Purchase History
                                 </button>
                             </div>
                         )}
