@@ -42,8 +42,8 @@ function LoginPage() {
 
     // Frontend-only credential validation (temporary until backend is integrated)
     // For testing purposes, accept specific valid credentials
-    const validEmail = 'student@university.edu';
-    const validPassword = 'SecurePass123!';
+    const validEmail = 'testuser@buffalo.edu';
+    const validPassword = '1234!';
     
     if (email !== validEmail || password !== validPassword) {
       setError('Invalid credentials');
