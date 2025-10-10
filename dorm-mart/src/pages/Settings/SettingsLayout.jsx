@@ -16,9 +16,9 @@ function SettingsLayout({ children }) {
 
   return (
     // Fill viewport height minus the nav (≈64px). Use *height* + child h-full.
-    <div className="w-full" style={{ height: "calc(100vh - 64px)" }}>
+    <div className="w-full flex flex-col" style={{ height: "calc(100vh - 64px)" }}>
       {/* Mobile hamburger menu button - only visible on mobile */}
-      <div className="lg:hidden p-4 border-b border-gray-200 bg-white">
+      <div className="lg:hidden p-4 border-b border-gray-200 bg-white flex-shrink-0">
         <button
           onClick={() => setShowMobileMenu(!showMobileMenu)}
           className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
@@ -31,7 +31,7 @@ function SettingsLayout({ children }) {
       </div>
 
       {/* Full-width grid that also stretches to full height */}
-      <div className="grid h-full w-full grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 px-6 py-6">
+      <div className="grid flex-1 w-full grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 px-6 py-6 min-h-0">
         {/* Desktop Sidebar (hidden on mobile) */}
         <aside
           className="hidden lg:block h-full rounded-xl p-0 text-white shadow"
@@ -119,7 +119,7 @@ function SettingsLayout({ children }) {
         )}
 
         {/* Content (stretch to bottom) */}
-        <main className="h-full rounded-xl bg-white p-4 sm:p-6 shadow overflow-auto">
+        <main className="h-full rounded-xl bg-white p-4 sm:p-6 shadow overflow-auto min-h-0">
           {children}
         </main>
       </div>
