@@ -34,9 +34,9 @@ if ($email === '' || $password === '') {
     exit;
 }
 
-if (!preg_match('/^[^@\s]+@(buffalo|university)\.edu$/', $email)) {
+if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu or @university.edu']);
+    echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);
     exit;
 }
 
