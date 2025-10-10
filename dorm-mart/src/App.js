@@ -1,30 +1,47 @@
-import { createHashRouter, RouterProvider } from 'react-router-dom'
-import RootLayout from './pages/RootLayout';
-import LoginPage from './pages/LoginPage';
-import HomePage from './pages/HomePage';
-import ItemDetailPage from './pages/PurchaseHistory/ItemDetailPage';
-import PurchaseHistoryPage from './pages/PurchaseHistory/PurchaseHistoryPage';
-import PurchaseHistoryLayout from './pages/PurchaseHistory/PurchaseHistoryLayout';
-import DbTestPage from './pages/dbTestPage';
-
-/* hashRouter adds # in front of each url path
- Request: https://example.com/#/app/purchase-history.
- Server only sees https://example.com/ and serves index.html.
- The part after # (/app/purchase-history) is handled by JS routing in client-side */
+// dorm-mart/src/App.js
+import { createHashRouter, RouterProvider, Navigate } from "react-router-dom";
+import RootLayout from "./pages/RootLayout";
+import LoginPage from "./pages/LoginPage";
+import HomePage from "./pages/HomePage";
+import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
+import ResetPasswordConfirmation from './pages/ResetPassword/ResetPasswordConfirmation.jsx';
+import ForgotPasswordConfirmation from './pages/ResetPassword/ForgotPasswordConfirmation.jsx';
+import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
+import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
+import ProductListingPage from "./pages/ProductListing/ProductListingPage.jsx";
+import CreateAccount from "./pages/AccountCreation/index.jsx";
+import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
+import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 
 export const router = createHashRouter([
-  // Login is the default route
-  {
-    path: "/",
-    element: <LoginPage />,
-  },
-  // Main application lives under /app
+  // redirect default hash `#/` to `#/login`
+  { path: "/", element: <Navigate to="/login" replace /> },
+
+  // Auth
+  { path: "/login", element: <LoginPage /> },
+  { path: "/create-account", element: <CreateAccount /> },
+  { path:"/forgot-password", element: <ForgotPasswordPage />},
+  { path:"/forgot-password/confirmation", element: <ForgotPasswordConfirmation />},
+  { path: "/reset-password/confirmation", element: <ResetPasswordConfirmation /> },
+  // Main app
   {
     path: "/app",
     element: <RootLayout />,
     children: [
 
       { index: true, element: <HomePage /> },
+
+      // Product Listing
+      {
+        path: "product-listing",
+        children: [
+          { index: true, element: <ProductListingPage /> },
+          { path: "new", element: <ProductListingPage key="new" /> },
+          { path: "edit/:id", element: <ProductListingPage key="edit" /> },
+        ],
+      },
+
+      // Purchase History
       {
         path: "db_test",
         element: <DbTestPage />
@@ -37,10 +54,41 @@ export const router = createHashRouter([
           { path: "item-detail/:id", element: <ItemDetailPage /> },
         ],
       },
+
+      // Settings (under /app)
+      {
+        path: "setting",
+        children: [
+          { index: true, element: <Navigate to="/app/setting/change-password" replace /> },
+          { path: "change-password", element: <ChangePasswordPage /> },
+
+          // Stubs for yet-to-be-implemented pages (intentionally 404)
+          {
+            path: "personal-information",
+            loader: () => {
+              throw new Response("Not Found", { status: 404 });
+            },
+          },
+          {
+            path: "user-preferences",
+            loader: () => {
+              throw new Response("Not Found", { status: 404 });
+            },
+          },
+          {
+            path: "security-options",
+            loader: () => {
+              throw new Response("Not Found", { status: 404 });
+            },
+          },
+        ],
+      },
     ],
   },
 ]);
 
-export default function App() {
+function App() {
   return <RouterProvider router={router} />;
 }
+
+export default App;

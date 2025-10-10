@@ -1,0 +1,8 @@
+# Ignore specific subfolders under react-test-files/chris
+react-test-files/chris/aptitude.cse.buffalo.edu/
+react-test-files/chris/localhost-3000/
+react-test-files/chris/localhost:3000/
+react-test-files/chris/undefined/
+
+# Keep everything else under chris
+!react-test-files/chris/

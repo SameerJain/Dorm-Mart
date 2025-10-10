@@ -2,6 +2,7 @@
   "name": "dorm-mart",
   "version": "0.1.0",
   "private": true,
+  "_comment_homepage": "homepage specifiation allows routing to the project files from the server root",
   "homepage": "/CSE442/2025-Fall/cse-442j",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -18,6 +19,8 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "_comment_build-local": "used to create build for local server",
+    "build-local": "env-cmd -f .env.local bash -c 'echo Using $REACT_APP_API_BASE && PUBLIC_URL=/serve/dorm-mart react-scripts build'",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -41,6 +44,7 @@
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
+    "env-cmd": "^11.0.0",
     "postcss": "^8.5.6"
   }
 }
