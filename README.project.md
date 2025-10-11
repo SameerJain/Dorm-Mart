@@ -7,18 +7,20 @@ connect to the altitude server\
 # How to run React and php server locally
 1. `npm run start-local`
 2. `php -S localhost:8080 -t .`
+- refer to "proxy" field in package.json
 
-# Uploading the app to aptitude server
+# How to build prod app
 1. `npm run build-prod`
 2. upload build, migrations, api, and .env.production to the aptitude server
+- refer to scripts in package.json
 
 # How to simulate the apache server locally
-1. create /serve/dorm-mart folder in htdocs direcoty
-2. navigate to your project located in htdocs
-3. `npm install` to download env-cmd library
+1. create /serve/dorm-mart folder in htdocs directory
+2. navigate to your project located in htdocs (if you don't have your project in this directory, copy/paste them)
+3. `npm install` to download any new libraries
 4. `npm run build-local` to create build folder for local server
-5. upload build, migrations, api, and .env.local to /serve/dorm-mart
-6. navigate to localhost/serve/dor-mart
+5. upload the build/*, migrations, api, and .env.local, and any neccessary files and folders to /serve/dorm-mart (make a script to automate this)
+6. navigate to localhost/serve/dorm-mart from your browser
 7. you now should have the app running on your local apache server
 8. make sure to migrate to apply db schema to your local mysql
 
