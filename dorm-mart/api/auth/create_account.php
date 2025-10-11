@@ -64,9 +64,12 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
     // load whichever exists 
     global $PROJECT_ROOT;
     $devEnvFile = "$PROJECT_ROOT/.env.development";
+    $localEnvFile = "$PROJECT_ROOT/.env.local";
     $prodEnvFile = "$PROJECT_ROOT/.env.production";
     if (file_exists($devEnvFile)) {
         $envFile = $devEnvFile;
+    } elseif(file_exists($localEnvFile)){
+        $endFile = $localEnvFile;
     } elseif (file_exists($prodEnvFile)) {
         $envFile = $prodEnvFile;
     } else {
