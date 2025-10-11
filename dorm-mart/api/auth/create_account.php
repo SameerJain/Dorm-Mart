@@ -65,11 +65,16 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
     global $PROJECT_ROOT;
     $devEnvFile = "$PROJECT_ROOT/.env.development";
     $prodEnvFile = "$PROJECT_ROOT/.env.production";
+    $localEnvFile = "$PROJECT_ROOT/.env.local";
     if (file_exists($devEnvFile)) {
         $envFile = $devEnvFile;
     } elseif (file_exists($prodEnvFile)) {
         $envFile = $prodEnvFile;
-    } else {
+    } 
+    else if (file_exists($localEnvFile)){
+        $envFile = $localEnvFile;
+    }
+    else {
         echo json_encode(["success" => false, "message" => "No .env file found"]);
         exit;
     }
@@ -209,7 +214,7 @@ $chk->close();
 
 // 2) Generate & hash password
 $tempPassword = generatePassword(12);
-$hashPass     = password_hash($tempPassword, PASSWORD_DEFAULT);
+$hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
 
 // 3) Insert user
 $sql = 'INSERT INTO user_accounts
