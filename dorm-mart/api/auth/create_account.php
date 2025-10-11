@@ -76,7 +76,8 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
     } 
     else if (file_exists($localEnvFile)){
         $envFile = $localEnvFile;
-    }else {
+    }
+    else {
         echo json_encode(["success" => false, "message" => "No .env file found"]);
         exit;
     }
@@ -216,7 +217,7 @@ $chk->close();
 
 // 2) Generate & hash password
 $tempPassword = generatePassword(12);
-$hashPass     = password_hash($tempPassword, PASSWORD_DEFAULT);
+$hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
 
 // 3) Insert user
 $sql = 'INSERT INTO user_accounts
