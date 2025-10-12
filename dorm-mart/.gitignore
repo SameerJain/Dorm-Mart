@@ -22,3 +22,6 @@ yarn-debug.log*
 yarn-error.log*
 
 local-deploy.sh
+
+# Test file Sameer made to test login api
+body.json
