@@ -8,6 +8,7 @@ function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Redirect to app if already logged in
   useEffect(() => {
@@ -16,49 +17,65 @@ function LoginPage() {
     }
   }, [navigate]);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError(''); // Clear previous errors
+    setLoading(true);
 
-    // Frontend validation only - no backend calls yet
-    
-    // Check if both fields are empty
+    // Frontend validation
     if (email.trim() === '' && password.trim() === '') {
       setError('Missing required fields');
+      setLoading(false);
       return;
     }
 
-    // Check if email is empty
     if (email.trim() === '') {
       setError('Please input a valid email address');
+      setLoading(false);
       return;
     }
 
-    // Check if password is empty
     if (password.trim() === '') {
       setError('Please input a password');
+      setLoading(false);
       return;
     }
 
-    // Frontend-only credential validation (temporary until backend is integrated)
-    // For testing purposes, accept specific valid credentials
-    const validEmail = 'testuser@buffalo.edu';
-    const validPassword = '1234!';
-    
-    if (email !== validEmail || password !== validPassword) {
-      setError('Invalid credentials');
-      return;
-    }
+    try {
+      // Call backend login API
+      const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/login.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password
+        })
+      });
 
-    // Validation passed - generate auth token
-    // (In real app, this token would come from backend)
-    const token = btoa(`${email}:${Date.now()}`); // Simple base64 encoded token
-    
-    // Set auth_token cookie with far-future expiration
-    setAuthToken(token);
-    
-    // Navigate to the main app
-    navigate('/app');
+      const data = await response.json();
+
+      if (data.ok) {
+        // Generate auth token (in real production, backend would provide this)
+        const token = btoa(`${email.trim()}:${Date.now()}`);
+        
+        // Set auth_token cookie
+        setAuthToken(token);
+        
+        // Navigate to the main app
+        navigate('/app');
+      } else {
+        // Show error from backend
+        setError(data.error || 'Login failed');
+      }
+    } catch (error) {
+      // Handle network or other errors
+      setError('Network error. Please try again.');
+      console.error('Login error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -150,12 +167,15 @@ function LoginPage() {
                 {/* Login button with arrow */}
                 <button 
                   type="submit"
-                  className="w-full sm:w-1/2 md:w-1/3 bg-blue-500 hover:bg-blue-600 text-white py-2 sm:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto"
+                  disabled={loading}
+                  className="w-full sm:w-1/2 md:w-1/3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed text-white py-2 sm:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto disabled:hover:scale-100"
                 >
-                  <span>Login</span>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
+                  <span>{loading ? 'Logging in...' : 'Login'}</span>
+                  {!loading && (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  )}
                 </button>
               </form>
               

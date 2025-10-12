@@ -34,7 +34,7 @@ function PurchaseHistoryPage() {
           setIsFetching(false)
           setError(true)
           if (err.name === "AbortError") return;
-          console.error(err);
+            console.error(err);
         }
       }
       loadPurchasedItems();
