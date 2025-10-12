@@ -28,6 +28,7 @@ export const router = createHashRouter([
     path: "/app",
     element: <RootLayout />,
     children: [
+
       { index: true, element: <HomePage /> },
 
       // Product Listing
@@ -39,8 +40,6 @@ export const router = createHashRouter([
           { path: "edit/:id", element: <ProductListingPage key="edit" /> },
         ],
       },
-
-      // Purchase History
       {
         path: "purchase-history",
         element: <PurchaseHistoryLayout />,
