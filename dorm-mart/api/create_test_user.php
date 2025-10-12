@@ -3,12 +3,12 @@
 require __DIR__ . '/db_connect.php';
 
 // Test user data
-$email = 'student@university.edu';
-$password = 'SecurePass123';
+$email = 'student@buffalo.edu';
+$password = 'SecurePass123!';
 $firstName = 'Test';
 $lastName = 'Student';
 $gradMonth = 5;
-$gradYear = 2025;
+$gradYear = 2026;
 
 try {
     $conn = db();
