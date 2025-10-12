@@ -18,17 +18,32 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Read JSON body
-$rawInput = file_get_contents('php://input');
-$data = json_decode($rawInput, true);
-if (!is_array($data)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid JSON body']);
+// Detect Content-Type and read data accordingly
+$contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+
+// Default: Read form data (application/x-www-form-urlencoded)
+if (strpos($contentType, 'application/x-www-form-urlencoded') !== false) {
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $password = (string)($_POST['password'] ?? '');
+    
+// Check if Content-Type is JSON (application/json)
+} elseif (strpos($contentType, 'application/json') !== false) {
+    $rawInput = file_get_contents('php://input');
+    $data = json_decode($rawInput, true);
+
+    if (!is_array($data)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Invalid JSON body']);
+        exit;
+    }
+
+    $email = strtolower(trim($data['email'] ?? ''));
+    $password = (string)($data['password'] ?? '');
+} else {
+    http_response_code(415);
+    echo json_encode(['ok' => false, 'error' => 'Unsupported Media Type']);
     exit;
 }
-
-$email = strtolower(trim($data['email'] ?? ''));
-$password = (string)($data['password'] ?? '');
 
 // Basic validation
 if ($email === '' || $password === '') {
@@ -53,7 +68,6 @@ try {
     $result = $stmt->get_result();
 
     if ($result->num_rows === 0) {
-        // Generic auth failure response (no existence leak)
         $stmt->close();
         $conn->close();
         http_response_code(401);
@@ -77,19 +91,12 @@ try {
     $conn->close();
     
     http_response_code(200);
-    echo json_encode([
-        'ok' => true,
-        'user_id' => $userId
-    ]);
+    echo json_encode([ 'ok' => true, 'user_id' => $userId ]);
 } catch (Throwable $e) {
     if (isset($conn)) {
         $conn->close();
     }
-    // Log error server-side (optional): error_log($e->getMessage());
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Server error']);
 }
-
 ?>
-
-

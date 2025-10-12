@@ -43,7 +43,7 @@ function LoginPage() {
 
     try {
       // Call backend login API
-      const response = await fetch('/api/auth/login.php', {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/login.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -21,7 +21,7 @@
     "start": "react-scripts start",
     "_commint_start-local": "used to enforce locally running react to load .env.development",
     "start-local-mac": "env-cmd -f .env.development bash -c 'echo Using $REACT_APP_API_BASE && react-scripts start'",
-    "start-local-win": "env-cmd -f .env.development cross-env react-scripts build",
+    "start-local-win": "env-cmd -f .env.development cross-env react-scripts start",
     "build": "react-scripts build",
     "_comment_build-local": "used to build local server app",
     "build-local-mac": "env-cmd -f .env.local bash -c 'echo Using $REACT_APP_API_BASE && PUBLIC_URL=/serve/dorm-mart react-scripts build'",
