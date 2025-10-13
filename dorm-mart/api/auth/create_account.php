@@ -211,6 +211,31 @@ if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
     echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);
     exit;
 }
+// --- Validate graduation date format ---
+if ($gradMonth < 1 || $gradMonth > 12 || $gradYear < 1900) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid graduation date']);
+    exit;
+}
+
+// --- Current and limit dates ---
+$currentYear  = (int)date('Y');
+$currentMonth = (int)date('n');
+$maxFutureYear = $currentYear + 8;
+
+// --- Check for past date ---
+if ($gradYear < $currentYear || ($gradYear === $currentYear && $gradMonth < $currentMonth)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Graduation date cannot be in the past']);
+    exit;
+}
+
+// --- Check for excessive future date ---
+if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > $currentMonth)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Graduation date cannot be more than 8 years in the future']);
+    exit;
+}
 
 require "../db_connect.php";
 $conn = db();
@@ -268,9 +293,7 @@ sendWelcomeGmail(["firstName"=>$firstName,"lastName"=>$lastName,"email"=>$email]
 
 // Success
 echo json_encode([
-  'ok' => true,
-  'message' => 'If an account does not exist, a temporary password has been sent.',
-  'email' => $email,
+  'ok' => true
 ]);
 
 } catch (Throwable $e) {
