@@ -9,23 +9,21 @@ import { useParams, useMatch } from "react-router-dom";
  *  - edit   => visiting /product-listing/edit/:id        (useParams().id exists)
  */
 
-// Ensure this is a default export
 function ProductListingPage() {
-  const { id } = useParams(); // edit id if present
+  const { id } = useParams();
   const matchNew = useMatch("/product-listing/new");
   const isEdit = Boolean(id);
   const isNew = Boolean(matchNew);
   const isIndex = !isEdit && !isNew;
 
-  // --- form state (no defaults) ---
+  // --- form state (category removed) ---
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("");
   const [tags, setTags] = useState([]);
   const [newTag, setNewTag] = useState("");
   const [meetLocation, setMeetLocation] = useState("");
   const [condition, setCondition] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState(""); // keep as string; coerce on submit
+  const [price, setPrice] = useState("");
   const [acceptTrades, setAcceptTrades] = useState(false);
   const [priceNegotiable, setPriceNegotiable] = useState(false);
   const [images, setImages] = useState([]); // {file, url}
@@ -37,7 +35,6 @@ function ProductListingPage() {
       // Mock fetch — replace with real API call if needed
       const mockData = {
         title: `Item #${id}`,
-        category: "Dorm",
         tags: ["Blue", "Organizer", "Campus"],
         meetLocation: "Ellicott",
         condition: "Good",
@@ -49,7 +46,6 @@ function ProductListingPage() {
       };
 
       setTitle(mockData.title || "");
-      setCategory(mockData.category || "");
       setTags(Array.isArray(mockData.tags) ? mockData.tags : []);
       setMeetLocation(mockData.meetLocation || "");
       setCondition(mockData.condition || "");
@@ -61,11 +57,9 @@ function ProductListingPage() {
       );
       setAcceptTrades(Boolean(mockData.acceptTrades));
       setPriceNegotiable(Boolean(mockData.priceNegotiable));
-      setImages([]); // images are user-selected locally
+      setImages([]);
     } else if (isNew) {
-      // reset to empty values
       setTitle("");
-      setCategory("");
       setTags([]);
       setMeetLocation("");
       setCondition("");
@@ -76,7 +70,7 @@ function ProductListingPage() {
       setImages([]);
       setNewTag("");
     } else {
-      // index: do nothing (or load listing list)
+      // index: noop
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew]);
@@ -120,7 +114,6 @@ function ProductListingPage() {
   function saveDraft() {
     const payload = {
       title,
-      category,
       tags,
       meetLocation,
       condition,
@@ -142,8 +135,6 @@ function ProductListingPage() {
 
     const fd = new FormData();
     fd.append("title", title.trim());
-    fd.append("category", category.trim());
-    // send tags as array fields
     tags.forEach((t) => fd.append("tags[]", t));
     fd.append("meetLocation", meetLocation);
     fd.append("condition", condition);
@@ -163,7 +154,6 @@ function ProductListingPage() {
         body: fd,
       });
 
-      // Backend may always return 200; try to parse JSON, fall back to text.
       let data;
       const text = await res.text();
       try {
@@ -202,13 +192,7 @@ function ProductListingPage() {
 
                 <p className="text-xs text-gray-400 mt-2">Be specific and descriptive to attract buyers</p>
 
-                <label className="block text-xl font-semibold mt-6 mb-2">Category</label>
-                <input
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full p-3 border rounded-lg"
-                  placeholder="e.g., Dorm, Electronics"
-                />
+                {/* Category field removed */}
 
                 <label className="block text-xl font-semibold mt-6 mb-2">Tags</label>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -391,7 +375,6 @@ function ProductListingPage() {
                 type="button"
                 onClick={() => {
                   setTitle("");
-                  setCategory("");
                   setTags([]);
                   setMeetLocation("");
                   setCondition("");
