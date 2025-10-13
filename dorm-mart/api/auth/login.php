@@ -1,9 +1,23 @@
 <?php
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+
+// CORS for credentials - must specify origin, not '*'
+// Allow localhost (dev) and production domains
+$allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://aptitude.cse.buffalo.edu'
+];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins)) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    header("Access-Control-Allow-Origin: http://localhost:3000"); // default
+}
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Credentials: true');
 
 // Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -93,9 +107,55 @@ try {
         exit;
     }
 
-    // Success - return user_id for frontend use
+    // Success - generate auth token, set session, and set cookie
     $userId = $row['user_id'];
+    
+    // Start PHP session for server-managed auth
+    // Ensure session cookies are httpOnly by default
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        // Set conservative cookie params for the session
+        session_set_cookie_params([
+            'lifetime' => 0,      // session cookie
+            'path' => '/',
+            'secure' => false,    // set true in production (HTTPS)
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+        session_start();
+    }
+    // Regenerate session ID to prevent fixation
+    session_regenerate_id(true);
+    $_SESSION['user_id'] = (int)$userId;
+    
+    // Generate secure random token (64 hex characters = 32 bytes)
+    $authToken = bin2hex(random_bytes(32));
+    
+    // Hash the token for database storage
+    $hashAuth = password_hash($authToken, PASSWORD_BCRYPT);
+    
+    // Store hashed token in database
+    $updateStmt = $conn->prepare('UPDATE user_accounts SET hash_auth = ? WHERE user_id = ?');
+    $updateStmt->bind_param('si', $hashAuth, $userId);
+    $updateStmt->execute();
+    $updateStmt->close();
     $conn->close();
+    
+    // Set httpOnly cookie with the token (30 day expiration)
+    setcookie('auth_token', $authToken, [
+        'expires' => time() + (30 * 24 * 60 * 60),
+        'path' => '/',
+        'httponly' => true,
+        'secure' => false  // Set to true in production with HTTPS
+    ]);
+    
+    // Set a companion non-httpOnly cookie for frontend UI auth state
+    // This does NOT contain sensitive data
+    setcookie('logged_in', 'true', [
+        'expires' => time() + (30 * 24 * 60 * 60),
+        'path' => '/',
+        'httponly' => false,
+        'secure' => false
+    ]);
     
     http_response_code(200);
     echo json_encode([ 'ok' => true, 'user_id' => $userId ]);

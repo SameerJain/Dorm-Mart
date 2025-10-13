@@ -7,7 +7,7 @@ import settingIcon from '../../assets/icons/icons8-setting-96.png'
 import Icon from './Icon'
 import searchIcon from '../../assets/icons/icons8-search-96.png';
 import filterIcon from '../../assets/icons/icons8-filter-96.png';
-import { removeAuthToken } from '../../utils/auth';
+import { logout } from '../../utils/auth';
 
 function MainNav() {
     const [showDropdown, setShowDropdown] = useState(false);
@@ -38,10 +38,9 @@ function MainNav() {
         };
     }, [showDropdown, showMobileMenu]);
 
-    const handleLogout = () => {
-        // Remove auth_token cookie
-        removeAuthToken();
-        
+    const handleLogout = async () => {
+        // Call backend to clear server-side auth
+        await logout();
         // Redirect to login page
         navigate('/login');
     };

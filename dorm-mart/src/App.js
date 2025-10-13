@@ -11,6 +11,7 @@ import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout
 import ProductListingPage from "./pages/ProductListing/ProductListingPage.jsx";
 import CreateAccount from "./pages/AccountCreation/index.jsx";
 import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
+import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 
 export const router = createHashRouter([
@@ -56,15 +57,12 @@ export const router = createHashRouter([
           { index: true, element: <Navigate to="/app/setting/change-password" replace /> },
           { path: "change-password", element: <ChangePasswordPage /> },
 
+          // User Preferences
+          { path: "user-preferences", element: <UserPreferences /> },
+
           // Stubs for yet-to-be-implemented pages (intentionally 404)
           {
             path: "personal-information",
-            loader: () => {
-              throw new Response("Not Found", { status: 404 });
-            },
-          },
-          {
-            path: "user-preferences",
             loader: () => {
               throw new Response("Not Found", { status: 404 });
             },
