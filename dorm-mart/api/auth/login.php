@@ -52,7 +52,7 @@ try {
   // Persist across restarts
   issue_remember_cookie($userId);
 
-  echo json_encode(['ok'=>true, 'user_id'=>$userId]);
+  echo json_encode(['ok'=>true]);
 } catch (Throwable $e) {
   if (isset($stmt) && $stmt) { $stmt->close(); }
   if (isset($conn) && $conn) { $conn->close(); }
