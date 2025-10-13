@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import backgroundImage from '../assets/images/login-page-left-side-background.jpg';
-import { isAuthenticated } from '../utils/auth';
+// Client no longer inspects cookies; auth is enforced server-side on protected routes
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -10,12 +10,7 @@ function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Redirect to app if already logged in
-  useEffect(() => {
-    if (isAuthenticated()) {
-      navigate('/app');
-    }
-  }, [navigate]);
+  // No client-side cookie check
 
   const handleLogin = async (e) => {
     e.preventDefault();

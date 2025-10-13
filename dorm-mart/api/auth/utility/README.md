@@ -1,20 +1,20 @@
-# Cookie Authentication Guide
+# Session + Cookie Authentication Guide
 
-Simple cookie-based authentication for protecting API endpoints.
+Simple, pragmatic authentication that supports both PHP sessions and a persistent cookie token.
 
 ## How It Works
 
 1. **Login** - User logs in with email/password
-   - Server generates a random token
-   - Token is hashed and stored in `user_accounts.hash_auth`
-   - Unhashed token is sent to browser as `auth_token` cookie (httpOnly)
+   - Starts a PHP session and stores `$_SESSION['user_id']`
+   - Generates a random token
+   - Hashes and stores it in `user_accounts.hash_auth`
+   - Sends the unhashed token as `auth_token` (httpOnly) for long-lived auth
 
 2. **Protected Endpoints** - Use `has_auth()` to verify users
-   - Cookie is automatically sent with each request
-   - `has_auth()` verifies the token against database
+   - Accepts a valid PHP session OR a valid `auth_token` cookie
    - Returns `user_id` if valid, or exits with 401 if not
 
-3. **Logout** - Clears the cookie and database hash
+3. **Logout** - Destroys the session, clears the cookie, and nulls the database hash
 
 ## Usage
 
@@ -35,7 +35,7 @@ echo json_encode(['ok' => true, 'user_id' => $userId]);
 
 ### Frontend
 
-The frontend needs to include credentials in fetch requests:
+The frontend should include credentials in fetch requests so cookies/sessions are sent:
 
 ```javascript
 fetch('http://localhost:8080/api/your-endpoint.php', {
@@ -58,9 +58,9 @@ ALTER TABLE user_accounts ADD COLUMN hash_auth VARCHAR(255) DEFAULT NULL;
 
 ## Files
 
-- **login.php** - Handles user login, creates auth token
-- **logout.php** - Handles logout, clears token
-- **has_auth.php** - Helper function to protect endpoints
+- **login.php** - Handles user login, creates session and auth token
+- **logout.php** - Handles logout, destroys session and clears token
+- **has_auth.php** - Helper that validates session or token
 - **example_protected_endpoint.php** - Example of protected endpoint
 
 ## Security Notes

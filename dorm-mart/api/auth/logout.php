@@ -70,12 +70,45 @@ try {
     
     $conn->close();
     
-    // Clear the auth_token cookie
+    // Destroy the PHP session
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'] ?? '', $params['secure'] ?? false, $params['httponly'] ?? true);
+    }
+    session_destroy();
+    
+    // Clear the auth_token cookie (root path)
     setcookie('auth_token', '', [
         'expires' => time() - 3600,
         'path' => '/',
         'httponly' => true,
         'secure' => false  // Must match login.php setting
+    ]);
+    // Also clear any legacy cookie set on /serve/dorm-mart
+    setcookie('auth_token', '', [
+        'expires' => time() - 3600,
+        'path' => '/serve/dorm-mart',
+        'httponly' => true,
+        'secure' => false
+    ]);
+    
+    // Clear the non-httpOnly UI cookie
+    setcookie('logged_in', '', [
+        'expires' => time() - 3600,
+        'path' => '/',
+        'httponly' => false,
+        'secure' => false
+    ]);
+    // Also clear any legacy UI cookie set on /serve/dorm-mart
+    setcookie('logged_in', '', [
+        'expires' => time() - 3600,
+        'path' => '/serve/dorm-mart',
+        'httponly' => false,
+        'secure' => false
     ]);
     
     http_response_code(200);
