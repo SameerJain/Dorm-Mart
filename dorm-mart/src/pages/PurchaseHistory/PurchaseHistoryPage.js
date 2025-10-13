@@ -1,20 +1,32 @@
 import PurchasedItem from '../../components/Products/PurchasedItem'
-import searchIcon from '../../assets/icons/icons8-search-96.png';
 import { Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
 
-async function fetchPurchasedItems(signal) {
+async function fetchPurchasedItems(year, signal) {
   const BASE = (process.env.REACT_APP_API_BASE || "/api");
-  const r = await fetch(`${BASE}/fetch-transacted-items.php`, { signal });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return await r.json();
+  const r = await fetch(`${BASE}/fetch-transacted-items.php`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',                                  
+      'Accept': 'application/json'    
+    },
+    body: JSON.stringify({ year })
+    }, { signal });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
 }
 
 function PurchaseHistoryPage() {
     const [purchasedItems, setPurchasedItems] = useState([])
     const [isFetching, setIsFetching] = useState()
     const [error, setError] = useState()
+
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 10 }, (_, i) => currentYear - i); // [2025, 2024, ..., 2016]
+
+    // selected year state; initialize to current year
+    const [year, setYear] = useState(currentYear); // controls the <select> above
      
     useEffect(() => {
       setIsFetching(true)
@@ -22,7 +34,7 @@ function PurchaseHistoryPage() {
 
       async function loadPurchasedItems() {
         try {
-          const res = await fetchPurchasedItems(controller.signal);
+          const res = await fetchPurchasedItems(year, controller.signal);
           setError(false)
           setPurchasedItems(res.data);
 
@@ -39,25 +51,35 @@ function PurchaseHistoryPage() {
       }
       loadPurchasedItems();
       return () => controller.abort();
-    }, []);
+    }, [year]);
 
     return (
     <>
       <div className="mx-32 p-6">
-        <h2 className="mb-2 text-2xl font-bold hidden">Search Purchase History</h2>
+        <h2 className="mb-2 text-2xl font-bold">Search Purchase History</h2>
 
-        <div className="mb-4 relative w-[506px] hidden">
-          {/* Search icon */}
-          <span className="absolute left-0 top-0 flex h-full w-16 items-center justify-center bg-blue-600 hover:bg-blue-700 rounded-lg">
-              <img src={searchIcon} alt="Search" className="h-6 w-6 invert" />
-          </span>
+        {/* Year selector (replaces the old search box) */}
+        <div className="mb-4 w-[506px]">
+          {/* Accessible label for the select input */}
+          <label
+            htmlFor="yearSelect"                             // ties the label to the select by id for accessibility
+            className="block mb-2 text-sm font-medium text-gray-700"
+          >
+            Select year
+          </label>
 
-          {/* Input with pill shape */}
-          <input
-              type="text"
-              placeholder="Search purchases..."
-              className="w-full rounded-lg pl-20 pr-3 py-3 text-base bg-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-700"
-          />
+          <select
+            id="yearSelect"                                   // unique identifier for the control
+            value={year}                                      // controlled value from component state (see snippet below)
+            onChange={(event) => setYear(Number(event.target.value))} // update state when user picks a year
+            className="w-full rounded-lg px-4 py-3 text-base bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-700"
+          >
+            {years.map((y) => (                              // render a list of year options
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
         </div>
 
         {isFetching && (
