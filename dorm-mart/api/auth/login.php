@@ -1,9 +1,23 @@
 <?php
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+
+// CORS for credentials - must specify origin, not '*'
+// Allow localhost (dev) and production domains
+$allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://aptitude.cse.buffalo.edu'
+];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins)) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    header("Access-Control-Allow-Origin: http://localhost:3000"); // default
+}
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Credentials: true');
 
 // Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -86,9 +100,47 @@ try {
         exit;
     }
 
-    // Success - return user_id for frontend use
+    // Success - generate auth token and set secure cookie
     $userId = $row['user_id'];
+    
+    // Generate secure random token (64 hex characters = 32 bytes)
+    $authToken = bin2hex(random_bytes(32));
+    
+    // Hash the token for database storage
+    $hashAuth = password_hash($authToken, PASSWORD_BCRYPT);
+    
+    // Store hashed token in database
+    $updateStmt = $conn->prepare('UPDATE user_accounts SET hash_auth = ? WHERE user_id = ?');
+    $updateStmt->bind_param('si', $hashAuth, $userId);
+    $updateStmt->execute();
+    $updateStmt->close();
     $conn->close();
+    
+    // Set secure httpOnly cookie with unhashed token (actual auth)
+    // Cookie expires in 30 days
+    $cookieOptions = [
+        'expires' => time() + (30 * 24 * 60 * 60), // 30 days
+        'path' => '/',
+        'domain' => '',
+        'secure' => false,     // HTTPS only - set to TRUE for production, FALSE for local HTTP dev
+        'httponly' => true,    // Cannot be accessed by JavaScript
+        'samesite' => 'Strict' // CSRF protection
+    ];
+    
+    setcookie('auth_token', $authToken, $cookieOptions);
+    
+    // Also set a companion non-httpOnly cookie just for frontend UI state checking
+    // This doesn't contain sensitive data, just a flag
+    $uiCookieOptions = [
+        'expires' => time() + (30 * 24 * 60 * 60),
+        'path' => '/',
+        'domain' => '',
+        'secure' => false,     // Match auth_token setting
+        'httponly' => false,   // JavaScript CAN read this one
+        'samesite' => 'Strict'
+    ];
+    
+    setcookie('logged_in', 'true', $uiCookieOptions);
     
     http_response_code(200);
     echo json_encode([ 'ok' => true, 'user_id' => $userId ]);

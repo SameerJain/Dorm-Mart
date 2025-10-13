@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import backgroundImage from '../assets/images/login-page-left-side-background.jpg';
-import { setAuthToken, isAuthenticated } from '../utils/auth';
+import { isAuthenticated } from '../utils/auth';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -45,6 +45,7 @@ function LoginPage() {
       // Call backend login API
       const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/login.php`, {
         method: 'POST',
+        credentials: 'include', // Important: allows cookies to be set
         headers: {
           'Content-Type': 'application/json',
         },
@@ -57,12 +58,7 @@ function LoginPage() {
       const data = await response.json();
 
       if (data.ok) {
-        // Generate auth token (in real production, backend would provide this)
-        const token = btoa(`${email.trim()}:${Date.now()}`);
-        
-        // Set auth_token cookie
-        setAuthToken(token);
-        
+        // Auth token is now set server-side as httpOnly cookie
         // Navigate to the main app
         navigate('/app');
       } else {

@@ -1,35 +1,50 @@
-// Simple cookie utility functions for authentication
+// Authentication utility functions
+// Note: auth_token cookie is now set server-side with httpOnly flag
+// JavaScript cannot directly read or write the authentication token (security feature)
 
-// Set a cookie with far-future expiration (1 year from now)
-export function setAuthToken(token) {
-  const expiryDate = new Date();
-  expiryDate.setFullYear(expiryDate.getFullYear() + 1); // 1 year from now
-  
-  document.cookie = `auth_token=${token}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Lax`;
-}
-
-// Get auth_token cookie value
-export function getAuthToken() {
+// Check if user is authenticated
+// Note: httpOnly cookies are completely invisible to JavaScript (by design for security)
+// We use a separate non-httpOnly cookie just for frontend auth state checking
+export function isAuthenticated() {
+  // Check for 'logged_in' companion cookie (non-httpOnly, just for UI state)
   const cookies = document.cookie.split(';');
-  
   for (let cookie of cookies) {
     const [name, value] = cookie.trim().split('=');
-    if (name === 'auth_token') {
-      return value;
+    if (name === 'logged_in' && value === 'true') {
+      return true;
     }
   }
-  
+  return false;
+}
+
+// Logout function - calls backend to clear auth token
+export async function logout() {
+  try {
+    const apiBase = process.env.REACT_APP_API_BASE || 'http://localhost/api';
+    const response = await fetch(`${apiBase}/auth/logout.php`, {
+      method: 'POST',
+      credentials: 'include', // Important: include cookies
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Logout error:', error);
+    return false;
+  }
+}
+
+// Legacy function - kept for backward compatibility but cannot read httpOnly cookie
+export function getAuthToken() {
+  console.warn('getAuthToken() cannot read httpOnly cookies. Use isAuthenticated() instead.');
   return null;
 }
 
-// Remove auth_token cookie
+// Legacy function - use logout() instead to properly clear server-side session
 export function removeAuthToken() {
-  // Set cookie with past expiration date to delete it
-  document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-}
-
-// Check if user is authenticated
-export function isAuthenticated() {
-  return getAuthToken() !== null;
+  console.warn('removeAuthToken() deprecated. Use logout() to properly clear authentication.');
+  logout();
 }
 
