@@ -64,10 +64,13 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
     // load whichever exists 
     global $PROJECT_ROOT;
     $devEnvFile = "$PROJECT_ROOT/.env.development";
+    $localEnvFile = "$PROJECT_ROOT/.env.local";
     $prodEnvFile = "$PROJECT_ROOT/.env.production";
     $localEnvFile = "$PROJECT_ROOT/.env.local";
     if (file_exists($devEnvFile)) {
         $envFile = $devEnvFile;
+    } elseif(file_exists($localEnvFile)){
+        $endFile = $localEnvFile;
     } elseif (file_exists($prodEnvFile)) {
         $envFile = $prodEnvFile;
     } 
@@ -153,6 +156,10 @@ TEXT;
 
 
 header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
 // Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);

@@ -1,6 +1,9 @@
 <?php
 
 header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
 // Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -15,17 +18,32 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Read JSON body
-$rawInput = file_get_contents('php://input');
-$data = json_decode($rawInput, true);
-if (!is_array($data)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid JSON body']);
+// Detect Content-Type and read data accordingly
+$contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+
+// Default: Read form data (application/x-www-form-urlencoded)
+if (strpos($contentType, 'application/x-www-form-urlencoded') !== false) {
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $password = (string)($_POST['password'] ?? '');
+    
+// Check if Content-Type is JSON (application/json)
+} elseif (strpos($contentType, 'application/json') !== false) {
+    $rawInput = file_get_contents('php://input');
+    $data = json_decode($rawInput, true);
+
+    if (!is_array($data)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Invalid JSON body']);
+        exit;
+    }
+
+    $email = strtolower(trim($data['email'] ?? ''));
+    $password = (string)($data['password'] ?? '');
+} else {
+    http_response_code(415);
+    echo json_encode(['ok' => false, 'error' => 'Unsupported Media Type']);
     exit;
 }
-
-$email = strtolower(trim($data['email'] ?? ''));
-$password = (string)($data['password'] ?? '');
 
 // Basic validation
 if ($email === '' || $password === '') {
@@ -50,7 +68,8 @@ try {
     $result = $stmt->get_result();
 
     if ($result->num_rows === 0) {
-        // Generic auth failure response (no existence leak)
+        $stmt->close();
+        $conn->close();
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
         exit;
@@ -58,23 +77,26 @@ try {
 
     $row = $result->fetch_assoc();
     $stmt->close();
-
+    
     $hash = $row['hash_pass'] ?? '';
     if (!is_string($hash) || $hash === '' || !password_verify($password, $hash)) {
+        $conn->close();
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
         exit;
     }
 
-    // Success. Issue a simple session-like token placeholder (can be replaced later)
-    // For now, do not set cookies; just return ok:true. No secrets leaked.
+    // Success - return user_id for frontend use
+    $userId = $row['user_id'];
+    $conn->close();
+    
     http_response_code(200);
-    echo json_encode(['ok' => true]);
+    echo json_encode([ 'ok' => true, 'user_id' => $userId ]);
 } catch (Throwable $e) {
+    if (isset($conn)) {
+        $conn->close();
+    }
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Server error']);
 }
-
 ?>
-
-
