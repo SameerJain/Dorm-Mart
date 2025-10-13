@@ -22,6 +22,13 @@ function LoginPage() {
     setError(''); // Clear previous errors
     setLoading(true);
 
+    // Validate input lengths FIRST (prevent excessively large inputs)
+    if (email.length >= 50 || password.length >= 64) {
+      setError('Username or password is too large');
+      setLoading(false);
+      return;
+    }
+
     // Frontend validation
     if (email.trim() === '' && password.trim() === '') {
       setError('Missing required fields');
@@ -147,6 +154,7 @@ function LoginPage() {
                     type="email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    maxLength={50}
                     className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                     placeholder=""
                   />
@@ -159,6 +167,7 @@ function LoginPage() {
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    maxLength={64}
                     className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                     placeholder=""
                   />
