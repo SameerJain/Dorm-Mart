@@ -1,51 +1,56 @@
 <?php
 /**
  * Example Protected Endpoint
- * Demonstrates how to use has_auth() to protect API endpoints
  * 
- * Usage: Any endpoint that requires authentication should include has_auth()
+ * This demonstrates how to protect an API endpoint using cookie authentication.
+ * Only authenticated users can access this endpoint.
  */
 
 header('Content-Type: application/json; charset=utf-8');
-
-// CORS for credentials - must specify origin, not '*'
-$allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'https://aptitude.cse.buffalo.edu'
-];
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (in_array($origin, $allowedOrigins)) {
-    header("Access-Control-Allow-Origin: $origin");
-} else {
-    header("Access-Control-Allow-Origin: http://localhost:3000");
-}
+header('Access-Control-Allow-Origin: http://localhost:3000');
+header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
-header('Access-Control-Allow-Credentials: true');
 
-// Preflight
+// Handle preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
 
-// Require authentication
+// Check authentication - this will exit with 401 if not authenticated
 require_once __DIR__ . '/has_auth.php';
-$userId = has_auth(); // Returns user_id or exits with 401 if not authenticated
+$userId = has_auth();
 
-// If we reach here, user is authenticated
-// $userId contains the authenticated user's ID
+// If we get here, the user is authenticated!
+// The $userId variable contains their user_id from the database
 
-// Your protected endpoint logic here...
-http_response_code(200);
-echo json_encode([
-    'ok' => true,
-    'message' => 'This is a protected endpoint',
-    'user_id' => $userId,
-    'data' => [
-        // Your protected data here
-    ]
-]);
+// Example: Get some user-specific data
+require_once __DIR__ . '/../../db_connect.php';
+$conn = db();
+
+try {
+    $stmt = $conn->prepare('SELECT first_name, last_name, email FROM user_accounts WHERE user_id = ?');
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+    $stmt->close();
+    $conn->close();
+    
+    http_response_code(200);
+    echo json_encode([
+        'ok' => true,
+        'message' => 'You are authenticated!',
+        'user_id' => $userId,
+        'user' => $user
+    ]);
+    
+} catch (Throwable $e) {
+    if (isset($conn)) {
+        $conn->close();
+    }
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'error' => 'Server error']);
+}
 ?>
-

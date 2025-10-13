@@ -70,29 +70,13 @@ try {
     
     $conn->close();
     
-    // Clear both cookies by setting them to expire in the past
-    $cookieOptions = [
-        'expires' => time() - 3600, // 1 hour ago
-        'path' => '/',
-        'domain' => '',
-        'secure' => false,  // Must match login.php setting
-        'httponly' => true,
-        'samesite' => 'Strict'
-    ];
-    
-    setcookie('auth_token', '', $cookieOptions);
-    
-    // Clear the UI companion cookie too
-    $uiCookieOptions = [
+    // Clear the auth_token cookie
+    setcookie('auth_token', '', [
         'expires' => time() - 3600,
         'path' => '/',
-        'domain' => '',
-        'secure' => false,
-        'httponly' => false,
-        'samesite' => 'Strict'
-    ];
-    
-    setcookie('logged_in', '', $uiCookieOptions);
+        'httponly' => true,
+        'secure' => false  // Must match login.php setting
+    ]);
     
     http_response_code(200);
     echo json_encode(['ok' => true, 'message' => 'Logged out successfully']);

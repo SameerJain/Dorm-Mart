@@ -100,7 +100,7 @@ try {
         exit;
     }
 
-    // Success - generate auth token and set secure cookie
+    // Success - generate auth token and set cookie
     $userId = $row['user_id'];
     
     // Generate secure random token (64 hex characters = 32 bytes)
@@ -116,31 +116,13 @@ try {
     $updateStmt->close();
     $conn->close();
     
-    // Set secure httpOnly cookie with unhashed token (actual auth)
-    // Cookie expires in 30 days
-    $cookieOptions = [
-        'expires' => time() + (30 * 24 * 60 * 60), // 30 days
-        'path' => '/',
-        'domain' => '',
-        'secure' => false,     // HTTPS only - set to TRUE for production, FALSE for local HTTP dev
-        'httponly' => true,    // Cannot be accessed by JavaScript
-        'samesite' => 'Strict' // CSRF protection
-    ];
-    
-    setcookie('auth_token', $authToken, $cookieOptions);
-    
-    // Also set a companion non-httpOnly cookie just for frontend UI state checking
-    // This doesn't contain sensitive data, just a flag
-    $uiCookieOptions = [
+    // Set httpOnly cookie with the token (30 day expiration)
+    setcookie('auth_token', $authToken, [
         'expires' => time() + (30 * 24 * 60 * 60),
         'path' => '/',
-        'domain' => '',
-        'secure' => false,     // Match auth_token setting
-        'httponly' => false,   // JavaScript CAN read this one
-        'samesite' => 'Strict'
-    ];
-    
-    setcookie('logged_in', 'true', $uiCookieOptions);
+        'httponly' => true,
+        'secure' => false  // Set to true in production with HTTPS
+    ]);
     
     http_response_code(200);
     echo json_encode([ 'ok' => true, 'user_id' => $userId ]);
