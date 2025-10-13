@@ -52,6 +52,13 @@ if ($email === '' || $password === '') {
     exit;
 }
 
+// Validate input lengths (prevent excessively large inputs)
+if (strlen($email) >= 50 || strlen($password) >= 64) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Username or password is too large']);
+    exit;
+}
+
 if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);
