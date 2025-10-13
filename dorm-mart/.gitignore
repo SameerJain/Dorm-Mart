@@ -20,7 +20,8 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
+deploy-aptitude.sh
+deploy-local.sh
 local-deploy.sh
 
 # Test file Sameer made to test login api
