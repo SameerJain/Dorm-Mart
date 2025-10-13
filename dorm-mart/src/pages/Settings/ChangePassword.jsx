@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SettingsLayout from "./SettingsLayout";
 
-const NAV_BLUE = "#2563EB"; // exact hex to match MainNav
+const NAV_BLUE = "#2563EB";
 const MAX_LEN = 64;
 
 const hasLower = (s) => /[a-z]/.test(s);
@@ -13,10 +13,7 @@ const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
 function RequirementRow({ ok, text }) {
   return (
     <div className="flex items-center gap-2 text-sm">
-      <span
-        className="inline-flex h-2.5 w-2.5 rounded-full"
-        style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }}
-      />
+      <span className="inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }} />
       <span className={ok ? "text-green-700" : "text-red-700"}>{text}</span>
     </div>
   );
@@ -56,6 +53,10 @@ function ChangePasswordPage() {
   const [nextPw, setNextPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
 
+  const [showNotice, setShowNotice] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+  const timerRef = useRef(null);
+
   const policy = useMemo(
     () => ({
       minLen: nextPw.length >= 8,
@@ -83,6 +84,30 @@ function ChangePasswordPage() {
   });
 
   const LOGIN_ROUTE = "/";
+
+  // Start 5s countdown only after success modal shows
+  useEffect(() => {
+    if (!showNotice) return;
+    setCountdown(5);
+    timerRef.current = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+          navigate(LOGIN_ROUTE, { replace: true });
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [showNotice, navigate]);
 
   const handleSubmit = async () => {
     if (!current && !nextPw && !confirmPw) {
@@ -123,7 +148,7 @@ function ChangePasswordPage() {
     }
 
     try {
-      const res = await fetch("/api/change-password", {
+      const res = await fetch("api/auth/change_password.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -131,7 +156,7 @@ function ChangePasswordPage() {
       });
 
       if (res.ok) {
-        navigate(LOGIN_ROUTE, { replace: true });
+        setShowNotice(true);
       } else {
         const msg = await safeError(res);
         alert(msg || "Unable to change password at this time.");
@@ -206,6 +231,29 @@ function ChangePasswordPage() {
           </div>
         </section>
       </div>
+
+      {/* Success Notice Modal */}
+      {showNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* backdrop */}
+          <div className="absolute inset-0 bg-black bg-opacity-50" />
+          {/* card */}
+          <div
+            className="relative z-10 w-full max-w-lg mx-4 rounded-xl shadow-2xl border border-white/10"
+            style={{ backgroundColor: "#3d3eb5" }}
+          >
+            <div className="p-6">
+              <h3 className="text-2xl font-serif text-white mb-3 text-center">Password Changed</h3>
+              <p className="text-white/90 text-center leading-relaxed">
+                Your password was changed successfully.
+                <br />
+                You will be taken to our log in page in{" "}
+                <span className="font-semibold">{countdown}</span> seconds.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </SettingsLayout>
   );
 }
