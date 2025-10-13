@@ -7,8 +7,19 @@
  */
 
 header('Content-Type: application/json; charset=utf-8');
-$origin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:3000';
-header("Access-Control-Allow-Origin: $origin");
+
+// CORS for credentials - must specify origin, not '*'
+$allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://aptitude.cse.buffalo.edu'
+];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins)) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    header("Access-Control-Allow-Origin: http://localhost:3000");
+}
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Credentials: true');
@@ -20,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Require authentication
-require_once __DIR__ . '/auth/utility/has_auth.php';
+require_once __DIR__ . '/has_auth.php';
 $userId = has_auth(); // Returns user_id or exits with 401 if not authenticated
 
 // If we reach here, user is authenticated
