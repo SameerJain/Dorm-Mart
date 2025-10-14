@@ -63,7 +63,11 @@ try {
   $row = $res->fetch_assoc();
   $stmt->close();
 
-  /* Verify current password */
+  /* Verify current password
+   * SECURITY NOTE: password_verify() compares the user-provided
+   * plaintext to the STORED salted hash. The salt and algorithm params are
+   * embedded inside the hash created by password_hash() when the user/account
+   * was created or changed. We never compare against or store plaintext. */
   if (!password_verify($current, (string)$row['hash_pass'])) {
     $conn->close();
     http_response_code(401); echo json_encode(['ok'=>false,'error'=>'Invalid current password']); exit;
@@ -75,7 +79,9 @@ try {
     http_response_code(400); echo json_encode(['ok'=>false,'error'=>'New password must differ from current']); exit;
   }
 
-  /* Update password; also clear any persisted token column if present */
+  /* Update password; also clear any persisted token column if present
+   * SECURITY NOTE: password_hash() automatically generates a random SALT and
+   * returns a salted bcrypt hash. Only the hash is stored in the DB. */
   $newHash = password_hash($next, PASSWORD_BCRYPT);
   $upd = $conn->prepare('UPDATE user_accounts SET hash_pass = ?, hash_auth = NULL WHERE user_id = ?');
   $upd->bind_param('si', $newHash, $userId);
