@@ -37,6 +37,9 @@ try {
   $row = $res->fetch_assoc();
   $stmt->close();
 
+  // SECURITY NOTE: password_verify() safely checks the submitted
+  // plaintext against the STORED salted hash from password_hash(). The salt is
+  // inside the hash; we never store or handle it separately.
   if (!password_verify($password, (string)$row['hash_pass'])) {
     $conn->close();
     http_response_code(401); echo json_encode(['ok'=>false,'error'=>'Invalid credentials']); exit;

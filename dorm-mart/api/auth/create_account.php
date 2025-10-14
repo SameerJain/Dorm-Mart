@@ -252,6 +252,11 @@ if ($chk->num_rows > 0) {
 $chk->close();
 
 // 2) Generate & hash password
+// SECURITY NOTE:
+// We NEVER store plaintext passwords. We generate a temporary password for the
+// new user and immediately hash it with password_hash(), which automatically
+// generates a unique SALT and embeds it into the returned hash (bcrypt here).
+// The database only stores this salted, one-way hash (column: hash_pass).
 $tempPassword = generatePassword(12);
 $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
 

@@ -14,6 +14,7 @@ import CreateAccount from "./pages/AccountCreation/index.jsx";
 import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
+import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
 
 export const router = createHashRouter([
   // redirect default hash `#/` to `#/login`
@@ -49,6 +50,12 @@ export const router = createHashRouter([
           { index: true, element: <PurchaseHistoryPage /> },
           { path: "item-detail/:id", element: <ItemDetailPage /> },
         ],
+      },
+
+      // Seller Dashboard
+      {
+        path: "seller-dashboard",
+        element: <SellerDashboardPage />,
       },
 
       // Settings (under /app)

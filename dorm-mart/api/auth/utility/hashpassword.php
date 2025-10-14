@@ -4,11 +4,11 @@
  * 
  * Usage: 
  *   php hashpassword.php <password1> <password2> <password3> ...
- * 
+ *
  * Examples:
  *   php hashpassword.php "1234!"
  *   php hashpassword.php "password1" "password2" "password3"
- * 
+ *
  * Interactive Mode:
  *   php hashpassword.php
  *   (then enter passwords one by one, press Ctrl+C to exit)
@@ -22,7 +22,8 @@ if ($argc > 1) {
     
     for ($i = 1; $i < $argc; $i++) {
         $password = $argv[$i];
-        $hash = password_hash($password, PASSWORD_DEFAULT);
+        // Hash + salt using bcrypt (salt generated and embedded automatically)
+        $hash = password_hash($password, PASSWORD_BCRYPT);
         
         echo "Password #{$i}: {$password}\n";
         echo "Hash:        {$hash}\n\n";
@@ -47,7 +48,8 @@ if ($argc > 1) {
             continue;
         }
         
-        $hash = password_hash($password, PASSWORD_DEFAULT);
+        // Hash + salt using bcrypt (salt generated and embedded automatically)
+        $hash = password_hash($password, PASSWORD_BCRYPT);
         echo "Hash: {$hash}\n\n";
         
         $count++;

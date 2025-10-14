@@ -49,6 +49,10 @@ function MainNav() {
         navigate('/app/purchase-history')
     }
 
+    const handleSellerDashboard = () => {
+        navigate('/app/seller-dashboard')
+    }
+
     return (
         <nav className="bg-blue-600 text-slate-100">
             <div className="mx-auto flex items-center gap-1 sm:gap-2 md:gap-4 p-2 md:p-3">
@@ -101,16 +105,22 @@ function MainNav() {
                         {showDropdown && (
                             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
                                 <button
-                                    onClick={handleLogout}
+                                    onClick={handleSellerDashboard}
                                     className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors"
                                 >
-                                    Log Out
+                                    Seller Dashboard
                                 </button>
-                                                                <button
+                                <button
                                     onClick={handlePurchaseHistory}
                                     className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors"
                                 >
                                     Purchase History
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors"
+                                >
+                                    Log Out
                                 </button>
                             </div>
                         )}
@@ -153,6 +163,26 @@ function MainNav() {
                             >
                                 <img src={chatIcon} alt="" className="h-6 w-6" />
                                 <span>Chat</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handleSellerDashboard();
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <img src={userIcon} alt="" className="h-6 w-6" />
+                                <span>Seller Dashboard</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handlePurchaseHistory();
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <img src={userIcon} alt="" className="h-6 w-6" />
+                                <span>Purchase History</span>
                             </button>
                             <div className="relative">
                                 <button
