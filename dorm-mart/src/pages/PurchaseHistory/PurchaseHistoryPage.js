@@ -85,9 +85,9 @@ function PurchaseHistoryPage() {
 
 
         {/* List of items */}
-       <ul className="mt-6 sm:mt-8 grid gap-4 grid-cols-[repeat(auto-fit,minmax(260px,1fr))] sm:gap-5 lg:gap-6">
+       <ul className="mt-6 sm:mt-8 grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 lg:grid-cols-2">
           {purchasedItems.map((item, index) => (
-              <PurchasedItem key={index} id={item.id} title={item.title} seller={item.sold_by} date={item.transacted_at} image={item.image_url} />
+              <PurchasedItem key={index} id={item.item_id} title={item.title} seller={item.sold_by} date={item.transacted_at} image={item.image_url} />
           ))}
           {/* repeat <li> for more items */}
         </ul>
