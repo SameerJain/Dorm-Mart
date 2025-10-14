@@ -29,8 +29,9 @@
 }
 
 html, body, #root {
-  height: 100vh;
-  overflow: hidden; /* no scroll bars, anything past the viewport is cut */
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto; /* allow vertical scrolling */
 }
 
 :root {

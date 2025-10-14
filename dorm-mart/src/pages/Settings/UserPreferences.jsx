@@ -13,6 +13,8 @@ function UserPreferences() {
   const [selectedInterests, setSelectedInterests] = useState(["Electronics", "Books", "Clothing"]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const API_BASE = process.env.REACT_APP_API_BASE || "/api";
   
   const [availableCategories] = useState([
     "Electronics", "Books", "Clothing", "Furniture", "Sports", 
@@ -78,6 +80,58 @@ function UserPreferences() {
       setShowSuggestions(false);
     }
   }, [searchQuery]);
+
+  // Hydrate from backend on mount (if authenticated)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/userPreferences.php`, { method: 'GET', credentials: 'include' });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!json || json.ok !== true || !json.data) return;
+        const { promoEmails, revealContact, interests, theme } = json.data;
+        if (cancelled) return;
+        setPromotionalEmails(!!promoEmails);
+        setRevealContact(!!revealContact);
+        if (Array.isArray(interests)) setSelectedInterests(interests);
+        if (theme === 'dark' || theme === 'light') setTheme(theme);
+      } catch (e) {
+        // ignore errors, keep defaults
+        console.warn('UserPreferences: GET failed', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save to backend whenever relevant values change (debounced)
+  useEffect(() => {
+    const controller = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        setIsSaving(true);
+        const body = {
+          promoEmails: promotionalEmails,
+          revealContact,
+          interests: selectedInterests,
+          theme,
+        };
+        await fetch(`${API_BASE}/userPreferences.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+      } catch (e) {
+        if (e.name !== 'AbortError') console.warn('UserPreferences: POST failed', e);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 400);
+    return () => { controller.abort(); clearTimeout(t); };
+  }, [promotionalEmails, revealContact, JSON.stringify(selectedInterests), theme]);
 
   return (
     <SettingsLayout>
@@ -329,16 +383,9 @@ function UserPreferences() {
             <p>Theme: {theme === 'light' ? 'Light Mode' : 'Dark Mode'}</p>
             <p>Notifications: {promotionalEmails ? 'Enabled' : 'Disabled'}</p>
           </div>
-          <button 
-            onClick={() => {
-              // Here you would typically save to backend
-              alert('Preferences saved! (This is a demo - no backend integration yet)');
-            }}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Saving...' : 'Save Preferences'}
-          </button>
+          <div className="text-sm text-slate-500">
+            {isSaving ? 'Saving…' : 'All changes saved'}
+          </div>
         </div>
       </div>
     </SettingsLayout>

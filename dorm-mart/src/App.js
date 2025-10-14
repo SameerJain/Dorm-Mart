@@ -2,7 +2,8 @@
 import { createHashRouter, RouterProvider, Navigate } from "react-router-dom";
 import RootLayout from "./pages/RootLayout";
 import LoginPage from "./pages/LoginPage";
-import HomePage from "./pages/HomePage";
+// import HomePage from "./pages/HomePage";
+import LandingPage from "./pages/HomePage/LandingPage";
 import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
 import ResetPasswordConfirmation from './pages/ResetPassword/ResetPasswordConfirmation.jsx';
 import ForgotPasswordConfirmation from './pages/ResetPassword/ForgotPasswordConfirmation.jsx';
@@ -30,7 +31,7 @@ export const router = createHashRouter([
     element: <RootLayout />,
     children: [
 
-      { index: true, element: <HomePage /> },
+  { index: true, element: <LandingPage /> },
 
       // Product Listing
       {
