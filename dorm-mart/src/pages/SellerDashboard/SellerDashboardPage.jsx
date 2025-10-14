@@ -7,9 +7,56 @@ function SellerDashboardPage() {
     const [selectedSort, setSelectedSort] = useState('Newest First');
     const [listings, setListings] = useState([]); // Will hold product listings from backend
     const [loading, setLoading] = useState(false); // Loading state for API calls
+    
+    // Summary metrics state - will be calculated from listings data
+    const [summaryMetrics, setSummaryMetrics] = useState({
+        activeListings: 0,
+        pendingSales: 0,
+        itemsSold: 0,
+        savedDrafts: 0,
+        totalViews: 0
+    });
 
     const handleCreateNewListing = () => {
         navigate('/app/product-listing/new');
+    };
+
+    // Calculate summary metrics from listings data
+    const calculateSummaryMetrics = (listingsData) => {
+        const metrics = {
+            activeListings: 0,
+            pendingSales: 0,
+            itemsSold: 0,
+            savedDrafts: 0,
+            totalViews: 0
+        };
+
+        listingsData.forEach(listing => {
+            // Count active listings (no buyer_user_id and status is not 'draft' or 'removed')
+            if (!listing.buyer_user_id && listing.status !== 'draft' && listing.status !== 'removed') {
+                metrics.activeListings++;
+            }
+            
+            // Count pending sales (has buyer_user_id but not completed)
+            if (listing.buyer_user_id && listing.status === 'pending') {
+                metrics.pendingSales++;
+            }
+            
+            // Count sold items (has buyer_user_id and status is 'sold')
+            if (listing.buyer_user_id && listing.status === 'sold') {
+                metrics.itemsSold++;
+            }
+            
+            // Count saved drafts (status is 'draft')
+            if (listing.status === 'draft') {
+                metrics.savedDrafts++;
+            }
+            
+            // Total views - for now set to 0, will be calculated from backend when view tracking is implemented
+            // metrics.totalViews += listing.views || 0;
+        });
+
+        return metrics;
     };
 
     // Load listings on component mount
@@ -79,6 +126,10 @@ function SellerDashboardPage() {
                     seller_user_id: item.seller_user_id
                 }));
                 setListings(transformedListings);
+                
+                // Calculate and set summary metrics
+                const metrics = calculateSummaryMetrics(transformedListings);
+                setSummaryMetrics(metrics);
             } else {
                 throw new Error(result.error || 'Failed to fetch listings');
             }
@@ -96,59 +147,109 @@ function SellerDashboardPage() {
             <div className="bg-gray-50 border-b">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="py-4 flex items-center gap-6">
-                        <div className="flex items-center gap-2">
-                            <label className="text-sm font-semibold text-gray-700 w-24">{selectedStatus}</label>
-                            <select 
-                                value={selectedStatus}
-                                onChange={(e) => setSelectedStatus(e.target.value)}
-                                className="bg-white border-2 border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-0 focus:border-blue-500"
-                            >
-                                <option value="All Status">All Status</option>
-                                <option value="Active">Active</option>
-                                <option value="Draft">Draft</option>
-                                <option value="Sold">Sold</option>
-                                <option value="Removed">Removed</option>
-                            </select>
+                        <div className="flex items-center">
+                            <label className="text-sm font-semibold text-gray-700">Status</label>
+                            <div className="relative ml-1">
+                                <select 
+                                    value={selectedStatus}
+                                    onChange={(e) => setSelectedStatus(e.target.value)}
+                                    className="bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
+                                >
+                                    <option value="All Status">All Status</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Draft">Draft</option>
+                                    <option value="Sold">Sold</option>
+                                    <option value="Removed">Removed</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div className="flex items-center gap-2">
-                            <label className="text-sm font-semibold text-gray-700 w-32">All Categories</label>
-                            <select className="bg-white border-2 border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-0 focus:border-blue-500">
-                                <option>All Categories</option>
-                            </select>
+                        <div className="flex items-center">
+                            <label className="text-sm font-semibold text-gray-700">Category</label>
+                            <div className="relative ml-1">
+                                <select className="bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer">
+                                    <option>All Categories</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div className="flex items-center gap-2">
-                            <label className="text-sm font-semibold text-gray-700 w-32">{selectedSort}</label>
-                            <select 
-                                value={selectedSort}
-                                onChange={(e) => setSelectedSort(e.target.value)}
-                                className="bg-white border-2 border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-0 focus:border-blue-500"
-                            >
-                                <option value="Newest First">Newest First</option>
-                                <option value="Oldest First">Oldest First</option>
-                                <option value="Price: Low to High">Price: Low to High</option>
-                                <option value="Price: High to Low">Price: High to Low</option>
-                            </select>
+                        <div className="flex items-center">
+                            <label className="text-sm font-semibold text-gray-700">Sort By</label>
+                            <div className="relative ml-1">
+                                <select 
+                                    value={selectedSort}
+                                    onChange={(e) => setSelectedSort(e.target.value)}
+                                    className="bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
+                                >
+                                    <option value="Newest First">Newest First</option>
+                                    <option value="Oldest First">Oldest First</option>
+                                    <option value="Price: Low to High">Price: Low to High</option>
+                                    <option value="Price: High to Low">Price: High to Low</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Header with Create New Listing button */}
-            <div className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="py-6 flex justify-end">
-                        <button 
-                            onClick={handleCreateNewListing}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            Create New Listing
-                        </button>
+
+            {/* Summary Box */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                <div className="bg-blue-600 rounded-lg p-6 flex items-center justify-between">
+                    {/* Statistics Title */}
+                    <div className="text-white">
+                        <h3 className="text-2xl font-bold">Statistics</h3>
                     </div>
+                    
+                    {/* Metrics */}
+                    <div className="flex items-center space-x-12">
+                        <div className="text-center">
+                            <div className="text-3xl font-bold text-white">{summaryMetrics.activeListings}</div>
+                            <div className="text-sm text-blue-100">Active Listings</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-3xl font-bold text-white">{summaryMetrics.pendingSales}</div>
+                            <div className="text-sm text-blue-100">Pending Sales</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-3xl font-bold text-white">{summaryMetrics.itemsSold}</div>
+                            <div className="text-sm text-blue-100">Items Sold</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-3xl font-bold text-white">{summaryMetrics.savedDrafts}</div>
+                            <div className="text-sm text-blue-100">Saved Drafts</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-3xl font-bold text-white">{summaryMetrics.totalViews}</div>
+                            <div className="text-sm text-blue-100">Total Views</div>
+                        </div>
+                    </div>
+                    
+                    {/* Create New Listing Button */}
+                    <button 
+                        onClick={handleCreateNewListing}
+                        className="bg-white hover:bg-gray-50 text-blue-600 px-8 py-4 rounded-lg font-semibold transition-all duration-200 flex items-center gap-3 border-2 border-blue-600 shadow-lg hover:shadow-xl transform hover:scale-105"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Create New Listing
+                    </button>
                 </div>
             </div>
 
