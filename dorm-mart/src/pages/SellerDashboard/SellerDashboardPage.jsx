@@ -146,14 +146,14 @@ function SellerDashboardPage() {
             {/* Filter/Sort Row */}
             <div className="bg-gray-50 border-b">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="py-4 flex items-center gap-6">
-                        <div className="flex items-center">
-                            <label className="text-sm font-semibold text-gray-700">Status</label>
-                            <div className="relative ml-1">
+                    <div className="py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+                        <div className="flex items-center w-full sm:w-auto">
+                            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Status</label>
+                            <div className="relative ml-1 flex-1 sm:flex-none">
                                 <select 
                                     value={selectedStatus}
                                     onChange={(e) => setSelectedStatus(e.target.value)}
-                                    className="bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
+                                    className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
                                 >
                                     <option value="All Status">All Status</option>
                                     <option value="Active">Active</option>
@@ -169,10 +169,10 @@ function SellerDashboardPage() {
                             </div>
                         </div>
                         
-                        <div className="flex items-center">
-                            <label className="text-sm font-semibold text-gray-700">Category</label>
-                            <div className="relative ml-1">
-                                <select className="bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer">
+                        <div className="flex items-center w-full sm:w-auto">
+                            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Category</label>
+                            <div className="relative ml-1 flex-1 sm:flex-none">
+                                <select className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer">
                                     <option>All Categories</option>
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
@@ -183,13 +183,13 @@ function SellerDashboardPage() {
                             </div>
                         </div>
                         
-                        <div className="flex items-center">
-                            <label className="text-sm font-semibold text-gray-700">Sort By</label>
-                            <div className="relative ml-1">
+                        <div className="flex items-center w-full sm:w-auto">
+                            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Sort By</label>
+                            <div className="relative ml-1 flex-1 sm:flex-none">
                                 <select 
                                     value={selectedSort}
                                     onChange={(e) => setSelectedSort(e.target.value)}
-                                    className="bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
+                                    className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
                                 >
                                     <option value="Newest First">Newest First</option>
                                     <option value="Oldest First">Oldest First</option>
@@ -210,14 +210,14 @@ function SellerDashboardPage() {
 
             {/* Summary Box */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                <div className="bg-blue-600 rounded-lg p-6 flex items-center justify-between">
+                <div className="bg-blue-600 rounded-lg p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                     {/* Statistics Title */}
                     <div className="text-white">
                         <h3 className="text-2xl font-bold">Statistics</h3>
                     </div>
                     
-                    {/* Metrics */}
-                    <div className="flex items-center space-x-12">
+                    {/* Metrics - Original Layout on Desktop, Grid on Mobile */}
+                    <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-12 md:flex-1 md:justify-center">
                         <div className="text-center">
                             <div className="text-3xl font-bold text-white">{summaryMetrics.activeListings}</div>
                             <div className="text-sm text-blue-100">Active Listings</div>
@@ -243,7 +243,7 @@ function SellerDashboardPage() {
                     {/* Create New Listing Button */}
                     <button 
                         onClick={handleCreateNewListing}
-                        className="bg-white hover:bg-gray-50 text-blue-600 px-8 py-4 rounded-lg font-semibold transition-all duration-200 flex items-center gap-3 border-2 border-blue-600 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        className="w-full md:w-auto bg-white hover:bg-gray-50 text-blue-600 px-8 py-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-3 border-2 border-blue-600 shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -254,8 +254,8 @@ function SellerDashboardPage() {
             </div>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <h2 className="text-4xl font-bold text-gray-900 mb-6">My Listings</h2>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+                <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">My Listings</h2>
                 
                 {loading ? (
                     <div className="text-center py-12">
@@ -270,28 +270,28 @@ function SellerDashboardPage() {
                     <div className="space-y-4">
                         {/* TODO: Replace with actual listing cards */}
                         {getSortedListings().map((listing) => (
-                            <div key={listing.id} className="bg-white rounded-lg shadow-sm border p-6">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-4">
-                                        <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                            <div key={listing.id} className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                    <div className="flex items-center space-x-3 sm:space-x-4">
+                                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
                                             {listing.image ? (
                                                 <img src={listing.image} alt={listing.title} className="w-full h-full object-cover rounded-lg" />
                                             ) : (
-                                                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                 </svg>
                                             )}
                                         </div>
-                                        <div>
-                                            <h3 className="text-lg font-medium text-gray-900">{listing.title}</h3>
-                                            {listing.price > 0 && <p className="text-gray-600">${listing.price}</p>}
-                                            <p className="text-sm text-gray-500">
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="text-base sm:text-lg font-medium text-gray-900 truncate">{listing.title}</h3>
+                                            {listing.price > 0 && <p className="text-sm sm:text-base text-gray-600">${listing.price}</p>}
+                                            <p className="text-xs sm:text-sm text-gray-500">
                                                 {listing.sold_by ? `Sold by ${listing.sold_by}` : 'Posted'} - {new Date(listing.createdAt).toLocaleDateString()}
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center space-x-3">
-                                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                    <div className="flex items-center justify-between sm:justify-end space-x-3">
+                                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${
                                             listing.buyer_user_id 
                                                 ? 'bg-blue-100 text-blue-800' // Sold/transacted
                                                 : 'bg-green-100 text-green-800' // Active listing
@@ -300,7 +300,7 @@ function SellerDashboardPage() {
                                         </span>
                                         <button 
                                             onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
-                                            className="text-blue-600 hover:text-blue-800 font-medium"
+                                            className="text-blue-600 hover:text-blue-800 font-medium text-sm sm:text-base"
                                         >
                                             Edit
                                         </button>
