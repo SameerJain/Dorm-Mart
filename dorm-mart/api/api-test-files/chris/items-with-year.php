@@ -23,8 +23,8 @@ if ($year === null || $year < 2016 || $year > 2025) { // adjust bounds as needed
 $start = sprintf('%04d-01-01 00:00:00', $year);       // start of the year (inclusive)
 $end   = sprintf('%04d-01-01 00:00:00', $year + 1);   // start of next year (exclusive)
 
-$sql = "SELECT id, title, sold_by, transacted_at, image_url
-        FROM transacted_items
+$sql = "SELECT item_id, title, sold_by, transacted_at, image_url
+        FROM purchased_items
         WHERE transacted_at >= ? AND transacted_at < ?
         ORDER BY transacted_at DESC";
 
