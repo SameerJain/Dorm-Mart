@@ -1,4 +1,5 @@
 import PurchasedItem from '../../components/Products/PurchasedItem'
+import YearSelect from '../../components/Products/YearSelect';
 import { Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
@@ -58,29 +59,11 @@ function PurchaseHistoryPage() {
       <div className="mx-auto w-full px-3 sm:px-4 lg:px-12 py-6 max-w-[90rem]">
         <h2 className="mb-3 text-lg sm:text-2xl font-bold">Search Purchase History</h2>
 
-        {/* Year selector (replaces the old search box) */}
-        <div className="mb-4 w-full sm:max-w-md">
-          {/* Accessible label for the select input */}
-          <label
-            htmlFor="yearSelect"                             // ties the label to the select by id for accessibility
-            className="block mb-2 text-base sm:text-base font-medium text-gray-700"
-          >
-            Select year
-          </label>
-
-          <select
-            id="yearSelect"                                   // unique identifier for the control
-            value={year}                                      // controlled value from component state (see snippet below)
-            onChange={(event) => setYear(Number(event.target.value))} // update state when user picks a year
-            className="w-full rounded-lg px-4 py-3 text-lg sm:text-lg bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-700"
-      >
-            {years.map((y) => (                              // render a list of year options
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
+        <YearSelect
+          years={years}
+          value={year}
+          onChange={(y) => setYear(Number(y))}
+        />
 
         {isFetching && (
           <p className="flex justify-center items-center text-gray-500 text-base sm:text-lg italic py-4">
@@ -102,7 +85,7 @@ function PurchaseHistoryPage() {
 
 
         {/* List of items */}
-       <ul className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(260px,1fr))] sm:gap-5 lg:gap-6">
+       <ul className="mt-6 sm:mt-8 grid gap-4 grid-cols-[repeat(auto-fit,minmax(260px,1fr))] sm:gap-5 lg:gap-6">
           {purchasedItems.map((item, index) => (
               <PurchasedItem key={index} id={item.id} title={item.title} seller={item.sold_by} date={item.transacted_at} image={item.image_url} />
           ))}
