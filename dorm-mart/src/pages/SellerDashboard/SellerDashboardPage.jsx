@@ -117,13 +117,12 @@ function SellerDashboardPage() {
                 const transformedListings = result.data.map(item => ({
                     id: item.id,
                     title: item.title,
-                    price: item.price || 0, // May need to add price column to transacted_items
-                    status: item.status || 'active', // May need to add status column
-                    createdAt: item.transacted_at,
+                    price: item.price || 0,
+                    status: item.status || 'active',
+                    createdAt: item.created_at, // Use correct field name
                     image: item.image_url,
-                    sold_by: item.sold_by,
-                    buyer_user_id: item.buyer_user_id,
-                    seller_user_id: item.seller_user_id
+                    seller_user_id: item.seller_user_id,
+                    buyer_user_id: item.buyer_user_id
                 }));
                 setListings(transformedListings);
                 
