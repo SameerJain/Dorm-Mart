@@ -64,7 +64,7 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
     global $PROJECT_ROOT;
 
     // pick an env file (cleaned)
-    foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production"] as $envFile) {
+    foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
         if (is_readable($envFile)) {
             foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
                 $line = trim($line);
