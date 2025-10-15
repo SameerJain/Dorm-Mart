@@ -22,7 +22,7 @@ yarn-debug.log*
 yarn-error.log*
 deploy-aptitude.sh
 deploy-local.sh
-local-deploy.sh
+deploy-cattle.sh
 
 # Test file Sameer made to test login api
 body.json
