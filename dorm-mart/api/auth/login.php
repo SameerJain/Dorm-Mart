@@ -2,6 +2,19 @@
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 
+// HTTPS enforcement for production (exclude localhost for development)
+$isLocalhost = (
+    $_SERVER['HTTP_HOST'] === 'localhost' ||
+    $_SERVER['HTTP_HOST'] === 'localhost:8080' ||
+    strpos($_SERVER['HTTP_HOST'], '127.0.0.1') === 0
+);
+
+if (!$isLocalhost && (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] !== 'on')) {
+    $httpsUrl = 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+    header("Location: $httpsUrl", true, 301);
+    exit;
+}
+
 require __DIR__ . '/auth_handle.php';
 require __DIR__ . '/../db_connect.php';
 
