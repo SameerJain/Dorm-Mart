@@ -22,3 +22,6 @@ For local setup and deployment details, see `README.project_setup.md`.
 **Backend:** PHP 8+, MySQL  
 **Auth:** PHP sessions + `password_hash` / `password_verify` (bcrypt)  
 **Dev Server:** XAMPP (Apache + MySQL)  
+
+## Production Server
+Check out the latest production release on UB Wifi: https://cattle.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/#/login
