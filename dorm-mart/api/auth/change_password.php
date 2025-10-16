@@ -1,5 +1,10 @@
 <?php
 declare(strict_types=1);
+
+// Include security headers for XSS protection
+require __DIR__ . '/../security_headers.php';
+require __DIR__ . '/../input_sanitizer.php';
+
 header('Content-Type: application/json; charset=utf-8');
 
 
@@ -18,16 +23,16 @@ require __DIR__ . '/../db_connect.php';
 auth_boot_session();
 $userId = require_login();
 
-/* Read body (JSON or form) */
+/* Read body (JSON or form) and sanitize */
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
   $raw  = file_get_contents('php://input');
-  $data = json_decode($raw, true) ?: [];
-  $current = (string)($data['currentPassword'] ?? '');
-  $next    = (string)($data['newPassword'] ?? '');
+  $data = sanitize_json($raw) ?: [];
+  $current = sanitize_string((string)($data['currentPassword'] ?? ''), 64);
+  $next    = sanitize_string((string)($data['newPassword'] ?? ''), 64);
 } else {
-  $current = (string)($_POST['currentPassword'] ?? '');
-  $next    = (string)($_POST['newPassword'] ?? '');
+  $current = sanitize_string((string)($_POST['currentPassword'] ?? ''), 64);
+  $next    = sanitize_string((string)($_POST['newPassword'] ?? ''), 64);
 }
 
 /* Validate inputs */

@@ -162,6 +162,10 @@ TEXT;
 
 
 
+// Include security headers for XSS protection
+require __DIR__ . '/../security_headers.php';
+require __DIR__ . '/../input_sanitizer.php';
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -191,12 +195,12 @@ if (!is_array($data)) {
     exit;
 }
 
-// Extract the values
-$firstName = trim($data['firstName'] ?? '');
-$lastName  = trim($data['lastName'] ?? '');
-$gradMonth = $data['gradMonth'] ?? '';
-$gradYear  = $data['gradYear'] ?? '';
-$email     = strtolower(trim($data['email'] ?? ''));
+// Extract and sanitize the values
+$firstName = sanitize_string($data['firstName'] ?? '', 50);
+$lastName  = sanitize_string($data['lastName'] ?? '', 50);
+$gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
+$gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
+$email     = sanitize_email($data['email'] ?? '');
 $promos    = !empty($data['promos']);
 
 // Validate

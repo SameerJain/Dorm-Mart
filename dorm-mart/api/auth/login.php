@@ -1,5 +1,10 @@
 <?php
 declare(strict_types=1);
+
+// Include security headers for XSS protection
+require __DIR__ . '/../security_headers.php';
+require __DIR__ . '/../input_sanitizer.php';
+
 header('Content-Type: application/json; charset=utf-8');
 
 // HTTPS enforcement for production (exclude localhost for development)
@@ -24,12 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
   $raw  = file_get_contents('php://input');
-  $data = json_decode($raw, true) ?: [];
-  $email = strtolower(trim((string)($data['email'] ?? '')));
-  $password = (string)($data['password'] ?? '');
+  $data = sanitize_json($raw) ?: [];
+  $email = sanitize_email($data['email'] ?? '');
+  $password = sanitize_string((string)($data['password'] ?? ''), 64);
 } else {
-  $email = strtolower(trim((string)($_POST['email'] ?? '')));
-  $password = (string)($_POST['password'] ?? '');
+  $email = sanitize_email($_POST['email'] ?? '');
+  $password = sanitize_string((string)($_POST['password'] ?? ''), 64);
 }
 
 if ($email === '' || $password === '') { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Missing required fields']); exit; }
