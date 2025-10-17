@@ -162,6 +162,12 @@ TEXT;
 
 
 
+// Include security headers for XSS protection
+require __DIR__ . '/../security_headers.php';
+require __DIR__ . '/../input_sanitizer.php';
+require_once __DIR__ . '/utility/security.php';
+setSecurityHeaders();
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -191,13 +197,19 @@ if (!is_array($data)) {
     exit;
 }
 
-// Extract the values
-$firstName = trim($data['firstName'] ?? '');
-$lastName  = trim($data['lastName'] ?? '');
-$gradMonth = $data['gradMonth'] ?? '';
-$gradYear  = $data['gradYear'] ?? '';
-$email     = strtolower(trim($data['email'] ?? ''));
+// Extract and sanitize the values
+$firstName = validateInput(trim($data['firstName'] ?? ''), 100, '/^[a-zA-Z\s\-\']+$/');
+$lastName = validateInput(trim($data['lastName'] ?? ''), 100, '/^[a-zA-Z\s\-\']+$/');
+$gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
+$gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
+$email = validateInput(strtolower(trim($data['email'] ?? '')), 255, '/^[^@\s]+@buffalo\.edu$/');
 $promos    = !empty($data['promos']);
+
+if ($firstName === false || $lastName === false || $email === false) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
+    exit;
+}
 
 // Validate
 if ($firstName === '' || $lastName === '' || $email === '') {

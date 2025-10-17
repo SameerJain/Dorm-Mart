@@ -1,6 +1,10 @@
 <?php
 header('Content-Type: application/json');
 
+// Include security utilities
+require_once __DIR__ . '/auth/utility/security.php';
+setSecurityHeaders();
+
 require_once __DIR__ . '/db_connect.php';
 
 try {
@@ -29,15 +33,15 @@ try {
       while ($row = $q->fetch_assoc()) {
         $rows[] = [
           'id' => isset($row['id']) ? (int)$row['id'] : null,
-          'title' => $row['title'] ?? ($row['name'] ?? 'Untitled'),
-          'price' => isset($row['price']) && is_numeric($row['price']) ? (float)$row['price'] : ($row['price'] ?? null),
-          'image' => $row['image'] ?? ($row['image_url'] ?? null),
-          'seller' => $row['seller'] ?? ($row['seller_name'] ?? 'Unknown Seller'),
+          'title' => escapeHtml($row['title'] ?? ($row['name'] ?? 'Untitled')),
+          'price' => isset($row['price']) && is_numeric($row['price']) ? (float)$row['price'] : null,
+          'image' => escapeHtml($row['image'] ?? ($row['image_url'] ?? '')),
+          'seller' => escapeHtml($row['seller'] ?? ($row['seller_name'] ?? 'Unknown Seller')),
           'rating' => (isset($row['rating']) && is_numeric($row['rating'])) ? (float)$row['rating'] : 4.7,
-          'location' => $row['location'] ?? 'North Campus',
+          'location' => escapeHtml($row['location'] ?? 'North Campus'),
           'created_at' => $row['created_at'] ?? null,
-          'status' => $row['status'] ?? null,
-          'tags' => $row['tags'] ?? null,
+          'status' => escapeHtml($row['status'] ?? ''),
+          'tags' => escapeHtml($row['tags'] ?? ''),
         ];
       }
       $q->close();
