@@ -3,6 +3,10 @@
 // Set JSON response header early
 header('Content-Type: application/json');
 
+// Include security utilities
+require_once __DIR__ . '/auth/utility/security.php';
+setSecurityHeaders();
+
 // __DIR__ points to api/
 require __DIR__ . '/db_connect.php';
 
@@ -41,7 +45,13 @@ $res = $stmt->get_result();                           // fetch mysqli_result
 
 $rows = [];
 while ($row = $res->fetch_assoc()) {
-    $rows[] = $row;
+    $rows[] = [
+        'item_id' => (int)$row['item_id'],
+        'title' => escapeHtml($row['title']),
+        'sold_by' => escapeHtml($row['sold_by']),
+        'transacted_at' => $row['transacted_at'],
+        'image_url' => escapeHtml($row['image_url'] ?? '')
+    ];
 }
 
 echo json_encode(['success' => true, 'data' => $rows]);

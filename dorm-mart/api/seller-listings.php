@@ -5,6 +5,10 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
+// Include security utilities
+require_once __DIR__ . '/auth/utility/security.php';
+setSecurityHeaders();
+
 require __DIR__ . '/auth/auth_handle.php';
 require __DIR__ . '/db_connect.php';
 
@@ -30,9 +34,9 @@ try {
     $data = [
         [
             'id' => 1, 
-            'title' => 'Test Item', 
+            'title' => escapeHtml('Test Item'), 
             'price' => 25.00,
-            'status' => 'active', 
+            'status' => escapeHtml('active'), 
             'buyer_user_id' => null,
             'seller_user_id' => $userId,
             'created_at' => date('Y-m-d H:i:s'),
@@ -40,9 +44,9 @@ try {
         ],
         [
             'id' => 2, 
-            'title' => 'Sold Item', 
+            'title' => escapeHtml('Sold Item'), 
             'price' => 50.00,
-            'status' => 'sold', 
+            'status' => escapeHtml('sold'), 
             'buyer_user_id' => 2,
             'seller_user_id' => $userId,
             'created_at' => date('Y-m-d H:i:s', strtotime('-1 day')),
