@@ -5,8 +5,9 @@
  */
 
 // Include security headers
-require __DIR__ . '/security_headers.php';
-require __DIR__ . '/input_sanitizer.php';
+require __DIR__ . '/../../security_headers.php';
+require __DIR__ . '/../../input_sanitizer.php';
+require __DIR__ . '/security.php';
 
 header('Content-Type: text/html; charset=utf-8');
 
@@ -35,6 +36,11 @@ echo "<!DOCTYPE html>
     <div class='info'>
         <h3>Test Input (Sanitized):</h3>
         <p>Sanitized: " . sanitize_string($testInput) . "</p>
+    </div>
+    
+    <div class='info'>
+        <h3>Test Input (HTML Escaped):</h3>
+        <p>HTML Escaped: " . escapeHtml($testInput) . "</p>
     </div>
     
     <div class='info'>
