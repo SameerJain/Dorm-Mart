@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import backgroundImage from '../assets/images/login-page-left-side-background.jpg';
-import { setAuthToken, isAuthenticated } from '../utils/auth';
+// Client no longer inspects cookies; auth is enforced server-side on protected routes
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -10,17 +10,19 @@ function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Redirect to app if already logged in
-  useEffect(() => {
-    if (isAuthenticated()) {
-      navigate('/app');
-    }
-  }, [navigate]);
+  // No client-side cookie check
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError(''); // Clear previous errors
     setLoading(true);
+
+    // Validate input lengths FIRST (prevent excessively large inputs)
+    if (email.length >= 50 || password.length >= 64) {
+      setError('Username or password is too large');
+      setLoading(false);
+      return;
+    }
 
     // Frontend validation
     if (email.trim() === '' && password.trim() === '') {
@@ -45,6 +47,7 @@ function LoginPage() {
       // Call backend login API
       const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/login.php`, {
         method: 'POST',
+        credentials: 'include', // Important: allows cookies to be set
         headers: {
           'Content-Type': 'application/json',
         },
@@ -57,12 +60,7 @@ function LoginPage() {
       const data = await response.json();
 
       if (data.ok) {
-        // Generate auth token (in real production, backend would provide this)
-        const token = btoa(`${email.trim()}:${Date.now()}`);
-        
-        // Set auth_token cookie
-        setAuthToken(token);
-        
+        // Auth token is now set server-side as httpOnly cookie
         // Navigate to the main app
         navigate('/app');
       } else {
@@ -147,6 +145,7 @@ function LoginPage() {
                     type="email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    maxLength={50}
                     className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                     placeholder=""
                   />
@@ -159,6 +158,7 @@ function LoginPage() {
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    maxLength={64}
                     className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                     placeholder=""
                   />

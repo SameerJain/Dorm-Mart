@@ -7,7 +7,7 @@ import settingIcon from '../../assets/icons/icons8-setting-96.png'
 import Icon from './Icon'
 import searchIcon from '../../assets/icons/icons8-search-96.png';
 import filterIcon from '../../assets/icons/icons8-filter-96.png';
-import { removeAuthToken } from '../../utils/auth';
+import { logout } from '../../utils/auth';
 
 function MainNav() {
     const [showDropdown, setShowDropdown] = useState(false);
@@ -38,16 +38,19 @@ function MainNav() {
         };
     }, [showDropdown, showMobileMenu]);
 
-    const handleLogout = () => {
-        // Remove auth_token cookie
-        removeAuthToken();
-        
+    const handleLogout = async () => {
+        // Call backend to clear server-side auth
+        await logout();
         // Redirect to login page
         navigate('/login');
     };
 
     const handlePurchaseHistory = () => {
         navigate('/app/purchase-history')
+    }
+
+    const handleSellerDashboard = () => {
+        navigate('/app/seller-dashboard')
     }
 
     return (
@@ -102,16 +105,22 @@ function MainNav() {
                         {showDropdown && (
                             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
                                 <button
-                                    onClick={handleLogout}
+                                    onClick={handleSellerDashboard}
                                     className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors"
                                 >
-                                    Log Out
+                                    Seller Dashboard
                                 </button>
-                                                                <button
+                                <button
                                     onClick={handlePurchaseHistory}
                                     className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors"
                                 >
                                     Purchase History
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors"
+                                >
+                                    Log Out
                                 </button>
                             </div>
                         )}
@@ -154,6 +163,26 @@ function MainNav() {
                             >
                                 <img src={chatIcon} alt="" className="h-6 w-6" />
                                 <span>Chat</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handleSellerDashboard();
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <img src={userIcon} alt="" className="h-6 w-6" />
+                                <span>Seller Dashboard</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handlePurchaseHistory();
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <img src={userIcon} alt="" className="h-6 w-6" />
+                                <span>Purchase History</span>
                             </button>
                             <div className="relative">
                                 <button

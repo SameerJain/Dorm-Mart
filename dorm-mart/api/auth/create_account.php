@@ -61,85 +61,91 @@ function generatePassword(int $length = 12): string {
 // echo generatePassword(12);
 
 function sendWelcomeGmail(array $user, string $tempPassword): array {
-    // load whichever exists 
     global $PROJECT_ROOT;
-    $devEnvFile = "$PROJECT_ROOT/.env.development";
-    $localEnvFile = "$PROJECT_ROOT/.env.local";
-    $prodEnvFile = "$PROJECT_ROOT/.env.production";
-    $localEnvFile = "$PROJECT_ROOT/.env.local";
-    if (file_exists($devEnvFile)) {
-        $envFile = $devEnvFile;
-    } elseif(file_exists($localEnvFile)){
-        $endFile = $localEnvFile;
-    } elseif (file_exists($prodEnvFile)) {
-        $envFile = $prodEnvFile;
-    } 
-    else if (file_exists($localEnvFile)){
-        $envFile = $localEnvFile;
+
+    // pick an env file (cleaned)
+    foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
+        if (is_readable($envFile)) {
+            foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                $line = trim($line);
+                if ($line === '' || str_starts_with($line, '#')) continue;
+                [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
+                putenv(trim($k) . '=' . trim($v));
+            }
+            break;
+        }
     }
-    else {
-        echo json_encode(["success" => false, "message" => "No .env file found"]);
-        exit;
-    }
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#')) continue;
-        [$key, $value] = array_pad(explode('=', $line, 2), 2, '');
-        putenv(trim($key) . '=' . trim($value));
+
+    // Ensure PHP is using UTF-8 internally
+    if (function_exists('mb_internal_encoding')) {
+        @mb_internal_encoding('UTF-8');
     }
 
     $mail = new PHPMailer(true);
     try {
-        // Gmail SMTP
+        // SMTP
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = getenv('GMAIL_USERNAME');           // <-- your Gmail
-        $mail->Password   = getenv("GMAIL_PASSWORD");     // <-- app password
-        // Either SMTPS 465 (recommended) or STARTTLS 587. Pick ONE:
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;     // implicit TLS
+        $mail->Username   = getenv('GMAIL_USERNAME');
+        $mail->Password   = getenv('GMAIL_PASSWORD');
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // or STARTTLS 587
         $mail->Port       = 465;
-        // $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // alt: STARTTLS
-        // $mail->Port       = 587;
+
+        // Tell PHPMailer we are sending UTF-8 and how to encode it
+        $mail->CharSet   = 'UTF-8';
+        $mail->Encoding  = 'base64'; // robust for UTF-8; 'quoted-printable' also fine
+        // Optional: $mail->setLanguage('en');
 
         // From/To
         $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($user['email'], trim(($user['firstName'] ?? '').' '.($user['lastName'] ?? '')));
 
-        // Subject & Body
-        $first = $user['firstName'] ?: 'Student';
+        $first   = $user['firstName'] ?: 'Student';
         $subject = 'Welcome to Dorm Mart';
+
+        // Use HTML entities for punctuation (— →) to avoid mojibake in some clients
         $html = <<<HTML
-<!doctype html><html><body style="font-family:Arial;line-height:1.5;color:#111;">
-<p>Dear {$first},</p>
-<p>Welcome to <strong>Dorm Mart</strong> — the student marketplace for UB.</p>
-<p>Here is your temporary (current) password. <strong>DO NOT</strong> share this with anyone.</p>
-<p style="font-size:18px;"><strong>{$tempPassword}</strong></p>
-<p>If you want to change this password, go to <em>Settings → Change Password</em>.</p>
-<p>Happy trading,<br/>The Dorm Mart Team</p>
-<hr style="border:none;border-top:1px solid #ddd;margin:16px 0;">
-<p style="font-size:12px;color:#555;">This is an automated message; do not reply. For support:
-<a href="mailto:dormmartsupport@gmail.com">dormmartsupport@gmail.com</a></p>
-</body></html>
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{$subject}</title>
+  </head>
+  <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
+    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
+      <p style="color:#eee;">Dear {$first},</p>
+      <p style="color:#eee;">Welcome to <strong>Dorm Mart</strong> &mdash; the student marketplace for UB.</p>
+      <p style="color:#eee;">Here is your temporary (current) password. <strong>DO NOT</strong> share this with anyone.</p>
+      <p style="font-size:20px;color:#fff;"><strong>{$tempPassword}</strong></p>
+      <p style="color:#eee;">If you want to change this password, go to <em>Settings &rarr; Change Password</em>.</p>
+      <p style="color:#eee;">Happy trading,<br/>The Dorm Mart Team</p>
+      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
+      <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
+      <a href="mailto:dormmartsupport@gmail.com" style="color:#9db7ff;">dormmartsupport@gmail.com</a></p>
+    </div>
+  </body>
+</html>
 HTML;
 
+        // Plain-text part: stick to ASCII symbols
         $text = <<<TEXT
 Dear {$first},
 
-Welcome to Dorm Mart — the student marketplace for UB.
+Welcome to Dorm Mart - the student marketplace for UB.
 
 Here is your temporary (current) password. DO NOT share this with anyone.
 
-** {$tempPassword} **
+{$tempPassword}
 
 If you want to change this password, go to Settings -> Change Password.
 
 Happy trading,
-The Dorm Mart Team.
+The Dorm Mart Team
 
-This is an automated message; do not reply. For support: dormmartsupport@gmail.com
+(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
 TEXT;
 
         $mail->Subject = $subject;
@@ -154,6 +160,13 @@ TEXT;
     }
 }
 
+
+
+// Include security headers for XSS protection
+require __DIR__ . '/../security_headers.php';
+require __DIR__ . '/../input_sanitizer.php';
+require_once __DIR__ . '/utility/security.php';
+setSecurityHeaders();
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -184,13 +197,19 @@ if (!is_array($data)) {
     exit;
 }
 
-// Extract the values
-$firstName = trim($data['firstName'] ?? '');
-$lastName  = trim($data['lastName'] ?? '');
-$gradMonth = $data['gradMonth'] ?? '';
-$gradYear  = $data['gradYear'] ?? '';
-$email     = strtolower(trim($data['email'] ?? ''));
+// Extract and sanitize the values
+$firstName = validateInput(trim($data['firstName'] ?? ''), 100, '/^[a-zA-Z\s\-\']+$/');
+$lastName = validateInput(trim($data['lastName'] ?? ''), 100, '/^[a-zA-Z\s\-\']+$/');
+$gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
+$gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
+$email = validateInput(strtolower(trim($data['email'] ?? '')), 255, '/^[^@\s]+@buffalo\.edu$/');
 $promos    = !empty($data['promos']);
+
+if ($firstName === false || $lastName === false || $email === false) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
+    exit;
+}
 
 // Validate
 if ($firstName === '' || $lastName === '' || $email === '') {
@@ -202,6 +221,31 @@ if ($firstName === '' || $lastName === '' || $email === '') {
 if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);
+    exit;
+}
+// --- Validate graduation date format ---
+if ($gradMonth < 1 || $gradMonth > 12 || $gradYear < 1900) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid graduation date']);
+    exit;
+}
+
+// --- Current and limit dates ---
+$currentYear  = (int)date('Y');
+$currentMonth = (int)date('n');
+$maxFutureYear = $currentYear + 8;
+
+// --- Check for past date ---
+if ($gradYear < $currentYear || ($gradYear === $currentYear && $gradMonth < $currentMonth)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Graduation date cannot be in the past']);
+    exit;
+}
+
+// --- Check for excessive future date ---
+if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > $currentMonth)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Graduation date cannot be more than 8 years in the future']);
     exit;
 }
 
@@ -220,6 +264,11 @@ if ($chk->num_rows > 0) {
 $chk->close();
 
 // 2) Generate & hash password
+// SECURITY NOTE:
+// We NEVER store plaintext passwords. We generate a temporary password for the
+// new user and immediately hash it with password_hash(), which automatically
+// generates a unique SALT and embeds it into the returned hash (bcrypt here).
+// The database only stores this salted, one-way hash (column: hash_pass).
 $tempPassword = generatePassword(12);
 $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
 
@@ -261,9 +310,7 @@ sendWelcomeGmail(["firstName"=>$firstName,"lastName"=>$lastName,"email"=>$email]
 
 // Success
 echo json_encode([
-  'ok' => true,
-  'message' => 'If an account does not exist, a temporary password has been sent.',
-  'email' => $email,
+  'ok' => true
 ]);
 
 } catch (Throwable $e) {

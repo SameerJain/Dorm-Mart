@@ -7,13 +7,16 @@ function db(): mysqli {
     $devEnvFile = "$root/.env.development";
     $localEnvFile = "$root/.env.local";
     $prodEnvFile = "$root/.env.production";
+    $cattleEnvFile = "$root/.env.cattle";
     
     // load whichever exists
     if (file_exists($devEnvFile)) {
         $envFile = $devEnvFile;
     } elseif (file_exists($prodEnvFile)) {
         $envFile = $prodEnvFile;
-    } elseif (file_exists($localEnvFile)){
+    } elseif (file_exists($cattleEnvFile)){
+        $envFile = $cattleEnvFile;
+    }elseif (file_exists($localEnvFile)){
         $envFile = $localEnvFile;
     }else {
         echo json_encode(["success" => false, "message" => "No .env file found"]);

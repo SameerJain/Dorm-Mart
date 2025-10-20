@@ -1,20 +1,33 @@
 import PurchasedItem from '../../components/Products/PurchasedItem'
-import searchIcon from '../../assets/icons/icons8-search-96.png';
+import YearSelect from '../../components/Products/YearSelect';
 import { Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
 
-async function fetchPurchasedItems(signal) {
+async function fetchPurchasedItems(year, signal) {
   const BASE = (process.env.REACT_APP_API_BASE || "/api");
-  const r = await fetch(`${BASE}/fetch-transacted-items.php`, { signal });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return await r.json();
+  const r = await fetch(`${BASE}/fetch-transacted-items.php`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',                                  
+      'Accept': 'application/json'    
+    },
+    body: JSON.stringify({ year })
+    }, { signal });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
 }
 
 function PurchaseHistoryPage() {
     const [purchasedItems, setPurchasedItems] = useState([])
     const [isFetching, setIsFetching] = useState()
     const [error, setError] = useState()
+
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 10 }, (_, i) => currentYear - i); // [2025, 2024, ..., 2016]
+
+    // selected year state; initialize to current year
+    const [year, setYear] = useState(currentYear); // controls the <select> above
      
     useEffect(() => {
       setIsFetching(true)
@@ -22,7 +35,7 @@ function PurchaseHistoryPage() {
 
       async function loadPurchasedItems() {
         try {
-          const res = await fetchPurchasedItems(controller.signal);
+          const res = await fetchPurchasedItems(year, controller.signal);
           setError(false)
           setPurchasedItems(res.data);
 
@@ -39,50 +52,42 @@ function PurchaseHistoryPage() {
       }
       loadPurchasedItems();
       return () => controller.abort();
-    }, []);
+    }, [year]);
 
     return (
     <>
-      <div className="mx-32 p-6">
-        <h2 className="mb-2 text-2xl font-bold hidden">Search Purchase History</h2>
+      <div className="mx-auto w-full px-3 sm:px-4 lg:px-12 py-6 max-w-[90rem]">
+        <h2 className="mb-3 text-lg sm:text-2xl font-bold">Search Purchase History</h2>
 
-        <div className="mb-4 relative w-[506px] hidden">
-          {/* Search icon */}
-          <span className="absolute left-0 top-0 flex h-full w-16 items-center justify-center bg-blue-600 hover:bg-blue-700 rounded-lg">
-              <img src={searchIcon} alt="Search" className="h-6 w-6 invert" />
-          </span>
-
-          {/* Input with pill shape */}
-          <input
-              type="text"
-              placeholder="Search purchases..."
-              className="w-full rounded-lg pl-20 pr-3 py-3 text-base bg-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-700"
-          />
-        </div>
+        <YearSelect
+          years={years}
+          value={year}
+          onChange={(y) => setYear(Number(y))}
+        />
 
         {isFetching && (
-          <p className="flex justify-center items-center text-gray-500 text-lg italic py-4">
-            Loading...
-          </p>
+          <p className="flex justify-center items-center text-gray-500 text-base sm:text-lg italic py-4">
+        Loading...
+      </p>
         )}
 
         {!error && !isFetching && purchasedItems.length === 0 && (
-          <p className="flex justify-center items-center text-gray-500 text-lg italic py-4">
+          <p className="flex justify-center items-center text-gray-500 text-base sm:text-lg italic py-4">
             No purchase history exists.
           </p>
         )}
 
         {error && purchasedItems.length === 0 && (
-          <p className="flex justify-center items-center text-gray-500 text-lg italic py-4">
+          <p className="flex justify-center items-center text-gray-500 text-base sm:text-lg italic py-4">
             Failed to retrieve purchase history.
           </p>
         )}
 
 
         {/* List of items */}
-        <ul className="space-y-4">
+       <ul className="mt-6 sm:mt-8 grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 lg:grid-cols-2">
           {purchasedItems.map((item, index) => (
-              <PurchasedItem key={index} id={item.id} title={item.title} seller={item.sold_by} date={item.transacted_at} image={item.image_url} />
+              <PurchasedItem key={index} id={item.item_id} title={item.title} seller={item.sold_by} date={item.transacted_at} image={item.image_url} />
           ))}
           {/* repeat <li> for more items */}
         </ul>
