@@ -50,7 +50,7 @@ function check_rate_limit(string $email, int $maxAttempts = 5, int $lockoutMinut
         return ['blocked' => false, 'attempts' => $attempts, 'lockout_until' => null];
     }
     
-    if ($attempts >= $maxAttempts) {
+    if ($attempts >= $maxAttempts - 1) {
         // Use database time for consistent comparison
         $conn = db();
         $result = $conn->query("SELECT NOW() as db_time");
