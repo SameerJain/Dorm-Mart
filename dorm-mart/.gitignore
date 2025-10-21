@@ -26,3 +26,18 @@ deploy-cattle.sh
 
 # Test file Sameer made to test login api
 body.json
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# IDE files
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
