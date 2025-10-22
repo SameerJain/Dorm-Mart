@@ -62,7 +62,7 @@ function update_reset_request_timestamp(string $email): void {
 }
 
 function get_forgot_password_rate_limit_minutes(): int {
-    // For local testing: allow immediate requests (0 minutes)
+    // For local testing: 1 minute (instead of 0 to prevent spam)
     // For production: 10 minutes between requests
     $isLocalhost = (
         $_SERVER['HTTP_HOST'] === 'localhost' ||
@@ -70,6 +70,6 @@ function get_forgot_password_rate_limit_minutes(): int {
         strpos($_SERVER['HTTP_HOST'], '127.0.0.1') === 0
     );
     
-    return $isLocalhost ? 0 : 10;
+    return $isLocalhost ? 1 : 10;
 }
 ?>
