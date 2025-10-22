@@ -42,7 +42,7 @@ The "homepage" field in your package.json tells the React build tools (like reac
     - The React Router reads that hash fragment (#/login) and renders the right component (your Login page). This is how SPA works.
 
 # Development Utilities
-- Clear password reset new email timer: `php api/auth/utility/reset_lockouts.php`
+- Clear forgot password rate limit: `php api/auth/utility/forgot_password_rate_limit.php`
 - Clear login lockout timer: `php api/auth/utility/reset_lockouts.php`
 
 

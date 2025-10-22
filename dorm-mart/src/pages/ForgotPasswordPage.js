@@ -26,6 +26,9 @@ function ForgotPasswordPage() {
     const handleForgotPasswordRequest = async (e) => {
         e.preventDefault();
 
+        // Clear any previous errors immediately
+        setError("");
+
         // Testing backdoor: allow quick navigation to confirmation page
         if (email.trim().toLowerCase() === BACKDOOR_KEYWORD) {
             navigate('/forgot-password/confirmation');
@@ -39,19 +42,13 @@ function ForgotPasswordPage() {
         }
 
         setIsLoading(true);
-        setError("");
 
         try {
             const ac = new AbortController();
             const data = await sendForgotPasswordRequest(email, ac.signal);
 
-            if (!data?.success) {
-                setError("Something went wrong, please try again later.");
-                setIsLoading(false);               // stop spinner on failure
-                return;
-            }
-
-            // on success, don't show any msg
+            // For valid UB emails, always show confirmation page for security
+            // (whether email exists in DB, rate limited, or network error)
             setError("");
 
             setTimeout(() => {
@@ -60,8 +57,13 @@ function ForgotPasswordPage() {
             }, 2000);
         } catch (err) {
             console.error(err);
-            setError("Something went wrong, please try again later.");
-            setIsLoading(false);                 // stop spinner on network error
+            // For valid UB emails, always show confirmation page for security
+            setError("");
+
+            setTimeout(() => {
+                setIsLoading(false);               // keep spinner during the delay
+                navigate("/forgot-password/confirmation");
+            }, 2000);
         }
     };
 

@@ -32,11 +32,16 @@ function check_forgot_password_rate_limit(string $email): array {
         return ['allowed' => true, 'message' => 'First request allowed'];
     }
     
-    // Check if enough time has passed
-    $lastRequest = new DateTime($user['last_reset_request']);
-    $now = new DateTime();
-    $timeDiff = $now->diff($lastRequest);
-    $minutesPassed = ($timeDiff->days * 24 * 60) + ($timeDiff->h * 60) + $timeDiff->i;
+    // Check if enough time has passed using database comparison
+    $conn = db();
+    $stmt = $conn->prepare('SELECT TIMESTAMPDIFF(MINUTE, ?, NOW()) as minutes_passed');
+    $stmt->bind_param('s', $user['last_reset_request']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $minutesPassed = (int)$row['minutes_passed'];
+    $stmt->close();
+    $conn->close();
     
     if ($minutesPassed < $rateLimitMinutes) {
         $remainingMinutes = $rateLimitMinutes - $minutesPassed;
@@ -62,14 +67,27 @@ function update_reset_request_timestamp(string $email): void {
 }
 
 function get_forgot_password_rate_limit_minutes(): int {
-    // For local testing: 1 minute (instead of 0 to prevent spam)
-    // For production: 10 minutes between requests
-    $isLocalhost = (
-        $_SERVER['HTTP_HOST'] === 'localhost' ||
-        $_SERVER['HTTP_HOST'] === 'localhost:8080' ||
-        strpos($_SERVER['HTTP_HOST'], '127.0.0.1') === 0
-    );
+    // 10 minutes between requests for all environments (local, Aptitude, Cattle)
+    return 10;
+}
+
+// Standalone script to clear forgot password rate limits
+if (basename(__FILE__) === basename($_SERVER['SCRIPT_NAME'])) {
+    require_once __DIR__ . '/../../db_connect.php';
     
-    return $isLocalhost ? 1 : 10;
+    $conn = db();
+    $stmt = $conn->prepare('UPDATE user_accounts SET last_reset_request = NULL');
+    $result = $stmt->execute();
+    $affectedRows = $stmt->affected_rows;
+    $stmt->close();
+    $conn->close();
+    
+    if ($result) {
+        echo "Forgot password rate limits cleared successfully!\n";
+        echo "{$affectedRows} user(s) can now request new password reset emails immediately.\n";
+        echo "Rate limit: 10 minutes for all environments\n";
+    } else {
+        echo "Failed to clear forgot password rate limits.\n";
+    }
 }
 ?>

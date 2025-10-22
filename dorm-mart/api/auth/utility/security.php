@@ -32,6 +32,7 @@ function setSecureCORS() {
     $allowedOrigins = [
         'http://localhost:3000',      // React dev server
         'http://localhost:8080',      // PHP dev server
+        'http://localhost',           // Apache local setup
         'https://aptitude.cse.buffalo.edu',  // Test server
         'https://cattle.cse.buffalo.edu'    // Production server
     ];
