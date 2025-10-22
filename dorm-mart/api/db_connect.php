@@ -10,14 +10,16 @@ function db(): mysqli {
     $cattleEnvFile = "$root/.env.cattle";
     
     // load whichever exists
+    //! the order matters here
+    //! make sure if you are running the app on some server, it has only one env file that it needs
     if (file_exists($devEnvFile)) {
         $envFile = $devEnvFile;
-    } elseif (file_exists($prodEnvFile)) {
-        $envFile = $prodEnvFile;
-    } elseif (file_exists($cattleEnvFile)){
-        $envFile = $cattleEnvFile;
-    }elseif (file_exists($localEnvFile)){
+    } elseif (file_exists($localEnvFile)) {
         $envFile = $localEnvFile;
+    } elseif (file_exists($prodEnvFile)){
+        $envFile = $prodEnvFile;
+    }elseif (file_exists($cattleEnvFile)){
+        $envFile = $cattleEnvFile;
     }else {
         echo json_encode(["success" => false, "message" => "No .env file found"]);
         exit;
@@ -27,7 +29,9 @@ function db(): mysqli {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         $line = trim($line);
+        // skipping comments or empty lines
         if ($line === '' || str_starts_with($line, '#')) continue;
+        // parse kvs
         [$key, $value] = array_pad(explode('=', $line, 2), 2, '');
         putenv(trim($key) . '=' . trim($value));
     }
