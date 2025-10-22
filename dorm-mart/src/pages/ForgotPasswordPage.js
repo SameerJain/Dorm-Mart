@@ -12,15 +12,15 @@ function ForgotPasswordPage() {
     const BACKDOOR_KEYWORD = 'testflow'; // typing this as the email triggers the confirmation page for testing
 
     async function sendForgotPasswordRequest(email, signal) {
-    const BASE = process.env.REACT_APP_API_BASE || "/api";
-    const r = await fetch(`${BASE}/auth/forgot-password.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-        signal,
-    });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
+        const BASE = process.env.REACT_APP_API_BASE || "/api";
+        const r = await fetch(`${BASE}/auth/forgot-password.php`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+            signal,
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
     }
 
     const handleForgotPasswordRequest = async (e) => {

@@ -1,13 +1,13 @@
 <?php
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/auth/utility/has_auth.php';
-require_once __DIR__ . '/db_connect.php';
+require_once __DIR__ . '/auth/auth_handle.php';
+require_once __DIR__ . '/database/db_connect.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Ensure user is authenticated
-$userId = has_auth();
+$userId = require_login();
 $conn = db();
 
 // Helpers

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 
 async function fetchPurchasedItems(year, signal) {
   const BASE = (process.env.REACT_APP_API_BASE || "/api");
-  const r = await fetch(`${BASE}/fetch-transacted-items.php`, {
+  const r = await fetch(`${BASE}/purchase-history/fetch-transacted-items.php`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',                                  

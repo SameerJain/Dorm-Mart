@@ -23,7 +23,7 @@
  */
 
 // Include database connection
-require_once __DIR__ . '/../../db_connect.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 // Set content type for both web and CLI
 if (php_sapi_name() !== 'cli') {

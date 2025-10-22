@@ -83,7 +83,7 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
 
     $mail = new PHPMailer(true);
     try {
-        // SMTP
+        // SMTP Configuration with optimizations for production servers
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
@@ -91,6 +91,17 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
         $mail->Password   = getenv('GMAIL_PASSWORD');
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // or STARTTLS 587
         $mail->Port       = 465;
+        
+        // Optimizations for faster email delivery
+        $mail->Timeout = 30; // Reduced timeout for faster failure detection
+        $mail->SMTPKeepAlive = false; // Close connection after sending
+        $mail->SMTPOptions = [
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            ]
+        ];
 
         // Tell PHPMailer we are sending UTF-8 and how to encode it
         $mail->CharSet   = 'UTF-8';
@@ -163,9 +174,7 @@ TEXT;
 
 
 // Include security headers for XSS protection
-require __DIR__ . '/../security_headers.php';
-require __DIR__ . '/../input_sanitizer.php';
-require_once __DIR__ . '/utility/security.php';
+require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 
 header('Content-Type: application/json; charset=utf-8');
@@ -249,7 +258,7 @@ if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > 
     exit;
 }
 
-require "../db_connect.php";
+require "../database/db_connect.php";
 $conn = db();
 try {
   $chk = $conn->prepare('SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1');

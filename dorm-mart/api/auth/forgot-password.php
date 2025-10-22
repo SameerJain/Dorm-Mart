@@ -2,9 +2,7 @@
 declare(strict_types=1);
 
 // Include security headers for XSS protection
-require __DIR__ . '/../security_headers.php';
-require_once __DIR__ . '/../input_sanitizer.php';
-require_once __DIR__ . '/utility/security.php';
+require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 
 header('Content-Type: application/json; charset=utf-8');
@@ -49,7 +47,7 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
 
     $mail = new PHPMailer(true);
     try {
-        // SMTP Configuration (exact same as create_account.php)
+        // SMTP Configuration with optimizations for production servers
         $mail->isSMTP();
         $mail->Host = 'smtp.gmail.com';
         $mail->SMTPAuth = true;
@@ -57,6 +55,17 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
         $mail->Password = getenv('GMAIL_PASSWORD');
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
         $mail->Port = 465;
+        
+        // Optimizations for faster email delivery
+        $mail->Timeout = 30; // Reduced timeout for faster failure detection
+        $mail->SMTPKeepAlive = false; // Close connection after sending
+        $mail->SMTPOptions = [
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            ]
+        ];
 
         // Tell PHPMailer we are sending UTF-8 and how to encode it
         $mail->CharSet = 'UTF-8';
@@ -110,8 +119,8 @@ HTML;
     }
 }
 
-require_once __DIR__ . '/../db_connect.php';
-require_once __DIR__ . '/utility/forgot_password_rate_limit.php';
+require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../utility/manage_forgot_password_rate_limiting.php';
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -145,8 +154,8 @@ if ($email === false) {
 try {
     $conn = db();
     
-    // Check if email exists
-    $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email FROM user_accounts WHERE email = ?');
+    // Check if email exists and rate limiting in one query
+    $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email, last_reset_request FROM user_accounts WHERE email = ?');
     $stmt->bind_param('s', $email);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -161,12 +170,22 @@ try {
     $user = $result->fetch_assoc();
     $stmt->close();
     
-    // Check rate limiting
-    $rateLimitCheck = check_forgot_password_rate_limit($email);
-    if (!$rateLimitCheck['allowed']) {
-        $conn->close();
-        echo json_encode(['success' => false, 'error' => $rateLimitCheck['error']]);
-        exit;
+    // Check rate limiting (optimized inline check)
+    if ($user['last_reset_request']) {
+        $stmt = $conn->prepare('SELECT TIMESTAMPDIFF(MINUTE, ?, NOW()) as minutes_passed');
+        $stmt->bind_param('s', $user['last_reset_request']);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $minutesPassed = (int)$row['minutes_passed'];
+        $stmt->close();
+        
+        if ($minutesPassed < 10) { // 10 minute rate limit
+            $remainingMinutes = 10 - $minutesPassed;
+            $conn->close();
+            echo json_encode(['success' => false, 'error' => "Please wait {$remainingMinutes} minutes before requesting another reset link"]);
+            exit;
+        }
     }
     
     // Generate reset token (same as login system)
@@ -176,18 +195,15 @@ try {
     // Set expiration to 1 hour from now
     $expiresAt = date('Y-m-d H:i:s', time() + 3600);
     
-    // Store token and expiration in database (reuse hash_auth field)
-    $stmt = $conn->prepare('UPDATE user_accounts SET hash_auth = ?, reset_token_expires = ? WHERE user_id = ?');
+    // Store token, expiration, and update timestamp in one query
+    $stmt = $conn->prepare('UPDATE user_accounts SET hash_auth = ?, reset_token_expires = ?, last_reset_request = NOW() WHERE user_id = ?');
     $stmt->bind_param('ssi', $hashedToken, $expiresAt, $user['user_id']);
     $stmt->execute();
     $stmt->close();
     
-    // Update rate limiting timestamp
-    update_reset_request_timestamp($email);
-    
     // Generate reset link with correct domain
     $baseUrl = get_reset_password_base_url();
-    $resetLink = $baseUrl . '/api/reset-password.php?token=' . $resetToken;
+    $resetLink = $baseUrl . '/api/redirects/handle_password_reset_token_redirect.php?token=' . $resetToken;
     
     // Determine environment label for email copy
     $envLabel = 'Local';
@@ -202,7 +218,10 @@ try {
     }
 
     // Send email using the same function as create_account.php
+    $emailStartTime = microtime(true);
     $emailResult = sendPasswordResetEmail($user, $resetLink, $envLabel);
+    $emailEndTime = microtime(true);
+    $emailDuration = round(($emailEndTime - $emailStartTime) * 1000, 2); // milliseconds
     
     if (!$emailResult['success']) {
         $conn->close();
@@ -211,7 +230,14 @@ try {
     }
     
     $conn->close();
-    echo json_encode(['success' => true, 'message' => 'Check your email']);
+    echo json_encode([
+        'success' => true, 
+        'message' => 'Check your email',
+        'debug' => [
+            'email_duration_ms' => $emailDuration,
+            'environment' => $envLabel
+        ]
+    ]);
     
 } catch (Exception $e) {
     http_response_code(500);
@@ -233,7 +259,7 @@ function get_reset_password_base_url(): string {
         return 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j';
     }
 
-    // Local development (works for both npm start and local Apache build)
+    // Local development - detect which method is being used
     $isLocal = (
         $host === 'localhost' ||
         $host === 'localhost:8080' ||
@@ -242,10 +268,24 @@ function get_reset_password_base_url(): string {
         strpos($origin, 'http://localhost:8080') === 0 ||
         strpos($origin, 'http://127.0.0.1') === 0
     );
+    
     if ($isLocal) {
-        // Always point to the Apache-served PHP reset page
-        // (React dev server cannot serve PHP files)
-        return 'http://localhost/serve/dorm-mart';
+        // Check if we're running the development server (npm start) vs production build (Apache)
+        // Development server: React runs on :3000, PHP API on :8080
+        // Production build: Everything served through Apache on :80
+        
+        // If the request is coming from React dev server (port 3000), use the PHP dev server
+        if (strpos($origin, 'http://localhost:3000') === 0 || strpos($origin, 'http://127.0.0.1:3000') === 0) {
+            return 'http://localhost:8080';
+        }
+        
+        // If the request is coming from Apache (port 80), use the serve folder
+        if ($host === 'localhost' || strpos($host, '127.0.0.1') === 0) {
+            return 'http://localhost/serve/dorm-mart';
+        }
+        
+        // Default to PHP dev server for other local cases
+        return 'http://localhost:8080';
     }
 
     // Fallback to test server

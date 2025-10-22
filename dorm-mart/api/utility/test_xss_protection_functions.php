@@ -5,9 +5,7 @@
  */
 
 // Include security headers
-require __DIR__ . '/../../security_headers.php';
-require __DIR__ . '/../../input_sanitizer.php';
-require __DIR__ . '/security.php';
+require_once __DIR__ . '/../security/security.php';
 
 header('Content-Type: text/html; charset=utf-8');
 

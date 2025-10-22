@@ -4,11 +4,11 @@
 header('Content-Type: application/json');
 
 // Include security utilities
-require_once __DIR__ . '/auth/utility/security.php';
+require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 
 // __DIR__ points to api/
-require __DIR__ . '/db_connect.php';
+require __DIR__ . '/../database/db_connect.php';
 
 $conn = db();
 

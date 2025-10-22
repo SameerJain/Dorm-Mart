@@ -2,8 +2,7 @@
 declare(strict_types=1);
 
 // Include security headers for XSS protection
-require __DIR__ . '/../security_headers.php';
-require __DIR__ . '/../input_sanitizer.php';
+require __DIR__ . '/../security/security.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -18,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']); exit; }
 
 require __DIR__ . '/auth_handle.php';
-require __DIR__ . '/../db_connect.php';
+require __DIR__ . '/../database/db_connect.php';
 
 auth_boot_session();
 $userId = require_login();

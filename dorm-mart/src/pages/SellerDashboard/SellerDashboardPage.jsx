@@ -98,9 +98,9 @@ function SellerDashboardPage() {
         setLoading(true);
         try {
             const BASE = (process.env.REACT_APP_API_BASE || "/api");
-            // TODO: Create seller-listings.php endpoint similar to fetch-transacted-items.php
+            // TODO: Create manage_seller_listings.php endpoint similar to fetch-transacted-items.php
             // This will query transacted_items WHERE seller_user_id = current_user_id
-            const response = await fetch(`${BASE}/seller-listings.php`, {
+            const response = await fetch(`${BASE}/seller-dashboard/manage_seller_listings.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

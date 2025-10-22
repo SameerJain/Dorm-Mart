@@ -33,7 +33,7 @@ function regenerate_session_on_login(): void {
 /* ---------- Persistent login (“remember me”) ---------- */
 
 function issue_remember_cookie(int $userId): void {
-  require_once __DIR__ . '/../db_connect.php';
+  require_once __DIR__ . '/../database/db_connect.php';
   $token = bin2hex(random_bytes(32));                 // 64 hex chars
   $hash  = password_hash($token, PASSWORD_DEFAULT);   // store only the hash
 
@@ -57,7 +57,7 @@ function issue_remember_cookie(int $userId): void {
 function clear_remember_cookie(?int $userId = null): void {
   // clear server-side
   if ($userId) {
-    require_once __DIR__ . '/../db_connect.php';
+    require_once __DIR__ . '/../database/db_connect.php';
     $conn = db();
     $stmt = $conn->prepare('UPDATE user_accounts SET hash_auth = NULL WHERE user_id = ?');
     $stmt->bind_param('i', $userId);
@@ -90,7 +90,7 @@ function ensure_session(): void {
   if (!ctype_digit($uidStr) || $token === '' || strlen($token) > 256) return;
   $uid = (int)$uidStr;
 
-  require_once __DIR__ . '/../db_connect.php';
+  require_once __DIR__ . '/../database/db_connect.php';
   $conn = db();
   $stmt = $conn->prepare('SELECT hash_auth FROM user_accounts WHERE user_id = ? LIMIT 1');
   $stmt->bind_param('i', $uid);

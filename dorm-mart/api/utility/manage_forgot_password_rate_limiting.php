@@ -5,7 +5,7 @@
  */
 
 function check_forgot_password_rate_limit(string $email): array {
-    require_once __DIR__ . '/../../db_connect.php';
+    require_once __DIR__ . '/../database/db_connect.php';
     
     $conn = db();
     
@@ -56,7 +56,7 @@ function check_forgot_password_rate_limit(string $email): array {
 }
 
 function update_reset_request_timestamp(string $email): void {
-    require_once __DIR__ . '/../../db_connect.php';
+    require_once __DIR__ . '/../database/db_connect.php';
     
     $conn = db();
     $stmt = $conn->prepare('UPDATE user_accounts SET last_reset_request = NOW() WHERE email = ?');
@@ -73,7 +73,7 @@ function get_forgot_password_rate_limit_minutes(): int {
 
 // Standalone script to clear forgot password rate limits
 if (basename(__FILE__) === basename($_SERVER['SCRIPT_NAME'])) {
-    require_once __DIR__ . '/../../db_connect.php';
+    require_once __DIR__ . '/../database/db_connect.php';
     
     $conn = db();
     $stmt = $conn->prepare('UPDATE user_accounts SET last_reset_request = NULL');
