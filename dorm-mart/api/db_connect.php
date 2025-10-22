@@ -42,7 +42,23 @@ function db(): mysqli {
     $password   = getenv('DB_PASSWORD');
 
     // db connection
-    $conn = new mysqli($servername, $username, $password, $dbname);
+    $conn = new mysqli($servername, $username, $password);
+
+    if ($conn->connect_error) {
+        die(json_encode(["success" => false, "message" => "Connection failed: " . $conn->connect_error]));
+    }
+
+    // --- Check if DB exists, create if missing ---
+    $result = $conn->query("SHOW DATABASES LIKE '$dbname'");
+    if ($result && $result->num_rows === 0) {
+        // Database doesn’t exist — create it
+        if (!$conn->query("CREATE DATABASE `$dbname`")) {
+            die(json_encode(["success" => false, "message" => "Failed to create database: " . $conn->error]));
+        }
+    }
+
+    // --- Select the database ---
+    $conn->select_db($dbname);
     
     return $conn;
 }
