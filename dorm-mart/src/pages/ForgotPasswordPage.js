@@ -33,7 +33,6 @@ function ForgotPasswordPage() {
         }
 
         const valid = emailValidation(email);
-        setIsValid(valid);
         if (!valid) {
             setError("Email must be a valid UB email address");
             return;
@@ -47,13 +46,11 @@ function ForgotPasswordPage() {
             const data = await sendForgotPasswordRequest(email, ac.signal);
 
             if (!data?.success) {
-                setIsValid(false);
                 setError("Something went wrong, please try again later.");
                 setIsLoading(false);               // stop spinner on failure
                 return;
             }
 
-            setIsValid(true);
             // on success, don't show any msg
             setError("");
 
@@ -63,7 +60,6 @@ function ForgotPasswordPage() {
             }, 2000);
         } catch (err) {
             console.error(err);
-            setIsValid(false);
             setError("Something went wrong, please try again later.");
             setIsLoading(false);                 // stop spinner on network error
         }
