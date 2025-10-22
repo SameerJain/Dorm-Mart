@@ -30,7 +30,17 @@ if (!empty($token)) {
     
     // If token is invalid or expired, redirect to expired page
     if (!$isValidToken) {
-        header('Location: /serve/dorm-mart/api/reset-link-expired.php');
+        // Detect environment and redirect to correct path
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        
+        if (strpos($host, 'aptitude.cse.buffalo.edu') !== false) {
+            header('Location: /CSE442/2025-Fall/cse-442j/api/reset-link-expired.php');
+        } elseif (strpos($host, 'cattle.cse.buffalo.edu') !== false) {
+            header('Location: /CSE442/2025-Fall/cse-442j/api/reset-link-expired.php');
+        } else {
+            // Local development
+            header('Location: /serve/dorm-mart/api/reset-link-expired.php');
+        }
         exit;
     }
 }

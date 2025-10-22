@@ -102,10 +102,22 @@
             </ul>
         </div>
         
-        <a href="/serve/dorm-mart/#/login" class="btn">Go to Login</a>
+        <?php
+        // Detect environment and set correct links
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        $loginLink = '/serve/dorm-mart/#/login';
+        $forgotLink = '/serve/dorm-mart/#/forgot-password';
+        
+        if (strpos($host, 'aptitude.cse.buffalo.edu') !== false || strpos($host, 'cattle.cse.buffalo.edu') !== false) {
+            $loginLink = '/CSE442/2025-Fall/cse-442j/#/login';
+            $forgotLink = '/CSE442/2025-Fall/cse-442j/#/forgot-password';
+        }
+        ?>
+        
+        <a href="<?php echo $loginLink; ?>" class="btn">Go to Login</a>
         
         <div class="back-to-login">
-            <a href="/serve/dorm-mart/#/forgot-password">Request New Reset Link</a>
+            <a href="<?php echo $forgotLink; ?>">Request New Reset Link</a>
         </div>
     </div>
 </body>
