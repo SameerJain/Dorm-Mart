@@ -39,7 +39,7 @@ foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJEC
 }
 
 // Reuse the same email sending function from create_account.php
-function sendPasswordResetEmail(array $user, string $resetLink): array {
+function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel = 'Local'): array {
     global $PROJECT_ROOT;
 
     // Ensure PHP is using UTF-8 internally
@@ -71,7 +71,7 @@ function sendPasswordResetEmail(array $user, string $resetLink): array {
         $subject = 'Reset Your Password - Dorm Mart';
 
         // Email template (similar to create_account.php but for password reset)
-        $html = <<<HTML
+                $html = <<<HTML
 <!doctype html>
 <html>
   <head>
@@ -87,7 +87,7 @@ function sendPasswordResetEmail(array $user, string $resetLink): array {
       <p style="margin:20px 0;">
         <a href="{$resetLink}" style="background:#007bff;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">Reset Password</a>
       </p>
-      <p style="color:#eee;">This link will expire in 1 hour for security reasons.</p>
+      <p style="color:#eee;">This link will expire in 1 hour for security reasons. Environment: <strong>{$envLabel}</strong>.</p>
       <p style="color:#eee;">If you didn't request this password reset, please ignore this email.</p>
       <p style="color:#eee;">Best regards,<br/>The Dorm Mart Team</p>
       <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
@@ -189,8 +189,20 @@ try {
     $baseUrl = get_reset_password_base_url();
     $resetLink = $baseUrl . '/api/reset-password.php?token=' . $resetToken;
     
+    // Determine environment label for email copy
+    $envLabel = 'Local';
+    if (strpos($resetLink, 'aptitude.cse.buffalo.edu') !== false) {
+        $envLabel = 'Aptitude';
+    } elseif (strpos($resetLink, 'cattle.cse.buffalo.edu') !== false) {
+        $envLabel = 'Cattle';
+    } else {
+        // Distinguish local dev methods (npm start vs local Apache) is not visible to recipient;
+        // keep it short and generic as "Local".
+        $envLabel = 'Local';
+    }
+
     // Send email using the same function as create_account.php
-    $emailResult = sendPasswordResetEmail($user, $resetLink);
+    $emailResult = sendPasswordResetEmail($user, $resetLink, $envLabel);
     
     if (!$emailResult['success']) {
         $conn->close();
@@ -207,30 +219,36 @@ try {
 }
 
 function get_reset_password_base_url(): string {
-    $host = $_SERVER['HTTP_HOST'] ?? '';
-    
+    // Prefer explicit origin/host detection
+    $host   = $_SERVER['HTTP_HOST']   ?? '';
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
     // Production server
-    if (strpos($host, 'cattle.cse.buffalo.edu') !== false) {
+    if (strpos($host, 'cattle.cse.buffalo.edu') !== false || strpos($origin, 'cattle.cse.buffalo.edu') !== false) {
         return 'https://cattle.cse.buffalo.edu/CSE442/2025-Fall/cse-442j';
     }
-    
+
     // Test server
-    if (strpos($host, 'aptitude.cse.buffalo.edu') !== false) {
+    if (strpos($host, 'aptitude.cse.buffalo.edu') !== false || strpos($origin, 'aptitude.cse.buffalo.edu') !== false) {
         return 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j';
     }
-    
-    // Local development - detect Apache vs React dev server
-    if ($host === 'localhost' || strpos($host, '127.0.0.1') === 0) {
-        // Check if we're running on Apache (serve/dorm-mart path)
-        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
-        if (strpos($requestUri, '/serve/dorm-mart') !== false) {
-            return 'http://localhost/serve/dorm-mart';
-        }
-        // Otherwise use React dev server
-        return 'http://localhost:3000';
+
+    // Local development (works for both npm start and local Apache build)
+    $isLocal = (
+        $host === 'localhost' ||
+        $host === 'localhost:8080' ||
+        strpos($host, '127.0.0.1') === 0 ||
+        strpos($origin, 'http://localhost:3000') === 0 ||
+        strpos($origin, 'http://localhost:8080') === 0 ||
+        strpos($origin, 'http://127.0.0.1') === 0
+    );
+    if ($isLocal) {
+        // Always point to the Apache-served PHP reset page
+        // (React dev server cannot serve PHP files)
+        return 'http://localhost/serve/dorm-mart';
     }
-    
-    // Fallback
+
+    // Fallback to test server
     return 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j';
 }
 ?>

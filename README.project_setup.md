@@ -26,7 +26,7 @@ Copy any necessary files to the server:
 (*Copy and paste out all of the contents of the build folder, they cant still be inside the build folder)
 6. Navigate to localhost/serve/dorm-mart from your browser since that is the file path
 7. You now should have the app running on your local apache server
-8. Make sure to migrate to apply db schema to your local mysql
+8. Make sure to migrate to apply db schema to your local mysql: php migrate_schema.php
 
 # How does the server serve the app?
 1. `"homepage": "/CSE442/2025-Fall/cse-442j",`
@@ -38,8 +38,12 @@ The "homepage" field in your package.json tells the React build tools (like reac
     - When you go to https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/#/login, Apache returns the same index.html file, because that’s what’s physically there.
 
 3. The React app (client-side router) kicks in after the browser loads the index.html.
-    - Since your URL has a hash (#/login), the browser doesn’t ask the server for a separate /login resource. Everything after # is handled purely on the client side, meaning all components are loaded entirely within the index.html at once.
+    - Since your URL has a hash (#/login), the browser doesn't ask the server for a separate /login resource. Everything after # is handled purely on the client side, meaning all components are loaded entirely within the index.html at once.
     - The React Router reads that hash fragment (#/login) and renders the right component (your Login page). This is how SPA works.
+
+# Development Utilities
+- Clear password reset new email timer: `php api/auth/utility/reset_lockouts.php`
+- Clear login lockout timer: `php api/auth/utility/reset_lockouts.php`
 
 
 

@@ -6,7 +6,7 @@ import backgroundImage from '../assets/images/login-page-left-side-background.jp
 function ForgotPasswordPage() {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
-    const [isValid, setIsValid] = useState(false);
+    // const [isValid, setIsValid] = useState(false);
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const BACKDOOR_KEYWORD = 'testflow'; // typing this as the email triggers the confirmation page for testing
@@ -202,21 +202,19 @@ function ForgotPasswordPage() {
               {/* Links */}
               <div className="mt-4 sm:mt-6 text-center px-2">
                 <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:text-sm md:text-base text-white">
-                  <a 
-                    href="#" 
+                  <button 
                     onClick={(e) => { e.preventDefault(); navigate('/create-account'); }}
-                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap"
+                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap bg-transparent border-none text-white cursor-pointer p-0"
                   >
                     Create account
-                  </a>
+                  </button>
                   <span className="w-1 h-1 bg-black rounded-full hidden xs:block"></span>
-                  <a 
-                    href="#" 
+                  <button 
                     onClick={(e) => { e.preventDefault(); navigate('/login'); }}
-                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap"
+                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap bg-transparent border-none text-white cursor-pointer p-0"
                   >
                     Go back to login
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
