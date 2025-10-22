@@ -28,6 +28,7 @@ require __DIR__ . '/../database/db_connect.php';
 // Rate limiting functions are now in security.php
 
 // Respond to CORS preflight after setting CORS headers
+// Handles OPTIONS requests from React frontend
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']); exit; }
 

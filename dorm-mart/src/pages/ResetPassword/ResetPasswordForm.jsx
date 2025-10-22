@@ -108,8 +108,20 @@ function ResetPasswordForm({ token }) {
 
     verifyToken();
 
-    // Prevent back button navigation
-    const handlePopState = () => navigate('/login?error=reset_link_expired', { replace: true });
+    // Prevent back button navigation with visual feedback
+    const handlePopState = () => {
+      // Show a brief warning before redirecting
+      const warning = document.createElement('div');
+      warning.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      warning.textContent = '⚠️ Reset link expired - redirecting to login...';
+      document.body.appendChild(warning);
+      
+      setTimeout(() => {
+        document.body.removeChild(warning);
+        navigate('/login?error=reset_link_expired', { replace: true });
+      }, 2000);
+    };
+    
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
     
@@ -255,15 +267,15 @@ function ResetPasswordForm({ token }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#2563EB' }}>
       <div className="w-full max-w-4xl mx-auto">
-        <div className="bg-white rounded-xl shadow-2xl p-8 min-h-[600px] flex flex-col">
-          <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-3">
-            <h1 className="text-2xl font-serif font-semibold" style={{ color: NAV_BLUE }}>
+        <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-8 min-h-[600px] flex flex-col">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-3 gap-4">
+            <h1 className="text-xl sm:text-2xl font-serif font-semibold" style={{ color: NAV_BLUE }}>
               Reset Password
             </h1>
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="rounded-lg border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+              className="rounded-lg border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 self-start sm:self-auto"
               style={{ color: NAV_BLUE }}
               aria-label="Go to login"
             >
@@ -271,7 +283,7 @@ function ResetPasswordForm({ token }) {
             </button>
           </div>
 
-          <div className="flex-1 grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <div className="flex-1 grid grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-2">
             <section className="flex flex-col justify-center">
               {isVerifyingToken && (
                 <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -281,6 +293,19 @@ function ResetPasswordForm({ token }) {
                     </div>
                     <div className="ml-3">
                       <p className="text-sm text-blue-700">Verifying reset link...</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isLoading && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-blue-700">Resetting your password...</p>
                     </div>
                   </div>
                 </div>
@@ -369,15 +394,15 @@ function ResetPasswordForm({ token }) {
                 type="button"
                 onClick={handleSubmit}
                 disabled={isLoading || !isTokenValid || isVerifyingToken}
-                className="mt-6 h-12 w-48 rounded-xl text-white shadow disabled:opacity-50 disabled:cursor-not-allowed text-lg font-medium"
+                className="mt-6 h-12 w-full sm:w-48 rounded-xl text-white shadow disabled:opacity-50 disabled:cursor-not-allowed text-lg font-medium"
                 style={{ backgroundColor: NAV_BLUE }}
               >
                 {isLoading ? 'Resetting...' : isVerifyingToken ? 'Verifying...' : 'Reset Password'}
               </button>
             </section>
 
-            <section className="rounded-lg border border-slate-200 p-6 flex flex-col justify-center">
-              <h2 className="mb-4 text-xl font-serif font-semibold" style={{ color: NAV_BLUE }}>
+            <section className="rounded-lg border border-slate-200 p-4 sm:p-6 flex flex-col justify-center">
+              <h2 className="mb-4 text-lg sm:text-xl font-serif font-semibold" style={{ color: NAV_BLUE }}>
                 Password Requirements:
               </h2>
               <div className="flex flex-col gap-3">

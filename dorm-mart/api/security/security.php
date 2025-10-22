@@ -17,6 +17,7 @@
  */
 function setSecurityHeaders() {
     // Content Security Policy - Prevents XSS by controlling resource loading
+    // Restricts which resources can be loaded and executed
     header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none';");
     
     // X-XSS-Protection - Enables browser's built-in XSS filter

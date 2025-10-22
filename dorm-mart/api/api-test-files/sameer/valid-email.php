@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);
 
+// Validate JSON input and required email field
 if (!$data || !isset($data['email'])) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Email is required']);

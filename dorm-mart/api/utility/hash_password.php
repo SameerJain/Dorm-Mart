@@ -23,6 +23,7 @@ if ($argc > 1) {
     for ($i = 1; $i < $argc; $i++) {
         $password = $argv[$i];
         // Hash + salt using bcrypt (salt generated and embedded automatically)
+        // Uses PHP's secure password hashing with bcrypt algorithm
         $hash = password_hash($password, PASSWORD_BCRYPT);
         
         echo "Password #{$i}: {$password}\n";

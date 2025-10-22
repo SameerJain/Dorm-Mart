@@ -36,42 +36,46 @@ foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJEC
     }
 }
 
-// Reuse the same email sending function from create_account.php
+// Use the EXACT same email sending logic as create_account.php for maximum speed
 function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel = 'Local'): array {
     global $PROJECT_ROOT;
 
-    // Ensure PHP is using UTF-8 internally
+    // Load environment variables (EXACT same as create_account.php)
+    // Ensures Gmail credentials are properly loaded for email sending
+    foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
+        if (is_readable($envFile)) {
+            foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                $line = trim($line);
+                if ($line === '' || str_starts_with($line, '#')) continue;
+                [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
+                putenv(trim($k) . '=' . trim($v));
+            }
+            break;
+        }
+    }
+
+    // Ensure PHP is using UTF-8 internally (EXACT same as create_account.php)
     if (function_exists('mb_internal_encoding')) {
         @mb_internal_encoding('UTF-8');
     }
 
     $mail = new PHPMailer(true);
     try {
-        // SMTP Configuration with optimizations for production servers
+        // SMTP Configuration (EXACT same as create_account.php)
+        // Uses Gmail SMTP with SSL encryption for secure email delivery
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
-        $mail->SMTPAuth = true;
-        $mail->Username = getenv('GMAIL_USERNAME');
-        $mail->Password = getenv('GMAIL_PASSWORD');
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = getenv('GMAIL_USERNAME');
+        $mail->Password   = getenv('GMAIL_PASSWORD');
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port = 465;
-        
-        // Optimizations for faster email delivery
-        $mail->Timeout = 30; // Reduced timeout for faster failure detection
-        $mail->SMTPKeepAlive = false; // Close connection after sending
-        $mail->SMTPOptions = [
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
-        ];
+        $mail->Port       = 465;
 
-        // Tell PHPMailer we are sending UTF-8 and how to encode it
-        $mail->CharSet = 'UTF-8';
-        $mail->Encoding = 'base64';
+        // Tell PHPMailer we are sending UTF-8 and how to encode it (EXACT same as create_account.php)
+        $mail->CharSet   = 'UTF-8';
+        $mail->Encoding  = 'base64';
 
-        // From/To (same as create_account.php)
+        // From/To (EXACT same as create_account.php)
         $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($user['email'], trim($user['first_name'] . ' ' . $user['last_name']));
@@ -79,8 +83,8 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
         $firstName = $user['first_name'] ?: 'Student';
         $subject = 'Reset Your Password - Dorm Mart';
 
-        // Email template (similar to create_account.php but for password reset)
-                $html = <<<HTML
+        // Simplified email template (minimal like create_account.php)
+        $html = <<<HTML
 <!doctype html>
 <html>
   <head>
@@ -92,12 +96,10 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
     <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
       <p style="color:#eee;">Dear {$firstName},</p>
       <p style="color:#eee;">You requested to reset your password for your Dorm Mart account.</p>
-      <p style="color:#eee;">Click the link below to reset your password:</p>
       <p style="margin:20px 0;">
         <a href="{$resetLink}" style="background:#007bff;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">Reset Password</a>
       </p>
-      <p style="color:#eee;">This link will expire in 1 hour for security reasons. Environment: <strong>{$envLabel}</strong>.</p>
-      <p style="color:#eee;">If you didn't request this password reset, please ignore this email.</p>
+      <p style="color:#eee;">This link will expire in 1 hour for security reasons.</p>
       <p style="color:#eee;">Best regards,<br/>The Dorm Mart Team</p>
       <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
       <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:

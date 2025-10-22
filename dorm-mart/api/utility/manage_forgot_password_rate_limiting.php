@@ -12,7 +12,7 @@ function check_forgot_password_rate_limit(string $email): array {
     // Get current rate limit settings
     $rateLimitMinutes = get_forgot_password_rate_limit_minutes();
     
-    // Check if email exists
+    // Check if email exists and get last reset request timestamp
     $stmt = $conn->prepare('SELECT user_id, last_reset_request FROM user_accounts WHERE email = ?');
     $stmt->bind_param('s', $email);
     $stmt->execute();

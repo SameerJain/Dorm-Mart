@@ -9,6 +9,7 @@ if (!empty($token)) {
     $conn = db();
     
     // Check if token is valid and not expired
+    // Verifies token exists in database and hasn't expired
     $stmt = $conn->prepare('
         SELECT user_id, hash_auth, reset_token_expires 
         FROM user_accounts 

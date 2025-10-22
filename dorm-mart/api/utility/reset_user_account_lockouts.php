@@ -26,6 +26,7 @@
 require_once __DIR__ . '/../database/db_connect.php';
 
 // Set content type for both web and CLI
+// Handles both browser requests and command line execution
 if (php_sapi_name() !== 'cli') {
     header('Content-Type: application/json; charset=utf-8');
 }

@@ -9,7 +9,8 @@ require_once __DIR__ . '/../security/security.php';
 
 header('Content-Type: text/html; charset=utf-8');
 
-// Test XSS protection
+// Test XSS protection with user input
+// Demonstrates sanitization functions prevent XSS attacks
 $testInput = $_GET['test'] ?? 'No input provided';
 
 echo "<!DOCTYPE html>
