@@ -328,7 +328,7 @@ function CreateAccountPage() {
           />
           {/* card */}
           <div className="relative z-10 w-full max-w-lg mx-4 rounded-xl shadow-2xl border border-white/10"
-               style={{ backgroundColor: '#3d3eb5' }}>
+            style={{ backgroundColor: '#3d3eb5' }}>
             <div className="p-6">
               <h3 className="text-2xl font-serif text-white mb-3 text-center">Check Your Email</h3>
               <p className="text-white/90 text-center leading-relaxed">

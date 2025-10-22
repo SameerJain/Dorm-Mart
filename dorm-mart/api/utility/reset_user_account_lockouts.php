@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Reset All Active Lockouts - Development Utility
  * 
@@ -33,20 +34,20 @@ if (php_sapi_name() !== 'cli') {
 
 try {
     $conn = db();
-    
+
     // Reset all failed login attempts and lockouts
     $stmt = $conn->prepare('UPDATE user_accounts SET failed_login_attempts = 0, last_failed_attempt = NULL');
     $stmt->execute();
     $affectedRows = $stmt->affected_rows;
     $stmt->close();
-    
+
     // Get current database time for confirmation
     $result = $conn->query("SELECT NOW() as db_time");
     $row = $result->fetch_assoc();
     $currentTime = $row['db_time'];
-    
+
     $conn->close();
-    
+
     $response = [
         'success' => true,
         'message' => "All rate limiting lockouts have been reset!",
@@ -56,7 +57,7 @@ try {
             'note' => 'All users can now attempt login without rate limiting restrictions.'
         ]
     ];
-    
+
     if (php_sapi_name() === 'cli') {
         echo "SUCCESS: All rate limiting lockouts have been reset!\n";
         echo "Affected users: $affectedRows\n";
@@ -65,14 +66,13 @@ try {
     } else {
         echo json_encode($response, JSON_PRETTY_PRINT);
     }
-    
 } catch (Exception $e) {
     $errorResponse = [
         'success' => false,
         'error' => 'Failed to reset lockouts',
         'message' => $e->getMessage()
     ];
-    
+
     if (php_sapi_name() === 'cli') {
         echo "ERROR: Failed to reset lockouts\n";
         echo "Details: " . $e->getMessage() . "\n";
@@ -81,4 +81,3 @@ try {
         echo json_encode($errorResponse, JSON_PRETTY_PRINT);
     }
 }
-?>

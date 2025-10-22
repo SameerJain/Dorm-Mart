@@ -6,7 +6,7 @@ const MAX_LEN = 64;
 
 const hasLower = (s) => /[a-z]/.test(s);
 const hasUpper = (s) => /[A-Z]/.test(s);
-const hasDigit  = (s) => /\d/.test(s);
+const hasDigit = (s) => /\d/.test(s);
 const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
 
 function RequirementRow({ ok, text }) {
@@ -31,11 +31,10 @@ function Field({ id, label, type = "password", value, onChange, placeholder, dis
         placeholder={placeholder}
         onChange={onChange}
         disabled={disabled}
-        className={`h-11 w-full rounded-xl border px-4 text-slate-900 outline-none focus:ring-2 ${
-          disabled 
-            ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed' 
+        className={`h-11 w-full rounded-xl border px-4 text-slate-900 outline-none focus:ring-2 ${disabled
+            ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
             : 'border-slate-300 bg-slate-100 focus:bg-white'
-        }`}
+          }`}
         style={{ focusRingColor: NAV_BLUE }}
       />
     </div>
@@ -53,21 +52,21 @@ async function safeError(res) {
 
 function ResetPasswordForm({ token }) {
   const navigate = useNavigate();
-  
+
   // Form state
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Token validation state
   const [isTokenValid, setIsTokenValid] = useState(true);
   const [tokenError, setTokenError] = useState("");
   const [isVerifyingToken, setIsVerifyingToken] = useState(true);
-  
+
   // Error handling state
   const [submitError, setSubmitError] = useState("");
   const [passwordMismatchError, setPasswordMismatchError] = useState("");
-  
+
   // Success modal state
   const [showNotice, setShowNotice] = useState(false);
   const [countdown, setCountdown] = useState(5);
@@ -115,16 +114,16 @@ function ResetPasswordForm({ token }) {
       warning.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
       warning.textContent = '⚠️ Reset link expired - redirecting to login...';
       document.body.appendChild(warning);
-      
+
       setTimeout(() => {
         document.body.removeChild(warning);
         navigate('/login?error=reset_link_expired', { replace: true });
       }, 2000);
     };
-    
+
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
-    
+
     return () => window.removeEventListener('popstate', handlePopState);
   }, [token, navigate]);
 
@@ -239,9 +238,9 @@ function ResetPasswordForm({ token }) {
       const res = await fetch("api/auth/reset-password.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          token: token, 
-          newPassword: newPassword 
+        body: JSON.stringify({
+          token: token,
+          newPassword: newPassword
         }),
       });
 

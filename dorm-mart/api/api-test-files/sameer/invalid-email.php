@@ -17,4 +17,3 @@ echo json_encode([
     'success' => false,
     'error' => 'Email not found'
 ]);
-?>

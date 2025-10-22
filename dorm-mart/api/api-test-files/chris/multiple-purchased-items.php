@@ -16,4 +16,3 @@ while ($row = $res->fetch_assoc()) {
 }
 
 echo json_encode(['success' => true, 'data' => $rows]);
-

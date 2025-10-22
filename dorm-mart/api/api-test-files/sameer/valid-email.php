@@ -48,4 +48,3 @@ echo json_encode([
     'success' => true,
     'message' => 'Check your email'
 ]);
-?>

@@ -7,4 +7,3 @@ $conn = db();
 $rows = [];
 
 echo json_encode(['success' => true, 'data' => $rows]);
-

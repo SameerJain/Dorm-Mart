@@ -7,7 +7,7 @@ $isValidToken = false;
 if (!empty($token)) {
     require_once __DIR__ . '/../database/db_connect.php';
     $conn = db();
-    
+
     // Check if token is valid and not expired
     // Verifies token exists in database and hasn't expired
     $stmt = $conn->prepare('
@@ -18,22 +18,22 @@ if (!empty($token)) {
     ');
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     while ($row = $result->fetch_assoc()) {
         if (password_verify($token, $row['hash_auth'])) {
             $isValidToken = true;
             break;
         }
     }
-    
+
     $stmt->close();
     $conn->close();
-    
+
     // If token is invalid or expired, redirect to expired page
     if (!$isValidToken) {
         // Detect environment and redirect to correct path
         $host = $_SERVER['HTTP_HOST'] ?? '';
-        
+
         if (strpos($host, 'aptitude.cse.buffalo.edu') !== false) {
             header('Location: /CSE442/2025-Fall/cse-442j/api/redirects/show_password_reset_link_expired_page.php');
         } elseif (strpos($host, 'cattle.cse.buffalo.edu') !== false) {
@@ -81,4 +81,3 @@ if (strpos($host, 'cattle.cse.buffalo.edu') !== false) {
     header('Location: /serve/dorm-mart/#/reset-password?token=' . urlencode($token));
 }
 exit;
-?>

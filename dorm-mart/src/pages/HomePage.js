@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from "react-router-dom";
 
 function HomePage() {
   return (
@@ -17,9 +17,12 @@ function HomePage() {
 
       <div className="max-w-4xl mx-auto p-8">
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h2 className="text-2xl font-semibold text-gray-700 mb-4">Your Dashboard</h2>
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4">
+            Your Dashboard
+          </h2>
           <p className="text-gray-600 mb-6">
-            You've successfully logged in! This is your main dashboard where you can manage your dorm essentials.
+            You've successfully logged in! This is your main dashboard where you
+            can manage your dorm essentials.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

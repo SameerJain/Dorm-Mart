@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // Include security headers for XSS protection
@@ -15,9 +16,9 @@ $PROJECT_ROOT = dirname(__DIR__, 2);
 if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
     require $PROJECT_ROOT . '/vendor/autoload.php';
 } else {
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/PHPMailer.php';
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/SMTP.php';
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/Exception.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/PHPMailer.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/SMTP.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/Exception.php';
 }
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -37,7 +38,8 @@ foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJEC
 }
 
 // Use the EXACT same email sending logic as create_account.php for maximum speed
-function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel = 'Local'): array {
+function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel = 'Local'): array
+{
     global $PROJECT_ROOT;
 
     // Load environment variables (EXACT same as create_account.php)
@@ -115,7 +117,6 @@ HTML;
 
         $mail->send();
         return ['success' => true, 'message' => 'Email sent successfully'];
-
     } catch (Exception $e) {
         return ['success' => false, 'error' => 'Failed to send email: ' . $e->getMessage()];
     }
@@ -155,23 +156,23 @@ if ($email === false) {
 
 try {
     $conn = db();
-    
+
     // Check if email exists and rate limiting in one query
     $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email, last_reset_request FROM user_accounts WHERE email = ?');
     $stmt->bind_param('s', $email);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     if ($result->num_rows === 0) {
         $stmt->close();
         $conn->close();
         echo json_encode(['success' => false, 'error' => 'Email not found']);
         exit;
     }
-    
+
     $user = $result->fetch_assoc();
     $stmt->close();
-    
+
     // Check rate limiting (optimized inline check)
     if ($user['last_reset_request']) {
         $stmt = $conn->prepare('SELECT TIMESTAMPDIFF(MINUTE, ?, NOW()) as minutes_passed');
@@ -181,7 +182,7 @@ try {
         $row = $result->fetch_assoc();
         $minutesPassed = (int)$row['minutes_passed'];
         $stmt->close();
-        
+
         if ($minutesPassed < 10) { // 10 minute rate limit
             $remainingMinutes = 10 - $minutesPassed;
             $conn->close();
@@ -189,24 +190,24 @@ try {
             exit;
         }
     }
-    
+
     // Generate reset token (same as login system)
     $resetToken = bin2hex(random_bytes(32));
     $hashedToken = password_hash($resetToken, PASSWORD_DEFAULT);
-    
+
     // Set expiration to 1 hour from now
     $expiresAt = date('Y-m-d H:i:s', time() + 3600);
-    
+
     // Store token, expiration, and update timestamp in one query
     $stmt = $conn->prepare('UPDATE user_accounts SET hash_auth = ?, reset_token_expires = ?, last_reset_request = NOW() WHERE user_id = ?');
     $stmt->bind_param('ssi', $hashedToken, $expiresAt, $user['user_id']);
     $stmt->execute();
     $stmt->close();
-    
+
     // Generate reset link with correct domain
     $baseUrl = get_reset_password_base_url();
     $resetLink = $baseUrl . '/api/redirects/handle_password_reset_token_redirect.php?token=' . $resetToken;
-    
+
     // Determine environment label for email copy
     $envLabel = 'Local';
     if (strpos($resetLink, 'aptitude.cse.buffalo.edu') !== false) {
@@ -224,29 +225,29 @@ try {
     $emailResult = sendPasswordResetEmail($user, $resetLink, $envLabel);
     $emailEndTime = microtime(true);
     $emailDuration = round(($emailEndTime - $emailStartTime) * 1000, 2); // milliseconds
-    
+
     if (!$emailResult['success']) {
         $conn->close();
         echo json_encode(['success' => false, 'error' => 'Failed to send email']);
         exit;
     }
-    
+
     $conn->close();
     echo json_encode([
-        'success' => true, 
+        'success' => true,
         'message' => 'Check your email',
         'debug' => [
             'email_duration_ms' => $emailDuration,
             'environment' => $envLabel
         ]
     ]);
-    
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }
 
-function get_reset_password_base_url(): string {
+function get_reset_password_base_url(): string
+{
     // Prefer explicit origin/host detection
     $host   = $_SERVER['HTTP_HOST']   ?? '';
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -270,22 +271,22 @@ function get_reset_password_base_url(): string {
         strpos($origin, 'http://localhost:8080') === 0 ||
         strpos($origin, 'http://127.0.0.1') === 0
     );
-    
+
     if ($isLocal) {
         // Check if we're running the development server (npm start) vs production build (Apache)
         // Development server: React runs on :3000, PHP API on :8080
         // Production build: Everything served through Apache on :80
-        
+
         // If the request is coming from React dev server (port 3000), use the PHP dev server
         if (strpos($origin, 'http://localhost:3000') === 0 || strpos($origin, 'http://127.0.0.1:3000') === 0) {
             return 'http://localhost:8080';
         }
-        
+
         // If the request is coming from Apache (port 80), use the serve folder
         if ($host === 'localhost' || strpos($host, '127.0.0.1') === 0) {
             return 'http://localhost/serve/dorm-mart';
         }
-        
+
         // Default to PHP dev server for other local cases
         return 'http://localhost:8080';
     }
@@ -293,4 +294,3 @@ function get_reset_password_base_url(): string {
     // Fallback to test server
     return 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j';
 }
-?>

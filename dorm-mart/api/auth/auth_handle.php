@@ -4,7 +4,8 @@
 const REMEMBER_COOKIE = 'remember_token';
 const REMEMBER_TTL_DAYS = 30; // persistent login length
 
-function auth_boot_session(): void {
+function auth_boot_session(): void
+{
   static $booted = false;
   if ($booted) return;
 
@@ -25,14 +26,16 @@ function auth_boot_session(): void {
   $booted = true;
 }
 
-function regenerate_session_on_login(): void {
+function regenerate_session_on_login(): void
+{
   auth_boot_session();
   session_regenerate_id(true);
 }
 
 /* ---------- Persistent login (“remember me”) ---------- */
 
-function issue_remember_cookie(int $userId): void {
+function issue_remember_cookie(int $userId): void
+{
   require_once __DIR__ . '/../database/db_connect.php';
   $token = bin2hex(random_bytes(32));                 // 64 hex chars
   $hash  = password_hash($token, PASSWORD_DEFAULT);   // store only the hash
@@ -54,7 +57,8 @@ function issue_remember_cookie(int $userId): void {
   ]);
 }
 
-function clear_remember_cookie(?int $userId = null): void {
+function clear_remember_cookie(?int $userId = null): void
+{
   // clear server-side
   if ($userId) {
     require_once __DIR__ . '/../database/db_connect.php';
@@ -78,7 +82,8 @@ function clear_remember_cookie(?int $userId = null): void {
 /**
  * Ensure a session exists; if not, hydrate it from the persistent cookie.
  */
-function ensure_session(): void {
+function ensure_session(): void
+{
   auth_boot_session();
   if (!empty($_SESSION['user_id'])) return;
 
@@ -96,12 +101,19 @@ function ensure_session(): void {
   $stmt->bind_param('i', $uid);
   $stmt->execute();
   $res  = $stmt->get_result();
-  if ($res->num_rows !== 1) { $stmt->close(); $conn->close(); return; }
+  if ($res->num_rows !== 1) {
+    $stmt->close();
+    $conn->close();
+    return;
+  }
   $row  = $res->fetch_assoc();
   $stmt->close();
 
   $hash = (string)($row['hash_auth'] ?? '');
-  if ($hash === '' || !password_verify($token, $hash)) { $conn->close(); return; }
+  if ($hash === '' || !password_verify($token, $hash)) {
+    $conn->close();
+    return;
+  }
 
   // success → hydrate session and rotate token
   session_regenerate_id(true);
@@ -126,7 +138,8 @@ function ensure_session(): void {
 }
 
 /** Require auth (calls ensure_session) */
-function require_login(): int {
+function require_login(): int
+{
   ensure_session();
   if (empty($_SESSION['user_id'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -138,7 +151,8 @@ function require_login(): int {
 }
 
 /** Destroy session + clear persistent cookie */
-function logout_destroy_session(): void {
+function logout_destroy_session(): void
+{
   auth_boot_session();
   $uid = $_SESSION['user_id'] ?? null;
 

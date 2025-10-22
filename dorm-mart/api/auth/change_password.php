@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // Include security headers for XSS protection
@@ -13,8 +14,15 @@ header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Credentials: true');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']); exit; }
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+  http_response_code(204);
+  exit;
+}
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+  http_response_code(405);
+  echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
+  exit;
+}
 
 require __DIR__ . '/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
@@ -37,17 +45,25 @@ if (strpos($ct, 'application/json') !== false) {
 /* Validate inputs */
 $MAX_LEN = 64;
 if ($current === '' || $next === '') {
-  http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Missing required fields']); exit;
+  http_response_code(400);
+  echo json_encode(['ok' => false, 'error' => 'Missing required fields']);
+  exit;
 }
 if (strlen($current) > $MAX_LEN || strlen($next) > $MAX_LEN) {
-  http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Entered password is too long']); exit;
+  http_response_code(400);
+  echo json_encode(['ok' => false, 'error' => 'Entered password is too long']);
+  exit;
 }
-if (strlen($next) < 8
-    || !preg_match('/[a-z]/', $next)
-    || !preg_match('/[A-Z]/', $next)
-    || !preg_match('/\d/', $next)
-    || !preg_match('/[^A-Za-z0-9]/', $next)) {
-  http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Password does not meet policy']); exit;
+if (
+  strlen($next) < 8
+  || !preg_match('/[a-z]/', $next)
+  || !preg_match('/[A-Z]/', $next)
+  || !preg_match('/\d/', $next)
+  || !preg_match('/[^A-Za-z0-9]/', $next)
+) {
+  http_response_code(400);
+  echo json_encode(['ok' => false, 'error' => 'Password does not meet policy']);
+  exit;
 }
 
 try {
@@ -60,8 +76,11 @@ try {
   $res = $stmt->get_result();
 
   if ($res->num_rows === 0) {
-    $stmt->close(); $conn->close();
-    http_response_code(404); echo json_encode(['ok'=>false,'error'=>'User not found']); exit;
+    $stmt->close();
+    $conn->close();
+    http_response_code(404);
+    echo json_encode(['ok' => false, 'error' => 'User not found']);
+    exit;
   }
 
   $row = $res->fetch_assoc();
@@ -74,13 +93,17 @@ try {
    * was created or changed. We never compare against or store plaintext. */
   if (!password_verify($current, (string)$row['hash_pass'])) {
     $conn->close();
-    http_response_code(401); echo json_encode(['ok'=>false,'error'=>'Invalid current password']); exit;
+    http_response_code(401);
+    echo json_encode(['ok' => false, 'error' => 'Invalid current password']);
+    exit;
   }
 
   /* Optional: reject reuse of the same password */
   if (password_verify($next, (string)$row['hash_pass'])) {
     $conn->close();
-    http_response_code(400); echo json_encode(['ok'=>false,'error'=>'New password must differ from current']); exit;
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'New password must differ from current']);
+    exit;
   }
 
   /* Update password; also clear any persisted token column if present
@@ -110,10 +133,17 @@ try {
   // End the session so the client must log in again (your UI already redirects)
   logout_destroy_session();
 
-  echo json_encode(['ok'=>true]);
+  echo json_encode(['ok' => true]);
 } catch (Throwable $e) {
-  if (isset($stmt) && $stmt) { $stmt->close(); }
-  if (isset($upd) && $upd) { $upd->close(); }
-  if (isset($conn) && $conn) { $conn->close(); }
-  http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Server error']);
+  if (isset($stmt) && $stmt) {
+    $stmt->close();
+  }
+  if (isset($upd) && $upd) {
+    $upd->close();
+  }
+  if (isset($conn) && $conn) {
+    $conn->close();
+  }
+  http_response_code(500);
+  echo json_encode(['ok' => false, 'error' => 'Server error']);
 }

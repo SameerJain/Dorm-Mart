@@ -15,9 +15,9 @@ $PROJECT_ROOT = dirname(__DIR__, 2);
 if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
     require $PROJECT_ROOT . '/vendor/autoload.php';
 } else {
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/PHPMailer.php';
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/SMTP.php';
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/Exception.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/PHPMailer.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/SMTP.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/Exception.php';
 }
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -26,7 +26,8 @@ use PHPMailer\PHPMailer\Exception;
 
 
 
-function generatePassword(int $length = 12): string {
+function generatePassword(int $length = 12): string
+{
     if ($length < 8) $length = 8;
 
     $uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -60,7 +61,8 @@ function generatePassword(int $length = 12): string {
 // Example:
 // echo generatePassword(12);
 
-function sendWelcomeGmail(array $user, string $tempPassword): array {
+function sendWelcomeGmail(array $user, string $tempPassword): array
+{
     global $PROJECT_ROOT;
 
     // pick an env file (cleaned)
@@ -91,7 +93,7 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
         $mail->Password   = getenv('GMAIL_PASSWORD');
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // or STARTTLS 587
         $mail->Port       = 465;
-        
+
         // Optimizations for faster email delivery
         $mail->Timeout = 30; // Reduced timeout for faster failure detection
         $mail->SMTPKeepAlive = false; // Close connection after sending
@@ -111,7 +113,7 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
         // From/To
         $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
-        $mail->addAddress($user['email'], trim(($user['firstName'] ?? '').' '.($user['lastName'] ?? '')));
+        $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
         $first   = $user['firstName'] ?: 'Student';
         $subject = 'Welcome to Dorm Mart';
@@ -261,71 +263,68 @@ if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > 
 require "../database/db_connect.php";
 $conn = db();
 try {
-  $chk = $conn->prepare('SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1');
-$chk->bind_param('s', $email);
-$chk->execute();
-$chk->store_result();                   // needed to use num_rows without fetching
-if ($chk->num_rows > 0) {
-  http_response_code(200);
-  echo json_encode(['ok'=>true]);
-  exit;
-}
-$chk->close();
+    $chk = $conn->prepare('SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1');
+    $chk->bind_param('s', $email);
+    $chk->execute();
+    $chk->store_result();                   // needed to use num_rows without fetching
+    if ($chk->num_rows > 0) {
+        http_response_code(200);
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+    $chk->close();
 
-// 2) Generate & hash password
-// SECURITY NOTE:
-// We NEVER store plaintext passwords. We generate a temporary password for the
-// new user and immediately hash it with password_hash(), which automatically
-// generates a unique SALT and embeds it into the returned hash (bcrypt here).
-// The database only stores this salted, one-way hash (column: hash_pass).
-$tempPassword = generatePassword(12);
-$hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
+    // 2) Generate & hash password
+    // SECURITY NOTE:
+    // We NEVER store plaintext passwords. We generate a temporary password for the
+    // new user and immediately hash it with password_hash(), which automatically
+    // generates a unique SALT and embeds it into the returned hash (bcrypt here).
+    // The database only stores this salted, one-way hash (column: hash_pass).
+    $tempPassword = generatePassword(12);
+    $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
 
-// 3) Insert user
-$sql = 'INSERT INTO user_accounts
+    // 3) Insert user
+    $sql = 'INSERT INTO user_accounts
           (first_name, last_name, grad_month, grad_year, email, promotional, hash_pass, hash_auth, join_date, seller, theme)
         VALUES
           (?, ?, ?, ?, ?, ?, ?, NULL, CURRENT_DATE, 0, 0)';
 
-$ins = $conn->prepare($sql);
-/*
+    $ins = $conn->prepare($sql);
+    /*
  types: s=string, i=int
  first_name(s), last_name(s), grad_month(i), grad_year(i),
  email(s), promotional(i), hash_pass(s), hash_auth(s)
 */
-$promotional = $promos ? 1 : 0;
-$ins->bind_param(
-  'ssiisis',
-  $firstName,
-  $lastName,
-  $gradMonth,
-  $gradYear,
-  $email,
-  $promotional,
-  $hashPass,
-);
+    $promotional = $promos ? 1 : 0;
+    $ins->bind_param(
+        'ssiisis',
+        $firstName,
+        $lastName,
+        $gradMonth,
+        $gradYear,
+        $email,
+        $promotional,
+        $hashPass,
+    );
 
-$ok = $ins->execute();
-$ins->close();
+    $ok = $ins->execute();
+    $ins->close();
 
-if (!$ok) {
-  http_response_code(500);
-  echo json_encode(['ok'=>false, 'error'=>'Insert failed']);
-  exit;
-}
+    if (!$ok) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'Insert failed']);
+        exit;
+    }
 
-// Send email (ignore result here)
-sendWelcomeGmail(["firstName"=>$firstName,"lastName"=>$lastName,"email"=>$email], $tempPassword);
+    // Send email (ignore result here)
+    sendWelcomeGmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
 
-// Success
-echo json_encode([
-  'ok' => true
-]);
-
+    // Success
+    echo json_encode([
+        'ok' => true
+    ]);
 } catch (Throwable $e) {
-  // Log $e->getMessage() server-side
-  http_response_code(500);
-  echo json_encode(['ok'=>false, 'error'=>"There was an error"]);
+    // Log $e->getMessage() server-side
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'error' => "There was an error"]);
 }
-
-

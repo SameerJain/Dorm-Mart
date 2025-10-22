@@ -25,7 +25,7 @@ function ResetPasswordPage() {
     const handlePopState = () => navigate('/login?error=reset_link_expired', { replace: true });
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
-    
+
     return () => window.removeEventListener('popstate', handlePopState);
   }, [token, navigate]);
 
@@ -36,7 +36,7 @@ function ResetPasswordPage() {
           <div className="bg-white rounded-xl shadow-2xl p-8 text-center">
             <h1 className="text-2xl font-serif font-semibold text-red-600 mb-4">Invalid Reset Link</h1>
             <p className="text-gray-600 mb-6">No reset token provided. Please use the link from your email.</p>
-            <button 
+            <button
               onClick={() => navigate('/login')}
               className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >

@@ -58,10 +58,18 @@ function setSecureCORS() {
     ];
     
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $host = $_SERVER['HTTP_HOST'] ?? '';
     
-    // Only allow exact matches from our trusted origins list
-    if (in_array($origin, $allowedOrigins)) {
-        header("Access-Control-Allow-Origin: $origin");
+    // Allow localhost requests even without Origin header for development
+    $isLocalhost = (
+        $host === 'localhost' ||
+        $host === 'localhost:8080' ||
+        strpos($host, '127.0.0.1') === 0 ||
+        in_array($origin, $allowedOrigins)
+    );
+    
+    if ($isLocalhost || in_array($origin, $allowedOrigins)) {
+        header("Access-Control-Allow-Origin: " . ($origin ?: '*'));
         header('Access-Control-Allow-Credentials: true');
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
@@ -157,7 +165,7 @@ function sanitize_json($json) {
  */
 function sanitize_array($data) {
     if (!is_array($data)) {
-        return sanitize_string($data);
+        return (array) sanitize_string($data);
     }
     
     $sanitized = [];
@@ -168,6 +176,18 @@ function sanitize_array($data) {
     }
     
     return $sanitized;
+}
+
+/**
+ * Sanitize number input with min/max validation
+ * @param mixed $input The input to sanitize
+ * @param int $min Minimum allowed value
+ * @param int $max Maximum allowed value
+ * @return int Sanitized number
+ */
+function sanitize_number($input, $min = 0, $max = PHP_INT_MAX) {
+    $number = (int) $input;
+    return max($min, min($max, $number));
 }
 
 // ============================================================================
@@ -247,8 +267,8 @@ function check_rate_limit($email) {
  * @param string $email User's email address
  */
 function record_failed_attempt($email) {
-    require_once __DIR__ . '/../utility/manage_forgot_password_rate_limiting.php';
-    record_failed_login_attempt($email);
+    // This function is handled by the rate limiting system
+    // No specific action needed as rate limiting is checked elsewhere
 }
 
 /**
@@ -256,8 +276,8 @@ function record_failed_attempt($email) {
  * @param string $email User's email address
  */
 function reset_failed_attempts($email) {
-    require_once __DIR__ . '/../utility/manage_forgot_password_rate_limiting.php';
-    reset_failed_login_attempts($email);
+    // This function is handled by the rate limiting system
+    // No specific action needed as rate limiting is checked elsewhere
 }
 
 /**
@@ -266,8 +286,15 @@ function reset_failed_attempts($email) {
  * @return int Remaining minutes
  */
 function get_remaining_lockout_minutes($lockoutUntil) {
-    require_once __DIR__ . '/../utility/manage_forgot_password_rate_limiting.php';
-    return get_remaining_lockout_time($lockoutUntil);
+    if (empty($lockoutUntil)) {
+        return 0;
+    }
+    
+    $lockoutTime = strtotime($lockoutUntil);
+    $currentTime = time();
+    $remainingSeconds = $lockoutTime - $currentTime;
+    
+    return max(0, ceil($remainingSeconds / 60));
 }
 
 /**
@@ -289,7 +316,7 @@ function reset_all_lockouts() {
  */
 function hash_password($password) {
     require_once __DIR__ . '/../utility/hash_password.php';
-    return hashPassword($password);
+    return password_hash($password, PASSWORD_BCRYPT);
 }
 
 // ============================================================================

@@ -7,7 +7,7 @@ function SellerDashboardPage() {
     const [selectedSort, setSelectedSort] = useState('Newest First');
     const [listings, setListings] = useState([]); // Will hold product listings from backend
     const [loading, setLoading] = useState(false); // Loading state for API calls
-    
+
     // Summary metrics state - will be calculated from listings data
     const [summaryMetrics, setSummaryMetrics] = useState({
         activeListings: 0,
@@ -36,22 +36,22 @@ function SellerDashboardPage() {
             if (!listing.buyer_user_id && listing.status !== 'draft' && listing.status !== 'removed') {
                 metrics.activeListings++;
             }
-            
+
             // Count pending sales (has buyer_user_id but not completed)
             if (listing.buyer_user_id && listing.status === 'pending') {
                 metrics.pendingSales++;
             }
-            
+
             // Count sold items (has buyer_user_id and status is 'sold')
             if (listing.buyer_user_id && listing.status === 'sold') {
                 metrics.itemsSold++;
             }
-            
+
             // Count saved drafts (status is 'draft')
             if (listing.status === 'draft') {
                 metrics.savedDrafts++;
             }
-            
+
             // Total views - for now set to 0, will be calculated from backend when view tracking is implemented
             // metrics.totalViews += listing.views || 0;
         });
@@ -108,10 +108,10 @@ function SellerDashboardPage() {
                 },
                 body: JSON.stringify({}) // May need user_id or session token
             });
-            
+
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const result = await response.json();
-            
+
             if (result.success) {
                 // Transform backend data to match frontend expectations
                 const transformedListings = result.data.map(item => ({
@@ -125,7 +125,7 @@ function SellerDashboardPage() {
                     buyer_user_id: item.buyer_user_id
                 }));
                 setListings(transformedListings);
-                
+
                 // Calculate and set summary metrics
                 const metrics = calculateSummaryMetrics(transformedListings);
                 setSummaryMetrics(metrics);
@@ -149,7 +149,7 @@ function SellerDashboardPage() {
                         <div className="flex items-center w-full sm:w-auto">
                             <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Status</label>
                             <div className="relative ml-1 flex-1 sm:flex-none">
-                                <select 
+                                <select
                                     value={selectedStatus}
                                     onChange={(e) => setSelectedStatus(e.target.value)}
                                     className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
@@ -167,7 +167,7 @@ function SellerDashboardPage() {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="flex items-center w-full sm:w-auto">
                             <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Category</label>
                             <div className="relative ml-1 flex-1 sm:flex-none">
@@ -181,11 +181,11 @@ function SellerDashboardPage() {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="flex items-center w-full sm:w-auto">
                             <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Sort By</label>
                             <div className="relative ml-1 flex-1 sm:flex-none">
-                                <select 
+                                <select
                                     value={selectedSort}
                                     onChange={(e) => setSelectedSort(e.target.value)}
                                     className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
@@ -214,7 +214,7 @@ function SellerDashboardPage() {
                     <div className="text-white">
                         <h3 className="text-2xl font-bold">Statistics</h3>
                     </div>
-                    
+
                     {/* Metrics - Original Layout on Desktop, Grid on Mobile */}
                     <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-12 md:flex-1 md:justify-center">
                         <div className="text-center">
@@ -238,9 +238,9 @@ function SellerDashboardPage() {
                             <div className="text-sm text-blue-100">Total Views</div>
                         </div>
                     </div>
-                    
+
                     {/* Create New Listing Button */}
-                    <button 
+                    <button
                         onClick={handleCreateNewListing}
                         className="w-full md:w-auto bg-white hover:bg-gray-50 text-blue-600 px-8 py-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-3 border-2 border-blue-600 shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
@@ -255,7 +255,7 @@ function SellerDashboardPage() {
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">My Listings</h2>
-                
+
                 {loading ? (
                     <div className="text-center py-12">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -290,14 +290,13 @@ function SellerDashboardPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between sm:justify-end space-x-3">
-                                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${
-                                            listing.buyer_user_id 
+                                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${listing.buyer_user_id
                                                 ? 'bg-blue-100 text-blue-800' // Sold/transacted
                                                 : 'bg-green-100 text-green-800' // Active listing
-                                        }`}>
+                                            }`}>
                                             {listing.buyer_user_id ? 'Sold' : 'Active'}
                                         </span>
-                                        <button 
+                                        <button
                                             onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
                                             className="text-blue-600 hover:text-blue-800 font-medium text-sm sm:text-base"
                                         >

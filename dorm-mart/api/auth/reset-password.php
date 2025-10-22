@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // Include security headers for XSS protection
@@ -50,11 +51,13 @@ if (strlen($newPassword) > 64) {
     exit;
 }
 
-if (strlen($newPassword) < 8
+if (
+    strlen($newPassword) < 8
     || !preg_match('/[a-z]/', $newPassword)
     || !preg_match('/[A-Z]/', $newPassword)
     || !preg_match('/\d/', $newPassword)
-    || !preg_match('/[^A-Za-z0-9]/', $newPassword)) {
+    || !preg_match('/[^A-Za-z0-9]/', $newPassword)
+) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Password does not meet policy']);
     exit;
@@ -62,7 +65,7 @@ if (strlen($newPassword) < 8
 
 try {
     $conn = db();
-    
+
     // Find user with valid token
     $stmt = $conn->prepare('
         SELECT user_id, hash_auth, reset_token_expires 
@@ -72,7 +75,7 @@ try {
     ');
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     $userId = null;
     while ($row = $result->fetch_assoc()) {
         if (password_verify($token, $row['hash_auth'])) {
@@ -80,31 +83,29 @@ try {
             break;
         }
     }
-    
+
     $stmt->close();
-    
+
     if (!$userId) {
         $conn->close();
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid or expired reset token']);
         exit;
     }
-    
+
     // Hash the new password
     $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
-    
+
     // Update password and clear reset token
     $stmt = $conn->prepare('UPDATE user_accounts SET hash_pass = ?, hash_auth = NULL, reset_token_expires = NULL WHERE user_id = ?');
     $stmt->bind_param('si', $newHash, $userId);
     $stmt->execute();
     $stmt->close();
-    
+
     $conn->close();
-    
+
     echo json_encode(['success' => true, 'message' => 'Password reset successfully']);
-    
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }
-?>

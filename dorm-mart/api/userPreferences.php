@@ -11,7 +11,8 @@ $userId = require_login();
 $conn = db();
 
 // Helpers
-function getPrefs(mysqli $conn, int $userId) {
+function getPrefs(mysqli $conn, int $userId)
+{
   $stmt = $conn->prepare('SELECT promo_emails, reveal_contact, interests, theme FROM user_preferences WHERE user_id = ?');
   $stmt->bind_param('i', $userId);
   $stmt->execute();
@@ -47,8 +48,8 @@ try {
     $body = json_decode($raw, true);
     if (!is_array($body)) $body = [];
 
-  $promo = isset($body['promoEmails']) ? (int)!!$body['promoEmails'] : 0;
-  $reveal = isset($body['revealContact']) ? (int)!!$body['revealContact'] : 0;
+    $promo = isset($body['promoEmails']) ? (int)!!$body['promoEmails'] : 0;
+    $reveal = isset($body['revealContact']) ? (int)!!$body['revealContact'] : 0;
     $interests = isset($body['interests']) && is_array($body['interests']) ? $body['interests'] : [];
     $theme = (isset($body['theme']) && $body['theme'] === 'dark') ? 'dark' : 'light';
 

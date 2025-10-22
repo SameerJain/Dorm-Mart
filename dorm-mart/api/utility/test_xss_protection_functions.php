@@ -1,4 +1,5 @@
 <?php
+
 /**
  * XSS Protection Test File
  * This file demonstrates that XSS protection is working
@@ -69,4 +70,3 @@ echo "<!DOCTYPE html>
     </div>
 </body>
 </html>";
-?>

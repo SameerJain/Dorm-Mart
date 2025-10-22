@@ -51,8 +51,8 @@ try {
   if (!count($rows)) {
     // Static sample fallback; frontend also has its own fallback.
     $rows = [
-      [ 'id' => 1001, 'title' => 'Sample Lamp', 'price' => 15, 'image' => null, 'seller' => 'Sample Seller', 'rating' => 4.9, 'location' => 'North Campus', 'created_at' => null, 'status' => 'AVAILABLE', 'tags' => 'Decor,Lighting' ],
-      [ 'id' => 1002, 'title' => 'Sample Textbook', 'price' => 55, 'image' => null, 'seller' => 'Book Vendor', 'rating' => 4.8, 'location' => 'Ellicott', 'created_at' => null, 'status' => 'JUST POSTED', 'tags' => 'Books,Education' ],
+      ['id' => 1001, 'title' => 'Sample Lamp', 'price' => 15, 'image' => null, 'seller' => 'Sample Seller', 'rating' => 4.9, 'location' => 'North Campus', 'created_at' => null, 'status' => 'AVAILABLE', 'tags' => 'Decor,Lighting'],
+      ['id' => 1002, 'title' => 'Sample Textbook', 'price' => 55, 'image' => null, 'seller' => 'Book Vendor', 'rating' => 4.8, 'location' => 'Ellicott', 'created_at' => null, 'status' => 'JUST POSTED', 'tags' => 'Books,Education'],
     ];
   }
 
