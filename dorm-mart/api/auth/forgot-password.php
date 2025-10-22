@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Only allow POST requests
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
-    echo json_encode(['error' => 'Method Not Allowed']);
+    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
     exit;
 }
 
@@ -138,7 +138,7 @@ if (strpos($ct, 'application/json') !== false) {
 
 if ($email === false) {
     http_response_code(400);
-    echo json_encode(['error' => 'Invalid email format']);
+    echo json_encode(['success' => false, 'error' => 'Invalid email format']);
     exit;
 }
 
@@ -154,7 +154,7 @@ try {
     if ($result->num_rows === 0) {
         $stmt->close();
         $conn->close();
-        echo json_encode(['error' => 'Email not found']);
+        echo json_encode(['success' => false, 'error' => 'Email not found']);
         exit;
     }
     
@@ -165,7 +165,7 @@ try {
     $rateLimitCheck = check_forgot_password_rate_limit($email);
     if (!$rateLimitCheck['allowed']) {
         $conn->close();
-        echo json_encode(['error' => $rateLimitCheck['error']]);
+        echo json_encode(['success' => false, 'error' => $rateLimitCheck['error']]);
         exit;
     }
     
@@ -194,16 +194,16 @@ try {
     
     if (!$emailResult['success']) {
         $conn->close();
-        echo json_encode(['error' => 'Failed to send email']);
+        echo json_encode(['success' => false, 'error' => 'Failed to send email']);
         exit;
     }
     
     $conn->close();
-    echo json_encode(['message' => 'Check your email']);
+    echo json_encode(['success' => true, 'message' => 'Check your email']);
     
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Internal server error']);
+    echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }
 
 function get_reset_password_base_url(): string {

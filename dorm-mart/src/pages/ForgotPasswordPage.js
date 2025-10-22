@@ -13,7 +13,7 @@ function ForgotPasswordPage() {
 
     async function sendForgotPasswordRequest(email, signal) {
     const BASE = process.env.REACT_APP_API_BASE || "/api";
-    const r = await fetch(`${BASE}/forgot-password-request.php`, {
+    const r = await fetch(`${BASE}/auth/forgot-password.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
