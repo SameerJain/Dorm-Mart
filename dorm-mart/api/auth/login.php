@@ -6,6 +6,8 @@ require __DIR__ . '/../security_headers.php';
 require __DIR__ . '/../input_sanitizer.php';
 require_once __DIR__ . '/utility/security.php';
 setSecurityHeaders();
+// Ensure CORS headers are present for React dev server and local PHP server
+setSecureCORS();
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -107,6 +109,7 @@ function get_remaining_lockout_minutes(string $lockoutUntil): int {
     return (int)ceil($remainingSeconds / 60);
 }
 
+// Respond to CORS preflight after setting CORS headers
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']); exit; }
 

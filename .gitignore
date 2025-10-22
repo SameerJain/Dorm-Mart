@@ -6,3 +6,29 @@ react-test-files/chris/undefined/
 
 # Keep everything else under chris
 !react-test-files/chris/
+
+# VS Code and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# VS Code specific files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/extensions.json
+.vscode/c_cpp_properties.json
+.vscode/arduino.json
+.vscode/cmake-tools-kits.json
+.vscode/CMakeLists.txt
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

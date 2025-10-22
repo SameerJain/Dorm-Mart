@@ -6,14 +6,14 @@ import backgroundImage from '../assets/images/login-page-left-side-background.jp
 function ForgotPasswordPage() {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
-    const [isValid, setIsValid] = useState(false);
+    // const [isValid, setIsValid] = useState(false);
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const BACKDOOR_KEYWORD = 'testflow'; // typing this as the email triggers the confirmation page for testing
 
     async function sendForgotPasswordRequest(email, signal) {
     const BASE = process.env.REACT_APP_API_BASE || "/api";
-    const r = await fetch(`${BASE}/forgot-password-request.php`, {
+    const r = await fetch(`${BASE}/auth/forgot-password.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -26,6 +26,9 @@ function ForgotPasswordPage() {
     const handleForgotPasswordRequest = async (e) => {
         e.preventDefault();
 
+        // Clear any previous errors immediately
+        setError("");
+
         // Testing backdoor: allow quick navigation to confirmation page
         if (email.trim().toLowerCase() === BACKDOOR_KEYWORD) {
             navigate('/forgot-password/confirmation');
@@ -33,28 +36,19 @@ function ForgotPasswordPage() {
         }
 
         const valid = emailValidation(email);
-        setIsValid(valid);
         if (!valid) {
             setError("Email must be a valid UB email address");
             return;
         }
 
         setIsLoading(true);
-        setError("");
 
         try {
             const ac = new AbortController();
             const data = await sendForgotPasswordRequest(email, ac.signal);
 
-            if (!data?.success) {
-                setIsValid(false);
-                setError("Something went wrong, please try again later.");
-                setIsLoading(false);               // stop spinner on failure
-                return;
-            }
-
-            setIsValid(true);
-            // on success, don't show any msg
+            // For valid UB emails, always show confirmation page for security
+            // (whether email exists in DB, rate limited, or network error)
             setError("");
 
             setTimeout(() => {
@@ -63,9 +57,13 @@ function ForgotPasswordPage() {
             }, 2000);
         } catch (err) {
             console.error(err);
-            setIsValid(false);
-            setError("Something went wrong, please try again later.");
-            setIsLoading(false);                 // stop spinner on network error
+            // For valid UB emails, always show confirmation page for security
+            setError("");
+
+            setTimeout(() => {
+                setIsLoading(false);               // keep spinner during the delay
+                navigate("/forgot-password/confirmation");
+            }, 2000);
         }
     };
 
@@ -202,21 +200,19 @@ function ForgotPasswordPage() {
               {/* Links */}
               <div className="mt-4 sm:mt-6 text-center px-2">
                 <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:text-sm md:text-base text-white">
-                  <a 
-                    href="#" 
+                  <button 
                     onClick={(e) => { e.preventDefault(); navigate('/create-account'); }}
-                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap"
+                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap bg-transparent border-none text-white cursor-pointer p-0"
                   >
                     Create account
-                  </a>
+                  </button>
                   <span className="w-1 h-1 bg-black rounded-full hidden xs:block"></span>
-                  <a 
-                    href="#" 
+                  <button 
                     onClick={(e) => { e.preventDefault(); navigate('/login'); }}
-                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap"
+                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap bg-transparent border-none text-white cursor-pointer p-0"
                   >
                     Go back to login
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>

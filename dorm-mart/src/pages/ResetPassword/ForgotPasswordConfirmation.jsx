@@ -11,7 +11,10 @@ function ForgotPasswordConfirmation() {
         <div className="p-6 sm:p-8">
           <h3 className="text-xl sm:text-2xl font-serif text-white mb-3 text-center">Check Your Email</h3>
           <p className="text-sm sm:text-base text-white/90 text-center leading-relaxed">
-            A link to reset your password is sent to your email.
+            If an account with this email address exists, then a link to reset your password was sent to your inbox!
+          </p>
+          <p className="text-xs text-white/70 text-center italic mt-2">
+            Note: Another email can only be sent after 10 minutes.
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <button
