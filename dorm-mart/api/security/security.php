@@ -299,9 +299,13 @@ function validateInput($input, $maxLength = 255, $allowedChars = null) {
  * @return array Rate limit status
  */
 function check_rate_limit($email, $maxAttempts = 5, $lockoutMinutes = 3) {
-    require_once __DIR__ . '/../database/db_connect.php';
-    
-    $conn = db();
+    try {
+        require_once __DIR__ . '/../database/db_connect.php';
+        
+        $conn = db();
+        if (!$conn) {
+            return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
+        }
     
     // Get current attempt count, last attempt time, and lockout status
     $stmt = $conn->prepare("
@@ -393,6 +397,10 @@ function check_rate_limit($email, $maxAttempts = 5, $lockoutMinutes = 3) {
     
     $conn->close();
     return ['blocked' => false, 'attempts' => $attempts, 'lockout_until' => null];
+    } catch (Exception $e) {
+        // If any error occurs, don't block the user
+        return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
+    }
 }
 
 /**
@@ -400,9 +408,13 @@ function check_rate_limit($email, $maxAttempts = 5, $lockoutMinutes = 3) {
  * @param string $email User's email address
  */
 function record_failed_attempt($email) {
-    require_once __DIR__ . '/../database/db_connect.php';
-    
-    $conn = db();
+    try {
+        require_once __DIR__ . '/../database/db_connect.php';
+        
+        $conn = db();
+        if (!$conn) {
+            return; // Silently fail if no database connection
+        }
     
     // First check if user exists and get current attempt data
     $checkStmt = $conn->prepare('SELECT user_id, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ?');
@@ -441,6 +453,10 @@ function record_failed_attempt($email) {
     }
     
     $conn->close();
+    } catch (Exception $e) {
+        // Silently fail if any error occurs
+        return;
+    }
 }
 
 /**
