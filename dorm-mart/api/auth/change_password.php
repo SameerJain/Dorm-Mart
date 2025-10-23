@@ -4,15 +4,10 @@ declare(strict_types=1);
 
 // Include security headers for XSS protection
 require __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
 
 header('Content-Type: application/json; charset=utf-8');
-
-
-/* CORS: allow ALL origins (development or production) */
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   http_response_code(204);

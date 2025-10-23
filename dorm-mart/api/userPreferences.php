@@ -1,8 +1,19 @@
 <?php
 header('Content-Type: application/json');
 
+// Include security utilities
+require_once __DIR__ . '/security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
 require_once __DIR__ . '/auth/auth_handle.php';
 require_once __DIR__ . '/database/db_connect.php';
+
+// Handle CORS preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 $method = $_SERVER['REQUEST_METHOD'];
 

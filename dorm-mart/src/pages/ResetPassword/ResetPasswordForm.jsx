@@ -74,14 +74,14 @@ function ResetPasswordForm({ token }) {
 
   // Comprehensive protection: token validation, back button prevention, and session tracking
   useEffect(() => {
-    // Check if user has already visited this page (prevent back navigation)
-    if (sessionStorage.getItem('resetPageVisited')) {
+    // Only prevent back navigation if password was already successfully reset
+    if (sessionStorage.getItem('passwordResetCompleted') === 'true') {
       navigate('/login?error=reset_link_expired', { replace: true });
       return;
     }
 
-    // Mark that user has visited this page
-    sessionStorage.setItem('resetPageVisited', 'true');
+    // Mark that user has visited this page (but not completed yet)
+    sessionStorage.setItem('resetPageVisited', 'visited');
 
     // Handle missing token
     if (!token) {
@@ -89,23 +89,11 @@ function ResetPasswordForm({ token }) {
       return;
     }
 
-    // Verify token is still valid using existing endpoint
-    const verifyToken = async () => {
-      try {
-        const res = await fetch(`api/redirects/handle_password_reset_token_redirect.php?token=${encodeURIComponent(token)}`);
-        if (!res.ok) {
-          setIsTokenValid(false);
-          setTokenError("This reset link has expired or is invalid. Please request a new password reset.");
-        }
-      } catch {
-        setIsTokenValid(false);
-        setTokenError("Unable to verify reset link. Please try again or request a new password reset.");
-      } finally {
-        setIsVerifyingToken(false);
-      }
-    };
-
-    verifyToken();
+    // For this feature branch, we don't validate tokens via API
+    // Just show that the feature is not available
+    setIsTokenValid(false);
+    setTokenError("Password reset functionality is not available in this version. Please contact support or use the forgot password feature to request a new reset link.");
+    setIsVerifyingToken(false);
 
     // Prevent back button navigation with visual feedback
     const handlePopState = () => {
@@ -185,82 +173,9 @@ function ResetPasswordForm({ token }) {
   }, [showNotice, navigate]);
 
   const handleSubmit = async () => {
-    // Clear previous errors
-    setSubmitError("");
-    setPasswordMismatchError("");
-
-    // Validate token
-    if (!token) {
-      setSubmitError("Invalid reset link. Please request a new password reset.");
-      return;
-    }
-
-    // Validate password presence
-    if (!newPassword || !confirmPassword) {
-      setSubmitError("Please enter a password in both fields.");
-      return;
-    }
-
-    // Test 3: Check password mismatch
-    if (newPassword !== confirmPassword) {
-      setPasswordMismatchError("The new password and re-enter new password must match.");
-      return;
-    }
-
-    // Test 2: Check password requirements
-    if (newPassword.length > MAX_LEN || confirmPassword.length > MAX_LEN) {
-      setSubmitError("Entered password is too long. Maximum length is 64 characters.");
-      return;
-    }
-    if (newPassword.length < 8) {
-      setSubmitError("The new password must have at least 8 characters.");
-      return;
-    }
-    if (!hasLower(newPassword)) {
-      setSubmitError("The new password must have at least 1 lowercase letter.");
-      return;
-    }
-    if (!hasUpper(newPassword)) {
-      setSubmitError("The new password must have at least 1 uppercase letter.");
-      return;
-    }
-    if (!hasDigit(newPassword)) {
-      setSubmitError("The new password must have at least 1 digit.");
-      return;
-    }
-    if (!hasSpecial(newPassword)) {
-      setSubmitError("The new password must have at least 1 special character.");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const res = await fetch("api/auth/reset-password.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: token,
-          newPassword: newPassword
-        }),
-      });
-
-      if (res.ok) {
-        setShowNotice(true);
-      } else {
-        const msg = await safeError(res);
-        // Test 1: Handle invalid token (401/403 errors)
-        if (res.status === 401 || res.status === 403 || (msg && msg.includes('Invalid or expired'))) {
-          setSubmitError("Updating password failed. Please try again with a new link.");
-        } else {
-          setSubmitError(msg || "Something went wrong. Please try again later.");
-        }
-      }
-    } catch {
-      // Test 5: Handle request failure
-      setSubmitError("Something went wrong. Please try again later.");
-    } finally {
-      setIsLoading(false);
-    }
+    // For this feature branch, password reset functionality is not implemented
+    // Show a message that this feature is not available yet
+    setSubmitError("Password reset functionality is not available in this version. Please contact support or use the forgot password feature to request a new reset link.");
   };
 
   return (

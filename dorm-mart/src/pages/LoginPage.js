@@ -1,14 +1,25 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import backgroundImage from "../assets/images/login-page-left-side-background.jpg";
 // Client no longer inspects cookies; auth is enforced server-side on protected routes
 
 function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Handle URL error parameters
+  useEffect(() => {
+    const urlError = searchParams.get('error');
+    if (urlError === 'reset_link_expired') {
+      setError("Password reset link has expired. Please request a new one.");
+    } else if (urlError === 'invalid_reset_link') {
+      setError("Invalid password reset link. Please use the link from your email.");
+    }
+  }, [searchParams]);
 
   // No client-side cookie check
 

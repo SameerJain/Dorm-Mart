@@ -48,31 +48,66 @@ function setSecurityHeaders() {
  * This prevents unauthorized cross-origin requests
  */
 function setSecureCORS() {
+    // Skip CORS for CLI requests
+    if (php_sapi_name() === 'cli') {
+        return;
+    }
+    
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    
     // SECURE CORS Configuration - Only allow specific trusted origins
     $allowedOrigins = [
         'http://localhost:3000',      // React dev server
-        'http://localhost:8080',      // PHP dev server
+        'http://localhost:8080',      // PHP dev server  
         'http://localhost',           // Apache local setup
         'https://aptitude.cse.buffalo.edu',  // Test server
         'https://cattle.cse.buffalo.edu'    // Production server
     ];
     
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    $host = $_SERVER['HTTP_HOST'] ?? '';
-    
-    // Allow localhost requests even without Origin header for development
+    // Check if this is a localhost request
     $isLocalhost = (
         $host === 'localhost' ||
         $host === 'localhost:8080' ||
-        strpos($host, '127.0.0.1') === 0 ||
-        in_array($origin, $allowedOrigins)
+        strpos($host, '127.0.0.1') === 0
     );
     
-    if ($isLocalhost || in_array($origin, $allowedOrigins)) {
-        header("Access-Control-Allow-Origin: " . ($origin ?: '*'));
+    // Check if this is a production server request
+    $isProductionServer = (
+        $host === 'aptitude.cse.buffalo.edu' ||
+        $host === 'cattle.cse.buffalo.edu'
+    );
+    
+    // Check if origin is explicitly allowed
+    $isAllowedOrigin = in_array($origin, $allowedOrigins);
+    
+    // Set CORS headers based on the request type
+    if ($isLocalhost) {
+        // Localhost development - allow all origins for flexibility
+        header("Access-Control-Allow-Origin: *");
+        header('Access-Control-Allow-Credentials: false'); // Can't use credentials with *
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
+        header('Access-Control-Max-Age: 86400');
+    } elseif ($isProductionServer) {
+        // Production servers - allow same domain and specific origins
+        if ($isAllowedOrigin) {
+            header("Access-Control-Allow-Origin: $origin");
+        } else {
+            // Allow same domain requests
+            header("Access-Control-Allow-Origin: https://$host");
+        }
         header('Access-Control-Allow-Credentials: true');
-        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
+        header('Access-Control-Max-Age: 86400');
+    } elseif ($isAllowedOrigin) {
+        // Explicitly allowed origin
+        header("Access-Control-Allow-Origin: $origin");
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
+        header('Access-Control-Max-Age: 86400');
     } else {
         // Reject requests from untrusted origins
         http_response_code(403);
@@ -257,9 +292,62 @@ function validateInput($input, $maxLength = 255, $allowedChars = null) {
  * @param string $email User's email address
  * @return array Rate limit status
  */
-function check_rate_limit($email) {
-    require_once __DIR__ . '/../utility/manage_forgot_password_rate_limiting.php';
-    return check_forgot_password_rate_limit($email);
+function check_rate_limit($email, $maxAttempts = 5, $lockoutMinutes = 3) {
+    require_once __DIR__ . '/../database/db_connect.php';
+    
+    $conn = db();
+    
+    // Use a single query to check if user is locked out using MySQL's NOW()
+    $stmt = $conn->prepare("
+        SELECT 
+            failed_login_attempts,
+            last_failed_attempt,
+            CASE 
+                WHEN failed_login_attempts >= ? AND last_failed_attempt IS NOT NULL 
+                     AND NOW() < DATE_ADD(last_failed_attempt, INTERVAL ? MINUTE)
+                THEN 1 
+                ELSE 0 
+            END as is_locked,
+            DATE_ADD(last_failed_attempt, INTERVAL ? MINUTE) as lockout_until
+        FROM user_accounts 
+        WHERE email = ? 
+        LIMIT 1
+    ");
+    $stmt->bind_param('iiis', $maxAttempts, $lockoutMinutes, $lockoutMinutes, $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 0) {
+        $stmt->close();
+        $conn->close();
+        return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
+    }
+    
+    $row = $result->fetch_assoc();
+    $stmt->close();
+    $conn->close();
+    
+    $attempts = (int)$row['failed_login_attempts'];
+    $isLocked = (bool)$row['is_locked'];
+    $lockoutUntil = $row['lockout_until'];
+    
+    // If locked out, return blocked
+    if ($isLocked) {
+        return ['blocked' => true, 'attempts' => $attempts, 'lockout_until' => $lockoutUntil];
+    }
+    
+    // If attempts >= maxAttempts but lockout has expired, reset attempts
+    if ($attempts >= $maxAttempts) {
+        $conn = db();
+        $stmt = $conn->prepare('UPDATE user_accounts SET failed_login_attempts = 0, last_failed_attempt = NULL WHERE email = ?');
+        $stmt->bind_param('s', $email);
+        $stmt->execute();
+        $stmt->close();
+        $conn->close();
+        return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
+    }
+    
+    return ['blocked' => false, 'attempts' => $attempts, 'lockout_until' => null];
 }
 
 /**
@@ -267,8 +355,14 @@ function check_rate_limit($email) {
  * @param string $email User's email address
  */
 function record_failed_attempt($email) {
-    // This function is handled by the rate limiting system
-    // No specific action needed as rate limiting is checked elsewhere
+    require_once __DIR__ . '/../database/db_connect.php';
+    
+    $conn = db();
+    $stmt = $conn->prepare('UPDATE user_accounts SET failed_login_attempts = failed_login_attempts + 1, last_failed_attempt = NOW() WHERE email = ?');
+    $stmt->bind_param('s', $email);
+    $stmt->execute();
+    $stmt->close();
+    $conn->close();
 }
 
 /**
@@ -276,8 +370,14 @@ function record_failed_attempt($email) {
  * @param string $email User's email address
  */
 function reset_failed_attempts($email) {
-    // This function is handled by the rate limiting system
-    // No specific action needed as rate limiting is checked elsewhere
+    require_once __DIR__ . '/../database/db_connect.php';
+    
+    $conn = db();
+    $stmt = $conn->prepare('UPDATE user_accounts SET failed_login_attempts = 0, last_failed_attempt = NULL WHERE email = ?');
+    $stmt->bind_param('s', $email);
+    $stmt->execute();
+    $stmt->close();
+    $conn->close();
 }
 
 /**
@@ -290,10 +390,18 @@ function get_remaining_lockout_minutes($lockoutUntil) {
         return 0;
     }
     
-    $lockoutTime = strtotime($lockoutUntil);
-    $currentTime = time();
-    $remainingSeconds = $lockoutTime - $currentTime;
+    // Use MySQL to calculate remaining time to avoid timezone issues
+    require_once __DIR__ . '/../database/db_connect.php';
+    $conn = db();
+    $stmt = $conn->prepare("SELECT TIMESTAMPDIFF(SECOND, NOW(), ?) as remaining_seconds");
+    $stmt->bind_param('s', $lockoutUntil);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $stmt->close();
+    $conn->close();
     
+    $remainingSeconds = (int)$row['remaining_seconds'];
     return max(0, ceil($remainingSeconds / 60));
 }
 

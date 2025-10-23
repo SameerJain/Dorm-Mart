@@ -1,14 +1,13 @@
 <?php
 
 declare(strict_types=1);
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
 
 // Include security utilities
 require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
+setSecureCORS();
+
+header('Content-Type: application/json; charset=utf-8');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';

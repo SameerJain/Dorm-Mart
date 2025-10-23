@@ -3,6 +3,11 @@
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 
+// Include security utilities
+require_once __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
 require __DIR__ . '/auth_handle.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

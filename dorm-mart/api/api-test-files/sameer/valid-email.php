@@ -2,10 +2,12 @@
 // Test file for valid email (exists in database)
 // This simulates the forgot password request for an email that exists
 
+// Include security utilities
+require_once __DIR__ . '/../../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

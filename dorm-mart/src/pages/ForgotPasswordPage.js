@@ -5,7 +5,6 @@ import backgroundImage from "../assets/images/login-page-left-side-background.jp
 function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
-  // const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const BACKDOOR_KEYWORD = "testflow"; // typing this as the email triggers the confirmation page for testing

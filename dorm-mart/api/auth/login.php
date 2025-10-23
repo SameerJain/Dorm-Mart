@@ -3,9 +3,7 @@
 declare(strict_types=1);
 
 // Include security headers for XSS protection
-require __DIR__ . '/../security_headers.php';
-require __DIR__ . '/../input_sanitizer.php';
-require_once __DIR__ . '/utility/security.php';
+require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 // Ensure CORS headers are present for React dev server and local PHP server
 setSecureCORS();
@@ -26,99 +24,15 @@ if (!$isLocalhost && (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] !== 'on')) 
 }
 
 require __DIR__ . '/auth_handle.php';
-require __DIR__ . '/../db_connect.php';
-
-// Rate limiting functions
-function check_rate_limit(string $email, int $maxAttempts = 5, int $lockoutMinutes = 3): array
-{
-    $conn = db();
-    $stmt = $conn->prepare('SELECT failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ? LIMIT 1');
-    $stmt->bind_param('s', $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows === 0) {
-        $stmt->close();
-        $conn->close();
-        return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
-    }
-
-    $row = $result->fetch_assoc();
-    $stmt->close();
-    $conn->close();
-
-    $attempts = (int)$row['failed_login_attempts'];
-    $lastAttempt = $row['last_failed_attempt'];
-
-    if ($attempts === 0 || $lastAttempt === null) {
-        return ['blocked' => false, 'attempts' => $attempts, 'lockout_until' => null];
-    }
-
-    if ($attempts >= $maxAttempts - 1) {
-        // Use database time for consistent comparison
-        $conn = db();
-        $result = $conn->query("SELECT NOW() as db_time");
-        $row = $result->fetch_assoc();
-        $now = $row['db_time'];
-        $conn->close();
-
-        $lockoutUntil = date('Y-m-d H:i:s', strtotime($lastAttempt . " +{$lockoutMinutes} minutes"));
-
-        if ($now < $lockoutUntil) {
-            return ['blocked' => true, 'attempts' => $attempts, 'lockout_until' => $lockoutUntil];
-        } else {
-            return ['blocked' => false, 'attempts' => $attempts, 'lockout_until' => null];
-        }
-    }
-
-    return ['blocked' => false, 'attempts' => $attempts, 'lockout_until' => null];
-}
-
-function record_failed_attempt(string $email): void
-{
-    $conn = db();
-    $stmt = $conn->prepare('UPDATE user_accounts SET failed_login_attempts = failed_login_attempts + 1, last_failed_attempt = NOW() WHERE email = ?');
-    $stmt->bind_param('s', $email);
-    $stmt->execute();
-    $stmt->close();
-    $conn->close();
-}
-
-function reset_failed_attempts(string $email): void
-{
-    $conn = db();
-    $stmt = $conn->prepare('UPDATE user_accounts SET failed_login_attempts = 0, last_failed_attempt = NULL WHERE email = ?');
-    $stmt->bind_param('s', $email);
-    $stmt->execute();
-    $stmt->close();
-    $conn->close();
-}
-
-function get_remaining_lockout_minutes(string $lockoutUntil): int
-{
-    // Use database time for consistent calculation
-    $conn = db();
-    $result = $conn->query("SELECT NOW() as db_time");
-    $row = $result->fetch_assoc();
-    $now = $row['db_time'];
-    $conn->close();
-
-    $nowTime = strtotime($now);
-    $lockoutTime = strtotime($lockoutUntil);
-
-    if ($nowTime >= $lockoutTime) {
-        return 0;
-    }
-
-    $remainingSeconds = $lockoutTime - $nowTime;
-    return (int)ceil($remainingSeconds / 60);
-}
+require __DIR__ . '/../database/db_connect.php';
 
 // Respond to CORS preflight after setting CORS headers
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
+
+// Rate limiting functions are now in the main security file
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
@@ -199,7 +113,10 @@ try {
     // inside the hash; we never store or handle it separately.
     if (!password_verify($password, (string)$row['hash_pass'])) {
         $conn->close();
-        // Check rate limiting before recording the failed attempt
+        // Record failed attempt first
+        record_failed_attempt($email);
+        
+        // Then check rate limiting
         $rateLimitCheck = check_rate_limit($email);
         if ($rateLimitCheck['blocked']) {
             $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
@@ -207,8 +124,7 @@ try {
             echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
             exit;
         }
-        // Record failed attempt for wrong password
-        record_failed_attempt($email);
+        
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
         exit;

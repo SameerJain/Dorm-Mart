@@ -1,9 +1,12 @@
 <?php
 // Simple test file - just returns error response immediately
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
 
-// CORS headers for cross-origin requests from React frontend
+// Include security utilities
+require_once __DIR__ . '/../../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
+header('Content-Type: application/json');
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

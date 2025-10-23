@@ -1,5 +1,12 @@
 <?php
 
+// Include security utilities
+require_once __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
+header('Content-Type: application/json; charset=utf-8');
+
 /*composer needs to be installed in order to enable mailing services
 Get composer from getcomposer.org
 Run in cmd at dorm-mart
@@ -178,11 +185,9 @@ TEXT;
 // Include security headers for XSS protection
 require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
+setSecureCORS();
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
 
 // Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

@@ -1,5 +1,10 @@
 <?php
 
+// Include security utilities
+require_once __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
 /**
  * Reset All Active Lockouts - Development Utility
  * 
