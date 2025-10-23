@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Rate limiting functions are now in the main security file
+// Rate limiting will be checked after recording failed attempts
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
@@ -72,15 +72,6 @@ if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
     exit;
 }
 
-// Check rate limiting before attempting login
-$rateLimitCheck = check_rate_limit($email);
-if ($rateLimitCheck['blocked']) {
-    $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
-    http_response_code(429);
-    echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
-    exit;
-}
-
 try {
     $conn = db();
     $stmt = $conn->prepare('SELECT user_id, hash_pass, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ? LIMIT 1');
@@ -91,7 +82,8 @@ try {
     if ($res->num_rows === 0) {
         $stmt->close();
         $conn->close();
-        // Check rate limiting before recording the failed attempt
+        
+        // Check rate limiting FIRST to see if already blocked
         $rateLimitCheck = check_rate_limit($email);
         if ($rateLimitCheck['blocked']) {
             $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
@@ -99,8 +91,19 @@ try {
             echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
             exit;
         }
+        
         // Record failed attempt for non-existent user (but don't reveal this)
         record_failed_attempt($email);
+        
+        // Check rate limiting AGAIN after recording to see if we just hit the limit
+        $rateLimitCheck = check_rate_limit($email);
+        if ($rateLimitCheck['blocked']) {
+            $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
+            http_response_code(429);
+            echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
+            exit;
+        }
+        
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
         exit;
@@ -113,10 +116,20 @@ try {
     // inside the hash; we never store or handle it separately.
     if (!password_verify($password, (string)$row['hash_pass'])) {
         $conn->close();
-        // Record failed attempt first
+        
+        // Check rate limiting FIRST to see if already blocked
+        $rateLimitCheck = check_rate_limit($email);
+        if ($rateLimitCheck['blocked']) {
+            $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
+            http_response_code(429);
+            echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
+            exit;
+        }
+        
+        // Record failed attempt
         record_failed_attempt($email);
         
-        // Then check rate limiting
+        // Check rate limiting AGAIN after recording to see if we just hit the limit
         $rateLimitCheck = check_rate_limit($email);
         if ($rateLimitCheck['blocked']) {
             $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
@@ -133,10 +146,7 @@ try {
     $userId = (int)$row['user_id'];
     $conn->close();
 
-    // Reset failed attempts on successful login
-    reset_failed_attempts($email);
-
-    auth_boot_session();
+    // Regenerate session ID to prevent session fixation attacks
     regenerate_session_on_login();
     $_SESSION['user_id'] = $userId;
 
@@ -145,12 +155,6 @@ try {
 
     echo json_encode(['ok' => true]);
 } catch (Throwable $e) {
-    if (isset($stmt) && $stmt) {
-        $stmt->close();
-    }
-    if (isset($conn) && $conn) {
-        $conn->close();
-    }
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Server error']);
 }

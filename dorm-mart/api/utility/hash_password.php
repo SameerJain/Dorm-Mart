@@ -1,18 +1,34 @@
 <?php
-
 /**
  * Password Hash Generator - Command Line Tool
  * 
- * Usage: 
- *   php hashpassword.php <password1> <password2> <password3> ...
- *
- * Examples:
- *   php hashpassword.php "1234!"
- *   php hashpassword.php "password1" "password2" "password3"
- *
- * Interactive Mode:
- *   php hashpassword.php
+ * COMMAND LINE USAGE:
+ * ===================
+ * 
+ * Hash single password:
+ *   php api/utility/hash_password.php "your_password_here"
+ *   Example: php api/utility/hash_password.php "mypassword123"
+ * 
+ * Hash multiple passwords:
+ *   php api/utility/hash_password.php "password1" "password2" "password3"
+ *   Example: php api/utility/hash_password.php "admin123" "user456" "test789"
+ * 
+ * Interactive mode (enter passwords one by one):
+ *   php api/utility/hash_password.php
  *   (then enter passwords one by one, press Ctrl+C to exit)
+ * 
+ * EXAMPLES:
+ * =========
+ * php api/utility/hash_password.php "mypassword123"
+ * php api/utility/hash_password.php "admin123" "user456"
+ * php api/utility/hash_password.php
+ * 
+ * NOTES:
+ * ======
+ * - Passwords are hashed using bcrypt (PHP's PASSWORD_BCRYPT)
+ * - Salt is automatically generated and embedded in the hash
+ * - Use quotes around passwords with special characters
+ * - Copy the generated hashes into your SQL INSERT statements
  */
 
 // Check if passwords were provided as arguments

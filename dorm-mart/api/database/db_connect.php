@@ -60,6 +60,12 @@ function db(): mysqli
 
     // --- Select the database ---
     $conn->select_db($dbname);
+    
+    // Ensure autocommit is enabled
+    $conn->autocommit(true);
+    
+    // Set timezone to match PHP timezone
+    $conn->query("SET time_zone = '" . date('P') . "'");
 
     return $conn;
 }

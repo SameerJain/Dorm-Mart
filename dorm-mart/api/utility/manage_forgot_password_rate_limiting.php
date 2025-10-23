@@ -1,8 +1,24 @@
 <?php
-
 /**
  * Rate Limiting for Forgot Password Requests
  * Prevents spam and abuse of the password reset functionality
+ * 
+ * COMMAND LINE USAGE:
+ * ===================
+ * 
+ * Clear all forgot password rate limits:
+ *   php api/utility/manage_forgot_password_rate_limiting.php
+ * 
+ * EXAMPLES:
+ * =========
+ * php api/utility/manage_forgot_password_rate_limiting.php
+ * 
+ * NOTES:
+ * ======
+ * - This script clears the last_reset_request timestamp for all users
+ * - Users can then request new password reset emails immediately
+ * - Rate limit is 10 minutes between requests for all environments
+ * - Use this during development/testing to reset rate limits
  */
 
 function check_forgot_password_rate_limit(string $email): array
