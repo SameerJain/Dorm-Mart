@@ -69,7 +69,7 @@ The big pages that users see.
 
 - **LoginPage.js** - Page where users enter username and password.
 
-### **ProductListing/** - Seller Tools
+### **ItemForms/** - Seller Tools
 - **ProductListingPage.jsx** - Page where sellers add and edit their products.
 
 ### **PurchaseHistory/** - Shopping History

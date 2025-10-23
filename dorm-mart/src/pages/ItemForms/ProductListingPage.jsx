@@ -1,6 +1,6 @@
-// pages/ProductListing/ProductListingPage.jsx
+// pages/ItemForms/ProductListingPage.jsx
 import React, { useState, useRef, useEffect } from "react";
-import { useParams, useMatch } from "react-router-dom";
+import { useParams, useMatch, useNavigate } from "react-router-dom";
 
 /**
  * ProductListingPage supports three modes:
@@ -14,19 +14,18 @@ import { useParams, useMatch } from "react-router-dom";
 function ProductListingPage() {
   const { id } = useParams(); // edit id if present
   const matchNew = useMatch("/product-listing/new");
+  const navigate = useNavigate();
   const isEdit = Boolean(id);
   const isNew = Boolean(matchNew);
-  const isIndex = !isEdit && !isNew;
 
   const defaultForm = {
-    title: "Shower Caddy",
-    category: "Dorm",
-    tags: ["Blue", "Bathroom Organizer"],
+    title: "",
+    category: "",
+    tags: [],
     meetLocation: "North Campus",
-    condition: "Like New",
-    description:
-      "Gently used blue plastic shower caddy with multiple compartments. Perfect for carrying shampoo, conditioner...",
-    price: 10.0,
+    condition: "Excellent",
+    description: "",
+    price: 0,
     acceptTrades: false,
     priceNegotiable: false,
     images: [],
@@ -45,6 +44,57 @@ function ProductListingPage() {
   const [priceNegotiable, setPriceNegotiable] = useState(defaultForm.priceNegotiable);
   const [images, setImages] = useState([]); // {file, url}
   const fileInputRef = useRef();
+  const [errors, setErrors] = useState({});
+
+  // Character limits
+  const LIMITS = {
+    title: 70,
+    category: 50,
+    description: 1000,
+    tag: 30,
+    price: 999999.99
+  };
+
+  // Input validation and change handlers
+  const handleInputChange = (field, value, setter) => {
+    // Enforce character limits at input-time
+    if (field === 'title' && value.length > LIMITS.title) return;
+    if (field === 'category' && value.length > LIMITS.category) return;
+    if (field === 'description' && value.length > LIMITS.description) return;
+    if (field === 'newTag' && value.length > LIMITS.tag) return;
+    if (field === 'price' && value > LIMITS.price) return;
+    
+    setter(value);
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const validateAll = () => {
+    const newErrors = {};
+    
+    if (!title.trim()) newErrors.title = "Title is required";
+    else if (title.length > LIMITS.title) newErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
+    
+    if (!category.trim()) newErrors.category = "Category is required";
+    else if (category.length > LIMITS.category) newErrors.category = `Category must be ${LIMITS.category} characters or fewer`;
+    
+    if (!description.trim()) newErrors.description = "Description is required";
+    else if (description.length > LIMITS.description) newErrors.description = `Description must be ${LIMITS.description} characters or fewer`;
+    
+    if (price === '' || price === 0) newErrors.price = "Price is required";
+    else if (price < 0) newErrors.price = "Price must be positive";
+    else if (price > LIMITS.price) newErrors.price = `Price must be $${LIMITS.price} or less`;
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   // --- mode-aware lifecycle ---
   useEffect(() => {
@@ -95,8 +145,18 @@ function ProductListingPage() {
   function addTag() {
     const t = newTag.trim();
     if (!t) return;
+    if (t.length > LIMITS.tag) {
+      setErrors(prev => ({ ...prev, newTag: `Tag must be ${LIMITS.tag} characters or fewer` }));
+      return;
+    }
     if (!tags.includes(t)) setTags((s) => [...s, t]);
     setNewTag("");
+    // Clear tag error
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.newTag;
+      return newErrors;
+    });
   }
   function removeTag(t) {
     setTags((s) => s.filter((x) => x !== t));
@@ -122,6 +182,12 @@ function ProductListingPage() {
 
   // --- submit stubs ---
   function saveDraft() {
+    const hasContent = title.trim() || 
+                      category.trim() || 
+                      description.trim() || 
+                      tags.length > 0 || 
+                      price > 0;
+    
     const payload = {
       title,
       category,
@@ -134,17 +200,19 @@ function ProductListingPage() {
       priceNegotiable,
     };
     console.log("Save Draft", payload);
-    alert("Draft saved (console)");
+    
+    if (hasContent) {
+      navigate("/app/seller-dashboard");
+    }
   }
 
   function publishListing() {
-    if (!title.trim()) return alert("Enter a title");
-    if (!price && price !== 0) return alert("Enter a price");
+    if (!validateAll()) return;
     console.log("Publish", { title, price, tags, images, mode: isEdit ? "edit" : isNew ? "new" : "index" });
-    alert("Publish called (console)");
+    // TODO: Replace with actual API call
   }
 
-  const headerText = isEdit ? `Edit Product (ID: ${id})` : isNew ? "Create New Product" : "Product Listing";
+  const headerText = isEdit ? "Edit Product Listing" : "New Product Listing";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -155,9 +223,7 @@ function ProductListingPage() {
           <p className="text-gray-600">Fill out the form below to {isEdit ? 'update your listing' : 'create your listing'}</p>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
-          {/* Main Form Section */}
-          <div className="xl:col-span-2 space-y-6">
+        <div className="space-y-6">
             {/* Basic Information Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Basic Information</h2>
@@ -170,23 +236,40 @@ function ProductListingPage() {
                   </label>
                   <input 
                     value={title} 
-                    onChange={(e) => setTitle(e.target.value)} 
-                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                    onChange={(e) => handleInputChange('title', e.target.value, setTitle)} 
+                    className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors.title ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
                     placeholder="Enter a descriptive title for your item"
+                    maxLength={LIMITS.title}
                   />
-                  <p className="text-sm text-gray-500 mt-2">Be specific and descriptive to attract buyers</p>
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-sm text-gray-500">Be specific and descriptive to attract buyers</p>
+                    <p className="text-sm text-gray-400">{title.length}/{LIMITS.title}</p>
+                  </div>
+                  {errors.title && <p className="text-red-600 text-sm mt-1">{errors.title}</p>}
                 </div>
 
                 {/* Category and Condition Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-lg font-semibold text-gray-900 mb-2">Category</label>
+                    <label className="block text-lg font-semibold text-gray-900 mb-2">
+                      Category <span className="text-red-500">*</span>
+                    </label>
                     <input 
                       value={category} 
-                      onChange={(e) => setCategory(e.target.value)} 
-                      className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      onChange={(e) => handleInputChange('category', e.target.value, setCategory)} 
+                      className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                        errors.category ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                       placeholder="e.g., Electronics, Furniture, Books"
+                      maxLength={LIMITS.category}
                     />
+                    <div className="flex justify-between items-center mt-2">
+                      <p className="text-sm text-gray-500">Choose a category for your item</p>
+                      <p className="text-sm text-gray-400">{category.length}/{LIMITS.category}</p>
+                    </div>
+                    {errors.category && <p className="text-red-600 text-sm mt-1">{errors.category}</p>}
                   </div>
                   <div>
                     <label className="block text-lg font-semibold text-gray-900 mb-2">Item Condition</label>
@@ -223,10 +306,13 @@ function ProductListingPage() {
                   <div className="flex gap-2">
                     <input 
                       value={newTag} 
-                      onChange={(e) => setNewTag(e.target.value)} 
+                      onChange={(e) => handleInputChange('newTag', e.target.value, setNewTag)} 
                       onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())} 
-                      className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                      className={`flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                        errors.newTag ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                       placeholder="Add tag and press Enter"
+                      maxLength={LIMITS.tag}
                     />
                     <button 
                       onClick={addTag} 
@@ -235,18 +321,33 @@ function ProductListingPage() {
                       Add
                     </button>
                   </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-sm text-gray-500">Add tags to help buyers find your item</p>
+                    <p className="text-sm text-gray-400">{newTag.length}/{LIMITS.tag}</p>
+                  </div>
+                  {errors.newTag && <p className="text-red-600 text-sm mt-1">{errors.newTag}</p>}
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="block text-lg font-semibold text-gray-900 mb-2">Description</label>
+                  <label className="block text-lg font-semibold text-gray-900 mb-2">
+                    Description <span className="text-red-500">*</span>
+                  </label>
                   <textarea 
                     value={description} 
-                    onChange={(e) => setDescription(e.target.value)} 
+                    onChange={(e) => handleInputChange('description', e.target.value, setDescription)} 
                     rows={6} 
-                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none" 
+                    className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none ${
+                      errors.description ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
                     placeholder="Describe your item in detail. Include any relevant information about its condition, usage, or history."
+                    maxLength={LIMITS.description}
                   />
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-sm text-gray-500">Provide detailed information about your item</p>
+                    <p className="text-sm text-gray-400">{description.length}/{LIMITS.description}</p>
+                  </div>
+                  {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description}</p>}
                 </div>
               </div>
             </div>
@@ -278,14 +379,28 @@ function ProductListingPage() {
                     <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 text-lg">$</span>
                     <input 
                       type="number" 
-                      value={price} 
-                      onChange={(e) => setPrice(parseFloat(e.target.value || 0))} 
-                      className="w-full pl-8 pr-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                      value={price || ''} 
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '') {
+                          handleInputChange('price', '', setPrice);
+                        } else {
+                          const numValue = parseFloat(value);
+                          if (!isNaN(numValue)) {
+                            handleInputChange('price', numValue, setPrice);
+                          }
+                        }
+                      }} 
+                      className={`w-full pl-8 pr-4 py-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                        errors.price ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                       step="0.01" 
                       min="0" 
+                      max={LIMITS.price}
                       placeholder="0.00"
                     />
                   </div>
+                  {errors.price && <p className="text-red-600 text-sm mt-1">{errors.price}</p>}
                 </div>
               </div>
 
@@ -317,16 +432,11 @@ function ProductListingPage() {
                   />
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
             {/* Photos Section */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Photos & Media</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Photos & Media</h3>
               
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
                 {images.length ? (
                   images.map((img, i) => (
                     <div key={i} className="relative group">
@@ -344,6 +454,10 @@ function ProductListingPage() {
                   <>
                     <div className="h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">No photo</div>
                     <div className="h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">No photo</div>
+                    <div className="h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">No photo</div>
+                    <div className="h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">No photo</div>
+                    <div className="h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">No photo</div>
+                    <div className="h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">No photo</div>
                   </>
                 )}
               </div>
@@ -351,16 +465,16 @@ function ProductListingPage() {
               <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onFileChange} className="hidden" />
               <button 
                 onClick={() => fileInputRef.current.click()} 
-                className="w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
+                className="w-full py-4 px-6 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
               >
                 + Add Photos
               </button>
-              <p className="text-xs text-gray-500 mt-2">Recommended: Take photos in good lighting from multiple angles</p>
+              <p className="text-sm text-gray-500 mt-3 text-center">Recommended: Take photos in good lighting from multiple angles</p>
             </div>
 
             {/* Safety Tips */}
             <div className="bg-blue-50 rounded-2xl border border-blue-200 p-6">
-              <h3 className="text-xl font-bold text-blue-900 mb-4">Safety Tips</h3>
+              <h3 className="text-2xl font-bold text-blue-900 mb-4">Safety Tips</h3>
               <ul className="text-sm text-blue-800 space-y-3">
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 mt-1">•</span>
@@ -386,25 +500,28 @@ function ProductListingPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="space-y-3">
-              <button 
-                onClick={publishListing} 
-                className="w-full py-4 bg-blue-600 text-white rounded-lg font-bold text-lg hover:bg-blue-700 transition-colors"
-              >
-                {isEdit ? 'Update Listing' : 'Publish Listing'}
-              </button>
-              <button 
-                onClick={saveDraft} 
-                className="w-full py-3 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors"
-              >
-                Save Draft
-              </button>
-              <button 
-                onClick={() => alert("Discarded")} 
-                className="w-full py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-              >
-                Discard Changes
-              </button>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Publish Your Listing</h3>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={publishListing} 
+                  className="flex-1 py-4 bg-blue-600 text-white rounded-lg font-bold text-lg hover:bg-blue-700 transition-colors"
+                >
+                  {isEdit ? 'Update Listing' : 'Publish Listing'}
+                </button>
+                <button 
+                  onClick={saveDraft} 
+                  className="flex-1 py-3 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors"
+                >
+                  Save Draft
+                </button>
+                <button 
+                  onClick={() => navigate("/app/seller-dashboard")} 
+                  className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Discard Changes
+                </button>
+              </div>
             </div>
           </div>
         </div>

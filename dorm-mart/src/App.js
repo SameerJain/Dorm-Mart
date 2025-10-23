@@ -9,7 +9,7 @@ import ForgotPasswordConfirmation from './pages/ResetPassword/ForgotPasswordConf
 import ResetPasswordForm from './pages/ResetPassword/ResetPasswordForm.jsx';
 import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
-import ProductListingPage from "./pages/ProductListing/ProductListingPage.jsx";
+import ProductListingPage from "./pages/ItemForms/ProductListingPage.jsx";
 import CreateAccount from "./pages/AccountCreation/index.jsx";
 import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
