@@ -73,6 +73,15 @@ if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
 }
 
 try {
+    // CRITICAL: Check rate limiting FIRST, before any password verification
+    $rateLimitCheck = check_rate_limit($email);
+    if ($rateLimitCheck['blocked']) {
+        $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
+        http_response_code(429);
+        echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
+        exit;
+    }
+
     $conn = db();
     $stmt = $conn->prepare('SELECT user_id, hash_pass, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ? LIMIT 1');
     $stmt->bind_param('s', $email);
@@ -83,26 +92,8 @@ try {
         $stmt->close();
         $conn->close();
         
-        // Check rate limiting FIRST to see if already blocked
-        $rateLimitCheck = check_rate_limit($email);
-        if ($rateLimitCheck['blocked']) {
-            $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
-            http_response_code(429);
-            echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
-            exit;
-        }
-        
         // Record failed attempt for non-existent user (but don't reveal this)
         record_failed_attempt($email);
-        
-        // Check rate limiting AGAIN after recording to see if we just hit the limit
-        $rateLimitCheck = check_rate_limit($email);
-        if ($rateLimitCheck['blocked']) {
-            $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
-            http_response_code(429);
-            echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
-            exit;
-        }
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
@@ -117,26 +108,8 @@ try {
     if (!password_verify($password, (string)$row['hash_pass'])) {
         $conn->close();
         
-        // Check rate limiting FIRST to see if already blocked
-        $rateLimitCheck = check_rate_limit($email);
-        if ($rateLimitCheck['blocked']) {
-            $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
-            http_response_code(429);
-            echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
-            exit;
-        }
-        
         // Record failed attempt
         record_failed_attempt($email);
-        
-        // Check rate limiting AGAIN after recording to see if we just hit the limit
-        $rateLimitCheck = check_rate_limit($email);
-        if ($rateLimitCheck['blocked']) {
-            $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
-            http_response_code(429);
-            echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
-            exit;
-        }
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
