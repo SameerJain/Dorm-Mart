@@ -7,24 +7,24 @@ Copy any necessary files to the server:
 
 # How to run React and php server locally
 1. `npm run start-local` (add -win or -mac at the end depending on your machine)
-2. `php -S localhost:8080 -t .`
+2. `php -S localhost:8080 -t .` *(C:\xampp\php\php.exe -S localhost:8080 -t .)
 - refer to "proxy" field in package.json to navigate to the local db
 
 # How to build and upload prod app to aptitude
 1. `npm run build-prod` (add -win or -mac at the end depending on your machine)
 2. Upload 1) build contents*, 2) migrations, 3) api, 4) .env.production to the aptitude server \
-(These list of files and fodlers are subject to change as the project grows) \
+(These list of files and folders are subject to change as the project grows) \
 (* Copy and paste out all of the contents of the build folder, they cant still be inside the build folder) \
-(* It is highly recommended that you build a script to automate this process to avoid missing out some necessary files and mitigate the tidious process)
+(* It is highly recommended that you build a script to automate this process to avoid missing out some necessary files and mitigate the tedious process)
 - Refer to scripts in package.json for more details 
 3. Make sure to migrate to apply db schema and app data to the mysql server
 
 # How to build and upload prod app to cattle
 1. `npm run build-cattle` (add -win or -mac at the end depending on your machine)
-2. Upload 1) build contents*, 2) migrations, 3) api, 4) .env.cattle to the cattle server (these list of files and fodlers are subject to change as the project grows)
-(These list of files and fodlers are subject to change as the project grows) \
+2. Upload 1) build contents*, 2) migrations, 3) api, 4) .env.cattle to the cattle server (these list of files and folders are subject to change as the project grows)
+(These list of files and folders are subject to change as the project grows) \
 (* Copy and paste out all of the contents of the build folder, they cant still be inside the build folder) \
-(* It is highly recommended that you build a script to automate this process to avoid missing out some necessary files and mitigate the tidious process)
+(* It is highly recommended that you build a script to automate this process to avoid missing out some necessary files and mitigate the tedious process)
 - Refer to scripts in package.json for more details 
 3. Make sure to migrate to apply db schema and app data to the mysql server
 
@@ -33,9 +33,9 @@ Copy any necessary files to the server:
 2. Navigate to your project located in htdocs (if you don't have your project in this directory, copy/paste them)
 3. `npm install` to download any new libraries
 4. `npm run build-local` to create build folder for local server (add -win or -mac at the end depending on your machine)
-5. Upload the build/*, migrations, api, and .env.local, and any neccessary files and folders to /serve/dorm-mart \
+5. Upload the build/*, migrations, api, and .env.local, and any necessary files and folders to /serve/dorm-mart \
 (You could make a script to automate this) \
-(These list of files and fodlers are subject to change as the project grows) \
+(These list of files and folders are subject to change as the project grows) \
 (*Copy and paste out all of the contents of the build folder, they cant still be inside the build folder)
 6. Navigate to localhost/serve/dorm-mart from your browser since that is the file path
 7. You now should have the app running on your local apache server

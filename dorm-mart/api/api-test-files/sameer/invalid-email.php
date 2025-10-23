@@ -1,7 +1,12 @@
 <?php
 // Simple test file - just returns error response immediately
+
+// Include security utilities
+require_once __DIR__ . '/../../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -15,4 +20,3 @@ echo json_encode([
     'success' => false,
     'error' => 'Email not found'
 ]);
-?>

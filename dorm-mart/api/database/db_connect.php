@@ -1,14 +1,15 @@
 <?php
 
-function db(): mysqli {
+function db(): mysqli
+{
     // dorm-mart/
-    $root = dirname(__DIR__); 
+    $root = dirname(dirname(__DIR__));
     // load whichever exists 
     $devEnvFile = "$root/.env.development";
     $localEnvFile = "$root/.env.local";
     $prodEnvFile = "$root/.env.production";
     $cattleEnvFile = "$root/.env.cattle";
-    
+
     // load whichever exists
     //! the order matters here
     //! make sure if you are running the app on some server, it has only one env file that it needs
@@ -16,11 +17,11 @@ function db(): mysqli {
         $envFile = $devEnvFile;
     } elseif (file_exists($localEnvFile)) {
         $envFile = $localEnvFile;
-    } elseif (file_exists($prodEnvFile)){
+    } elseif (file_exists($prodEnvFile)) {
         $envFile = $prodEnvFile;
-    }elseif (file_exists($cattleEnvFile)){
+    } elseif (file_exists($cattleEnvFile)) {
         $envFile = $cattleEnvFile;
-    }else {
+    } else {
         echo json_encode(["success" => false, "message" => "No .env file found"]);
         exit;
     }
@@ -60,6 +61,11 @@ function db(): mysqli {
     // --- Select the database ---
     $conn->select_db($dbname);
     
+    // Ensure autocommit is enabled
+    $conn->autocommit(true);
+    
+    // Set timezone to match PHP timezone
+    $conn->query("SET time_zone = '" . date('P') . "'");
+
     return $conn;
 }
-?>

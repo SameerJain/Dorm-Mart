@@ -15,9 +15,9 @@ function UserPreferences() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const API_BASE = process.env.REACT_APP_API_BASE || "/api";
-  
+
   const [availableCategories] = useState([
-    "Electronics", "Books", "Clothing", "Furniture", "Sports", 
+    "Electronics", "Books", "Clothing", "Furniture", "Sports",
     "Beauty", "Home & Garden", "Automotive", "Toys", "Music",
     "Art & Crafts", "Health & Fitness", "Travel", "Food & Cooking",
     "Photography", "Gaming", "Technology", "Fashion", "Pets",
@@ -28,8 +28,8 @@ function UserPreferences() {
   const handleInterestToggle = (interest) => {
     setIsLoading(true);
     setTimeout(() => {
-      setSelectedInterests(prev => 
-        prev.includes(interest) 
+      setSelectedInterests(prev =>
+        prev.includes(interest)
           ? prev.filter(item => item !== interest)
           : [...prev, interest]
       );
@@ -102,7 +102,7 @@ function UserPreferences() {
       }
     })();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save to backend whenever relevant values change (debounced)
@@ -171,7 +171,7 @@ function UserPreferences() {
         {/* My Interests */}
         <div className="rounded-lg border border-slate-200 p-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">My Interests</h2>
-          
+
           {/* Search Bar with Enhanced Functionality */}
           <div className="relative mb-4">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -218,9 +218,8 @@ function UserPreferences() {
                 {selectedInterests.map((interest, index) => (
                   <span
                     key={interest}
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm transition-all duration-200 ${
-                      isLoading ? 'opacity-50' : 'opacity-100'
-                    } bg-blue-100 text-blue-800 border border-blue-200`}
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm transition-all duration-200 ${isLoading ? 'opacity-50' : 'opacity-100'
+                      } bg-blue-100 text-blue-800 border border-blue-200`}
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
                     {interest}
@@ -294,11 +293,10 @@ function UserPreferences() {
                     key={category}
                     onClick={() => handleInterestToggle(category)}
                     disabled={selectedInterests.includes(category)}
-                    className={`px-3 py-1 text-sm rounded-full border transition-all duration-200 ${
-                      selectedInterests.includes(category)
+                    className={`px-3 py-1 text-sm rounded-full border transition-all duration-200 ${selectedInterests.includes(category)
                         ? 'bg-blue-100 text-blue-800 border-blue-200 cursor-not-allowed'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
-                    }`}
+                      }`}
                   >
                     {selectedInterests.includes(category) ? '✓ ' : '+ '}{category}
                   </button>
@@ -328,17 +326,16 @@ function UserPreferences() {
         {/* Theme */}
         <div className="rounded-lg border border-slate-200 p-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Theme</h2>
-          
+
           {/* Theme Toggle */}
           <div className="flex items-center space-x-4 mb-4">
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setTheme("light")}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
-                  theme === "light" 
-                    ? "bg-white text-gray-900 shadow-sm" 
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${theme === "light"
+                    ? "bg-white text-gray-900 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
@@ -347,11 +344,10 @@ function UserPreferences() {
               </button>
               <button
                 onClick={() => setTheme("dark")}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
-                  theme === "dark" 
-                    ? "bg-white text-gray-900 shadow-sm" 
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${theme === "dark"
+                    ? "bg-white text-gray-900 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />

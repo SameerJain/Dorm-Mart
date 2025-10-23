@@ -7,7 +7,7 @@ function ForgotPasswordConfirmation() {
     <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#364156' }}>
       {/* Centered confirmation card, reused styling without "Stay Here" */}
       <div className="relative z-10 w-full max-w-lg mx-auto rounded-xl shadow-2xl border border-white/10"
-           style={{ backgroundColor: '#3d3eb5' }}>
+        style={{ backgroundColor: '#3d3eb5' }}>
         <div className="p-6 sm:p-8">
           <h3 className="text-xl sm:text-2xl font-serif text-white mb-3 text-center">Check Your Email</h3>
           <p className="text-sm sm:text-base text-white/90 text-center leading-relaxed">

@@ -38,12 +38,13 @@ foreach ($files as $path) {
   if (!$conn->multi_query($sql)) {
     $err = $conn->error;
     $conn->rollback();
-    echo json_encode(["success"=>false, "message"=>"Failed: $name — $err"]);
+    echo json_encode(["success" => false, "message" => "Failed: $name — $err"]);
     exit;
   }
 
   // flush multi_query results
-  while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+  while ($conn->more_results() && $conn->next_result()) { /* flush */
+  }
 
   $stmt = $conn->prepare("INSERT INTO schema_migrations (filename) VALUES (?)");
   $stmt->bind_param("s", $name);
@@ -54,4 +55,4 @@ foreach ($files as $path) {
   $ran[] = $name;
 }
 
-echo json_encode(["success"=>true, "applied"=>$ran]);
+echo json_encode(["success" => true, "applied" => $ran]);

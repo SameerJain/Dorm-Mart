@@ -29,13 +29,16 @@ foreach ($files as $path) {
   if (!$conn->multi_query($sql)) {                              // Execute possibly multi-statement SQL
     $err = $conn->error;                                        // Capture the MySQL error message
     $conn->rollback();                                          // Undo any partial changes
-    echo json_encode(["success" => false,                       // Report failure (which file + why)
-                      "message" => "Failed: $name — $err"]);
+    echo json_encode([
+      "success" => false,                       // Report failure (which file + why)
+      "message" => "Failed: $name — $err"
+    ]);
     exit;                                                       // Stop on first failure
   }
 
   // Flush all result sets produced by multi_query to clear the connection for next use
-  while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+  while ($conn->more_results() && $conn->next_result()) { /* flush */
+  }
 
   // Record that we ran this file; if it exists, just bump the timestamp
   $stmt = $conn->prepare(                                       // Use the tracking table we created above

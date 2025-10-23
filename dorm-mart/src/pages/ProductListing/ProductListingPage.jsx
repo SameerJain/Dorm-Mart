@@ -180,8 +180,8 @@ function ProductListingPage() {
               <select value={meetLocation} onChange={(e) => setMeetLocation(e.target.value)} className="w-full p-3 border rounded-lg" >
                 <option>North Campus</option>
                 <option>South Campus</option>
-              </select>  
-              
+              </select>
+
               <label className="block text-xl font-semibold mt-6 mb-2">Item Condition</label>
               <select value={condition} onChange={(e) => setCondition(e.target.value)} className="w-full p-3 border rounded-lg">
                 <option>Like New</option>
