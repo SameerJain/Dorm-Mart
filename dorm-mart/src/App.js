@@ -15,6 +15,8 @@ import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
+// Chat context
+import { ChatProvider } from "./context/ChatContext.js";
 
 export const router = createHashRouter([
   // redirect default hash `#/` to `#/login`
@@ -29,7 +31,11 @@ export const router = createHashRouter([
   // Main app
   {
     path: "/app",
-    element: <RootLayout />,
+    element: (
+    <ChatProvider>
+      <RootLayout />
+    </ChatProvider>
+  ),
     children: [
 
   { index: true, element: <LandingPage /> },
@@ -51,7 +57,13 @@ export const router = createHashRouter([
           { path: "item-detail/:id", element: <ItemDetailPage /> },
         ],
       },
-
+      {
+        path: "chat",
+        children: [
+          { index: true, element: < ChatPage/>},
+          { path: "conversation:/", element: <ConversationPage /> },
+        ]
+      },
       // Seller Dashboard
       {
         path: "seller-dashboard",

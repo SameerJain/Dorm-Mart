@@ -7,4 +7,7 @@ import ProductListingPage from './pages/ProductListing/ProductListingPage';
 
 const BASENAME = "/CSE442/2025-Fall/cse-442j";
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(
+    <App />
+
+);
