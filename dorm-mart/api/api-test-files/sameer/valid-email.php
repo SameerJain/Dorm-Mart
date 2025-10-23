@@ -1,0 +1,18 @@
+<?php
+// Simple test file - just returns success response immediately
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+// Return success response immediately (no processing)
+http_response_code(200);
+echo json_encode([
+    'success' => true,
+    'message' => 'Check your email'
+]);
+?>
