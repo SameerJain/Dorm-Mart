@@ -193,7 +193,7 @@ try {
 
     // Generate reset token (same as login system)
     $resetToken = bin2hex(random_bytes(32));
-    $hashedToken = password_hash($resetToken, PASSWORD_DEFAULT);
+    $hashedToken = password_hash($resetToken, PASSWORD_BCRYPT);
 
     // Set expiration to 1 hour from now
     $expiresAt = date('Y-m-d H:i:s', time() + 3600);

@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const NAV_BLUE = "#2563EB";
@@ -41,17 +41,10 @@ function Field({ id, label, type = "password", value, onChange, placeholder, dis
   );
 }
 
-async function safeError(res) {
-  try {
-    const data = await res.json();
-    return data?.error || data?.message;
-  } catch {
-    return null;
-  }
-}
-
-function ResetPasswordForm({ token }) {
+function ResetPasswordForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
 
   // Form state
   const [newPassword, setNewPassword] = useState("");
@@ -66,59 +59,6 @@ function ResetPasswordForm({ token }) {
   // Error handling state
   const [submitError, setSubmitError] = useState("");
   const [passwordMismatchError, setPasswordMismatchError] = useState("");
-
-  // Success modal state
-  const [showNotice, setShowNotice] = useState(false);
-  const [countdown, setCountdown] = useState(5);
-  const timerRef = useRef(null);
-
-  // Comprehensive protection: token validation, back button prevention, and session tracking
-  useEffect(() => {
-    // Only prevent back navigation if password was already successfully reset
-    if (sessionStorage.getItem('passwordResetCompleted') === 'true') {
-      navigate('/login?error=reset_link_expired', { replace: true });
-      return;
-    }
-
-    // Mark that user has visited this page (but not completed yet)
-    sessionStorage.setItem('resetPageVisited', 'visited');
-
-    // Handle missing token
-    if (!token) {
-      navigate('/login?error=invalid_reset_link', { replace: true });
-      return;
-    }
-
-    // For this feature branch, we don't validate tokens via API
-    // Just show that the feature is not available
-    setIsTokenValid(false);
-    setTokenError("Password reset functionality is not available in this version. Please contact support or use the forgot password feature to request a new reset link.");
-    setIsVerifyingToken(false);
-
-    // Prevent back button navigation with visual feedback
-    const handlePopState = () => {
-      // Show a brief warning before redirecting
-      const warning = document.createElement('div');
-      warning.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-      warning.textContent = '⚠️ Reset link expired - redirecting to login...';
-      document.body.appendChild(warning);
-
-      setTimeout(() => {
-        document.body.removeChild(warning);
-        navigate('/login?error=reset_link_expired', { replace: true });
-      }, 2000);
-    };
-
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', handlePopState);
-
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [token, navigate]);
-
-  // Prevent back navigation after successful submission
-  useEffect(() => {
-    if (showNotice) window.history.replaceState(null, '', window.location.href);
-  }, [showNotice]);
 
   const policy = useMemo(
     () => ({
@@ -138,6 +78,26 @@ function ResetPasswordForm({ token }) {
     setter(v);
   };
 
+  // Check if user already completed password reset for this specific token
+  useEffect(() => {
+    // Handle missing token
+    if (!token) {
+      navigate('/login?error=invalid_reset_link', { replace: true });
+      return;
+    }
+
+    // Check if this specific token was already used
+    const usedTokens = JSON.parse(localStorage.getItem('usedResetTokens') || '[]');
+    if (usedTokens.includes(token)) {
+      navigate('/login?error=reset_link_expired', { replace: true });
+      return;
+    }
+
+    // For this feature branch, just assume token is valid
+    setIsTokenValid(true);
+    setIsVerifyingToken(false);
+  }, [token, navigate]);
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Enter") handleSubmit();
@@ -146,36 +106,59 @@ function ResetPasswordForm({ token }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const LOGIN_ROUTE = "/";
-
-  // Start 5s countdown only after success modal shows
-  useEffect(() => {
-    if (!showNotice) return;
-    setCountdown(5);
-    timerRef.current = setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-          navigate(LOGIN_ROUTE, { replace: true });
-          return 0;
-        }
-        return c - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [showNotice, navigate]);
-
   const handleSubmit = async () => {
-    // For this feature branch, password reset functionality is not implemented
-    // Show a message that this feature is not available yet
-    setSubmitError("Password reset functionality is not available in this version. Please contact support or use the forgot password feature to request a new reset link.");
+    // Clear previous errors
+    setSubmitError("");
+    setPasswordMismatchError("");
+
+    // Validate form inputs
+    if (!newPassword || !confirmPassword) {
+      setSubmitError("Please fill in all required fields.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMismatchError("The passwords do not match. Please try again.");
+      return;
+    }
+
+    if (newPassword.length > MAX_LEN || confirmPassword.length > MAX_LEN) {
+      setSubmitError("Password is too long. Maximum length is 64 characters.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setSubmitError("Password must have at least 8 characters.");
+      return;
+    }
+
+    if (!hasLower(newPassword)) {
+      setSubmitError("Password must have at least 1 lowercase letter.");
+      return;
+    }
+
+    if (!hasUpper(newPassword)) {
+      setSubmitError("Password must have at least 1 uppercase letter.");
+      return;
+    }
+
+    if (!hasDigit(newPassword)) {
+      setSubmitError("Password must have at least 1 digit.");
+      return;
+    }
+
+    if (!hasSpecial(newPassword)) {
+      setSubmitError("Password must have at least 1 special character.");
+      return;
+    }
+
+    // For this feature branch, just redirect to login after validation
+    // Mark this specific token as used
+    const usedTokens = JSON.parse(localStorage.getItem('usedResetTokens') || '[]');
+    usedTokens.push(token);
+    localStorage.setItem('usedResetTokens', JSON.stringify(usedTokens));
+    
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -212,25 +195,12 @@ function ResetPasswordForm({ token }) {
                 </div>
               )}
 
-              {isLoading && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-blue-700">Resetting your password...</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {!isTokenValid && !isVerifyingToken && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
                       <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                       </svg>
                     </div>
                     <div className="ml-3">
@@ -261,7 +231,7 @@ function ResetPasswordForm({ token }) {
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
                       <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                       </svg>
                     </div>
                     <div className="ml-3">
@@ -329,29 +299,6 @@ function ResetPasswordForm({ token }) {
               </div>
             </section>
           </div>
-
-          {/* Success Notice Modal */}
-          {showNotice && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center">
-              {/* backdrop */}
-              <div className="absolute inset-0 bg-black bg-opacity-50" />
-              {/* card */}
-              <div
-                className="relative z-10 w-full max-w-lg mx-4 rounded-xl shadow-2xl border border-white/10"
-                style={{ backgroundColor: "#3d3eb5" }}
-              >
-                <div className="p-6">
-                  <h3 className="text-2xl font-serif text-white mb-3 text-center">Password Reset</h3>
-                  <p className="text-white/90 text-center leading-relaxed">
-                    Your password was reset successfully.
-                    <br />
-                    You will be taken to our log in page in{" "}
-                    <span className="font-semibold">{countdown}</span> seconds.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

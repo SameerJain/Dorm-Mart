@@ -6,7 +6,7 @@ import LandingPage from "./pages/HomePage/LandingPage";
 import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
 import ResetPasswordConfirmation from './pages/ResetPassword/ResetPasswordConfirmation.jsx';
 import ForgotPasswordConfirmation from './pages/ResetPassword/ForgotPasswordConfirmation.jsx';
-import ResetPasswordPage from './pages/ResetPassword/ResetPasswordPage.jsx';
+import ResetPasswordForm from './pages/ResetPassword/ResetPasswordForm.jsx';
 import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
 import ProductListingPage from "./pages/ProductListing/ProductListingPage.jsx";
@@ -25,7 +25,7 @@ export const router = createHashRouter([
   { path: "/create-account", element: <CreateAccount /> },
   { path:"/forgot-password", element: <ForgotPasswordPage />},
   { path:"/forgot-password/confirmation", element: <ForgotPasswordConfirmation />},
-  { path: "/reset-password", element: <ResetPasswordPage /> },
+  { path: "/reset-password", element: <ResetPasswordForm /> },
   { path: "/reset-password/confirmation", element: <ResetPasswordConfirmation /> },
   // Main app
   {
