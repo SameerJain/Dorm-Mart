@@ -1,4 +1,5 @@
 import { WebSocketServer } from "ws";
+import { require_login }
 
 // Chat Socket Server 
 const css = new WebSocketServer({ port: 8080 });
@@ -11,7 +12,7 @@ function get_token() {
 
 css.on("connection", (ws, req) => {
 
-    const token = get_token();
+    const token = 
     const userId = validate_token();
 
     if (!userId) {

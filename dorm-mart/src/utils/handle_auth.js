@@ -18,3 +18,12 @@ export async function logout() {
 }
 
 
+export function get_token() {
+
+}
+
+export async function validate_token() {
+
+}
+
+
