@@ -32,8 +32,8 @@ async function fetch_me(signal) {
   return r.json();
 }
 
-export function get_user_id() {
-  const [userId, setUserId] = useState<number | null>(null);
+export function useUserId() {
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
