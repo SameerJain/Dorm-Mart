@@ -20,7 +20,7 @@ $res = $conn->query("SELECT filename FROM schema_migrations");
 while ($row = $res->fetch_assoc()) $applied[$row['filename']] = true;
 
 // collect migration files and order them
-$dir = dirname(__DIR__) . '/migrations';
+$dir = dirname(__DIR__,2) . '/migrations';
 $files = glob($dir . '/*.sql');
 natsort($files);
 
