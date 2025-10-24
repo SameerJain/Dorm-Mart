@@ -3,6 +3,11 @@
 declare(strict_types=1);
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+// Ensure CORS headers are present for React dev server and local PHP server
+setSecureCORS();
+
 // __DIR__ points to api/
 require __DIR__ . '/../database/db_connect.php';
 
@@ -18,9 +23,9 @@ $conn->set_charset('utf8mb4');
 $body = json_decode(file_get_contents('php://input'), true);
 $sender   = isset($body['sender_id'])   ? trim((string)$body['sender_id'])   : '';
 $receiver = isset($body['receiver_id']) ? trim((string)$body['receiver_id']) : '';
-$text     = isset($body['text'])        ? trim((string)$body['text'])        : '';
+$content     = isset($body['content'])        ? trim((string)$body['content'])        : '';
 
-if ($sender === '' || $receiver === '' || $text === '') {
+if ($sender === '' || $receiver === '' || $content === '') {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'missing_fields']);
     exit;
@@ -83,7 +88,7 @@ try {
     $stmt = $conn->prepare(
         'INSERT INTO messages (conv_id, sender_id, receiver_id, content) VALUES (?, ?, ?, ?)'
     );
-    $stmt->bind_param('iiis', $convId, $senderId, $receiverId, $text);
+    $stmt->bind_param('iiis', $convId, $senderId, $receiverId, $content);
     $stmt->execute();
     $msgId = $conn->insert_id;
     $stmt->close();

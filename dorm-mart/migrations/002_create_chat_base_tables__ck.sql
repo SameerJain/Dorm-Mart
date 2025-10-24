@@ -34,7 +34,7 @@ CREATE TABLE messages (
   created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   edited_at   TIMESTAMP NULL,
 
-  CONSTRAINT fk_msg_conv    FOREIGN KEY (conv_id)     REFERENCES conversations(conv_id),
+  CONSTRAINT fk_msg_conv    FOREIGN KEY (conv_id)     REFERENCES conversations(conv_id) ON DELETE CASCADE,
   CONSTRAINT fk_msg_sender  FOREIGN KEY (sender_id)   REFERENCES user_accounts(user_id),
   CONSTRAINT fk_msg_receiver FOREIGN KEY (receiver_id) REFERENCES user_accounts(user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

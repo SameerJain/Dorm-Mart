@@ -6,6 +6,11 @@ header('Content-Type: application/json');
 // __DIR__ points to api/
 require __DIR__ . '/../database/db_connect.php';
 
+require_once __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+// Ensure CORS headers are present for React dev server and local PHP server
+setSecureCORS();
+
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);

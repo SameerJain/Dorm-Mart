@@ -64,13 +64,8 @@ function db(): mysqli
     // Ensure autocommit is enabled
     $conn->autocommit(true);
     
-<<<<<<< HEAD
-    // Set timezone to match PHP timezone
-    $conn->query("SET time_zone = '" . date('P') . "'");
-=======
     // Set timezone to UTC for consistent token expiration handling
     $conn->query("SET time_zone = '+00:00'");
->>>>>>> dev
 
     return $conn;
 }

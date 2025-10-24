@@ -17,6 +17,7 @@ import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
 // Chat context
 import { ChatProvider } from "./context/ChatContext.js";
+import ChatPage from "./pages/Chat/Chat.jsx";
 
 export const router = createHashRouter([
   // redirect default hash `#/` to `#/login`
@@ -58,13 +59,12 @@ export const router = createHashRouter([
           { path: "item-detail/:id", element: <ItemDetailPage /> },
         ],
       },
-      // {
-      //   path: "chat",
-      //   children: [
-      //     { index: true, element: < ChatPage/>},
-      //     { path: "conversation:/", element: <ConversationPage /> },
-      //   ]
-      // },
+      {
+        path: "chat",
+        children: [
+          { index: true, element: < ChatPage/>}
+        ]
+      },
       // Seller Dashboard
       {
         path: "seller-dashboard",
