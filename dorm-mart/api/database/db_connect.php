@@ -3,11 +3,7 @@
 function db(): mysqli
 {
     // dorm-mart/
-<<<<<<< HEAD
     $root = dirname(dirname(__DIR__, 1));
-=======
-    $root = dirname(dirname(__DIR__));
->>>>>>> dev
     // load whichever exists 
     $devEnvFile = "$root/.env.development";
     $localEnvFile = "$root/.env.local";
