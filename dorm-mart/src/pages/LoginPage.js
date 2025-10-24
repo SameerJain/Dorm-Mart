@@ -9,15 +9,22 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Handle URL error parameters
+  // Handle URL parameters
   useEffect(() => {
     const urlError = searchParams.get('error');
+    const urlMessage = searchParams.get('message');
+    
     if (urlError === 'reset_link_expired') {
       setError("Password reset link has expired. Please request a new one.");
     } else if (urlError === 'invalid_reset_link') {
       setError("Invalid password reset link. Please use the link from your email.");
+    }
+    
+    if (urlMessage === 'password_reset_success') {
+      setSuccess("Password has been reset successfully. You can now log in with your new password.");
     }
   }, [searchParams]);
 
@@ -155,6 +162,13 @@ function LoginPage() {
                   Log In
                 </h2>
               </div>
+
+              {/* Success message display */}
+              {success && (
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+                  <p className="text-sm">{success}</p>
+                </div>
+              )}
 
               {/* Error message display */}
               {error && (
