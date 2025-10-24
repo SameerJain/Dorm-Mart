@@ -29,6 +29,18 @@ if ($sender === '' || $receiver === '' || $content === '') {
     exit;
 }
 
+$len = function_exists('mb_strlen') ? mb_strlen($content, 'UTF-8') : strlen($content); // mb_strlen counts Unicode chars
+if ($len > 500) {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'error'   => 'content_too_long',
+        'max'     => 500,
+        'length'  => $len
+    ]);
+    exit;
+}
+
 $senderId   = (int)$sender;
 $receiverId = (int)$receiver;
 $u1 = min($senderId, $receiverId);

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { fetchMe, fetchConversation, fetchChat, createMessage } from "./chat_util";
 
 export default function ChatPage() {
+  const MAX_LEN = 500; // hard cap; used by textarea and counter
   const [myId, setMyId] = useState(null);
   const [conversations, setConversations] = useState([]); // [{ id, otherUserId }]
   const [activeId, setActiveId] = useState(null);
@@ -235,15 +236,28 @@ async function sendMessage() {
             {/* Composer */}
             <div className="border-t border-gray-200 p-4">
               <div className="flex items-end gap-2">
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Type a message…"
-                  rows={2}
-                  className="min-h-[44px] w-full resize-y rounded-2xl border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                  aria-label="Message input"
-                />
+                <div className="relative w-full">
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a message…"
+                    rows={2}
+                    maxLength={MAX_LEN} // prevents typing past 500 on the client
+                    aria-describedby="message-char-remaining" // links to the counter for a11y
+                    className="min-h-[44px] w-full resize-y rounded-2xl border border-gray-300 px-3 py-2 pr-12 pb-6 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                    //               ^^^^ extra right/bottom padding so the counter doesn't overlap text
+                    aria-label="Message input"
+                  />
+                  <span
+                    id="message-char-remaining"
+                    className="pointer-events-none absolute bottom-2 right-3 text-xs text-gray-500"
+                  >
+                    {MAX_LEN - draft.length}
+                  </span>
+                  {/* ^ absolute positions the live countdown inside the textarea corner */}
+                </div>
+
                 <button
                   onClick={sendMessage}
                   className="h-[44px] shrink-0 rounded-2xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -254,6 +268,7 @@ async function sendMessage() {
               </div>
               <p className="mt-2 text-xs text-gray-500">Press Enter to send • Shift+Enter for a new line</p>
             </div>
+
           </section>
         </div>
       </div>
