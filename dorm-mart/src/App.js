@@ -2,14 +2,14 @@
 import { createHashRouter, RouterProvider, Navigate } from "react-router-dom";
 import RootLayout from "./pages/RootLayout";
 import LoginPage from "./pages/LoginPage";
-// import HomePage from "./pages/HomePage";
 import LandingPage from "./pages/HomePage/LandingPage";
 import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
 import ResetPasswordConfirmation from './pages/ResetPassword/ResetPasswordConfirmation.jsx';
 import ForgotPasswordConfirmation from './pages/ResetPassword/ForgotPasswordConfirmation.jsx';
+import ResetPasswordForm from './pages/ResetPassword/ResetPasswordForm.jsx';
 import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
-import ProductListingPage from "./pages/ProductListing/ProductListingPage.jsx";
+import ProductListingPage from "./pages/ItemForms/ProductListingPage.jsx";
 import CreateAccount from "./pages/AccountCreation/index.jsx";
 import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
@@ -27,6 +27,7 @@ export const router = createHashRouter([
   { path: "/create-account", element: <CreateAccount /> },
   { path:"/forgot-password", element: <ForgotPasswordPage />},
   { path:"/forgot-password/confirmation", element: <ForgotPasswordConfirmation />},
+  { path: "/reset-password", element: <ResetPasswordForm /> },
   { path: "/reset-password/confirmation", element: <ResetPasswordConfirmation /> },
   // Main app
   {
@@ -57,13 +58,13 @@ export const router = createHashRouter([
           { path: "item-detail/:id", element: <ItemDetailPage /> },
         ],
       },
-      {
-        path: "chat",
-        children: [
-          { index: true, element: < ChatPage/>},
-          { path: "conversation:/", element: <ConversationPage /> },
-        ]
-      },
+      // {
+      //   path: "chat",
+      //   children: [
+      //     { index: true, element: < ChatPage/>},
+      //     { path: "conversation:/", element: <ConversationPage /> },
+      //   ]
+      // },
       // Seller Dashboard
       {
         path: "seller-dashboard",

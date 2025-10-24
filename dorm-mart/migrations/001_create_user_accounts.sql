@@ -23,6 +23,10 @@ CREATE TABLE IF NOT EXISTS user_accounts (
   failed_login_attempts INT UNSIGNED NOT NULL DEFAULT 0,
   last_failed_attempt TIMESTAMP NULL DEFAULT NULL,
 
+  -- Password reset columns
+  reset_token_expires DATETIME NULL DEFAULT NULL,
+  last_reset_request DATETIME NULL DEFAULT NULL,
+
   PRIMARY KEY (user_id),
   UNIQUE KEY uq_user_email (email),
   CHECK (grad_month BETWEEN 1 AND 12)

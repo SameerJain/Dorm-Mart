@@ -47,20 +47,20 @@ function SettingsLayout({ children }) {
                 key={l.to}
                 to={l.to}
                 className={({ isActive }) =>
-                    [
+                  [
                     // was: "rounded-lg px-3 py-2 text-sm transition"
                     "rounded-lg px-3 py-2 text-base transition font-medium leading-6",
                     "hover:underline",
                     isActive ? "bg-white/15" : "bg-transparent",
-                    ].join(" ")
+                  ].join(" ")
                 }
                 style={({ isActive }) => ({
-                    color: "#ffffff",
-                    ...(isActive ? { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" } : {}),
-            })}
-                >
-            {l.label}
-            </NavLink>
+                  color: "#ffffff",
+                  ...(isActive ? { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" } : {}),
+                })}
+              >
+                {l.label}
+              </NavLink>
             ))}
           </nav>
         </aside>
@@ -69,11 +69,11 @@ function SettingsLayout({ children }) {
         {showMobileMenu && (
           <div className="lg:hidden fixed inset-0 z-50 flex">
             {/* Backdrop */}
-            <div 
+            <div
               className="fixed inset-0 bg-black bg-opacity-50"
               onClick={() => setShowMobileMenu(false)}
             ></div>
-            
+
             {/* Sidebar */}
             <aside
               className="relative w-64 h-full rounded-r-xl p-0 text-white shadow-lg"
@@ -98,20 +98,20 @@ function SettingsLayout({ children }) {
                     to={l.to}
                     onClick={() => setShowMobileMenu(false)}
                     className={({ isActive }) =>
-                        [
+                      [
                         // was: "rounded-lg px-3 py-2 text-sm transition"
                         "rounded-lg px-3 py-2 text-base transition font-medium leading-6",
                         "hover:underline",
                         isActive ? "bg-white/15" : "bg-transparent",
-                        ].join(" ")
+                      ].join(" ")
                     }
                     style={({ isActive }) => ({
-                        color: "#ffffff",
-                        ...(isActive ? { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" } : {}),
-                })}
-                    >
-                {l.label}
-                </NavLink>
+                      color: "#ffffff",
+                      ...(isActive ? { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" } : {}),
+                    })}
+                  >
+                    {l.label}
+                  </NavLink>
                 ))}
               </nav>
             </aside>

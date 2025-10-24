@@ -1,4 +1,4 @@
 {
-  "success": false,
-  "message": "something went wrong"
+"success": false,
+"message": "something went wrong"
 }
