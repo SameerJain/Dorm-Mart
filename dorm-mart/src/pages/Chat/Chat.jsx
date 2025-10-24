@@ -1,65 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { fetchMe, fetchConversation, fetchChat, createMessage } from "./chat_util";
 
-// ---------- API helpers ----------
-async function fetchMe(signal) {
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
-  // returns: { success: true, user_id: <number> }
-  const r = await fetch(`${BASE}/auth/me.php`, {
-    method: "GET",
-    credentials: "include",      // send PHP session cookie
-    headers: { Accept: "application/json" },
-    signal,                      // allow abort on unmount
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
-async function fetchConversation(userId, signal) {
-  // returns: { success: true, conversations: [{ conv_id, user_1, user_2, ... }] }
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
-  const r = await fetch(`${BASE}/chat/read_conversation.php?user_id=${userId}`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
-async function fetchChat(convId, signal) {
-  // returns: { success: true, messages: [{ message_id, sender_id, content, created_at, ... }] }
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
-  const r = await fetch(`${BASE}/chat/read_chat.php?conv_id=${convId}`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    credentials: "include", // session-based auth
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
-async function createMessage({ senderId, receiverId, content, signal }) {
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
-  const r = await fetch(`${BASE}/chat/create_message.php`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json", // tells PHP we’re sending JSON
-      "Accept": "application/json"
-    },
-    credentials: "include",               // sends PHP session cookie if your server uses it
-    body: JSON.stringify({
-      sender_id: senderId,                // matches your PHP keys
-      receiver_id: receiverId,
-      content
-    }),
-    signal                                // lets you cancel if needed
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();                        // expect JSON back from PHP
-}
-
-// ---------- Page ----------
 export default function ChatPage() {
   const [myId, setMyId] = useState(null);
   const [conversations, setConversations] = useState([]); // [{ id, otherUserId }]
@@ -81,16 +22,28 @@ export default function ChatPage() {
         setMyId(me.user_id);
 
         const res = await fetchConversation(me.user_id, controller.signal);
-        const view = (res.conversations ?? []).map((c) => ({
-          id: c.conv_id,
-          otherUserId: c.user_1 === me.user_id ? c.user_2 : c.user_1,
-        }));
+        const view = (res.conversations ?? []).map((c) => {
+        // Handle both old (user_1/user_2) and new (user1_id/user2_id) schemas.
+        const u1 = c.user1_id ?? c.user_1;      // supports both key styles
+        const u2 = c.user2_id ?? c.user_2;
+
+        // Pick the "other" participant relative to me
+        const iAmUser1 = u1 === me.user_id;
+        const otherId  = iAmUser1 ? u2 : u1;
+
+        // Full names from new schema (fallbacks keep you safe during migration)
+        const n1 = c.user1_fname ?? c.user1_name ?? null; // e.g., "First Last"
+        const n2 = c.user2_fname ?? c.user2_name ?? null;
+        const otherName = iAmUser1 ? (n2 || `User ${otherId}`) : (n1 || `User ${otherId}`);
+
+        return {
+            id: c.conv_id,
+            otherUserId: otherId,
+            otherUserName: otherName,
+          };
+        });
         setConversations(view);
 
-        // Select first conversation by default (if any)
-        if (!activeId && view.length > 0) {
-          setActiveId(view[0].id);
-        }
       } catch (err) {
         if (err.name !== "AbortError") console.error(err);
       }
@@ -124,7 +77,8 @@ export default function ChatPage() {
         id: m.message_id ?? m.id,
         sender: m.sender_id === myId ? "me" : "them",
         text: m.content ?? m.text ?? "",
-        ts: Date.parse(m.created_at),
+        ts: m.created_at_ms ?? (m.created_at_s ? m.created_at_s * 1000 : Date.parse(m.created_at)),
+        // ^ prefer ms from server; fallback to parsing only if missing
       }));
       
       setMessagesByConv((prev) => ({ ...prev, [convId]: normalized }));
@@ -201,7 +155,7 @@ async function sendMessage() {
   // Header label: show the other user id for now
   const activeLabel = useMemo(() => {
     const c = conversations.find((x) => x.id === activeId);
-    return c ? `User ${c.otherUserId}` : "Select a chat";
+    return c ? c.otherUserName : "Select a chat";
   }, [conversations, activeId]);
 
   return (
@@ -227,7 +181,7 @@ async function sendMessage() {
                       }
                       aria-current={isActive ? "true" : undefined}
                     >
-                      <span className="truncate font-medium">User {c.otherUserId}</span>
+                      <span className="truncate font-medium">{c.otherUserName}</span>
                     </button>
                   </li>
                 );
@@ -253,7 +207,11 @@ async function sendMessage() {
               aria-live="polite"
               aria-relevant="additions"
             >
-              {messages.length === 0 ? (
+              {!activeId ? (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-sm text-gray-500">Select a chat to view messages.</p>
+                </div>
+              ) : messages.length === 0 ? (
                 <p className="text-center text-sm text-gray-500">No messages yet.</p>
               ) : (
                 messages.map((m) => (

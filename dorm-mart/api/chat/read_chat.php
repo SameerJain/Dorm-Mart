@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $conn = db();
+$conn->query("SET time_zone = '+00:00'");
 $conn->set_charset('utf8mb4');
 
 session_start(); // read the PHP session cookie to identify the caller
@@ -56,7 +57,11 @@ if (!$inConv) {
 
 // --- fetch all messages for this conversation (oldest first) ---
 $stmt = $conn->prepare(
-    'SELECT message_id, conv_id, sender_id, receiver_id, content, created_at, edited_at
+    'SELECT
+         message_id, conv_id, sender_id, receiver_id, content,
+         created_at, edited_at,
+         UNIX_TIMESTAMP(created_at) AS created_at_s,
+         UNIX_TIMESTAMP(edited_at)   AS edited_at_s
        FROM messages
       WHERE conv_id = ?
       ORDER BY message_id ASC'
@@ -66,11 +71,21 @@ $stmt->execute();
 $res = $stmt->get_result(); // requires mysqlnd; if unavailable, switch to bind_result loop
 $messages = [];
 while ($row = $res->fetch_assoc()) {
-    // optionally cast numeric strings to int for cleaner JSON
-    $row['message_id'] = (int)$row['message_id'];
-    $row['conv_id']    = (int)$row['conv_id'];
-    $row['sender_id']  = (int)$row['sender_id'];
-    $row['receiver_id']= (int)$row['receiver_id'];
+    $row['message_id']  = (int)$row['message_id'];
+    $row['conv_id']     = (int)$row['conv_id'];
+    $row['sender_id']   = (int)$row['sender_id'];
+    $row['receiver_id'] = (int)$row['receiver_id'];
+
+    // Add millisecond epoch (avoids timezone parsing in JS)
+    // created_at_s / edited_at_s are seconds from UNIX_TIMESTAMP()
+    $row['created_at_ms'] = isset($row['created_at_s']) ? ((int)$row['created_at_s'] * 1000) : null;
+    $row['edited_at_ms']  = isset($row['edited_at_s']) && $row['edited_at_s'] !== null
+                            ? ((int)$row['edited_at_s'] * 1000)
+                            : null;
+
+    // Optional: drop helper fields so payload stays clean
+    unset($row['created_at_s'], $row['edited_at_s']);
+
     $messages[] = $row;
 }
 $stmt->close();
