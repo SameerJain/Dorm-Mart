@@ -3,7 +3,7 @@
 function db(): mysqli
 {
     // dorm-mart/
-    $root = dirname(dirname(__DIR__));
+    $root = dirname(dirname(__DIR__, 1));
     // load whichever exists 
     $devEnvFile = "$root/.env.development";
     $localEnvFile = "$root/.env.local";
@@ -22,7 +22,7 @@ function db(): mysqli
     } elseif (file_exists($cattleEnvFile)) {
         $envFile = $cattleEnvFile;
     } else {
-        echo json_encode(["success" => false, "message" => "No .env file found"]);
+        echo json_encode(["success" => false, "message" => "db_connect: No .env file found"]);
         exit;
     }
 

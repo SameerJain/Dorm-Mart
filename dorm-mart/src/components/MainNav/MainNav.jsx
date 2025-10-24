@@ -1,13 +1,13 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import chatIcon from "../../assets/icons/icons8-chat-96.png";
-import userIcon from "../../assets/icons/icons8-user-icon-96.png";
-import notificationIcon from "../../assets/icons/icons8-notification-96.png";
-import settingIcon from "../../assets/icons/icons8-setting-96.png";
-import Icon from "./Icon";
-import searchIcon from "../../assets/icons/icons8-search-96.png";
-import filterIcon from "../../assets/icons/icons8-filter-96.png";
-import { logout } from "../../utils/auth";
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import chatIcon from '../../assets/icons/icons8-chat-96.png'
+import userIcon from '../../assets/icons/icons8-user-icon-96.png'
+import notificationIcon from '../../assets/icons/icons8-notification-96.png'
+import settingIcon from '../../assets/icons/icons8-setting-96.png'
+import Icon from './Icon'
+import searchIcon from '../../assets/icons/icons8-search-96.png';
+import filterIcon from '../../assets/icons/icons8-filter-96.png';
+import { logout } from '../../utils/handle_auth';
 
 function MainNav() {
     const [showDropdown, setShowDropdown] = useState(false);

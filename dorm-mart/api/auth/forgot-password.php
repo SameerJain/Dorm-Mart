@@ -122,6 +122,13 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
 </html>
 HTML;
 
+<<<<<<< HEAD
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body = $html;
+
+        $mail->send();
+=======
         // Plain-text version for faster delivery
         $text = <<<TEXT
 Dear {$firstName},
@@ -149,6 +156,7 @@ TEXT;
         $sendEndTime = microtime(true);
         $sendDuration = round(($sendEndTime - $sendStartTime) * 1000, 2);
         error_log("PHPMailer send() duration: {$sendDuration}ms");
+>>>>>>> dev
         return ['success' => true, 'message' => 'Email sent successfully'];
     } catch (Exception $e) {
         return ['success' => false, 'error' => 'Failed to send email: ' . $e->getMessage()];
@@ -228,8 +236,13 @@ try {
     $resetToken = bin2hex(random_bytes(32));
     $hashedToken = password_hash($resetToken, PASSWORD_BCRYPT);
 
+<<<<<<< HEAD
+    // Set expiration to 1 hour from now
+    $expiresAt = date('Y-m-d H:i:s', time() + 3600);
+=======
     // Set expiration to 1 hour from now using UTC timezone
     $expiresAt = (new DateTime('+1 hour', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+>>>>>>> dev
 
     // Store token, expiration, and update timestamp in one query
     $stmt = $conn->prepare('UPDATE user_accounts SET hash_auth = ?, reset_token_expires = ?, last_reset_request = NOW() WHERE user_id = ?');
@@ -258,9 +271,12 @@ try {
     $emailResult = sendPasswordResetEmail($user, $resetLink, $envLabel);
     $emailEndTime = microtime(true);
     $emailDuration = round(($emailEndTime - $emailStartTime) * 1000, 2); // milliseconds
+<<<<<<< HEAD
+=======
     
     // Debug: Log email timing
     error_log("Reset password email duration: {$emailDuration}ms");
+>>>>>>> dev
 
     if (!$emailResult['success']) {
         $conn->close();
