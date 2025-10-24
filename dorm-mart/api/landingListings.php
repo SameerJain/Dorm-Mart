@@ -2,10 +2,17 @@
 header('Content-Type: application/json');
 
 // Include security utilities
-require_once __DIR__ . '/auth/utility/security.php';
+require_once __DIR__ . '/security/security.php';
 setSecurityHeaders();
+setSecureCORS();
 
-require_once __DIR__ . '/db_connect.php';
+require_once __DIR__ . '/database/db_connect.php';
+
+// Handle CORS preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 try {
   $conn = db();
@@ -51,8 +58,8 @@ try {
   if (!count($rows)) {
     // Static sample fallback; frontend also has its own fallback.
     $rows = [
-      [ 'id' => 1001, 'title' => 'Sample Lamp', 'price' => 15, 'image' => null, 'seller' => 'Sample Seller', 'rating' => 4.9, 'location' => 'North Campus', 'created_at' => null, 'status' => 'AVAILABLE', 'tags' => 'Decor,Lighting' ],
-      [ 'id' => 1002, 'title' => 'Sample Textbook', 'price' => 55, 'image' => null, 'seller' => 'Book Vendor', 'rating' => 4.8, 'location' => 'Ellicott', 'created_at' => null, 'status' => 'JUST POSTED', 'tags' => 'Books,Education' ],
+      ['id' => 1001, 'title' => 'Sample Lamp', 'price' => 15, 'image' => null, 'seller' => 'Sample Seller', 'rating' => 4.9, 'location' => 'North Campus', 'created_at' => null, 'status' => 'AVAILABLE', 'tags' => 'Decor,Lighting'],
+      ['id' => 1002, 'title' => 'Sample Textbook', 'price' => 55, 'image' => null, 'seller' => 'Book Vendor', 'rating' => 4.8, 'location' => 'Ellicott', 'created_at' => null, 'status' => 'JUST POSTED', 'tags' => 'Books,Education'],
     ];
   }
 

@@ -1,10 +1,6 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-// import reportWebVitals from './reportWebVitals';
-// import ProductListingPage from './pages/ProductListing/ProductListingPage';
-
-// const BASENAME = "/CSE442/2025-Fall/cse-442j";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import "./index.css";
+import App from "./App";
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);

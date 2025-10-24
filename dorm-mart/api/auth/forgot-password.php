@@ -1,10 +1,9 @@
 <?php
+
 declare(strict_types=1);
 
 // Include security headers for XSS protection
-require __DIR__ . '/../security_headers.php';
-require_once __DIR__ . '/../input_sanitizer.php';
-require_once __DIR__ . '/utility/security.php';
+require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 
 header('Content-Type: application/json; charset=utf-8');
@@ -17,9 +16,9 @@ $PROJECT_ROOT = dirname(__DIR__, 2);
 if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
     require $PROJECT_ROOT . '/vendor/autoload.php';
 } else {
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/PHPMailer.php';
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/SMTP.php';
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/Exception.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/PHPMailer.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/SMTP.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/Exception.php';
 }
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -38,31 +37,47 @@ foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJEC
     }
 }
 
-// Reuse the same email sending function from create_account.php
-function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel = 'Local'): array {
+// Use the EXACT same email sending logic as create_account.php for maximum speed
+function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel = 'Local'): array
+{
     global $PROJECT_ROOT;
 
-    // Ensure PHP is using UTF-8 internally
+    // Load environment variables (EXACT same as create_account.php)
+    // Ensures Gmail credentials are properly loaded for email sending
+    foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
+        if (is_readable($envFile)) {
+            foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                $line = trim($line);
+                if ($line === '' || str_starts_with($line, '#')) continue;
+                [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
+                putenv(trim($k) . '=' . trim($v));
+            }
+            break;
+        }
+    }
+
+    // Ensure PHP is using UTF-8 internally (EXACT same as create_account.php)
     if (function_exists('mb_internal_encoding')) {
         @mb_internal_encoding('UTF-8');
     }
 
     $mail = new PHPMailer(true);
     try {
-        // SMTP Configuration (exact same as create_account.php)
+        // SMTP Configuration (EXACT same as create_account.php)
+        // Uses Gmail SMTP with SSL encryption for secure email delivery
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
-        $mail->SMTPAuth = true;
-        $mail->Username = getenv('GMAIL_USERNAME');
-        $mail->Password = getenv('GMAIL_PASSWORD');
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = getenv('GMAIL_USERNAME');
+        $mail->Password   = getenv('GMAIL_PASSWORD');
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port = 465;
+        $mail->Port       = 465;
 
-        // Tell PHPMailer we are sending UTF-8 and how to encode it
-        $mail->CharSet = 'UTF-8';
-        $mail->Encoding = 'base64';
+        // Tell PHPMailer we are sending UTF-8 and how to encode it (EXACT same as create_account.php)
+        $mail->CharSet   = 'UTF-8';
+        $mail->Encoding  = 'base64';
 
-        // From/To (same as create_account.php)
+        // From/To (EXACT same as create_account.php)
         $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($user['email'], trim($user['first_name'] . ' ' . $user['last_name']));
@@ -70,8 +85,8 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
         $firstName = $user['first_name'] ?: 'Student';
         $subject = 'Reset Your Password - Dorm Mart';
 
-        // Email template (similar to create_account.php but for password reset)
-                $html = <<<HTML
+        // Simplified email template (minimal like create_account.php)
+        $html = <<<HTML
 <!doctype html>
 <html>
   <head>
@@ -83,12 +98,10 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
     <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
       <p style="color:#eee;">Dear {$firstName},</p>
       <p style="color:#eee;">You requested to reset your password for your Dorm Mart account.</p>
-      <p style="color:#eee;">Click the link below to reset your password:</p>
       <p style="margin:20px 0;">
         <a href="{$resetLink}" style="background:#007bff;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">Reset Password</a>
       </p>
-      <p style="color:#eee;">This link will expire in 1 hour for security reasons. Environment: <strong>{$envLabel}</strong>.</p>
-      <p style="color:#eee;">If you didn't request this password reset, please ignore this email.</p>
+      <p style="color:#eee;">This link will expire in 1 hour for security reasons.</p>
       <p style="color:#eee;">Best regards,<br/>The Dorm Mart Team</p>
       <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
       <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
@@ -104,14 +117,13 @@ HTML;
 
         $mail->send();
         return ['success' => true, 'message' => 'Email sent successfully'];
-
     } catch (Exception $e) {
         return ['success' => false, 'error' => 'Failed to send email: ' . $e->getMessage()];
     }
 }
 
-require_once __DIR__ . '/../db_connect.php';
-require_once __DIR__ . '/utility/forgot_password_rate_limit.php';
+require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../utility/manage_forgot_password_rate_limiting.php';
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -144,51 +156,58 @@ if ($email === false) {
 
 try {
     $conn = db();
-    
-    // Check if email exists
-    $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email FROM user_accounts WHERE email = ?');
+
+    // Check if email exists and rate limiting in one query
+    $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email, last_reset_request FROM user_accounts WHERE email = ?');
     $stmt->bind_param('s', $email);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     if ($result->num_rows === 0) {
         $stmt->close();
         $conn->close();
         echo json_encode(['success' => false, 'error' => 'Email not found']);
         exit;
     }
-    
+
     $user = $result->fetch_assoc();
     $stmt->close();
-    
-    // Check rate limiting
-    $rateLimitCheck = check_forgot_password_rate_limit($email);
-    if (!$rateLimitCheck['allowed']) {
-        $conn->close();
-        echo json_encode(['success' => false, 'error' => $rateLimitCheck['error']]);
-        exit;
+
+    // Check rate limiting (optimized inline check)
+    if ($user['last_reset_request']) {
+        $stmt = $conn->prepare('SELECT TIMESTAMPDIFF(MINUTE, ?, NOW()) as minutes_passed');
+        $stmt->bind_param('s', $user['last_reset_request']);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $minutesPassed = (int)$row['minutes_passed'];
+        $stmt->close();
+
+        if ($minutesPassed < 10) { // 10 minute rate limit
+            $remainingMinutes = 10 - $minutesPassed;
+            $conn->close();
+            echo json_encode(['success' => false, 'error' => "Please wait {$remainingMinutes} minutes before requesting another reset link"]);
+            exit;
+        }
     }
-    
+
     // Generate reset token (same as login system)
     $resetToken = bin2hex(random_bytes(32));
-    $hashedToken = password_hash($resetToken, PASSWORD_DEFAULT);
-    
+    $hashedToken = password_hash($resetToken, PASSWORD_BCRYPT);
+
     // Set expiration to 1 hour from now
     $expiresAt = date('Y-m-d H:i:s', time() + 3600);
-    
-    // Store token and expiration in database (reuse hash_auth field)
-    $stmt = $conn->prepare('UPDATE user_accounts SET hash_auth = ?, reset_token_expires = ? WHERE user_id = ?');
+
+    // Store token, expiration, and update timestamp in one query
+    $stmt = $conn->prepare('UPDATE user_accounts SET hash_auth = ?, reset_token_expires = ?, last_reset_request = NOW() WHERE user_id = ?');
     $stmt->bind_param('ssi', $hashedToken, $expiresAt, $user['user_id']);
     $stmt->execute();
     $stmt->close();
-    
-    // Update rate limiting timestamp
-    update_reset_request_timestamp($email);
-    
+
     // Generate reset link with correct domain
     $baseUrl = get_reset_password_base_url();
-    $resetLink = $baseUrl . '/api/reset-password.php?token=' . $resetToken;
-    
+    $resetLink = $baseUrl . '/api/redirects/handle_password_reset_token_redirect.php?token=' . $resetToken;
+
     // Determine environment label for email copy
     $envLabel = 'Local';
     if (strpos($resetLink, 'aptitude.cse.buffalo.edu') !== false) {
@@ -202,23 +221,33 @@ try {
     }
 
     // Send email using the same function as create_account.php
+    $emailStartTime = microtime(true);
     $emailResult = sendPasswordResetEmail($user, $resetLink, $envLabel);
-    
+    $emailEndTime = microtime(true);
+    $emailDuration = round(($emailEndTime - $emailStartTime) * 1000, 2); // milliseconds
+
     if (!$emailResult['success']) {
         $conn->close();
         echo json_encode(['success' => false, 'error' => 'Failed to send email']);
         exit;
     }
-    
+
     $conn->close();
-    echo json_encode(['success' => true, 'message' => 'Check your email']);
-    
+    echo json_encode([
+        'success' => true,
+        'message' => 'Check your email',
+        'debug' => [
+            'email_duration_ms' => $emailDuration,
+            'environment' => $envLabel
+        ]
+    ]);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }
 
-function get_reset_password_base_url(): string {
+function get_reset_password_base_url(): string
+{
     // Prefer explicit origin/host detection
     $host   = $_SERVER['HTTP_HOST']   ?? '';
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -233,7 +262,7 @@ function get_reset_password_base_url(): string {
         return 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j';
     }
 
-    // Local development (works for both npm start and local Apache build)
+    // Local development - detect which method is being used
     $isLocal = (
         $host === 'localhost' ||
         $host === 'localhost:8080' ||
@@ -242,13 +271,26 @@ function get_reset_password_base_url(): string {
         strpos($origin, 'http://localhost:8080') === 0 ||
         strpos($origin, 'http://127.0.0.1') === 0
     );
+
     if ($isLocal) {
-        // Always point to the Apache-served PHP reset page
-        // (React dev server cannot serve PHP files)
-        return 'http://localhost/serve/dorm-mart';
+        // Check if we're running the development server (npm start) vs production build (Apache)
+        // Development server: React runs on :3000, PHP API on :8080
+        // Production build: Everything served through Apache on :80
+
+        // If the request is coming from React dev server (port 3000), use the PHP dev server
+        if (strpos($origin, 'http://localhost:3000') === 0 || strpos($origin, 'http://127.0.0.1:3000') === 0) {
+            return 'http://localhost:8080';
+        }
+
+        // If the request is coming from Apache (port 80), use the serve folder
+        if ($host === 'localhost' || strpos($host, '127.0.0.1') === 0) {
+            return 'http://localhost/serve/dorm-mart';
+        }
+
+        // Default to PHP dev server for other local cases
+        return 'http://localhost:8080';
     }
 
     // Fallback to test server
     return 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j';
 }
-?>
