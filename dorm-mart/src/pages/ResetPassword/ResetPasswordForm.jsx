@@ -86,16 +86,28 @@ function ResetPasswordForm() {
       return;
     }
 
-    // Check if this specific token was already used
-    const usedTokens = JSON.parse(localStorage.getItem('usedResetTokens') || '[]');
-    if (usedTokens.includes(token)) {
-      navigate('/login?error=reset_link_expired', { replace: true });
-      return;
-    }
+    // Validate token with backend
+    const validateToken = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/validate-reset-token.php?token=${encodeURIComponent(token)}`);
+        const data = await response.json();
+        
+        if (data.success && data.valid) {
+          setIsTokenValid(true);
+        } else {
+          setIsTokenValid(false);
+          setTokenError(data.message || 'Invalid or expired reset token');
+        }
+      } catch (error) {
+        console.error('Token validation error:', error);
+        setIsTokenValid(false);
+        setTokenError('Failed to validate reset token');
+      } finally {
+        setIsVerifyingToken(false);
+      }
+    };
 
-    // For this feature branch, just assume token is valid
-    setIsTokenValid(true);
-    setIsVerifyingToken(false);
+    validateToken();
   }, [token, navigate]);
 
   useEffect(() => {
@@ -152,13 +164,37 @@ function ResetPasswordForm() {
       return;
     }
 
-    // For this feature branch, just redirect to login after validation
-    // Mark this specific token as used
-    const usedTokens = JSON.parse(localStorage.getItem('usedResetTokens') || '[]');
-    usedTokens.push(token);
-    localStorage.setItem('usedResetTokens', JSON.stringify(usedTokens));
-    
-    navigate('/login', { replace: true });
+    // Set loading state
+    setIsLoading(true);
+
+    try {
+      // Call the reset password API
+      const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/reset-password.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: token,
+          newPassword: newPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Password reset successful - redirect to login
+        navigate('/login?message=password_reset_success', { replace: true });
+      } else {
+        // Handle API errors
+        setSubmitError(data.error || 'Failed to reset password');
+      }
+    } catch (error) {
+      console.error('Password reset error:', error);
+      setSubmitError('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

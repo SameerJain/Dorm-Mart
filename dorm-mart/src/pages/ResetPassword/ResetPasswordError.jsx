@@ -65,3 +65,4 @@ function ResetPasswordError({ errorType = "expired" }) {
 
 export default ResetPasswordError;
 
+
