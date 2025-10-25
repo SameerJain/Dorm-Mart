@@ -42,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
     $raw  = file_get_contents('php://input');
+    // XSS PROTECTION: Sanitizing JSON input to prevent XSS attacks
     $data = sanitize_json($raw) ?: [];
     $email = validateInput(strtolower(trim((string)($data['email'] ?? ''))), 50, '/^[^@\s]+@buffalo\.edu$/');
     $password = validateInput((string)($data['password'] ?? ''), 64);
@@ -83,6 +84,7 @@ try {
     }
 
     $conn = db();
+    // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
     $stmt = $conn->prepare('SELECT user_id, hash_pass, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ? LIMIT 1');
     $stmt->bind_param('s', $email);
     $stmt->execute();
