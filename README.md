@@ -25,3 +25,7 @@ For local setup and deployment details, see `README.project_setup.md`.
 
 ## Production Server
 Check out the latest production release on UB Wifi: https://cattle.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/#/login
+
+
+
+View the test server on UB Wifi: https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/#/login
