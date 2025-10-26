@@ -11,6 +11,7 @@ header('Content-Type: application/json; charset=utf-8');
 require __DIR__ . '/../database/db_connect.php';
 $mysqli = db(); // <-- this should return a mysqli connection
 
+
 $uid = filter_input(INPUT_GET, 'user_id', FILTER_VALIDATE_INT);
 if (!$uid) {
   http_response_code(400);
@@ -19,10 +20,18 @@ if (!$uid) {
 }
 
 $sql = "
-  SELECT conv_id, user_1, user_2, user_1_deleted, user_2_deleted, created_at
+  SELECT
+    conv_id,
+    user1_id,
+    user2_id,
+    user1_fname,
+    user2_fname,
+    user1_deleted,
+    user2_deleted,
+    created_at
   FROM conversations
-  WHERE (user_1 = ? AND user_1_deleted = 0)
-     OR (user_2 = ? AND user_2_deleted = 0)
+  WHERE (user1_id = ? AND user1_deleted = 0)
+     OR (user2_id = ? AND user2_deleted = 0)
   ORDER BY created_at DESC
 ";
 

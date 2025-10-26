@@ -2,10 +2,12 @@
 -- one row per one-to-one conversation
 CREATE TABLE conversations (
   conv_id         BIGINT PRIMARY KEY AUTO_INCREMENT,
-  user_1          BIGINT UNSIGNED NOT NULL,
-  user_2          BIGINT UNSIGNED NOT NULL,
-  user_1_deleted  BOOLEAN NOT NULL DEFAULT FALSE,
-  user_2_deleted  BOOLEAN NOT NULL DEFAULT FALSE,
+  user1_id          BIGINT UNSIGNED NOT NULL,
+  user2_id          BIGINT UNSIGNED NOT NULL,
+  user1_fname     VARCHAR(200) NOT NULL,
+  user2_fname     VARCHAR(200) NOT NULL,  
+  user1_deleted  BOOLEAN NOT NULL DEFAULT FALSE,
+  user2_deleted  BOOLEAN NOT NULL DEFAULT FALSE,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -30,6 +32,8 @@ CREATE TABLE messages (
   conv_id     BIGINT NOT NULL,
   sender_id   BIGINT UNSIGNED NOT NULL,
   receiver_id BIGINT UNSIGNED NOT NULL,
+  sender_fname     VARCHAR(200) NOT NULL,
+  receiver_fname     VARCHAR(200) NOT NULL,
   content     TEXT NOT NULL,
   created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   edited_at   TIMESTAMP NULL,

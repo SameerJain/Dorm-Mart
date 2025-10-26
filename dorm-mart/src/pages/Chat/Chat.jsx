@@ -1,66 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { fetchMe, fetchConversation, fetchChat, createMessage } from "./chat_util";
+import { useNavigate } from "react-router-dom";
 
-// ---------- API helpers ----------
-async function fetchMe(signal) {
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
-  // returns: { success: true, user_id: <number> }
-  const r = await fetch(`${BASE}/auth/me.php`, {
-    method: "GET",
-    credentials: "include",      // send PHP session cookie
-    headers: { Accept: "application/json" },
-    signal,                      // allow abort on unmount
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
-async function fetchConversation(userId, signal) {
-  // returns: { success: true, conversations: [{ conv_id, user_1, user_2, ... }] }
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
-  const r = await fetch(`${BASE}/chat/read_conversation.php?user_id=${userId}`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
-async function fetchChat(convId, signal) {
-  // returns: { success: true, messages: [{ message_id, sender_id, content, created_at, ... }] }
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
-  const r = await fetch(`${BASE}/chat/read_chat.php?conv_id=${convId}`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    credentials: "include", // session-based auth
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
-async function createMessage({ senderId, receiverId, content, signal }) {
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
-  const r = await fetch(`${BASE}/chat/create_message.php`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json", // tells PHP we’re sending JSON
-      "Accept": "application/json"
-    },
-    credentials: "include",               // sends PHP session cookie if your server uses it
-    body: JSON.stringify({
-      sender_id: senderId,                // matches your PHP keys
-      receiver_id: receiverId,
-      content
-    }),
-    signal                                // lets you cancel if needed
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();                        // expect JSON back from PHP
-}
-
-// ---------- Page ----------
 export default function ChatPage() {
+  const navigate = useNavigate();
+  const MAX_LEN = 500; // hard cap; used by textarea and counter
   const [myId, setMyId] = useState(null);
   const [conversations, setConversations] = useState([]); // [{ id, otherUserId }]
   const [activeId, setActiveId] = useState(null);
@@ -71,44 +15,60 @@ export default function ChatPage() {
 
   const [draft, setDraft] = useState("");
 
+    // below other useState hooks
+  const [convError, setConvError] = useState(false);           // read_conversation failed
+  const [chatErrorByConv, setChatErrorByConv] = useState({});  // per-conv read_chat failure map
+
+
   // Load me + conversations on mount
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadConversations() {
       try {
+        setConvError(false); // clear previous error before fetching
         const me = await fetchMe(controller.signal);
         setMyId(me.user_id);
 
         const res = await fetchConversation(me.user_id, controller.signal);
-        const view = (res.conversations ?? []).map((c) => ({
-          id: c.conv_id,
-          otherUserId: c.user_1 === me.user_id ? c.user_2 : c.user_1,
-        }));
+        const view = (res.conversations ?? []).map((c) => {
+          const u1 = c.user1_id ?? c.user_1;
+          const u2 = c.user2_id ?? c.user_2;
+          const iAmUser1 = u1 === me.user_id;
+          const otherId  = iAmUser1 ? u2 : u1;
+          const n1 = c.user1_fname ?? c.user1_name ?? null;
+          const n2 = c.user2_fname ?? c.user2_name ?? null;
+          const otherName = iAmUser1 ? (n2 || `User ${otherId}`) : (n1 || `User ${otherId}`);
+          return { id: c.conv_id, otherUserId: otherId, otherUserName: otherName };
+        });
         setConversations(view);
-
-        // Select first conversation by default (if any)
-        if (!activeId && view.length > 0) {
-          setActiveId(view[0].id);
-        }
       } catch (err) {
-        if (err.name !== "AbortError") console.error(err);
+        if (err.name !== "AbortError") {
+          if (err.status === 401 || String(err.message).includes("HTTP 401")) {
+            // Not logged in → send to login page (hash router friendly)
+            navigate("/login", { replace: true }); // replaces history so back won’t loop
+            return;
+          }
+          console.error(err);
+          setConvError(true); // flag sidebar error state
+        }
       }
     }
 
     loadConversations();
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once
+  }, []);
+
 
   // Load messages when a conversation is selected (on click)
   async function selectConversation(convId) {
     setActiveId(convId);
 
-    // If cached, don't re-fetch
+    // clear any previous error for this convo
+    setChatErrorByConv(prev => ({ ...prev, [convId]: false }));
+
     if (messagesByConv[convId]) return;
 
-    // Cancel any in-flight fetch to avoid race conditions
     if (currentFetch.current) currentFetch.current.abort();
 
     const controller = new AbortController();
@@ -117,19 +77,19 @@ export default function ChatPage() {
     try {
       const res = await fetchChat(convId, controller.signal);
       const raw = res.messages ?? res.data ?? [];
-      console.log(raw);
-
-      // Normalize to the UI shape expected by the message renderer
       const normalized = raw.map((m) => ({
         id: m.message_id ?? m.id,
         sender: m.sender_id === myId ? "me" : "them",
         text: m.content ?? m.text ?? "",
-        ts: Date.parse(m.created_at),
+        ts: m.created_at_ms ?? (m.created_at_s ? m.created_at_s * 1000 : Date.parse(m.created_at)),
       }));
-      
       setMessagesByConv((prev) => ({ ...prev, [convId]: normalized }));
     } catch (err) {
-      if (err.name !== "AbortError") console.error(err);
+      if (err.name !== "AbortError") {
+        console.error(err);
+        // mark this conversation as failed to load messages
+        setChatErrorByConv(prev => ({ ...prev, [convId]: true }));
+      }
     }
   }
 
@@ -201,7 +161,7 @@ async function sendMessage() {
   // Header label: show the other user id for now
   const activeLabel = useMemo(() => {
     const c = conversations.find((x) => x.id === activeId);
-    return c ? `User ${c.otherUserId}` : "Select a chat";
+    return c ? c.otherUserName : "Select a chat";
   }, [conversations, activeId]);
 
   return (
@@ -213,26 +173,33 @@ async function sendMessage() {
             <div className="border-b border-gray-200 p-4">
               <h2 className="text-lg font-semibold">Chats</h2>
             </div>
-
-            <ul role="list" className="max-h-[70vh] overflow-y-auto p-2" aria-label="Conversation list">
-              {conversations.map((c) => {
-                const isActive = c.id === activeId;
-                return (
-                  <li key={c.id}>
-                    <button
-                      onClick={() => selectConversation(c.id)}
-                      className={
-                        "flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition " +
-                        (isActive ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-100")
-                      }
-                      aria-current={isActive ? "true" : undefined}
-                    >
-                      <span className="truncate font-medium">User {c.otherUserId}</span>
-                    </button>
+              <ul role="list" className="max-h-[70vh] overflow-y-auto p-2" aria-label="Conversation list">
+                {convError ? (
+                  <li>
+                    <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                      Something went wrong, please try again later
+                    </div>
                   </li>
-                );
-              })}
-            </ul>
+                ) : (
+                  conversations.map((c) => {
+                    const isActive = c.id === activeId;
+                    return (
+                      <li key={c.id}>
+                        <button
+                          onClick={() => selectConversation(c.id)}
+                          className={
+                            "flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition " +
+                            (isActive ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-100")
+                          }
+                          aria-current={isActive ? "true" : undefined}
+                        >
+                          <span className="truncate font-medium">{c.otherUserName}</span>
+                        </button>
+                      </li>
+                    );
+                  })
+                )}
+              </ul>
           </aside>
 
           {/* Main chat pane */}
@@ -253,7 +220,15 @@ async function sendMessage() {
               aria-live="polite"
               aria-relevant="additions"
             >
-              {messages.length === 0 ? (
+              {!activeId ? (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-sm text-gray-500">Select a chat to view messages.</p>
+                </div>
+              ) : chatErrorByConv[activeId] ? (
+                <p className="text-center text-sm text-red-600">
+                  Something went wrong, please try again later
+                </p>
+              ) : messages.length === 0 ? (
                 <p className="text-center text-sm text-gray-500">No messages yet.</p>
               ) : (
                 messages.map((m) => (
@@ -277,15 +252,28 @@ async function sendMessage() {
             {/* Composer */}
             <div className="border-t border-gray-200 p-4">
               <div className="flex items-end gap-2">
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Type a message…"
-                  rows={2}
-                  className="min-h-[44px] w-full resize-y rounded-2xl border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                  aria-label="Message input"
-                />
+                <div className="relative w-full">
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a message…"
+                    rows={2}
+                    maxLength={MAX_LEN} // prevents typing past 500 on the client
+                    aria-describedby="message-char-remaining" // links to the counter for a11y
+                    className="min-h-[44px] w-full resize-y rounded-2xl border border-gray-300 px-3 py-2 pr-12 pb-6 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                    //               ^^^^ extra right/bottom padding so the counter doesn't overlap text
+                    aria-label="Message input"
+                  />
+                  <span
+                    id="message-char-remaining"
+                    className="pointer-events-none absolute bottom-2 right-3 text-xs text-gray-500"
+                  >
+                    {MAX_LEN - draft.length}
+                  </span>
+                  {/* ^ absolute positions the live countdown inside the textarea corner */}
+                </div>
+
                 <button
                   onClick={sendMessage}
                   className="h-[44px] shrink-0 rounded-2xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -296,6 +284,7 @@ async function sendMessage() {
               </div>
               <p className="mt-2 text-xs text-gray-500">Press Enter to send • Shift+Enter for a new line</p>
             </div>
+
           </section>
         </div>
       </div>
