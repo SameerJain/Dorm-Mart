@@ -13,11 +13,7 @@ $conn->query("
 ) ENGINE=InnoDB");
 
 // Collect all .sql files from ../data and sort them naturally (e.g., 1,2,10)
-<<<<<<< HEAD
 $dir = dirname(__DIR__,2) . '/data';                              // Path to the data folder
-=======
-$dir = dirname(__DIR__, 1) . '/data';                              // Path to the data folder
->>>>>>> 13e3245 (added "1" argument after dirname)
 $files = glob($dir . '/*.sql');                                 // List all .sql files
 natsort($files);                                                // Sort numerically by names like 001, 010, etc.
 
