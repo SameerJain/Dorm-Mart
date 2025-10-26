@@ -11,6 +11,7 @@ header('Content-Type: application/json; charset=utf-8');
 require __DIR__ . '/../database/db_connect.php';
 $mysqli = db(); // <-- this should return a mysqli connection
 
+
 $uid = filter_input(INPUT_GET, 'user_id', FILTER_VALIDATE_INT);
 if (!$uid) {
   http_response_code(400);

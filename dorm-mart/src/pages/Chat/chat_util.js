@@ -1,14 +1,17 @@
 // ---------- API helpers ----------
 export async function fetchMe(signal) {
   const BASE = process.env.REACT_APP_API_BASE || "/api";
-  // returns: { success: true, user_id: <number> }
   const r = await fetch(`${BASE}/auth/me.php`, {
     method: "GET",
-    credentials: "include",      // send PHP session cookie
+    credentials: "include",
     headers: { Accept: "application/json" },
-    signal,                      // allow abort on unmount
+    signal,
   });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  if (!r.ok) {
+    const err = new Error(`HTTP ${r.status}`);
+    err.status = r.status;           // <-- add status so callers can branch on 401
+    throw err;
+  }
   return r.json();
 }
 

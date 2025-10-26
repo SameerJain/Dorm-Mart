@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { fetchMe, fetchConversation, fetchChat, createMessage } from "./chat_util";
+import { useNavigate } from "react-router-dom";
 
 export default function ChatPage() {
+  const navigate = useNavigate();
   const MAX_LEN = 500; // hard cap; used by textarea and counter
   const [myId, setMyId] = useState(null);
   const [conversations, setConversations] = useState([]); // [{ id, otherUserId }]
@@ -13,56 +15,60 @@ export default function ChatPage() {
 
   const [draft, setDraft] = useState("");
 
+    // below other useState hooks
+  const [convError, setConvError] = useState(false);           // read_conversation failed
+  const [chatErrorByConv, setChatErrorByConv] = useState({});  // per-conv read_chat failure map
+
+
   // Load me + conversations on mount
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadConversations() {
       try {
+        setConvError(false); // clear previous error before fetching
         const me = await fetchMe(controller.signal);
         setMyId(me.user_id);
 
         const res = await fetchConversation(me.user_id, controller.signal);
         const view = (res.conversations ?? []).map((c) => {
-        // Handle both old (user_1/user_2) and new (user1_id/user2_id) schemas.
-        const u1 = c.user1_id ?? c.user_1;      // supports both key styles
-        const u2 = c.user2_id ?? c.user_2;
-
-        // Pick the "other" participant relative to me
-        const iAmUser1 = u1 === me.user_id;
-        const otherId  = iAmUser1 ? u2 : u1;
-
-        // Full names from new schema (fallbacks keep you safe during migration)
-        const n1 = c.user1_fname ?? c.user1_name ?? null; // e.g., "First Last"
-        const n2 = c.user2_fname ?? c.user2_name ?? null;
-        const otherName = iAmUser1 ? (n2 || `User ${otherId}`) : (n1 || `User ${otherId}`);
-
-        return {
-            id: c.conv_id,
-            otherUserId: otherId,
-            otherUserName: otherName,
-          };
+          const u1 = c.user1_id ?? c.user_1;
+          const u2 = c.user2_id ?? c.user_2;
+          const iAmUser1 = u1 === me.user_id;
+          const otherId  = iAmUser1 ? u2 : u1;
+          const n1 = c.user1_fname ?? c.user1_name ?? null;
+          const n2 = c.user2_fname ?? c.user2_name ?? null;
+          const otherName = iAmUser1 ? (n2 || `User ${otherId}`) : (n1 || `User ${otherId}`);
+          return { id: c.conv_id, otherUserId: otherId, otherUserName: otherName };
         });
         setConversations(view);
-
       } catch (err) {
-        if (err.name !== "AbortError") console.error(err);
+        if (err.name !== "AbortError") {
+          if (err.status === 401 || String(err.message).includes("HTTP 401")) {
+            // Not logged in → send to login page (hash router friendly)
+            navigate("/login", { replace: true }); // replaces history so back won’t loop
+            return;
+          }
+          console.error(err);
+          setConvError(true); // flag sidebar error state
+        }
       }
     }
 
     loadConversations();
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once
+  }, []);
+
 
   // Load messages when a conversation is selected (on click)
   async function selectConversation(convId) {
     setActiveId(convId);
 
-    // If cached, don't re-fetch
+    // clear any previous error for this convo
+    setChatErrorByConv(prev => ({ ...prev, [convId]: false }));
+
     if (messagesByConv[convId]) return;
 
-    // Cancel any in-flight fetch to avoid race conditions
     if (currentFetch.current) currentFetch.current.abort();
 
     const controller = new AbortController();
@@ -71,20 +77,19 @@ export default function ChatPage() {
     try {
       const res = await fetchChat(convId, controller.signal);
       const raw = res.messages ?? res.data ?? [];
-      console.log(raw);
-
-      // Normalize to the UI shape expected by the message renderer
       const normalized = raw.map((m) => ({
         id: m.message_id ?? m.id,
         sender: m.sender_id === myId ? "me" : "them",
         text: m.content ?? m.text ?? "",
         ts: m.created_at_ms ?? (m.created_at_s ? m.created_at_s * 1000 : Date.parse(m.created_at)),
-        // ^ prefer ms from server; fallback to parsing only if missing
       }));
-      
       setMessagesByConv((prev) => ({ ...prev, [convId]: normalized }));
     } catch (err) {
-      if (err.name !== "AbortError") console.error(err);
+      if (err.name !== "AbortError") {
+        console.error(err);
+        // mark this conversation as failed to load messages
+        setChatErrorByConv(prev => ({ ...prev, [convId]: true }));
+      }
     }
   }
 
@@ -168,26 +173,33 @@ async function sendMessage() {
             <div className="border-b border-gray-200 p-4">
               <h2 className="text-lg font-semibold">Chats</h2>
             </div>
-
-            <ul role="list" className="max-h-[70vh] overflow-y-auto p-2" aria-label="Conversation list">
-              {conversations.map((c) => {
-                const isActive = c.id === activeId;
-                return (
-                  <li key={c.id}>
-                    <button
-                      onClick={() => selectConversation(c.id)}
-                      className={
-                        "flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition " +
-                        (isActive ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-100")
-                      }
-                      aria-current={isActive ? "true" : undefined}
-                    >
-                      <span className="truncate font-medium">{c.otherUserName}</span>
-                    </button>
+              <ul role="list" className="max-h-[70vh] overflow-y-auto p-2" aria-label="Conversation list">
+                {convError ? (
+                  <li>
+                    <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                      Something went wrong, please try again later
+                    </div>
                   </li>
-                );
-              })}
-            </ul>
+                ) : (
+                  conversations.map((c) => {
+                    const isActive = c.id === activeId;
+                    return (
+                      <li key={c.id}>
+                        <button
+                          onClick={() => selectConversation(c.id)}
+                          className={
+                            "flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition " +
+                            (isActive ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-100")
+                          }
+                          aria-current={isActive ? "true" : undefined}
+                        >
+                          <span className="truncate font-medium">{c.otherUserName}</span>
+                        </button>
+                      </li>
+                    );
+                  })
+                )}
+              </ul>
           </aside>
 
           {/* Main chat pane */}
@@ -212,6 +224,10 @@ async function sendMessage() {
                 <div className="flex h-full items-center justify-center">
                   <p className="text-sm text-gray-500">Select a chat to view messages.</p>
                 </div>
+              ) : chatErrorByConv[activeId] ? (
+                <p className="text-center text-sm text-red-600">
+                  Something went wrong, please try again later
+                </p>
               ) : messages.length === 0 ? (
                 <p className="text-center text-sm text-gray-500">No messages yet.</p>
               ) : (

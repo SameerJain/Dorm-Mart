@@ -15,6 +15,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+session_start(); // read the PHP session cookie to identify the caller
+
+// --- auth: require a logged-in user ---
+$userId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+if ($userId <= 0) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
+    exit;
+}
+
 $conn = db();
 $conn->set_charset('utf8mb4');
 
