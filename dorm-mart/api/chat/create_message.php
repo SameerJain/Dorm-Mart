@@ -5,15 +5,23 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
-// Ensure CORS headers are present for React dev server and local PHP server
 setSecureCORS();
 
-// __DIR__ points to api/
 require __DIR__ . '/../database/db_connect.php';
 
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
+    exit;
+}
+
+session_start(); // read the PHP session cookie to identify the caller
+
+// --- auth: require a logged-in user ---
+$userId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+if ($userId <= 0) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
     exit;
 }
 
@@ -23,11 +31,23 @@ $conn->set_charset('utf8mb4');
 $body = json_decode(file_get_contents('php://input'), true);
 $sender   = isset($body['sender_id'])   ? trim((string)$body['sender_id'])   : '';
 $receiver = isset($body['receiver_id']) ? trim((string)$body['receiver_id']) : '';
-$content     = isset($body['content'])        ? trim((string)$body['content'])        : '';
+$content  = isset($body['content'])     ? trim((string)$body['content'])     : '';
 
 if ($sender === '' || $receiver === '' || $content === '') {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'missing_fields']);
+    exit;
+}
+
+$len = function_exists('mb_strlen') ? mb_strlen($content, 'UTF-8') : strlen($content); // mb_strlen counts Unicode chars
+if ($len > 500) {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'error'   => 'content_too_long',
+        'max'     => 500,
+        'length'  => $len
+    ]);
     exit;
 }
 
@@ -41,11 +61,9 @@ $convId = null;
 $msgId  = null;
 
 try {
-    // Start atomic sequence (all or nothing)
     $conn->begin_transaction();
 
-    // Acquire an advisory lock to avoid duplicate conversation rows under concurrency.
-    // Comment: GET_LOCK returns 1 (acquired), 0 (timeout), NULL (error).
+    // Acquire advisory lock to avoid duplicate conversation rows under concurrency.
     $stmt = $conn->prepare('SELECT GET_LOCK(?, 5) AS got_lock');
     $stmt->bind_param('s', $lockKey);
     $stmt->execute();
@@ -55,8 +73,37 @@ try {
         throw new RuntimeException('Busy. Try again.');
     }
 
-    // Find existing conversation
-    $stmt = $conn->prepare('SELECT conv_id FROM conversations WHERE user_1 = ? AND user_2 = ? LIMIT 1');
+    // -------- Look up sender/receiver full names (used for messages AND conversation create) --------
+    $stmt = $conn->prepare(
+        'SELECT user_id, first_name, last_name
+           FROM user_accounts
+          WHERE user_id IN (?, ?)'
+    );
+    $stmt->bind_param('ii', $senderId, $receiverId);   // 'ii' = two integers
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    // Fallbacks if anything is missing
+    $senderName   = 'User ' . $senderId;
+    $receiverName = 'User ' . $receiverId;
+
+    while ($row = $result->fetch_assoc()) {
+        // Build "First Last"; trim handles missing last names cleanly
+        $full = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+        if ((int)$row['user_id'] === $senderId) {
+            $senderName = $full !== '' ? $full : $senderName;
+        } elseif ((int)$row['user_id'] === $receiverId) {
+            $receiverName = $full !== '' ? $full : $receiverName;
+        }
+    }
+    $stmt->close();
+    // Map names to the ordered pair (u1/u2) required by conversations table
+    $u1Name = ($u1 === $senderId) ? $senderName  : $receiverName;
+    $u2Name = ($u2 === $senderId) ? $senderName  : $receiverName;
+    // -------- end name lookup --------
+
+    // Find existing conversation (NEW SCHEMA: user1_id/user2_id)
+    $stmt = $conn->prepare('SELECT conv_id FROM conversations WHERE user1_id = ? AND user2_id = ? LIMIT 1');
     $stmt->bind_param('ii', $u1, $u2);
     $stmt->execute();
     $stmt->bind_result($convIdFound);
@@ -65,17 +112,20 @@ try {
     }
     $stmt->close();
 
-    // If not found, create it
+    // If not found, create it (must supply NOT NULL name columns)
     if ($convId === null) {
-        $stmt = $conn->prepare('INSERT INTO conversations (user_1, user_2) VALUES (?, ?)');
-        $stmt->bind_param('ii', $u1, $u2);
+        $stmt = $conn->prepare(
+            'INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname)
+             VALUES (?, ?, ?, ?)'
+        );
+        // 'iiss' => two integers, two strings
+        $stmt->bind_param('iiss', $u1, $u2, $u1Name, $u2Name);
         $stmt->execute();
         $convId = $conn->insert_id;
         $stmt->close();
     }
 
     // Ensure both participants exist
-    // Comment: INSERT IGNORE is safe here because PK (conv_id, user_id) prevents duplicates.
     $stmt = $conn->prepare(
         'INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
          VALUES (?, ?, 0, 0), (?, ?, 0, 0)'
@@ -84,17 +134,19 @@ try {
     $stmt->execute();
     $stmt->close();
 
-    // Insert the message
+    // Insert the message WITH names (NEW SCHEMA: sender_fname/receiver_fname)
     $stmt = $conn->prepare(
-        'INSERT INTO messages (conv_id, sender_id, receiver_id, content) VALUES (?, ?, ?, ?)'
+        'INSERT INTO messages
+           (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content)
+         VALUES (?, ?, ?, ?, ?, ?)'
     );
-    $stmt->bind_param('iiis', $convId, $senderId, $receiverId, $content);
+    // 'iiisss' => 3 ints, 3 strings
+    $stmt->bind_param('iiisss', $convId, $senderId, $receiverId, $senderName, $receiverName, $content);
     $stmt->execute();
     $msgId = $conn->insert_id;
     $stmt->close();
 
     // Update receiver's unread counters
-    // Comment: Only set first_unread_msg_id if it was NULL/0; always increment unread_count.
     $stmt = $conn->prepare(
         'UPDATE conversation_participants
            SET unread_count = unread_count + 1,
@@ -122,11 +174,9 @@ try {
         'message_id'  => $msgId
     ]);
 } catch (Throwable $e) {
-    // Try to roll back if we can
-    if ($conn->errno === 0) { // not perfect, but prevents rollback errors after disconnects
+    if ($conn->errno === 0) {
         $conn->rollback();
     }
-    // Best-effort: release lock if held
     if ($lockKey) {
         $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
         if ($stmt) {
