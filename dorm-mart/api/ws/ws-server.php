@@ -4,13 +4,14 @@
 declare(strict_types=1);
 
 // Autoload vendor libs (Ratchet, PSR-7)
-require dirname(__DIR__, 2) . '/vendor/autoload.php';
-require_once __DIR__ . '/DemoServer.php';
+$PROJECT_ROOT = dirname(__DIR__, 2);
+if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
+    require $PROJECT_ROOT . '/vendor/autoload.php';
+}
 require_once __DIR__ . '/ChatServer.php';
 use Ratchet\Http\HttpServer;
 use Ratchet\Server\IoServer;
 use Ratchet\WebSocket\WsServer;
-use Ratchet\Session\SessionProvider;
 
 // If your CLI php.ini differs from Apache’s and sessions end up elsewhere,
 // uncomment and point to the same path Apache uses.

@@ -1,9 +1,6 @@
 /* eslint-env browser */
 let ws = null;
-const http = process.env.REACT_HTTP;
-const proto = http === "https:" ? "wss" : "ws"; // ws vs wss
-const url = process.env.WS_URL || "localhost:8081"
-const WS_URL = `${proto}://${url}`;                  // host must match cookie
+const WS_URL = "ws://localhost:8080"
 
 export function ensureSocket() {
   // Reuse if it's already open/connecting; only recreate if it was CLOSED
