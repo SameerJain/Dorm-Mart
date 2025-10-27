@@ -10,13 +10,13 @@ require_once __DIR__ . '/auth/auth_handle.php';
 require_once __DIR__ . '/database/db_connect.php';
 
 // Include PHPMailer for promo email functionality
-$PROJECT_ROOT = dirname(__DIR__, 2);
+$PROJECT_ROOT = dirname(__DIR__, 1);
 if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
     require $PROJECT_ROOT . '/vendor/autoload.php';
 } else {
-    require $PROJECT_ROOT . '/vendor/PHPMailer/src/PHPMailer.php';
-    require $PROJECT_ROOT . '/vendor/PHPMailer/src/SMTP.php';
-    require $PROJECT_ROOT . '/vendor/PHPMailer/src/Exception.php';
+    require $PROJECT_ROOT . '/vendor/phpmailer/phpmailer/src/PHPMailer.php';
+    require $PROJECT_ROOT . '/vendor/phpmailer/phpmailer/src/SMTP.php';
+    require $PROJECT_ROOT . '/vendor/phpmailer/phpmailer/src/Exception.php';
 }
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -37,46 +37,36 @@ $conn = db();
 // Helpers
 function getPrefs(mysqli $conn, int $userId)
 {
-  // Get theme from user_accounts table
-  $stmt = $conn->prepare('SELECT theme FROM user_accounts WHERE user_id = ?');
+  // Get all preferences from user_accounts table
+  $stmt = $conn->prepare('SELECT theme, promotional FROM user_accounts WHERE user_id = ?');
   $stmt->bind_param('i', $userId);
   $stmt->execute();
   $res = $stmt->get_result();
   $userRow = $res->fetch_assoc();
   $stmt->close();
   
+  
   $theme = 'light'; // default
-  if ($userRow && isset($userRow['theme'])) {
+  if ($userRow && array_key_exists('theme', $userRow) && $userRow['theme'] !== null) {
     $theme = $userRow['theme'] ? 'dark' : 'light';
   }
   
-  // Get other preferences from user_preferences table
-  $stmt = $conn->prepare('SELECT promo_emails, reveal_contact, interests FROM user_preferences WHERE user_id = ?');
-  $stmt->bind_param('i', $userId);
-  $stmt->execute();
-  $res = $stmt->get_result();
-  $row = $res->fetch_assoc();
-  $stmt->close();
-  
-  if (!$row) {
-    return [
-      'promoEmails' => false,
-      'revealContact' => false,
-      'interests' => [],
-      'theme' => $theme,
-    ];
+  $promoEmails = false; // default
+  if ($userRow && isset($userRow['promotional'])) {
+    $promoEmails = (bool)$userRow['promotional'];
   }
+  
   return [
-    'promoEmails' => (bool)$row['promo_emails'],
-    'revealContact' => (bool)$row['reveal_contact'],
-    'interests' => $row['interests'] ? json_decode($row['interests'], true) : [],
+    'promoEmails' => $promoEmails,
+    'revealContact' => false, // This doesn't exist in user_accounts, so always false
+    'interests' => [], // This doesn't exist in user_accounts, so always empty
     'theme' => $theme,
   ];
 }
 
 function sendPromoWelcomeEmail(array $user): array
 {
-    global $PROJECT_ROOT;
+    $PROJECT_ROOT = dirname(__DIR__, 1);
 
     // Load environment variables
     foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
@@ -130,7 +120,7 @@ function sendPromoWelcomeEmail(array $user): array
         $first   = $user['firstName'] ?: 'Student';
         $subject = 'Welcome to Dorm Mart Promotional Updates';
 
-        // HTML email content
+        // HTML email content - Subtle improvements to dark theme
         $html = <<<HTML
 <!doctype html>
 <html>
@@ -140,21 +130,40 @@ function sendPromoWelcomeEmail(array $user): array
     <title>{$subject}</title>
   </head>
   <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
-    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
-      <p style="color:#eee;">Dear {$first},</p>
-      <p style="color:#eee;">Thank you for opting into promotional updates from <strong>Dorm Mart</strong>!</p>
-      <p style="color:#eee;">You'll now receive exciting updates about:</p>
-      <ul style="color:#eee;">
-        <li>New product listings in your area</li>
-        <li>Special deals and discounts</li>
-        <li>Community events and announcements</li>
-        <li>Tips for buying and selling on campus</li>
-      </ul>
-      <p style="color:#eee;">We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.</p>
-      <p style="color:#eee;">Happy trading,<br/>The Dorm Mart Team</p>
-      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
-      <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
-      <a href="mailto:dormmartsupport@gmail.com" style="color:#9db7ff;">dormmartsupport@gmail.com</a></p>
+    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:12px;padding:24px;border:1px solid #333;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#2563EB;margin:0;font-size:24px;font-weight:bold;">📧 Promotional Updates</h1>
+        <div style="width:60px;height:3px;background:linear-gradient(90deg, #2563EB, #1d4ed8);margin:8px auto;border-radius:2px;"></div>
+      </div>
+      
+      <p style="color:#eee;font-size:16px;margin:0 0 16px 0;">Dear {$first},</p>
+      
+      <p style="color:#eee;margin:0 0 20px 0;">Thank you for opting into promotional updates from <strong style="color:#2563EB;">Dorm Mart</strong>!</p>
+      
+      <div style="background:#2a2a2a;border-radius:8px;padding:20px;margin:20px 0;border-left:4px solid #2563EB;">
+        <p style="color:#eee;margin:0 0 12px 0;font-weight:bold;">You'll now receive updates about:</p>
+        <ul style="color:#ddd;margin:0;padding-left:20px;">
+          <li style="margin:6px 0;">Emails about your notifcations tab</li>
+          <li style="margin:6px 0;">New website news and updates</li>
+        </ul>
+      </div>
+      
+      <p style="color:#eee;margin:20px 0;">This is a one-time email for the first time you ever sign up for promotional updates with an account. We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.</p>
+      
+      <div style="text-align:center;margin:24px 0;">
+        <div style="display:inline-block;background:#333;padding:12px 24px;border-radius:6px;border:1px solid #2563EB;">
+          <span style="color:#2563EB;font-weight:bold;">✓ Successfully Subscribed</span>
+        </div>
+      </div>
+      
+      <p style="color:#eee;margin:20px 0 0 0;">
+        Happy trading,<br/>
+        <strong style="color:#2563EB;">The Dorm Mart Team</strong>
+      </p>
+      
+      <hr style="border:none;border-top:1px solid #333;margin:20px 0;">
+      <p style="font-size:12px;color:#aaa;margin:0;">This is an automated message; do not reply. For support:
+      <a href="mailto:dormmartsupport@gmail.com" style="color:#2563EB;">dormmartsupport@gmail.com</a></p>
     </div>
   </body>
 </html>
@@ -162,17 +171,20 @@ HTML;
 
         // Plain-text version
         $text = <<<TEXT
+Promotional Updates - Dorm Mart
+
 Dear {$first},
 
 Thank you for opting into promotional updates from Dorm Mart!
 
-You'll now receive exciting updates about:
-- New product listings in your area
-- Special deals and discounts
-- Community events and announcements
-- Tips for buying and selling on campus
+You'll now receive updates about:
+- Important updates and announcements
+- New features and improvements  
+- Campus marketplace tips
 
 We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.
+
+✓ Successfully Subscribed
 
 Happy trading,
 The Dorm Mart Team
@@ -221,28 +233,19 @@ try {
       $userRow = $res->fetch_assoc();
       $stmt->close();
       
+      // Debug logging
       if ($userRow && !$userRow['received_intro_promo_email']) {
         $shouldSendEmail = true;
       }
     }
 
     // Update user_accounts table with theme and email preferences
-    $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, prefers_emails = ?, received_intro_promo_email = CASE WHEN ? = 1 AND received_intro_promo_email = 0 THEN 1 ELSE received_intro_promo_email END WHERE user_id = ?');
+    $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, promotional = ?, received_intro_promo_email = CASE WHEN ? = 1 AND received_intro_promo_email = 0 THEN 1 ELSE received_intro_promo_email END WHERE user_id = ?');
     $stmt->bind_param('iiii', $theme, $promo, $promo, $userId);
     $result = $stmt->execute();
     if (!$result) {
       error_log("Failed to update user_accounts: " . $stmt->error);
     }
-    $stmt->close();
-
-    // Save other preferences to user_preferences table
-    $json = json_encode(array_values(array_unique(array_map('strval', $interests))));
-
-    $stmt = $conn->prepare('INSERT INTO user_preferences (user_id, promo_emails, reveal_contact, interests)
-      VALUES (?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE promo_emails = VALUES(promo_emails), reveal_contact = VALUES(reveal_contact), interests = VALUES(interests)');
-    $stmt->bind_param('iiis', $userId, $promo, $reveal, $json);
-    $stmt->execute();
     $stmt->close();
 
     // Send promo welcome email if this is the first time opting in

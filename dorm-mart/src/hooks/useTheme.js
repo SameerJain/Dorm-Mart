@@ -9,24 +9,24 @@ export function useTheme() {
   // Load theme from backend on mount
   useEffect(() => {
     const loadTheme = async () => {
+      // Get user ID for user-specific localStorage
+      let userId = null;
+      try {
+        const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
+          method: 'GET', 
+          credentials: 'include' 
+        });
+        if (meRes.ok) {
+          const meJson = await meRes.json();
+          userId = meJson.user_id;
+        }
+      } catch (e) {
+        // User not authenticated
+      }
+
       try {
         // First clear any existing theme to prevent cross-user contamination
         document.documentElement.classList.remove('dark');
-        
-        // Get user ID for user-specific localStorage
-        let userId = null;
-        try {
-          const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
-            method: 'GET', 
-            credentials: 'include' 
-          });
-          if (meRes.ok) {
-            const meJson = await meRes.json();
-            userId = meJson.user_id;
-          }
-        } catch (e) {
-          // User not authenticated
-        }
 
         // Try localStorage first for immediate application
         if (userId) {
@@ -53,10 +53,29 @@ export function useTheme() {
               const userThemeKey = `userTheme_${userId}`;
               localStorage.setItem(userThemeKey, json.data.theme);
             }
+          } else {
+            // If no theme from backend, use localStorage or default to light
+            if (userId) {
+              const userThemeKey = `userTheme_${userId}`;
+              const localTheme = localStorage.getItem(userThemeKey);
+              if (localTheme) {
+                setTheme(localTheme);
+                applyTheme(localTheme);
+              }
+            }
           }
         }
       } catch (e) {
         console.warn('Failed to load theme:', e);
+        // Fallback to localStorage if API fails
+        if (userId) {
+          const userThemeKey = `userTheme_${userId}`;
+          const localTheme = localStorage.getItem(userThemeKey);
+          if (localTheme) {
+            setTheme(localTheme);
+            applyTheme(localTheme);
+          }
+        }
       } finally {
         setIsLoading(false);
       }
@@ -122,17 +141,21 @@ export function useTheme() {
       }
       
       // Now save with all preferences including the new theme
+      const saveData = { 
+        ...currentPrefs,
+        theme: newTheme 
+      };
+      console.log('Saving theme to backend:', saveData);
       const res = await fetch(`${API_BASE}/userPreferences.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
-          ...currentPrefs,
-          theme: newTheme 
-        }),
+        body: JSON.stringify(saveData),
       });
       if (!res.ok) {
         console.warn('Failed to save theme to backend');
+      } else {
+        console.log('Theme saved successfully to backend');
       }
     } catch (e) {
       console.warn('Failed to save theme:', e);

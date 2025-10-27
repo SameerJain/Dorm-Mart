@@ -115,7 +115,9 @@ function UserPreferences() {
           promoEmails: promotionalEmails,
           revealContact,
           interests: selectedInterests,
+          theme: theme,
         };
+        console.log('UserPreferences: Saving preferences with theme:', body);
         await fetch(`${API_BASE}/userPreferences.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -130,7 +132,7 @@ function UserPreferences() {
       }
     }, 400);
     return () => { controller.abort(); clearTimeout(t); };
-  }, [promotionalEmails, revealContact, JSON.stringify(selectedInterests)]);
+  }, [promotionalEmails, revealContact, JSON.stringify(selectedInterests), theme]);
 
   return (
     <SettingsLayout>
