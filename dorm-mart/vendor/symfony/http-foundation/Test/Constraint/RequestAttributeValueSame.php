@@ -16,8 +16,8 @@ use Symfony\Component\HttpFoundation\Request;
 
 final class RequestAttributeValueSame extends Constraint
 {
-    private string $name;
-    private string $value;
+    private $name;
+    private $value;
 
     public function __construct(string $name, string $value)
     {
@@ -25,13 +25,18 @@ final class RequestAttributeValueSame extends Constraint
         $this->value = $value;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function toString(): string
     {
-        return \sprintf('has attribute "%s" with value "%s"', $this->name, $this->value);
+        return sprintf('has attribute "%s" with value "%s"', $this->name, $this->value);
     }
 
     /**
      * @param Request $request
+     *
+     * {@inheritdoc}
      */
     protected function matches($request): bool
     {
@@ -40,6 +45,8 @@ final class RequestAttributeValueSame extends Constraint
 
     /**
      * @param Request $request
+     *
+     * {@inheritdoc}
      */
     protected function failureDescription($request): string
     {
