@@ -16,47 +16,11 @@ class ChatServer implements MessageComponentInterface
     private $clients;
     private $ByUserId = [];
 
-    public function __construct()
-    {
+    public function __construct() {
         $this->clients = new \SplObjectStorage();
     }
 
     public function onOpen(ConnectionInterface $conn): void {
-
-        error_log('[ws] onOpen');
-
-    if (!property_exists($conn, 'httpRequest') || !$conn->httpRequest) {
-        error_log('[ws] no httpRequest on $conn — check your IoServer stack');
-    } else {
-        // Get the cookies as a single header line
-        $cookieLine = $conn->httpRequest->getHeaderLine('Cookie');
-        error_log('[ws] Cookie header line: ' . ($cookieLine === '' ? '(empty)' : $cookieLine));
-
-        // Your existing extractor (keep it), just don’t echo arrays
-        $sid = $this->extractPhpSessIdFromCookies($conn);
-        error_log('[ws] PHPSESSID: ' . var_export($sid, true));
-    }
-    
-        $sid = $this->extractPhpSessIdFromCookies($conn);
-        if (!$sid) {
-            $conn->send(json_encode(['type' => 'error', 'error' => 'no_session']));
-            $conn->close();
-            return;
-        }
-
-        $userId = $this->resumePhpSessionAndGetUserId($sid);
-        if (!$userId) {
-            $conn->send(json_encode(['type' => 'error', 'error' => 'not_authenticated']));
-            $conn->close();
-            return;
-        }
-
-        echo "passed";
-        // store the client connection with tis metadata
-        $this->clients->attach($conn. ['userId' => $userId]);
-        echo $this->clients;
-        // used for fast lookup
-        $this->ByUserId[$userId] = $conn;
         $conn->send(json_encode([
             'type' => 'hello',
             'payload' =>[
@@ -68,17 +32,39 @@ class ChatServer implements MessageComponentInterface
     public function onMessage(ConnectionInterface $from, $msg): void {
         // Messages are JSON. Keep it small and explicit.
         $data = json_decode($msg, true);
+        if (!is_array($data) || !isset($data['type'])) {
+            // Ignore junk
+            return;
+        }
         $type = $data['type'];
 
         switch ($type) {
+            case 'join_pool':
+                $userId = $data['payload']['userId'];
+                $this->clients->attach($from, ['userId' => $userId]);
+                $this->ByUserId[$userId] = $from;
+                error_log(sprintf('[ws] user %d joined (conn #%d)', $userId, $from->resourceId));
+                break;
             case 'send_message':
+                $convId = $data['payload']['convId'];
                 $fromUserId = $data['payload']['fromUserId'];
-                $toUserId = $data['payload']['toUserId'];
+                $toUserId   = $data['payload']['toUserId'];
                 $content = $data['payload']['content'];
+
+
+                if (!$toUserId || !isset($this->ByUserId[$toUserId])) {
+                    // recipient not connected; tell sender and bail
+                    $from->send(json_encode([
+                        'type' => 'error',
+                        'payload' => ['msg' => 'recipient not connected']
+                    ]));
+                    break;
+                }
 
                 $res = json_encode([
                     "type" => "new_message",
                     "payload" => [
+                        "convId" => $convId,
                         "fromUserId" => $fromUserId,
                         "content" => $content
                     ]
@@ -100,9 +86,14 @@ class ChatServer implements MessageComponentInterface
 
     public function onClose(ConnectionInterface $conn): void
     {
-        $userId = $this->clients[$conn]['userId'];
-        $this->clients->detach($conn);
-        unset($this->ByUserId[$userId]);
+        if ($this->clients->contains($conn)) { // <-- guard
+            $meta   = $this->clients[$conn];   // SplObjectStorage metadata
+            $userId = is_array($meta) ? ($meta['userId'] ?? null) : null;
+            $this->clients->detach($conn);
+            if ($userId !== null) {
+                unset($this->ByUserId[$userId]);
+            }
+        }
     }
 
     public function onError(ConnectionInterface $conn, \Exception $e): void

@@ -1,6 +1,9 @@
-// src/ws.js
-let ws = null;                      // keep one shared socket for the whole app
-const WS_URL = process.env.WS_URL || "ws://127.0.0.1:8080"; // Ratchet server address/port
+/* eslint-env browser */
+let ws = null;
+const http = process.env.REACT_HTTP;
+const proto = http === "https:" ? "wss" : "ws"; // ws vs wss
+const url = process.env.WS_URL || "localhost:8081"
+const WS_URL = `${proto}://${url}`;                  // host must match cookie
 
 export function ensureSocket() {
   // Reuse if it's already open/connecting; only recreate if it was CLOSED

@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
-session_start(); // <-- pulls existing PHP session (cookie)
+
+require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+// setSecurityHeaders();
+// // Ensure CORS headers are present for React dev server and local PHP server
+// setSecureCORS();
+// auth_boot_session();
 
 $PROJECT_ROOT = dirname(__DIR__, 2);
 if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
@@ -15,6 +21,7 @@ if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
 final class DemoServer implements MessageComponentInterface {
 
     public function onOpen(ConnectionInterface $conn): void {
+
 
         // once a client joins ws, welcomes them
         $conn -> send(json_encode([

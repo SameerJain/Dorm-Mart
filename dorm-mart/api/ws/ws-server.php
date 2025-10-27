@@ -17,9 +17,10 @@ use Ratchet\Session\SessionProvider;
 // ini_set('session.save_path', 'C:\\xampp\\tmp'); // <-- Windows example
 // ini_set('session.save_path', '/var/lib/php/sessions'); // <-- Linux example
 
-$chat = new DemoServer();
+$chat = new ChatServer();
 
-$port = 8080;
+$port = 8081;
+$address = '127.0.0.1';
 
 // IoServer::factory(...) builds the TCP server and event loop.
 // HttpServer wraps the WebSocket server with the HTTP Upgrade handshake.
@@ -28,20 +29,10 @@ $server = IoServer::factory(
     new HttpServer(
         new WsServer($chat)
     ),
-    8080,              // Port the WS server listens on
-    '0.0.0.0'          // Bind all interfaces (localhost is fine for dev)
+    $port,              // Port the WS server listens on
+    $address          // Bind all interfaces (localhost is fine for dev)
 );
 
-// $server = IoServer::factory(
-//     new HttpServer(
-//         new SessionProvider(
-//             new WsServer($chat),
-//             new SessionHandler()
-//         )
-//     ),
-//     8080,
-//     '0.0.0.0'
-// );
 
 echo "Ratchet WebSocket listening on ws://127.0.0.1:$port\n";
 $server->run(); // Blocks here; keep this process running while testing
