@@ -251,12 +251,12 @@ function ProductListingPage() {
   const selectableOptions = availableCategories.filter((opt) => !categories.includes(opt));
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <main className="max-w-6xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-blue-600 mb-2">{headerText}</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">{headerText}</h1>
+          <p className="text-gray-600 dark:text-gray-300">
             Fill out the form below to {isEdit ? "update your listing" : "create your listing"}
           </p>
         </div>
@@ -271,7 +271,7 @@ function ProductListingPage() {
             <div className="space-y-6">
               {/* Title */}
               <div>
-                <label className="block text-lg font-semibold text-gray-900 mb-2">
+                <label className="block text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Item Title <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -284,8 +284,8 @@ function ProductListingPage() {
                   maxLength={LIMITS.title}
                 />
                 <div className="flex justify-between items-center mt-2">
-                  <p className="text-sm text-gray-500">Be specific and descriptive to attract buyers</p>
-                  <p className="text-sm text-gray-400">{title.length}/{LIMITS.title}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Be specific and descriptive to attract buyers</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">{title.length}/{LIMITS.title}</p>
                 </div>
                 {errors.title && <p className="text-red-600 text-sm mt-1">{errors.title}</p>}
               </div>

@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
+import { useTheme } from "../../hooks/useTheme";
 
 const NAV_BLUE = "#2563EB";
 
 function UserPreferences() {
   const navigate = useNavigate();
+  const { theme, updateTheme } = useTheme();
   const [promotionalEmails, setPromotionalEmails] = useState(false);
   const [revealContact, setRevealContact] = useState(false);
-  const [theme, setTheme] = useState("light"); // "light" or "dark"
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedInterests, setSelectedInterests] = useState(["Electronics", "Books", "Clothing"]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -90,12 +91,11 @@ function UserPreferences() {
         if (!res.ok) return;
         const json = await res.json();
         if (!json || json.ok !== true || !json.data) return;
-        const { promoEmails, revealContact, interests, theme } = json.data;
+        const { promoEmails, revealContact, interests } = json.data;
         if (cancelled) return;
         setPromotionalEmails(!!promoEmails);
         setRevealContact(!!revealContact);
         if (Array.isArray(interests)) setSelectedInterests(interests);
-        if (theme === 'dark' || theme === 'light') setTheme(theme);
       } catch (e) {
         // ignore errors, keep defaults
         console.warn('UserPreferences: GET failed', e);
@@ -115,8 +115,9 @@ function UserPreferences() {
           promoEmails: promotionalEmails,
           revealContact,
           interests: selectedInterests,
-          theme,
+          theme: theme,
         };
+        console.log('UserPreferences: Saving preferences with theme:', body);
         await fetch(`${API_BASE}/userPreferences.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -331,7 +332,7 @@ function UserPreferences() {
           <div className="flex items-center space-x-4 mb-4">
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => setTheme("light")}
+                onClick={() => updateTheme("light")}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${theme === "light"
                     ? "bg-white text-gray-900 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
@@ -343,7 +344,7 @@ function UserPreferences() {
                 <span className="text-sm font-medium">Light</span>
               </button>
               <button
-                onClick={() => setTheme("dark")}
+                onClick={() => updateTheme("dark")}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${theme === "dark"
                     ? "bg-white text-gray-900 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
@@ -359,13 +360,21 @@ function UserPreferences() {
 
           {/* Navigation Buttons */}
           <div className="flex items-center space-x-2">
-            <button className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50">
-              <svg className="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button 
+              onClick={() => updateTheme("light")}
+              className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+              aria-label="Switch to light theme"
+            >
+              <svg className="h-4 w-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <button className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50">
-              <svg className="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button 
+              onClick={() => updateTheme("dark")}
+              className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+              aria-label="Switch to dark theme"
+            >
+              <svg className="h-4 w-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
