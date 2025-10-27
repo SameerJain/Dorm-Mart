@@ -1,8 +1,23 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { fetchMe, fetchConversation, fetchChat, createMessage } from "./chat_util";
 import { useNavigate } from "react-router-dom";
+import { ensureSocket, sendMessage } from "../../server/ws-demo";
 
 export default function ChatPage() {
+  const s = ensureSocket();
+    const onMsg = (e) => {
+      let parsed = JSON.parse(e.data);
+
+      switch (parsed.type) {
+        case "new_message":
+          console.log(parsed.payload?.fromSenderId, parsed.payload?.content);
+        case "welcome":
+          console.log(parsed.payload?.msg);
+      }
+    }
+  
+  s.addEventListener("message", onMsg);
+
   const navigate = useNavigate();
   const MAX_LEN = 500; // hard cap; used by textarea and counter
   const [myId, setMyId] = useState(null);
@@ -31,14 +46,14 @@ export default function ChatPage() {
         setMyId(me.user_id);
 
         const res = await fetchConversation(me.user_id, controller.signal);
-        const view = (res.conversations ?? []).map((c) => {
-          const u1 = c.user1_id ?? c.user_1;
-          const u2 = c.user2_id ?? c.user_2;
+        const view = (res.conversations).map((c) => {
+          const u1 = c.user1_id
+          const u2 = c.user2_id
           const iAmUser1 = u1 === me.user_id;
           const otherId  = iAmUser1 ? u2 : u1;
-          const n1 = c.user1_fname ?? c.user1_name ?? null;
-          const n2 = c.user2_fname ?? c.user2_name ?? null;
-          const otherName = iAmUser1 ? (n2 || `User ${otherId}`) : (n1 || `User ${otherId}`);
+          const n1 = c.user1_fname 
+          const n2 = c.user2_fname
+          const otherName = iAmUser1 ? n2 : n1 ;
           return { id: c.conv_id, otherUserId: otherId, otherUserName: otherName };
         });
         setConversations(view);
@@ -120,6 +135,8 @@ async function sendMessage() {
   const convo = conversations.find(x => x.id === activeId);
   if (!convo) return;
   const receiverId = convo.otherUserId;
+
+  sendMessage(myId, receiverId, text);
 
   try {
     const res = await createMessage({

@@ -25,10 +25,7 @@ $sql = "
     user1_id,
     user2_id,
     user1_fname,
-    user2_fname,
-    user1_deleted,
-    user2_deleted,
-    created_at
+    user2_fname
   FROM conversations
   WHERE (user1_id = ? AND user1_deleted = 0)
      OR (user2_id = ? AND user2_deleted = 0)
