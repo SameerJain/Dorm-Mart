@@ -1,6 +1,6 @@
 /* eslint-env browser */
 let ws = null;
-const WS_URL = "ws://localhost:8080"
+const WS_URL = "wss://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/ws";
 
 export function ensureSocket() {
   // Reuse if it's already open/connecting; only recreate if it was CLOSED
