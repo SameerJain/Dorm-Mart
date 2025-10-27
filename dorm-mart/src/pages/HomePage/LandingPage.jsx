@@ -75,10 +75,10 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Hero Section (responsive, dynamic height) */}
       <section className="mt-4 px-4">
-        <div className="mx-auto w-full max-w-6xl rounded-2xl bg-blue-600 px-6 py-8 md:px-10 md:py-10 text-center flex flex-col items-center justify-center">
+        <div className="mx-auto w-full max-w-6xl rounded-2xl bg-blue-600 dark:bg-blue-700 px-6 py-8 md:px-10 md:py-10 text-center flex flex-col items-center justify-center">
           <h1 className="mb-3 text-white font-bold text-4xl sm:text-5xl md:text-6xl leading-tight">
             Welcome to Dorm Mart
           </h1>
@@ -100,7 +100,7 @@ export default function LandingPage() {
               lineHeight: "normal",
               letterSpacing: "0.5px"
             }}
-            className="text-left text-blue-600"
+            className="text-left text-blue-600 dark:text-blue-400"
           >
             Browse Listings
           </h2>
@@ -108,7 +108,7 @@ export default function LandingPage() {
       </div>
 
       {/* Featured Items */}
-      <section id="shop" className="py-16 px-6 md:px-16 bg-gray-50">
+      <section id="shop" className="py-16 px-6 md:px-16 bg-gray-50 dark:bg-gray-900">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
             {items.map((item, idx) => (
@@ -128,10 +128,10 @@ export default function LandingPage() {
         </div>
       </section>
       {loading && (
-        <p className="text-center text-gray-500 italic pb-8">Loading listings…</p>
+        <p className="text-center text-gray-500 dark:text-gray-400 italic pb-8">Loading listings…</p>
       )}
       {error && (
-        <p className="text-center text-red-600 italic pb-8">Couldn’t load latest listings. Showing sample items.</p>
+        <p className="text-center text-red-600 dark:text-red-400 italic pb-8">Couldn't load latest listings. Showing sample items.</p>
       )}
     </div>
   );

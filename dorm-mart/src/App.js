@@ -19,6 +19,46 @@ import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx
 import { ChatProvider } from "./context/ChatContext.js";
 import ChatPage from "./pages/Chat/Chat.jsx";
 
+// Load user theme immediately when app starts
+const loadUserTheme = async () => {
+  // First check localStorage for immediate theme application
+  const localTheme = localStorage.getItem('userTheme');
+  if (localTheme) {
+    if (localTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }
+
+  // Then try to get from backend
+  try {
+    const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+    const res = await fetch(`${API_BASE}/userPreferences.php`, { 
+      method: 'GET', 
+      credentials: 'include' 
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.ok && json?.data?.theme) {
+        // Apply theme from backend
+        if (json.data.theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+        // Update localStorage with backend value
+        localStorage.setItem('userTheme', json.data.theme);
+      }
+    }
+  } catch (e) {
+    // User not authenticated or error - keep localStorage value
+  }
+};
+
+// Load theme immediately
+loadUserTheme();
+
 export const router = createHashRouter([
   // redirect default hash `#/` to `#/login`
   { path: "/", element: <Navigate to="/login" replace /> },

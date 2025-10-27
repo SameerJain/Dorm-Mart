@@ -82,7 +82,10 @@ try {
     // Save theme to user_accounts table
     $stmt = $conn->prepare('UPDATE user_accounts SET theme = ? WHERE user_id = ?');
     $stmt->bind_param('ii', $theme, $userId);
-    $stmt->execute();
+    $result = $stmt->execute();
+    if (!$result) {
+      error_log("Failed to update theme: " . $stmt->error);
+    }
     $stmt->close();
 
     // Save other preferences to user_preferences table

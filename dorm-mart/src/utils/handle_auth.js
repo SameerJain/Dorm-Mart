@@ -14,6 +14,9 @@ export async function logout() {
       },
     });
 
+    // Clear theme from localStorage on logout
+    localStorage.removeItem('userTheme');
+
     return response.ok;
   } catch (error) {
     console.error("Logout error:", error);

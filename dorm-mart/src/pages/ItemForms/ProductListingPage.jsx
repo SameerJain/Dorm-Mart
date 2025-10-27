@@ -202,29 +202,29 @@ function ProductListingPage() {
   const headerText = isEdit ? "Edit Product Listing" : "New Product Listing";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <main className="max-w-6xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-blue-600 mb-2">{headerText}</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">{headerText}</h1>
+          <p className="text-gray-600 dark:text-gray-300">
             Fill out the form below to {isEdit ? "update your listing" : "create your listing"}
           </p>
         </div>
 
         {serverMsg && (
-          <div className="mb-4 rounded-lg border p-3 text-sm bg-white">{serverMsg}</div>
+          <div className="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">{serverMsg}</div>
         )}
 
         <div className="space-y-6">
           {/* Basic Information Card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Basic Information</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Basic Information</h2>
 
             <div className="space-y-6">
               {/* Title */}
               <div>
-                <label className="block text-lg font-semibold text-gray-900 mb-2">
+                <label className="block text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Item Title <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -237,8 +237,8 @@ function ProductListingPage() {
                   maxLength={LIMITS.title}
                 />
                 <div className="flex justify-between items-center mt-2">
-                  <p className="text-sm text-gray-500">Be specific and descriptive to attract buyers</p>
-                  <p className="text-sm text-gray-400">{title.length}/{LIMITS.title}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Be specific and descriptive to attract buyers</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">{title.length}/{LIMITS.title}</p>
                 </div>
                 {errors.title && <p className="text-red-600 text-sm mt-1">{errors.title}</p>}
               </div>
@@ -331,8 +331,8 @@ function ProductListingPage() {
           </div>
 
           {/* Location and Pricing Card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Location & Pricing</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Location & Pricing</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -412,8 +412,8 @@ function ProductListingPage() {
             </div>
 
             {/* Photos Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Photos & Media</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Photos & Media</h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
                 {images.length ? (
@@ -500,8 +500,8 @@ function ProductListingPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Publish Your Listing</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Publish Your Listing</h3>
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={publishListing}
