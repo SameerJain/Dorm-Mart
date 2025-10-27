@@ -10,9 +10,11 @@
 - run `composer require cboden/ratchet` to install Ratchet package
 
 ## How Websocket works
-1. Over TCP protocol, the client sends a special request via HTTP to the server
-2. The special request is intented to initiate a handshake process with the running websocket
-3. 
+- it establishes a TCP connection
+- client sends an HTTP request to upgrade to the websocket protocol
+- server responds confirming the upgrade request
+- client and server keep the TCP connection open
+- client and server can communicate realtime by sending messages to each other via the connection
 
 ## How Ratchet works
 
@@ -71,7 +73,8 @@ final class DemoServer implements MessageComponentInterface {
         $type = $data['type'];
         if $type == 'ping':
             $from -> send(json_encode([
-                "msg": "pong"
+                'type' => 'pong',
+                "msg" => "pong"
             ]))
     }
 
@@ -89,13 +92,54 @@ final class DemoServer implements MessageComponentInterface {
 ```
 
 # Conclusion
-Now with the Ratchet server and the running server object, you can run the websocket server at 127.0.0.1:8081
+Now with the Ratchet server and the running DemoServer object, we can create a running websocket server which listens to client's requests and respond over the connection
 
 
 # How React connects to Websocket
+JavsScript (thus React) relies on browser provided websocket object
+Follow along the demo code below how it is used to connect to the backend running websocket server
+## Defining browser Websocket
+Likewise how websocket interfaces were defined in MessageComponentInterface,
+browser-side websocket also requires interface definitions
+```js
+export function connectSocket() {
+    // this immediately sends a websocket handshake request to the specified url parameter
+    ws = new WebSocket(ws://localhost:8080);
 
-## 
+    // "open" liestens to the response expected from handshake confirmation
+    ws.addEventListener("open",  () => console.log("[ws] open"));
 
-## 
+    // "message" listens to the data sent over the websocket from the server
+    ws.addEventListener("message", (e) => {
+        let parsed = JSON.parse(e.data);
+        if parsed[type] === 'pong':
+            // prints response 'pong' returned by ping request
+            console.log(parsed[msg]) 
+    })
 
-# 
+    // "close" handles disconnection 
+    ws.addEventListener("close", () => console.log("[ws] close"));
+
+    // "error" 
+    ws.addEventListener("error", (e) => console.log("[ws] error", e));
+    
+    return ws;
+}
+
+```
+
+## How to use the websocket connection on frontend to send data 
+
+```js
+import { connectSocket } from ./ws
+
+// sends a ping message to websocket
+export default function PingPage() {
+    const s = connectSocket();
+    const packet = JSON.stringify({ type: 'ping' });
+    s.send(packet);
+}
+```
+
+# Conclusion
+Now we can connect to the backend-running websocket via connectSocket function. We will have formulate JSON data to send it over the connection to the socket. Then, we will use s.send to send the data.
