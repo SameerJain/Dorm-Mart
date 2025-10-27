@@ -32,3 +32,8 @@ react-test-files/chris/undefined/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Environment files (contains sensitive data)
+.env
+.env.*
+!.env.example

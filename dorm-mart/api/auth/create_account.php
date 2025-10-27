@@ -214,6 +214,7 @@ if (!is_array($data)) {
 }
 
 // Extract and sanitize the values
+// XSS PROTECTION: Input validation with regex patterns to prevent XSS attacks
 $firstName = validateInput(trim($data['firstName'] ?? ''), 100, '/^[a-zA-Z\s\-\']+$/');
 $lastName = validateInput(trim($data['lastName'] ?? ''), 100, '/^[a-zA-Z\s\-\']+$/');
 $gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
@@ -268,6 +269,7 @@ if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > 
 require "../database/db_connect.php";
 $conn = db();
 try {
+    // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
     $chk = $conn->prepare('SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1');
     $chk->bind_param('s', $email);
     $chk->execute();
@@ -294,6 +296,7 @@ try {
         VALUES
           (?, ?, ?, ?, ?, ?, ?, NULL, CURRENT_DATE, 0, 0)';
 
+    // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
     $ins = $conn->prepare($sql);
     /*
  types: s=string, i=int

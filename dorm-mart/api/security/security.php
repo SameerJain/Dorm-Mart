@@ -146,7 +146,7 @@ function sanitize_string($input, $maxLength = 1000) {
     // Remove null bytes
     $input = str_replace("\0", '', $input);
     
-    // HTML encode special characters to prevent XSS
+    // XSS PROTECTION: HTML encode special characters to prevent XSS attacks
     $input = htmlspecialchars($input, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     
     return $input;
@@ -259,6 +259,7 @@ function validateUserAccess($requestedUserId, $loggedInUserId) {
  * @return string Escaped string
  */
 function escapeHtml($str) {
+    // XSS PROTECTION: HTML encode output to prevent XSS attacks
     return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
 }
 
@@ -268,6 +269,7 @@ function escapeHtml($str) {
  * @return string Escaped JSON string
  */
 function escapeJson($str) {
+    // XSS PROTECTION: JSON encode with hex encoding to prevent XSS attacks
     return json_encode($str ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 }
 
@@ -308,6 +310,7 @@ function check_rate_limit($email, $maxAttempts = 5, $lockoutMinutes = 3) {
         }
     
     // Get current attempt count, last attempt time, and lockout status
+    // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
     $stmt = $conn->prepare("
         SELECT failed_login_attempts, last_failed_attempt, lockout_until 
         FROM user_accounts 
@@ -417,6 +420,7 @@ function record_failed_attempt($email) {
         }
     
     // First check if user exists and get current attempt data
+    // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
     $checkStmt = $conn->prepare('SELECT user_id, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ?');
     $checkStmt->bind_param('s', $email);
     $checkStmt->execute();
@@ -434,6 +438,7 @@ function record_failed_attempt($email) {
         
         // Now increment by 1
         $newAttempts = $currentAttempts + 1;
+        // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
         $stmt = $conn->prepare('UPDATE user_accounts SET failed_login_attempts = ?, last_failed_attempt = NOW() WHERE email = ?');
         $stmt->bind_param('is', $newAttempts, $email);
         $stmt->execute();
@@ -443,6 +448,7 @@ function record_failed_attempt($email) {
         $conn->commit();
     } else {
         // User doesn't exist, create a temporary record for rate limiting
+        // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
         $stmt = $conn->prepare('INSERT INTO user_accounts (email, failed_login_attempts, last_failed_attempt) VALUES (?, 1, NOW())');
         $stmt->bind_param('s', $email);
         $stmt->execute();

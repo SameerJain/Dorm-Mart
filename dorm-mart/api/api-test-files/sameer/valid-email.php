@@ -1,38 +1,20 @@
 <?php
-// Test file for valid email (exists in database)
-// This simulates the forgot password request for an email that exists
+header('Content-Type: application/json; charset=utf-8');
 
-// Include security utilities
-require_once __DIR__ . '/../../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+// Test 5: Verify API endpoint returns success for a valid email
+// This test calls the REAL forgot-password API and checks if it returns success
 
-header('Content-Type: application/json');
+// Get JSON input
+$input = json_decode(file_get_contents('php://input'), true);
 
-// Handle preflight requests
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
-    exit;
-}
-
-// Get the request body
-$input = file_get_contents('php://input');
-$data = json_decode($input, true);
-
-// Validate JSON input and required email field
-if (!$data || !isset($data['email'])) {
+// Validate required fields
+if (!isset($input['email'])) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Email is required']);
     exit;
 }
 
-$email = $data['email'];
+$email = $input['email'];
 
 // Validate email format
 if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !str_ends_with($email, '@buffalo.edu')) {
@@ -41,12 +23,47 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !str_ends_with($email, '@buffa
     exit;
 }
 
-// Simulate the response for an email that exists in the database
-// In the real implementation, this would send an actual email
-// but for testing purposes, we'll simulate a successful response
+// Call the REAL forgot-password API to test actual functionality
+$forgotPasswordUrl = 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/api/auth/forgot-password.php';
 
-http_response_code(200);
-echo json_encode([
-    'success' => true,
-    'message' => 'Check your email'
+$postData = json_encode(['email' => $email]);
+
+$context = stream_context_create([
+    'http' => [
+        'method' => 'POST',
+        'header' => 'Content-Type: application/json',
+        'content' => $postData
+    ]
 ]);
+
+$result = file_get_contents($forgotPasswordUrl, false, $context);
+
+if ($result === false) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false, 
+        'error' => 'Failed to call forgot-password API',
+        'test_result' => 'ERROR - API call failed'
+    ]);
+    exit;
+}
+
+$response = json_decode($result, true);
+
+// Check if the API returned success for valid email
+if (isset($response['success']) && $response['success'] === true) {
+    http_response_code(200);
+    echo json_encode([
+        'success' => true,
+        'message' => 'Check your email',
+        'test_result' => 'PASS - API correctly returned success for valid email'
+    ]);
+} else {
+    http_response_code(200);
+    echo json_encode([
+        'success' => false,
+        'error' => 'API did not return expected response',
+        'api_response' => $response,
+        'test_result' => 'FAIL - API should have returned success for valid email'
+    ]);
+}

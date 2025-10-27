@@ -40,6 +40,7 @@ try {
       while ($row = $q->fetch_assoc()) {
         $rows[] = [
           'id' => isset($row['id']) ? (int)$row['id'] : null,
+          // XSS PROTECTION: Escaping HTML output to prevent XSS attacks
           'title' => escapeHtml($row['title'] ?? ($row['name'] ?? 'Untitled')),
           'price' => isset($row['price']) && is_numeric($row['price']) ? (float)$row['price'] : null,
           'image' => escapeHtml($row['image'] ?? ($row['image_url'] ?? '')),
