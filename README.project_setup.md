@@ -52,7 +52,7 @@ Copy any necessary files to the server:
 (* Copy and paste out all of the contents of the build folder, they cant still be inside the build folder) \
 (* It is highly recommended that you build a script to automate this process to avoid missing out some necessary files and mitigate the tedious process)
 - Refer to scripts in package.json for more details 
-1. Make sure to migrate to apply db schema and app data to the mysql server
+3. Make sure to migrate to apply db schema and app data to the mysql server
 
 # How does the server serve the app?
 1. `"homepage": "/CSE442/2025-Fall/cse-442j",`
