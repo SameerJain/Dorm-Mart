@@ -37,3 +37,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+# Specific env files in dorm-mart
+dorm-mart/env.*
+dorm-mart/.env.*

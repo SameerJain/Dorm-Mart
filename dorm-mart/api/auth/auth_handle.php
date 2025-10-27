@@ -32,7 +32,7 @@ function regenerate_session_on_login(): void
   session_regenerate_id(true);
 }
 
-/* ---------- Persistent login (“remember me”) ---------- */
+/* ---------- Persistent login ("remember me") ---------- */
 
 function issue_remember_cookie(int $userId): void
 {

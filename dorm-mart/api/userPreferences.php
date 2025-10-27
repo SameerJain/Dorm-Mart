@@ -24,25 +24,40 @@ $conn = db();
 // Helpers
 function getPrefs(mysqli $conn, int $userId)
 {
-  $stmt = $conn->prepare('SELECT promo_emails, reveal_contact, interests, theme FROM user_preferences WHERE user_id = ?');
+  // Get theme from user_accounts table
+  $stmt = $conn->prepare('SELECT theme FROM user_accounts WHERE user_id = ?');
+  $stmt->bind_param('i', $userId);
+  $stmt->execute();
+  $res = $stmt->get_result();
+  $userRow = $res->fetch_assoc();
+  $stmt->close();
+  
+  $theme = 'light'; // default
+  if ($userRow && isset($userRow['theme'])) {
+    $theme = $userRow['theme'] ? 'dark' : 'light';
+  }
+  
+  // Get other preferences from user_preferences table
+  $stmt = $conn->prepare('SELECT promo_emails, reveal_contact, interests FROM user_preferences WHERE user_id = ?');
   $stmt->bind_param('i', $userId);
   $stmt->execute();
   $res = $stmt->get_result();
   $row = $res->fetch_assoc();
   $stmt->close();
+  
   if (!$row) {
     return [
       'promoEmails' => false,
       'revealContact' => false,
       'interests' => [],
-      'theme' => 'light',
+      'theme' => $theme,
     ];
   }
   return [
     'promoEmails' => (bool)$row['promo_emails'],
     'revealContact' => (bool)$row['reveal_contact'],
     'interests' => $row['interests'] ? json_decode($row['interests'], true) : [],
-    'theme' => ($row['theme'] === 'dark' ? 'dark' : 'light'),
+    'theme' => $theme,
   ];
 }
 
@@ -62,15 +77,24 @@ try {
     $promo = isset($body['promoEmails']) ? (int)!!$body['promoEmails'] : 0;
     $reveal = isset($body['revealContact']) ? (int)!!$body['revealContact'] : 0;
     $interests = isset($body['interests']) && is_array($body['interests']) ? $body['interests'] : [];
-    $theme = (isset($body['theme']) && $body['theme'] === 'dark') ? 'dark' : 'light';
+    $theme = (isset($body['theme']) && $body['theme'] === 'dark') ? 1 : 0;
 
-    // upsert
+    // Save theme to user_accounts table
+    $stmt = $conn->prepare('UPDATE user_accounts SET theme = ? WHERE user_id = ?');
+    $stmt->bind_param('ii', $theme, $userId);
+    $result = $stmt->execute();
+    if (!$result) {
+      error_log("Failed to update theme: " . $stmt->error);
+    }
+    $stmt->close();
+
+    // Save other preferences to user_preferences table
     $json = json_encode(array_values(array_unique(array_map('strval', $interests))));
 
-    $stmt = $conn->prepare('INSERT INTO user_preferences (user_id, promo_emails, reveal_contact, interests, theme)
-      VALUES (?, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE promo_emails = VALUES(promo_emails), reveal_contact = VALUES(reveal_contact), interests = VALUES(interests), theme = VALUES(theme)');
-    $stmt->bind_param('iiiss', $userId, $promo, $reveal, $json, $theme);
+    $stmt = $conn->prepare('INSERT INTO user_preferences (user_id, promo_emails, reveal_contact, interests)
+      VALUES (?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE promo_emails = VALUES(promo_emails), reveal_contact = VALUES(reveal_contact), interests = VALUES(interests)');
+    $stmt->bind_param('iiis', $userId, $promo, $reveal, $json);
     $stmt->execute();
     $stmt->close();
 

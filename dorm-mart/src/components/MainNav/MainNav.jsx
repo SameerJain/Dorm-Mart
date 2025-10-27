@@ -57,7 +57,7 @@ function MainNav() {
     };
 
     return (
-        <nav className="bg-blue-600 text-slate-100">
+        <nav className="bg-blue-600 text-slate-100 dark:bg-gray-800 dark:text-gray-100">
             <div className="mx-auto flex items-center gap-1 sm:gap-2 md:gap-4 p-2 md:p-3">
                 <button
                     onClick={() => navigate("/app")}
@@ -122,22 +122,22 @@ function MainNav() {
 
                         {/* Dropdown menu */}
                         {showDropdown && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
+                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
                                 <button
                                     onClick={handleSellerDashboard}
-                                    className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors"
+                                    className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Seller Dashboard
                                 </button>
                                 <button
                                     onClick={handlePurchaseHistory}
-                                    className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors"
+                                    className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Purchase History
                                 </button>
                                 <button
                                     onClick={handleLogout}
-                                    className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors"
+                                    className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Log Out
                                 </button>
