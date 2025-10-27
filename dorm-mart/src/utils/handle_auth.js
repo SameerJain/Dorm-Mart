@@ -6,6 +6,21 @@ const apiBase = process.env.REACT_APP_API_BASE || "http://localhost/api";
 // Logout function - calls backend to clear auth token
 export async function logout() {
   try {
+    // Get user ID before logout to clear user-specific theme
+    let userId = null;
+    try {
+      const meRes = await fetch(`${apiBase}/auth/me.php`, { 
+        method: 'GET', 
+        credentials: 'include' 
+      });
+      if (meRes.ok) {
+        const meJson = await meRes.json();
+        userId = meJson.user_id;
+      }
+    } catch (e) {
+      // User not authenticated
+    }
+
     const response = await fetch(`${apiBase}/auth/logout.php`, {
       method: "POST",
       credentials: "include", // Important: include cookies
@@ -13,6 +28,15 @@ export async function logout() {
         "Content-Type": "application/json",
       },
     });
+
+    // Clear theme from DOM and localStorage on logout
+    document.documentElement.classList.remove('dark');
+    
+    // Clear user-specific theme from localStorage
+    if (userId) {
+      const userThemeKey = `userTheme_${userId}`;
+      localStorage.removeItem(userThemeKey);
+    }
 
     return response.ok;
   } catch (error) {

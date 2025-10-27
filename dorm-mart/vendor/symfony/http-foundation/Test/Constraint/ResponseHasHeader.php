@@ -16,20 +16,25 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class ResponseHasHeader extends Constraint
 {
-    private string $headerName;
+    private $headerName;
 
     public function __construct(string $headerName)
     {
         $this->headerName = $headerName;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function toString(): string
     {
-        return \sprintf('has header "%s"', $this->headerName);
+        return sprintf('has header "%s"', $this->headerName);
     }
 
     /**
      * @param Response $response
+     *
+     * {@inheritdoc}
      */
     protected function matches($response): bool
     {
@@ -38,6 +43,8 @@ final class ResponseHasHeader extends Constraint
 
     /**
      * @param Response $response
+     *
+     * {@inheritdoc}
      */
     protected function failureDescription($response): string
     {

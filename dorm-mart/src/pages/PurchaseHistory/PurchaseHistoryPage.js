@@ -58,8 +58,8 @@ function PurchaseHistoryPage() {
 
   return (
     <>
-      <div className="mx-auto w-full px-3 sm:px-4 lg:px-12 py-6 max-w-[90rem]">
-        <h2 className="mb-3 text-lg sm:text-2xl font-bold">
+      <div className="mx-auto w-full px-3 sm:px-4 lg:px-12 py-6 max-w-[90rem] bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <h2 className="mb-3 text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
           Search Purchase History
         </h2>
 
@@ -70,19 +70,19 @@ function PurchaseHistoryPage() {
         />
 
         {isFetching && (
-          <p className="flex justify-center items-center text-gray-500 text-base sm:text-lg italic py-4">
+          <p className="flex justify-center items-center text-gray-500 dark:text-gray-400 text-base sm:text-lg italic py-4">
             Loading...
           </p>
         )}
 
         {!error && !isFetching && purchasedItems.length === 0 && (
-          <p className="flex justify-center items-center text-gray-500 text-base sm:text-lg italic py-4">
+          <p className="flex justify-center items-center text-gray-500 dark:text-gray-400 text-base sm:text-lg italic py-4">
             No purchase history exists.
           </p>
         )}
 
         {error && purchasedItems.length === 0 && (
-          <p className="flex justify-center items-center text-gray-500 text-base sm:text-lg italic py-4">
+          <p className="flex justify-center items-center text-gray-500 dark:text-gray-400 text-base sm:text-lg italic py-4">
             Failed to retrieve purchase history.
           </p>
         )}

@@ -272,13 +272,13 @@ export default function ChatPage() {
   }, [conversations, activeId]);
 
   return (
-    <div className="h-screen w-full bg-gray-50 text-gray-900">
+    <div className="h-screen w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <div className="mx-auto h-full max-w-[1200px] px-4 py-6">
         <div className="grid h-full grid-cols-12 gap-4">
           {/* Sidebar */}
-          <aside className="col-span-4 rounded-2xl border-4 border-gray-200 bg-white shadow-sm">
-            <div className="border-b border-gray-200 p-4">
-              <h2 className="text-lg font-semibold">Chats</h2>
+          <aside className="col-span-4 rounded-2xl border-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+            <div className="border-b border-gray-200 dark:border-gray-700 p-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Chats</h2>
             </div>
             <ul
               role="list"
@@ -318,12 +318,12 @@ export default function ChatPage() {
           </aside>
 
           {/* Main chat pane */}
-          <section className="col-span-8 flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <section className="col-span-8 flex flex-col rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
             {/* Header */}
-            <div className="flex items-center justify-between border-4 border-gray-200 px-5 py-4">
+            <div className="flex items-center justify-between border-4 border-gray-200 dark:border-gray-700 px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold">{activeLabel}</h2>
-                <p className="text-xs text-gray-500">Direct message</p>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{activeLabel}</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Direct message</p>
               </div>
             </div>
 
@@ -342,7 +342,7 @@ export default function ChatPage() {
                   </p>
                 </div>
               ) : chatErrorByConv[activeId] ? (
-                <p className="text-center text-sm text-red-600">
+                <p className="text-center text-sm text-red-600 dark:text-red-400">
                   Something went wrong, please try again later
                 </p>
               ) : messages.length === 0 ? (
@@ -385,7 +385,7 @@ export default function ChatPage() {
             </div>
 
             {/* Composer */}
-            <div className="border-t border-gray-200 p-4">
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
               <div className="flex items-end gap-2">
                 <div className="relative w-full">
                   <textarea
@@ -396,13 +396,13 @@ export default function ChatPage() {
                     rows={2}
                     maxLength={MAX_LEN} // prevents typing past 500 on the client
                     aria-describedby="message-char-remaining" // links to the counter for a11y
-                    className="min-h-[44px] w-full resize-y rounded-2xl border border-gray-300 px-3 py-2 pr-12 pb-6 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="min-h-[44px] w-full resize-y rounded-2xl border border-gray-300 dark:border-gray-600 px-3 py-2 pr-12 pb-6 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     //               ^^^^ extra right/bottom padding so the counter doesn't overlap text
                     aria-label="Message input"
                   />
                   <span
                     id="message-char-remaining"
-                    className="pointer-events-none absolute bottom-2 right-3 text-xs text-gray-500"
+                    className="pointer-events-none absolute bottom-2 right-3 text-xs text-gray-500 dark:text-gray-400"
                   >
                     {MAX_LEN - draft.length}
                   </span>
