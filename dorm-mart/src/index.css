@@ -32,6 +32,13 @@ html, body, #root {
   min-height: 100vh;
   overflow-x: hidden;
   overflow-y: auto; /* allow vertical scrolling */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode base styles */
+html.dark, html.dark body, html.dark #root {
+  background-color: #111827; /* gray-900 */
+  color: #f3f4f6; /* gray-100 */
 }
 
 :root {
