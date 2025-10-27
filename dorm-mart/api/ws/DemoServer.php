@@ -22,7 +22,6 @@ final class DemoServer implements MessageComponentInterface {
 
     public function onOpen(ConnectionInterface $conn): void {
 
-
         // once a client joins ws, welcomes them
         $conn -> send(json_encode([
             'type' => 'hello',
