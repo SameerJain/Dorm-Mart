@@ -38,7 +38,7 @@ $conn = db();
 function getPrefs(mysqli $conn, int $userId)
 {
   // Get all preferences from user_accounts table
-  $stmt = $conn->prepare('SELECT theme, promotional FROM user_accounts WHERE user_id = ?');
+  $stmt = $conn->prepare('SELECT theme, promotional, reveal_contact_info, interested_category_1, interested_category_2, interested_category_3 FROM user_accounts WHERE user_id = ?');
   $stmt->bind_param('i', $userId);
   $stmt->execute();
   $res = $stmt->get_result();
@@ -56,12 +56,29 @@ function getPrefs(mysqli $conn, int $userId)
     $promoEmails = (bool)$userRow['promotional'];
   }
   
-  return [
+  $revealContact = false; // default
+  if ($userRow && isset($userRow['reveal_contact_info'])) {
+    $revealContact = (bool)$userRow['reveal_contact_info'];
+  }
+  
+  // Build interests array from the 3 category columns
+  $interests = [];
+  if ($userRow) {
+    $interests = array_filter([
+      $userRow['interested_category_1'] ?? null,
+      $userRow['interested_category_2'] ?? null,
+      $userRow['interested_category_3'] ?? null
+    ]);
+  }
+  
+  $result = [
     'promoEmails' => $promoEmails,
-    'revealContact' => false, // This doesn't exist in user_accounts, so always false
-    'interests' => [], // This doesn't exist in user_accounts, so always empty
+    'revealContact' => $revealContact,
+    'interests' => $interests,
     'theme' => $theme,
   ];
+  
+  return $result;
 }
 
 function sendPromoWelcomeEmail(array $user): array
@@ -219,8 +236,13 @@ try {
 
     $promo = isset($body['promoEmails']) ? (int)!!$body['promoEmails'] : 0;
     $reveal = isset($body['revealContact']) ? (int)!!$body['revealContact'] : 0;
-    $interests = isset($body['interests']) && is_array($body['interests']) ? $body['interests'] : [];
+    $interests = isset($body['interests']) && is_array($body['interests']) ? array_slice($body['interests'], 0, 3) : [];
     $theme = (isset($body['theme']) && $body['theme'] === 'dark') ? 1 : 0;
+    
+    // Prepare the 3 category values
+    $int1 = $interests[0] ?? null;
+    $int2 = $interests[1] ?? null;
+    $int3 = $interests[2] ?? null;
 
     // Check if user is opting into promo emails for the first time
     $shouldSendEmail = false;
@@ -239,14 +261,22 @@ try {
       }
     }
 
-    // Update user_accounts table with theme and email preferences
-    $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, promotional = ?, received_intro_promo_email = CASE WHEN ? = 1 AND received_intro_promo_email = 0 THEN 1 ELSE received_intro_promo_email END WHERE user_id = ?');
-    $stmt->bind_param('iiii', $theme, $promo, $promo, $userId);
+    // Update user_accounts table with theme, email preferences, contact reveal setting, and interested categories
+    $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, promotional = ?, reveal_contact_info = ?, interested_category_1 = ?, interested_category_2 = ?, interested_category_3 = ? WHERE user_id = ?');
+    $stmt->bind_param('iiisssi', $theme, $promo, $reveal, $int1, $int2, $int3, $userId);
     $result = $stmt->execute();
     if (!$result) {
       error_log("Failed to update user_accounts: " . $stmt->error);
     }
     $stmt->close();
+
+    // Handle received_intro_promo_email separately if needed
+    if ($shouldSendEmail) {
+      $stmt2 = $conn->prepare('UPDATE user_accounts SET received_intro_promo_email = 1 WHERE user_id = ?');
+      $stmt2->bind_param('i', $userId);
+      $stmt2->execute();
+      $stmt2->close();
+    }
 
     // Send promo welcome email if this is the first time opting in
     if ($shouldSendEmail) {
