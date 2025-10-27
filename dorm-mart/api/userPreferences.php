@@ -38,12 +38,14 @@ $conn = db();
 function getPrefs(mysqli $conn, int $userId)
 {
   // Get all preferences from user_accounts table
-  $stmt = $conn->prepare('SELECT theme, promotional FROM user_accounts WHERE user_id = ?');
+  $stmt = $conn->prepare('SELECT theme, promotional, reveal_contact_info FROM user_accounts WHERE user_id = ?');
   $stmt->bind_param('i', $userId);
   $stmt->execute();
   $res = $stmt->get_result();
   $userRow = $res->fetch_assoc();
   $stmt->close();
+  
+  error_log("Database row for user $userId: " . json_encode($userRow));
   
   
   $theme = 'light'; // default
@@ -56,12 +58,20 @@ function getPrefs(mysqli $conn, int $userId)
     $promoEmails = (bool)$userRow['promotional'];
   }
   
-  return [
+  $revealContact = false; // default
+  if ($userRow && isset($userRow['reveal_contact_info'])) {
+    $revealContact = (bool)$userRow['reveal_contact_info'];
+  }
+  
+  $result = [
     'promoEmails' => $promoEmails,
-    'revealContact' => false, // This doesn't exist in user_accounts, so always false
+    'revealContact' => $revealContact,
     'interests' => [], // This doesn't exist in user_accounts, so always empty
     'theme' => $theme,
   ];
+  
+  error_log("Processed preferences for user $userId: " . json_encode($result));
+  return $result;
 }
 
 function sendPromoWelcomeEmail(array $user): array
@@ -207,6 +217,7 @@ TEXT;
 try {
   if ($method === 'GET') {
     $data = getPrefs($conn, $userId);
+    error_log("GET userPreferences for user $userId: " . json_encode($data));
     echo json_encode(['ok' => true, 'data' => $data]);
     $conn->close();
     exit;
@@ -239,14 +250,22 @@ try {
       }
     }
 
-    // Update user_accounts table with theme and email preferences
-    $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, promotional = ?, received_intro_promo_email = CASE WHEN ? = 1 AND received_intro_promo_email = 0 THEN 1 ELSE received_intro_promo_email END WHERE user_id = ?');
-    $stmt->bind_param('iiii', $theme, $promo, $promo, $userId);
+    // Update user_accounts table with theme, email preferences, and contact reveal setting
+    $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, promotional = ?, reveal_contact_info = ? WHERE user_id = ?');
+    $stmt->bind_param('iiii', $theme, $promo, $reveal, $userId);
     $result = $stmt->execute();
     if (!$result) {
       error_log("Failed to update user_accounts: " . $stmt->error);
     }
     $stmt->close();
+
+    // Handle received_intro_promo_email separately if needed
+    if ($shouldSendEmail) {
+      $stmt2 = $conn->prepare('UPDATE user_accounts SET received_intro_promo_email = 1 WHERE user_id = ?');
+      $stmt2->bind_param('i', $userId);
+      $stmt2->execute();
+      $stmt2->close();
+    }
 
     // Send promo welcome email if this is the first time opting in
     if ($shouldSendEmail) {
