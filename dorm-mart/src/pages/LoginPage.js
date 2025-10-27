@@ -82,6 +82,34 @@ function LoginPage() {
 
       if (data.ok) {
         // Auth token is now set server-side as httpOnly cookie
+        
+        // Apply theme immediately after successful login
+        if (data.theme) {
+          if (data.theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+          
+          // Also save to localStorage for immediate access
+          try {
+            const meRes = await fetch(`${process.env.REACT_APP_API_BASE}/auth/me.php`, { 
+              method: 'GET', 
+              credentials: 'include' 
+            });
+            if (meRes.ok) {
+              const meJson = await meRes.json();
+              const userId = meJson.user_id;
+              if (userId) {
+                const userThemeKey = `userTheme_${userId}`;
+                localStorage.setItem(userThemeKey, data.theme);
+              }
+            }
+          } catch (e) {
+            // User not authenticated or error - continue anyway
+          }
+        }
+        
         // Navigate to the main app
         navigate("/app");
       } else {

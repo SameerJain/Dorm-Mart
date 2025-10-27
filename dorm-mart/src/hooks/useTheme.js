@@ -10,14 +10,35 @@ export function useTheme() {
   useEffect(() => {
     const loadTheme = async () => {
       try {
-        // First try to get from localStorage as immediate fallback
-        const localTheme = localStorage.getItem('userTheme');
-        if (localTheme) {
-          setTheme(localTheme);
-          applyTheme(localTheme);
+        // First clear any existing theme to prevent cross-user contamination
+        document.documentElement.classList.remove('dark');
+        
+        // Get user ID for user-specific localStorage
+        let userId = null;
+        try {
+          const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
+            method: 'GET', 
+            credentials: 'include' 
+          });
+          if (meRes.ok) {
+            const meJson = await meRes.json();
+            userId = meJson.user_id;
+          }
+        } catch (e) {
+          // User not authenticated
         }
 
-        // Then try to get from backend
+        // Try localStorage first for immediate application
+        if (userId) {
+          const userThemeKey = `userTheme_${userId}`;
+          const localTheme = localStorage.getItem(userThemeKey);
+          if (localTheme) {
+            setTheme(localTheme);
+            applyTheme(localTheme);
+          }
+        }
+
+        // Then get from backend and override localStorage
         const res = await fetch(`${API_BASE}/userPreferences.php`, { 
           method: 'GET', 
           credentials: 'include' 
@@ -28,12 +49,14 @@ export function useTheme() {
             setTheme(json.data.theme);
             applyTheme(json.data.theme);
             // Update localStorage with backend value
-            localStorage.setItem('userTheme', json.data.theme);
+            if (userId) {
+              const userThemeKey = `userTheme_${userId}`;
+              localStorage.setItem(userThemeKey, json.data.theme);
+            }
           }
         }
       } catch (e) {
         console.warn('Failed to load theme:', e);
-        // Keep localStorage value if backend fails
       } finally {
         setIsLoading(false);
       }
@@ -53,8 +76,26 @@ export function useTheme() {
 
   // Save theme to backend and localStorage
   const saveTheme = async (newTheme) => {
-    // Save to localStorage immediately
-    localStorage.setItem('userTheme', newTheme);
+    // Get user ID for user-specific localStorage
+    let userId = null;
+    try {
+      const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
+        method: 'GET', 
+        credentials: 'include' 
+      });
+      if (meRes.ok) {
+        const meJson = await meRes.json();
+        userId = meJson.user_id;
+      }
+    } catch (e) {
+      // User not authenticated
+    }
+
+    // Save to localStorage immediately with user-specific key
+    if (userId) {
+      const userThemeKey = `userTheme_${userId}`;
+      localStorage.setItem(userThemeKey, newTheme);
+    }
     
     try {
       // First get current preferences to avoid overwriting them
