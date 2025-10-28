@@ -11,11 +11,14 @@ import { useParams, useMatch, useNavigate } from "react-router-dom";
 
 function ProductListingPage() {
   const { id } = useParams();
-  const matchNew = useMatch("/product-listing/new");
   const navigate = useNavigate();
   const isEdit = Boolean(id);
-  const isNew = Boolean(matchNew);
 
+  // robust matcher for /product-listing/new in different mount contexts
+  const matchNewAbs = useMatch({ path: "/product-listing/new", end: true });
+  const matchNewApp = useMatch({ path: "/app/product-listing/new", end: true });
+  const matchNewRel = useMatch({ path: "new", end: true });
+  const isNew = !isEdit && Boolean(matchNewAbs || matchNewApp || matchNewRel);
   const defaultForm = {
     title: "",
     categories: [],
@@ -56,7 +59,7 @@ function ProductListingPage() {
   const CATEGORIES_MAX = 3;
 
   // limits
-  const LIMITS = { title: 70, description: 1000, price: 999999.99 };
+  const LIMITS = { title: 70, description: 1000, price: 999999.99, priceMin: 0.01 };
 
   // fetch categories from backend
   useEffect(() => {
@@ -134,9 +137,9 @@ function ProductListingPage() {
     else if (description.length > LIMITS.description)
       newErrors.description = `Description must be ${LIMITS.description} characters or fewer`;
 
-    if (price === "" || Number(price) === 0) newErrors.price = "Price is required";
-    else if (price < 0) newErrors.price = "Price must be positive";
-    else if (price > LIMITS.price) newErrors.price = `Price must be $${LIMITS.price} or less`;
+    if (price === "") newErrors.price = "Price is required";
+    else if (Number(price) < LIMITS.priceMin) newErrors.price = `Minimum price is $${LIMITS.priceMin.toFixed(2)}`;
+    else if (Number(price) > LIMITS.price) newErrors.price = `Price must be $${LIMITS.price} or less`;
 
     if (!categories || categories.length === 0) newErrors.categories = "Select at least one category";
     else if (categories.length > CATEGORIES_MAX) newErrors.categories = `Select at most ${CATEGORIES_MAX} categories`;
@@ -456,7 +459,7 @@ function ProductListingPage() {
                       errors.price ? "border-red-500 bg-red-50" : "border-gray-300"
                     }`}
                     step="0.01"
-                    min="0"
+                    min={LIMITS.priceMin}
                     max={LIMITS.price}
                     placeholder="0.00"
                   />
@@ -580,7 +583,7 @@ function ProductListingPage() {
                   className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                   type="button"
                 >
-                  Discard Changes
+                  {isNew ? "Cancel" : "Discard Changes"}
                 </button>
               </div>
               {(catLoading || catFetchError) && (
