@@ -40,3 +40,6 @@ Thumbs.db
 # Specific env files in dorm-mart
 dorm-mart/env.*
 dorm-mart/.env.*
+
+#Local deployment files
+deploy.bat
