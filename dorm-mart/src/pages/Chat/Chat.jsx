@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchMe,
   fetchConversation,
@@ -6,7 +6,7 @@ import {
   createMessage,
 } from "./chat_util";
 import { useNavigate } from "react-router-dom";
-import { ensureSocket } from "../../server/ws-demo";
+import { ensureSocket, getSocket } from "../../server/ws-demo";
 
 export default function ChatPage() {
   const wsRef = useRef(null);
@@ -51,8 +51,8 @@ export default function ChatPage() {
     }
   }
 
-  useEffect(() => {
-    const s = ensureSocket();
+  useEffect(async () => {
+    const s = await getSocket();
     wsRef.current = s;
 
     const onMsg = (e) => {

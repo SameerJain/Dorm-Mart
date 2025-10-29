@@ -1,6 +1,8 @@
 // ---------- API helpers ----------
+
+const BASE =  process.env.REACT_APP_API_BASE || "/api";
+
 export async function fetchMe(signal) {
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
   const r = await fetch(`${BASE}/auth/me.php`, {
     method: "GET",
     credentials: "include",
@@ -17,7 +19,6 @@ export async function fetchMe(signal) {
 
 export async function fetchConversation(userId, signal) {
   // returns: { success: true, conversations: [{ conv_id, user_1, user_2, ... }] }
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
   const r = await fetch(`${BASE}/chat/read_conversation.php?user_id=${userId}`, {
     method: "GET",
     headers: { Accept: "application/json" },
@@ -29,7 +30,6 @@ export async function fetchConversation(userId, signal) {
 
 export async function fetchChat(convId, signal) {
   // returns: { success: true, messages: [{ message_id, sender_id, content, created_at, ... }] }
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
   const r = await fetch(`${BASE}/chat/read_chat.php?conv_id=${convId}`, {
     method: "GET",
     headers: { Accept: "application/json" },
@@ -41,7 +41,6 @@ export async function fetchChat(convId, signal) {
 }
 
 export async function createMessage({ senderId, receiverId, content, signal }) {
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
   const r = await fetch(`${BASE}/chat/create_message.php`, {
     method: "POST",
     headers: {
