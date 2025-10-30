@@ -1,0 +1,139 @@
+<?php
+declare(strict_types=1);
+
+// dorm-mart/api/landingListings.php
+
+header('Content-Type: application/json; charset=utf-8');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    http_response_code(405);
+    echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
+    exit;
+}
+
+try {
+    require __DIR__ . '/auth/auth_handle.php';
+    require __DIR__ . '/database/db_connect.php';
+
+    auth_boot_session();
+    $userId = require_login();
+
+    mysqli_report(MYSQLI_REPORT_OFF);
+    $mysqli = db();
+
+    $sql = "
+        SELECT 
+            i.product_id,
+            i.title,
+            i.categories,
+            i.item_location,
+            i.item_condition,
+            i.photos,
+            i.listing_price,
+            i.trades,
+            i.price_nego,
+            i.date_listed,
+            i.seller_id,
+            i.sold,
+            ua.first_name,
+            ua.last_name,
+            ua.email
+        FROM INVENTORY AS i
+        LEFT JOIN user_accounts AS ua ON i.seller_id = ua.user_id
+        WHERE (i.sold = 0 OR i.sold IS NULL)
+        ORDER BY i.date_listed DESC, i.product_id DESC
+        LIMIT 40
+    ";
+
+    $res = $mysqli->query($sql);
+    if ($res === false) {
+        throw new Exception("SQL error: " . $mysqli->error);
+    }
+
+    $out = [];
+    $now = time();
+
+    while ($row = $res->fetch_assoc()) {
+        // categories JSON -> array
+        $tags = [];
+        if (!empty($row['categories'])) {
+            $decoded = json_decode($row['categories'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $tags = array_values(array_filter($decoded, fn($v) => is_string($v) && $v !== ''));
+            }
+        }
+
+        // photos JSON -> take first AS STORED (e.g. "/data/images/img_....png")
+        $image = null;
+        if (!empty($row['photos'])) {
+            $photos = json_decode($row['photos'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($photos) && count($photos)) {
+                $first = $photos[0];
+                if (is_string($first)) {
+                    $image = $first;
+                } elseif (is_array($first) && isset($first['url'])) {
+                    $image = $first['url'];
+                }
+            }
+        }
+
+        // status from date_listed
+        $status = 'AVAILABLE';
+        $createdAt = null;
+        if (!empty($row['date_listed'])) {
+            $createdAt = $row['date_listed'] . ' 00:00:00';
+            $ts = strtotime($row['date_listed']);
+            if ($ts !== false) {
+                $diffHrs = ($now - $ts) / 3600;
+                if ($diffHrs < 48) {
+                    $status = 'JUST POSTED';
+                }
+            }
+        }
+
+        // seller name
+        $seller = 'Unknown Seller';
+        $first = trim((string)($row['first_name'] ?? ''));
+        $last  = trim((string)($row['last_name'] ?? ''));
+        if ($first !== '' || $last !== '') {
+            $seller = trim($first . ' ' . $last);
+        } elseif (!empty($row['email'])) {
+            $seller = $row['email'];
+        }
+
+        $out[] = [
+            'id'         => (int)$row['product_id'],
+            'title'      => $row['title'] ?? 'Untitled',
+            'price'      => $row['listing_price'] !== null ? (float)$row['listing_price'] : 0,
+            'image'      => $image,      // <-- "/data/images/xxxx.png"
+            'image_url'  => $image,
+            'tags'       => $tags,
+            'category'   => !empty($tags) ? $tags[0] : null,
+            'location'   => $row['item_location'] ?? 'North Campus',
+            'condition'  => $row['item_condition'] ?? null,
+            'created_at' => $createdAt,
+            'seller'     => $seller,
+            'sold_by'    => $seller,
+            'rating'     => 4.7,
+            'status'     => $status,
+            'trades'     => (bool)$row['trades'],
+            'price_nego' => (bool)$row['price_nego'],
+        ];
+    }
+
+    echo json_encode($out);
+    exit;
+
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode([
+        'ok' => false,
+        'error' => 'Server error',
+        'detail' => $e->getMessage(),
+    ]);
+    exit;
+}
