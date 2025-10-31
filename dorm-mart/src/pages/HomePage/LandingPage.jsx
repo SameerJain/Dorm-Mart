@@ -169,6 +169,10 @@ export default function LandingPage() {
             tags,
             status: status || "AVAILABLE",
             category,
+            createdAtTs:
+              createdAt instanceof Date && !isNaN(createdAt)
+                ? createdAt.getTime()
+                : 0,
             // still keeping seller/location/rating in case we need later
             seller: d.seller || d.sold_by || d.seller_name || "Unknown Seller",
             rating: typeof d.rating === "number" ? d.rating : 4.7,
@@ -207,14 +211,47 @@ export default function LandingPage() {
         ? item.tags.map((t) => t.toLowerCase())
         : [];
 
+      let best = null;
       for (const ic of interests) {
         const icLower = ic.toLowerCase();
-        if (itemCat === icLower || itemTags.includes(icLower)) {
-          byInterest[ic].push(item);
-          used.add(item.id);
-          break;
+        const tagIdx = itemTags.indexOf(icLower);
+        const isTagMatch = tagIdx !== -1;
+        const isCatMatch = itemCat === icLower;
+
+        if (isTagMatch) {
+          if (!best || best.kind !== "tag" || tagIdx < best.tagIdx) {
+            best = { ic, kind: "tag", tagIdx };
+          }
+        } else if (isCatMatch) {
+          if (!best) {
+            best = { ic, kind: "category" };
+          }
         }
       }
+
+      if (best) {
+        byInterest[best.ic].push(item);
+        used.add(item.id);
+      }
+    });
+
+    // Sort each interest bucket: primary tag (category) first, then by newest date
+    const cmp = (cat) => (a, b) => {
+      const catLower = (cat || "").toLowerCase();
+      const aPrimary = Array.isArray(a.tags) && a.tags[0]
+        ? String(a.tags[0]).toLowerCase() === catLower
+        : false;
+      const bPrimary = Array.isArray(b.tags) && b.tags[0]
+        ? String(b.tags[0]).toLowerCase() === catLower
+        : false;
+      if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
+      const at = typeof a.createdAtTs === "number" ? a.createdAtTs : 0;
+      const bt = typeof b.createdAtTs === "number" ? b.createdAtTs : 0;
+      return bt - at; // newer first
+    };
+
+    Object.keys(byInterest).forEach((cat) => {
+      byInterest[cat].sort(cmp(cat));
     });
 
     return {
@@ -226,7 +263,7 @@ export default function LandingPage() {
   const isLoading = loadingUser || loadingItems;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gray-50 overflow-x-hidden">
       {/* TOP BAR with rotating statement and interests on right */}
       <div className="w-full border-b border-gray-200 bg-white/80 backdrop-blur px-1 sm:px-2 md:px-3 py-3 flex items-center justify-between gap-3">
         {/* rotating blue chip */}
@@ -282,7 +319,7 @@ export default function LandingPage() {
               </div>
               <div className="hidden sm:flex">
                 <button
-                  onClick={() => openExternalRoute(LIST_ITEM_URL)}
+                  onClick={() => navigate("/app/product-listing/new")}
                   className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
                 >
                   List an item
@@ -384,7 +421,7 @@ export default function LandingPage() {
           </aside>
 
           {/* CENTER */}
-          <main className="flex flex-col gap-6">
+          <main className="flex flex-col gap-6 min-w-0">
             {/* For you */}
             {interests.length ? (
               <section className="space-y-4">
@@ -398,7 +435,7 @@ export default function LandingPage() {
                     </p>
                   </div>
                   <button
-                    onClick={() => openExternalRoute(MANAGE_INTERESTS_URL)}
+                    onClick={() => navigate('/app/setting/user-preferences')}
                     className="text-sm text-blue-600 hover:underline"
                   >
                     Manage interests
@@ -413,7 +450,7 @@ export default function LandingPage() {
                         <h4 className="text-sm md:text-base font-semibold text-gray-800">
                           {cat}
                         </h4>
-                        <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-blue-200">
+                        <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-blue-200 w-full max-w-full min-w-0">
                           {catItems.length ? (
                             catItems.map((item) => (
                               <div
