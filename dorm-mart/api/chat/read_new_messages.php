@@ -1,21 +1,22 @@
 <?php
 
+header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../security/security.php';
+require __DIR__ . '/../database/db_connect.php';
 setSecurityHeaders();
 // Ensure CORS headers are present for React dev server and local PHP server
 setSecureCORS();
 
-header('Content-Type: application/json; charset=utf-8');
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
-require __DIR__ . '/../database/db_connect.php';
-$conn = db(); // <-- this should return a mysqli connection
-$conn->query("SET time_zone = '+00:00'");
-$conn->set_charset('utf8mb4');
+$conn = db();
 
 session_start(); 
-
 $userId = (int)($_SESSION['user_id'] ?? 0);
-
 if ($userId <= 0) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Not authenticated']);
@@ -24,20 +25,6 @@ if ($userId <= 0) {
 
 $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
 $tsRaw  = isset($_GET['ts']) ? trim((string)$_GET['ts']) : '';
-
-$chk = $conn->prepare(
-    'SELECT 1 FROM conversation_participants WHERE conv_id = ? AND user_id = ? LIMIT 1'
-);
-$chk->bind_param('ii', $convId, $userId); // 'ii' = two integers
-$chk->execute();
-$inConv = $chk->get_result()->fetch_row(); // array|false
-$chk->close();
-
-if (!$inConv) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Not a participant']);
-    exit;
-}
 
 $stmt = $conn->prepare(
     'SELECT
@@ -57,16 +44,19 @@ $stmt->execute();
 $res = $stmt->get_result(); // requires mysqlnd; otherwise switch to bind_result loop
 $messages = [];
 while ($row = $res->fetch_assoc()) {
-    // Normalize types to what your frontend expects
-    $row['message_id']  = (int)$row['message_id'];
-    $row['conv_id']     = (int)$row['conv_id'];
-    $row['sender_id']   = (int)$row['sender_id'];
-    $row['receiver_id'] = (int)$row['receiver_id'];
-    $row['content'] = $row['content'];
-    $row['created_at'] = $row['created_at'];
-    // content, created_at, edited_at are strings (keep as-is)
-    $messages[] = $row;
+    $messages[] = $row;   // use row as-is
 }
+$stmt->close();
+
+// --- mark as read for the caller (sets "no unread") ---
+$stmt = $conn->prepare(
+    'UPDATE conversation_participants
+        SET unread_count = 0,
+            first_unread_msg_id = 0
+      WHERE conv_id = ? AND user_id = ?'
+);
+$stmt->bind_param('ii', $convId, $userId);
+$stmt->execute();
 $stmt->close();
 
 echo json_encode([

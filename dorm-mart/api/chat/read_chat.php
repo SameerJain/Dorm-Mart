@@ -5,7 +5,6 @@ header('Content-Type: application/json');
 
 // __DIR__ points to api/
 require __DIR__ . '/../database/db_connect.php';
-
 require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 // Ensure CORS headers are present for React dev server and local PHP server
@@ -16,10 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
-
 $conn = db();
-$conn->query("SET time_zone = '+00:00'");
-$conn->set_charset('utf8mb4');
 
 session_start(); // read the PHP session cookie to identify the caller
 
@@ -36,21 +32,6 @@ $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
 if ($convId <= 0) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'conv_id is required']);
-    exit;
-}
-
-// --- verify the user is a participant in this conversation ---
-$stmt = $conn->prepare(
-    'SELECT 1 FROM conversation_participants WHERE conv_id = ? AND user_id = ? LIMIT 1'
-); // prepared statements prevent SQL injection
-$stmt->bind_param('ii', $convId, $userId); // 'ii' = two integers
-$stmt->execute();
-$inConv = $stmt->get_result()->fetch_row(); // returns array or null if no row
-$stmt->close();
-
-if (!$inConv) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Not a participant']);
     exit;
 }
 
@@ -71,13 +52,7 @@ $stmt->execute();
 $res = $stmt->get_result(); // requires mysqlnd; if unavailable, switch to bind_result loop
 $messages = [];
 while ($row = $res->fetch_assoc()) {
-    $row['message_id']  = (int)$row['message_id'];
-    $row['conv_id']     = (int)$row['conv_id'];
-    $row['sender_id']   = (int)$row['sender_id'];
-    $row['receiver_id'] = (int)$row['receiver_id'];
-    $row['content'] = $row['content'];
-    $row['created_at'] = $row['created_at'];
-    $messages[] = $row;
+    $messages[] = $row;   // use row as-is
 }
 $stmt->close();
 

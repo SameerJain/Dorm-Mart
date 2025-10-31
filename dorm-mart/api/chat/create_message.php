@@ -4,16 +4,20 @@ declare(strict_types=1);
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../security/security.php';
+require __DIR__ . '/../database/db_connect.php';
 setSecurityHeaders();
 setSecureCORS();
 
-require __DIR__ . '/../database/db_connect.php';
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 session_start(); // read the PHP session cookie to identify the caller
 
 // --- auth: require a logged-in user ---
 $userId = $userId = (int)($_SESSION['user_id'] ?? 0);
-
 if ($userId <= 0) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Not authenticated']);
@@ -22,7 +26,6 @@ if ($userId <= 0) {
 
 $conn = db();
 $conn->set_charset('utf8mb4');
-
 
 $sender = $userId;
 $body = json_decode(file_get_contents('php://input'), true);

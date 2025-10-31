@@ -38,6 +38,9 @@ export function ChatProvider({ children }) {
                 const me = await fetch_me(controller.signal);
                 setMyId(me.user_id);
                 const res = await fetch_conversations(controller.signal);
+                if (!res.success) {
+                    throw new Error("Failed to load conversations");
+                }
                 const view = (res.conversations || []).map((c) => {
                     const iAmUser1 = c.user1_id === me.user_id;
                     return {
@@ -59,32 +62,29 @@ export function ChatProvider({ children }) {
         setActiveId(convId);
         setChatByConvError((m) => ({...m, [convId]: false}));
 
-        // lazy-load lastTsRefByConv
-        if (messagesByConv[convId]) {
-            const existing = messagesByConv[convId];
-            lastTsRefByConv.current[convId] = existing.length
-            ? Math.max(...existing.map((m) => Number(m.ts) || 0))
-            : 0;
-            return;
-        }
-
         const controler = new AbortController();
         try {
             const res = await fetch_chat(convId, controler.signal)
+            if (!res.success) {
+                throw new Error("Failed to load conversations");
+            }
+
             const raw = res.messages || [];
+            const normalized = raw.map((m) => {
+                const iso = m.created_at.includes("T") ? m.created_at : m.created_at.replace(" ", "T") + "Z";
+                return {
+                    id: m.message_id,
+                    sender: m.sender_id === myIdRef.current ? "me" : "them",
+                    content: m.content,
+                    ts: new Date(iso).getTime()
+                }
+            });
 
-            const normalized = raw.map((m) => ({
-                id: m.message_id,
-                sender: m.sender_id === myIdRef.current ? "me" : "them",
-                content: m.content,
-                ts: m.created_at
-            }));
-
-            setMessagesByConv((prev) => ({...prev, [convId]: normalized}));
-
+            setMessagesByConv((prev) => ({...prev, [convId]: normalized}));            
             lastTsRefByConv.current[convId] = normalized.length
             ? Math.max(...normalized.map((m) => Number(m.ts) || 0))
             : 0;
+
         } catch(err) {
             if (err.name !== "AbortError") {
                 setChatByConvError((m) => ({...m, [convId]: true}));
@@ -140,21 +140,16 @@ export function ChatProvider({ children }) {
 
         // if no active chat, return
         if (!activeId) return;
-
         // only poll when the tab is visible to reduce noise
         const shouldPollNow = () => document.visibilityState === "visible";
 
         const tick = async() => {
             if (!shouldPollNow()) return;
-
             // new AbortController per tick avoids overlapping slow requests
             const controller = new AbortController();
-
             try {
                 const sinceMs = lastTsRefByConv.current[activeId] || 0;
-
                 const res = await fetch_new_messages(activeId, sinceMs, controller.signal);
-
                 const raw = res.messages
                 if (!raw.length) return;
 
@@ -182,10 +177,8 @@ export function ChatProvider({ children }) {
                 throw new Error(`failed to read new messages}`);
             }
         };
-
         tick();
         const handle = setInterval(tick, POLL_MS);
-
         return () => {
             if (handle) clearInterval(handle);
         };

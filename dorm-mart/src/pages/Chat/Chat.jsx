@@ -52,8 +52,8 @@ export default function ChatPage() {
       <div className="mx-auto h-full max-w-[1200px] px-4 py-6">
         <div className="grid h-full grid-cols-12 gap-4">
           {/* Sidebar */}
-          <aside className="col-span-4 rounded-2xl border-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-            <div className="border-b border-gray-200 dark:border-gray-700 p-4">
+          <aside className="col-span-3 rounded-2xl border-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+            <div className="border-b-4 border-gray-200 dark:border-gray-700 p-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Chats</h2>
             </div>
             <ul
@@ -77,7 +77,7 @@ export default function ChatPage() {
                           "flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition " +
                           (isActive
                             ? "bg-indigo-50 text-indigo-700"
-                            : "hover:bg-gray-100")
+                            : "hover:bg-blue-600")
                         }
                         aria-current={isActive ? "true" : undefined}
                       >
@@ -93,8 +93,7 @@ export default function ChatPage() {
           </aside>
 
           {/* Main chat pane */}
-          <section className="col-span-8 flex flex-col rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-            {/* Header */}
+          <section className="col-span-8 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
             <div className="flex items-center justify-between border-4 border-gray-200 dark:border-gray-700 px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{activeLabel}</h2>

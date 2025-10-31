@@ -37,7 +37,7 @@ export async function fetch_chat(convId, signal) {
 }
 
 export async function fetch_new_messages(convId, ts, signal) {
-  const r = await fetch(`${BASE}/chat/read_new_message.php?conv_id=${convId}&ts=${ts}`, {
+  const r = await fetch(`${BASE}/chat/read_new_messages.php?conv_id=${convId}&ts=${ts}`, {
     method: "GET",
     headers: { Accept: "application/json" },
     credentials: "include", // session-based auth
