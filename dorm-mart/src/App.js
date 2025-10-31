@@ -23,7 +23,7 @@ import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx
 // Chat
 // import { ChatProvider } from "./context/ChatContext.js";
 import { ChatProvider } from "./context/ChatContext.js";
-import ChatPage from "./pages/Chat/Chat.jsx";
+import ChatPage from "./pages/Chat/ChatPage.jsx";
 
 // Load user theme immediately when app starts
 const loadUserTheme = async () => {

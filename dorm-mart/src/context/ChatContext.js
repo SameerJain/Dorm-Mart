@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-import { fetch_me, fetch_conversations, fetch_chat, create_message, fetch_new_messages } from "./chat_util";
+import { fetch_me, fetch_conversations, fetch_chat, create_message, fetch_new_messages } from "./chat_utils";
 
 const ChatContext = createContext(null);
 
@@ -153,12 +153,15 @@ export function ChatProvider({ children }) {
                 const raw = res.messages
                 if (!raw.length) return;
 
-                const incoming = raw.map((m) => ({
-                    id: m.message_id,
-                    sender: m.sender_id === myIdRef.current ? "me" : "them",
-                    content: m.content,
-                    ts: m.created_at
-                }));
+                const incoming = raw.map((m) => {
+                    const iso = m.created_at.includes("T") ? m.created_at : m.created_at.replace(" ", "T") + "Z";
+                    return {
+                        id: m.message_id,
+                        sender: m.sender_id === myIdRef.current ? "me" : "them",
+                        content: m.content,
+                        ts: new Date(iso).getTime()
+                    }
+                });
 
                 setMessagesByConv((prev) => {
                     const existing = prev[activeId] ?? [];
