@@ -1,109 +1,206 @@
-
-import { useEffect, useRef, useState } from 'react';
-import ChatSocket from '../web-socket';
-
-const API_BASE = process.env.REACT_APP_API_BASE || '/api';
-
-// For demo purposes, hardcode two users.
-// In your real app, read ME from your auth/session state, and choose PEER from UI.
-const ME   = '101';
-const PEER = '202';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useChat } from "../../context/ChatContext";
 
 export default function ChatPage() {
-  const [ready, setReady] = useState(false); // disable input until socket init done
-  const [log, setLog] = useState([]);        // [{from,to,text,ts}, ...]
-  const [text, setText] = useState('');
-  const sockRef = useRef(null);              // holds ChatSocket instance
 
-  // On first mount: 1) load history, 2) connect WebSocket.
+  const {
+      conversations,
+      activeId,
+      messages,
+      convError,
+      chatByConvError,
+      sendMsgError,
+      // actions
+      selectConversation,
+      sendMessage,
+  } = useChat();
+
+  const MAX_LEN = 500; // hard cap; used by textarea and counter
+
+  const scrollRef = useRef(null);
+
+  const [draft, setDraft] = useState("");
+
+  // Auto-scroll to bottom when messages change or active chat switches
   useEffect(() => {
-    let closed = false;
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [activeId, messages.length]);
 
-    // 1) Load past messages (REST) so you see history on first render.
-    (async () => {
-      const r = await fetch(
-        `${API_BASE}/read_message.php?user_id=${encodeURIComponent(ME)}&peer_id=${encodeURIComponent(PEER)}`,
-        { headers: { 'Accept': 'application/json' } }
-      );
-      const data = await r.json();
-      if (!closed && data?.messages) setLog(data.messages);
-    })();
-
-    // 2) Start WebSocket for real-time messages (no SSL in this demo).
-    // If you deploy behind HTTPS, you'll typically use wss:// and proxy to :8081.
-    sockRef.current = new ChatSocket({
-      wsUrl: `ws://${window.location.hostname}:8081`,
-      userId: ME,
-      onMessage: (evt) => {
-        if (evt.op === 'message') {
-          // New message from someone (likely PEER) → append to chat log.
-          setLog((old) => [...old, { from: evt.from, to: evt.to, text: evt.text, ts: evt.ts }]);
-        }
-      }
-    });
-
-    setReady(true);
-
-    // Cleanup when component unmounts (close socket; stop state updates).
-    return () => {
-      closed = true;
-      sockRef.current?.close();
-    };
-  }, []);
-
-  // Send handler: persists to DB (REST) + emits on socket (WS) + optimistic UI.
-  async function handleSend(e) {
-    e.preventDefault();
-    const value = text.trim();
-    if (!value) return;
-
-    // 1) Persist the message to the database via your simple PHP endpoint.
-    await fetch(`${API_BASE}/create_message.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ sender_id: ME, receiver_id: PEER, text: value })
-    });
-
-    // 2) Emit real-time signal so PEER sees it instantly if online.
-    sockRef.current?.sendText({ to: PEER, text: value });
-
-    // 3) Update our own UI immediately (optimistic render).
-    setLog((old) => [...old, { from: ME, to: PEER, text: value, ts: Math.floor(Date.now()/1000) }]);
-    setText('');
+  // Small time formatter
+  function fmtTime(ts) {
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 
+  function handleKeyDown(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(draft);
+      setDraft("");
+    }
+  }
+
+  // Header label: show the other user id for now
+  const activeLabel = useMemo(() => {
+    const c = conversations.find((x) => x.id === activeId);
+    return c ? c.receiverName : "Select a chat";
+  }, [conversations, activeId]);
+
   return (
-    <div style={{ maxWidth: 560, margin: '2rem auto', fontFamily: 'sans-serif' }}>
-      <h2>1:1 Chat Demo</h2>
-
-      <div style={{ border: '1px solid #ddd', padding: 12, height: 360, overflowY: 'auto' }}>
-        {log.map((m, i) => (
-          <div key={i} style={{ margin: '6px 0', textAlign: m.from === ME ? 'right' : 'left' }}>
-            <div style={{
-              display: 'inline-block',
-              padding: '6px 10px',
-              borderRadius: 8,
-              background: m.from === ME ? '#e6f2ff' : '#f2f2f2'
-            }}>
-              <div style={{ fontSize: 12, opacity: 0.6 }}>{m.from === ME ? 'You' : `User ${m.from}`}</div>
-              <div>{m.text}</div>
+    <div className="h-screen w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <div className="mx-auto h-full max-w-[1200px] px-4 py-6">
+        <div className="grid h-full grid-cols-12 gap-4">
+          {/* Sidebar */}
+          <aside className="col-span-3 rounded-2xl border-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+            <div className="border-b-4 border-gray-200 dark:border-gray-700 p-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Chats</h2>
             </div>
-          </div>
-        ))}
-      </div>
+            <ul
+              className="max-h-[70vh] overflow-y-auto p-2"
+              aria-label="Conversation list"
+            >
+              {convError ? (
+                <li>
+                  <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                    Something went wrong, please try again later
+                  </div>
+                </li>
+              ) : (
+                conversations.map((c) => {
+                  const isActive = c.id === activeId;
+                  return (
+                    <li key={c.id}>
+                      <button
+                        onClick={() => selectConversation(c.id)}
+                        className={
+                          "flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition " +
+                          (isActive
+                            ? "bg-indigo-50 text-indigo-700"
+                            : "hover:bg-blue-600")
+                        }
+                        aria-current={isActive ? "true" : undefined}
+                      >
+                        <span className="truncate font-medium">
+                          {c.receiverName}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </aside>
 
-      <form onSubmit={handleSend} style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={ready ? 'Type a message…' : 'Connecting…'}
-          disabled={!ready}
-          style={{ flex: 1, padding: 8, border: '1px solid #ccc', borderRadius: 6 }}
-        />
-        <button type="submit" disabled={!ready || !text.trim()} style={{ padding: '8px 12px' }}>
-          Send
-        </button>
-      </form>
+          {/* Main chat pane */}
+          <section className="col-span-8 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+            <div className="flex items-center justify-between border-4 border-gray-200 dark:border-gray-700 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{activeLabel}</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Direct message</p>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div
+              ref={scrollRef}
+              className="flex-1 space-y-2 overflow-y-auto px-4 py-4"
+              role="log"
+              aria-live="polite"
+              aria-relevant="additions"
+            >
+              {!activeId ? (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-sm text-gray-500">
+                    Select a chat to view messages.
+                  </p>
+                </div>
+              ) : chatByConvError[activeId] ? (
+                <p className="text-center text-sm text-red-600 dark:text-red-400">
+                  Something went wrong, please try again later
+                </p>
+              ) : messages.length === 0 ? (
+                <p className="text-center text-sm text-gray-500">
+                  No messages yet.
+                </p>
+              ) : (
+                messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={
+                      m.sender === "me"
+                        ? "flex justify-end"
+                        : "flex justify-start"
+                    }
+                  >
+                    <div
+                      className={
+                        "max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " +
+                        (m.sender === "me"
+                          ? "bg-indigo-600 text-white"
+                          : "bg-gray-100 text-gray-900")
+                      }
+                    >
+                      <p className="whitespace-pre-wrap">{m.content}</p>
+                      <div
+                        className={
+                          "mt-1 text-[10px] " +
+                          (m.sender === "me"
+                            ? "text-indigo-100"
+                            : "text-gray-500")
+                        }
+                      >
+                        {fmtTime(m.ts)}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Composer */}
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+              <div className="flex items-end gap-2">
+                <div className="relative w-full">
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a message…"
+                    rows={2}
+                    maxLength={MAX_LEN} // prevents typing past 500 on the client
+                    aria-describedby="message-char-remaining" // links to the counter for a11y
+                    className="min-h-[44px] w-full resize-y rounded-2xl border border-gray-300 dark:border-gray-600 px-3 py-2 pr-12 pb-6 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    //               ^^^^ extra right/bottom padding so the counter doesn't overlap text
+                    aria-label="Message input"
+                  />
+                  <span
+                    id="message-char-remaining"
+                    className="pointer-events-none absolute bottom-2 right-3 text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    {MAX_LEN - draft.length}
+                  </span>
+                  {/* ^ absolute positions the live countdown inside the textarea corner */}
+                </div>
+
+                <button
+                  onClick={() => {
+                    sendMessage(draft);
+                    setDraft("");
+                  }}
+                  className="h-[44px] shrink-0 rounded-2xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  aria-label="Send message"
+                >
+                  Send
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                Press Enter to send • Shift+Enter for a new line
+              </p>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
