@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $conn = db();
+$conn->query("SET time_zone = '+00:00'");   // MySQL session in UTC
 
 session_start(); 
 $userId = (int)($_SESSION['user_id'] ?? 0);
@@ -34,7 +35,7 @@ $stmt = $conn->prepare(
          DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at    -- ISO UTC (NULL stays NULL)
        FROM messages
       WHERE conv_id = ?
-        AND created_at > FROM_UNIXTIME(?)
+        AND created_at > ?
       ORDER BY message_id ASC'
 );
 // 'is' = integer (conv_id), string (ts as DATETIME in UTC)
@@ -42,6 +43,7 @@ $stmt->bind_param('is', $convId, $tsRaw);
 $stmt->execute();
 
 $res = $stmt->get_result(); // requires mysqlnd; otherwise switch to bind_result loop
+error_log(sprintf('[read_new_messages] num_rows=%d', $res->num_rows));
 $messages = [];
 while ($row = $res->fetch_assoc()) {
     $messages[] = $row;   // use row as-is
