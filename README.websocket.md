@@ -90,8 +90,12 @@ final class DemoServer implements MessageComponentInterface {
     }
 }
 ```
+## How to run the server
+- navigate to `api/ws`
+- run `php ws-server.php`
+- confirm `Ratchet WebSocket listening on address:port` message
 
-# Conclusion
+## Conclusion
 Now with the Ratchet server and the running DemoServer object, we can create a running websocket server which listens to client's requests and respond over the connection
 
 

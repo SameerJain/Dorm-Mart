@@ -1,11 +1,8 @@
 <?php
 
-declare(strict_types=1);
-header('Content-Type: application/json');
-
-// __DIR__ points to api/
-require __DIR__ . '/../database/db_connect.php';
+header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../security/security.php';
+require __DIR__ . '/../database/db_connect.php';
 setSecurityHeaders();
 // Ensure CORS headers are present for React dev server and local PHP server
 setSecureCORS();
@@ -15,10 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
+
 $conn = db();
 
-session_start(); // read the PHP session cookie to identify the caller
-
+session_start(); 
 $userId = (int)($_SESSION['user_id'] ?? 0);
 if ($userId <= 0) {
     http_response_code(401);
@@ -26,16 +23,9 @@ if ($userId <= 0) {
     exit;
 }
 
-// --- input: conv_id must come from the query string ---
-// e.g. GET /api/read_chat.php?conv_id=123
 $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
-if ($convId <= 0) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'conv_id is required']);
-    exit;
-}
+$tsRaw  = isset($_GET['ts']) ? trim((string)$_GET['ts']) : '';
 
-// --- fetch all messages for this conversation (oldest first) ---
 $stmt = $conn->prepare(
     'SELECT
          message_id, conv_id, sender_id, receiver_id, content,
@@ -44,12 +34,14 @@ $stmt = $conn->prepare(
          DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at    -- ISO UTC (NULL stays NULL)
        FROM messages
       WHERE conv_id = ?
+        AND created_at > ?
       ORDER BY message_id ASC'
 );
-
-$stmt->bind_param('i', $convId);
+// 'is' = integer (conv_id), string (ts as DATETIME in UTC)
+$stmt->bind_param('is', $convId, $tsRaw);
 $stmt->execute();
-$res = $stmt->get_result(); // requires mysqlnd; if unavailable, switch to bind_result loop
+
+$res = $stmt->get_result(); // requires mysqlnd; otherwise switch to bind_result loop
 $messages = [];
 while ($row = $res->fetch_assoc()) {
     $messages[] = $row;   // use row as-is
@@ -67,9 +59,8 @@ $stmt->bind_param('ii', $convId, $userId);
 $stmt->execute();
 $stmt->close();
 
-// --- done ---
 echo json_encode([
     'success'  => true,
     'conv_id'  => $convId,
-    'messages' => $messages
-]);
+    'messages' => $messages, // array of only-new messages
+], JSON_UNESCAPED_SLASHES);

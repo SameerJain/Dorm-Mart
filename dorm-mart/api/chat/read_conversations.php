@@ -12,11 +12,30 @@ require __DIR__ . '/../database/db_connect.php';
 $mysqli = db(); // <-- this should return a mysqli connection
 
 
-$uid = filter_input(INPUT_GET, 'user_id', FILTER_VALIDATE_INT);
-if (!$uid) {
-  http_response_code(400);
-  echo json_encode(['success' => false, 'error' => 'Missing or invalid user_id']);
+
+/*
+login.php
+- creates a new session file and updates the cookie
+- PHP sends Set-Cookie
+- Subsequent API calls send the cookie automatically
+session_start();
+if ($okPassword) {
+  session_regenerate_id(true); // prevent fixation; gives a fresh session id
+  $_SESSION['user_id'] = $user['user_id'];
+  echo json_encode(['success' => true]);
+}
+*/
+// reads PHPSESSID from Cookie header and loads that session
+session_start(); 
+$userId = (int)($_SESSION['user_id'] ?? 0);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+  http_response_code(204);
   exit;
+}
+if ($userId <= 0) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
+    exit;
 }
 
 $sql = "
@@ -39,7 +58,7 @@ if (!$stmt) {
   exit;
 }
 
-$stmt->bind_param('ii', $uid, $uid); // 'ii' = two integers
+$stmt->bind_param('ii', $userId, $userId); // 'ii' = two integers
 $stmt->execute();
 
 $res = $stmt->get_result();          // requires mysqlnd (present in XAMPP)
