@@ -145,8 +145,8 @@ export function ChatProvider({ children }) {
             // new AbortController per tick avoids overlapping slow requests
             const controller = new AbortController();
             try {
-                const sinceMs = lastTsRefByConv.current[activeId] || 0;
-                const res = await fetch_new_messages(activeId, sinceMs, controller.signal);
+                const sinceSec = Math.floor((lastTsRefByConv.current[activeId] || 0) / 1000);
+                const res = await fetch_new_messages(activeId, sinceSec, controller.signal);
                 const raw = res.messages
                 if (!raw.length) return;
 

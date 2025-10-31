@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $conn = db();
-$conn->query("SET time_zone = '+00:00'");   // MySQL session in UTC
+$conn->query("SET time_zone = '+00:00'");
 
 session_start(); 
 $userId = (int)($_SESSION['user_id'] ?? 0);
@@ -25,21 +25,22 @@ if ($userId <= 0) {
 }
 
 $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
-$tsRaw  = isset($_GET['ts']) ? trim((string)$_GET['ts']) : '';
+$tsSec  = isset($_GET['ts']) ? (int)$_GET['ts'] : 0;
 
 $stmt = $conn->prepare(
     'SELECT
          message_id, conv_id, sender_id, receiver_id, content,
-         created_at, edited_at,
-         DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at,  -- ISO UTC
-         DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at    -- ISO UTC (NULL stays NULL)
+         /* Keep only ISO fields so JS can parse reliably */
+         DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at,
+         DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at
        FROM messages
       WHERE conv_id = ?
-        AND created_at > ?
+        /* CHANGED: compare TIMESTAMP to epoch seconds */
+        AND created_at > FROM_UNIXTIME(?)
       ORDER BY message_id ASC'
 );
 // 'is' = integer (conv_id), string (ts as DATETIME in UTC)
-$stmt->bind_param('is', $convId, $tsRaw);
+$stmt->bind_param('is', $convId, $tsSec);
 $stmt->execute();
 
 $res = $stmt->get_result(); // requires mysqlnd; otherwise switch to bind_result loop
