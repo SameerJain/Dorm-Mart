@@ -42,7 +42,8 @@ export function ChatProvider({ children }) {
                     const iAmUser1 = c.user1_id === me.user_id;
                     return {
                         id: c.conv_id,
-                        otherUserName: iAmUser1 ? c.user2_fname : c.user1_fname,
+                        receiverId: iAmUser1 ? c.user2_id : c.user1_id,
+                        receiverName: iAmUser1 ? c.user2_fname : c.user1_fname,
                     };
                 });
                 setConversations(view);
@@ -58,7 +59,7 @@ export function ChatProvider({ children }) {
         setActiveId(convId);
         setChatByConvError((m) => ({...m, [convId]: false}));
 
-        // lazy-load messages first time
+        // lazy-load lastTsRefByConv
         if (messagesByConv[convId]) {
             const existing = messagesByConv[convId];
             lastTsRefByConv.current[convId] = existing.length
@@ -91,8 +92,9 @@ export function ChatProvider({ children }) {
         }
     }
 
-    async function sendMessage(content) {
+    async function sendMessage(draft) {
         setSendMsgError(false);
+        const content = draft.trim();
         const trimmed = (content ?? "").trim();
         if (!trimmed || !activeId || !myIdRef.current) return;
 
@@ -102,7 +104,7 @@ export function ChatProvider({ children }) {
         try {
             const res = await create_message({
                 senderId: myIdRef.current,
-                receiverId: convo.otherUserId,
+                receiverId: convo.receiverId,
                 content: trimmed,
                 signal: undefined,
             });
@@ -189,13 +191,15 @@ export function ChatProvider({ children }) {
         };
     }, [activeId]);
 
+    const messages = useMemo(() => messagesByConv[activeId] || [], [messagesByConv, activeId]);
+
     const value = {
         // state
         conversations,
         activeId,
-        messagesByConv,
+        messages,
         convError,
-        chatErrorByConv: chatByConvError,
+        chatByConvError,
         sendMsgError,
         // actions
         selectConversation,

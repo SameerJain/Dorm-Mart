@@ -1,116 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  fetch_me,
-  fetch_conversations,
-  fetch_chat,
-  create_message,
-} from "../../context/chat_util";
-import { useNavigate } from "react-router-dom";
+import { useChat } from "../../context/ChatContext";
 
 export default function ChatPage() {
-  const navigate = useNavigate();
-  const MAX_LEN = 500; // hard cap; used by textarea and counter
-  const [myId, setMyId] = useState(null);
-  const myIdRef = useRef(null);
-  useEffect(() => {
-    myIdRef.current = myId;
-  }, [myId]);
-  const [conversations, setConversations] = useState([]); // [{ id, otherUserId }]
-  const [activeId, setActiveId] = useState(null);
 
-  const [messagesByConv, setMessagesByConv] = useState({}); // { [convId]: [{id,sender,text,ts}] }
-  const currentFetch = useRef(null); // tracks in-flight fetch to cancel
+  const {
+      conversations,
+      activeId,
+      messages,
+      convError,
+      chatByConvError,
+      sendMsgError,
+      // actions
+      selectConversation,
+      sendMessage,
+  } = useChat();
+
+  const MAX_LEN = 500; // hard cap; used by textarea and counter
+
   const scrollRef = useRef(null);
 
   const [draft, setDraft] = useState("");
-
-  // below other useState hooks
-  const [convError, setConvError] = useState(false); // read_conversation failed
-  const [chatErrorByConv, setChatErrorByConv] = useState({}); // per-conv read_chat failure map
-
-  // Load me + conversations on mount
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadConversations() {
-      try {
-        setConvError(false); // clear previous error before fetching
-        const me = await fetch_me(controller.signal);
-        setMyId(me.user_id);
-
-        const res = await fetch_conversations(controller.signal);
-        const view = res.conversations.map((c) => {
-          const u1 = c.user1_id;
-          const u2 = c.user2_id;
-          const iAmUser1 = u1 === me.user_id;
-          const otherId = iAmUser1 ? u2 : u1;
-          const n1 = c.user1_fname;
-          const n2 = c.user2_fname;
-          const otherName = iAmUser1 ? n2 : n1;
-          return {
-            id: c.conv_id,
-            otherUserId: otherId,
-            otherUserName: otherName,
-          };
-        });
-        setConversations(view);
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          if (err.status === 401 || String(err.message).includes("HTTP 401")) {
-            // Not logged in → send to login page (hash router friendly)
-            navigate("/login", { replace: true }); // replaces history so back won’t loop
-            return;
-          }
-          console.error(err);
-          setConvError(true); // flag sidebar error state
-        }
-      }
-    }
-
-    loadConversations();
-    return () => controller.abort();
-  }, []);
-
-  // Load messages when a conversation is selected (on click)
-  async function selectConversation(convId) {
-    setActiveId(convId);
-
-    // clear any previous error for this convo
-    setChatErrorByConv((prev) => ({ ...prev, [convId]: false }));
-
-    if (messagesByConv[convId]) return;
-
-    if (currentFetch.current) currentFetch.current.abort();
-
-    const controller = new AbortController();
-    currentFetch.current = controller;
-
-    try {
-      const res = await fetch_chat(convId, controller.signal);
-      const raw = res.messages ?? res.data ?? [];
-      const normalized = raw.map((m) => ({
-        id: m.message_id ?? m.id,
-        sender: m.sender_id === myId ? "me" : "them",
-        text: m.content ?? m.text ?? "",
-        ts:
-          m.created_at_ms ??
-          (m.created_at_s ? m.created_at_s * 1000 : Date.parse(m.created_at)),
-      }));
-      setMessagesByConv((prev) => ({ ...prev, [convId]: normalized }));
-    } catch (err) {
-      if (err.name !== "AbortError") {
-        console.error(err);
-        // mark this conversation as failed to load messages
-        setChatErrorByConv((prev) => ({ ...prev, [convId]: true }));
-      }
-    }
-  }
-
-  // Derived: messages for the active conversation
-  const messages = useMemo(
-    () => messagesByConv[activeId] || [],
-    [messagesByConv, activeId]
-  );
 
   // Auto-scroll to bottom when messages change or active chat switches
   useEffect(() => {
@@ -124,54 +33,18 @@ export default function ChatPage() {
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 
-  async function sendMessage() {
-    const text = draft.trim();
-    if (!text || !activeId || !myId) return;
-
-    // figure out the receiver from the selected conversation
-    const convo = conversations.find((x) => x.id === activeId);
-    if (!convo) return;
-    const receiverId = convo.otherUserId;
-
-    try {
-      const res = await create_message({
-        receiverId,
-        content: text,
-        signal: undefined, // optional: wire an AbortController if you want
-      });
-
-      // Use server echo if present; otherwise fall back to what we sent
-      const saved = res.message ?? {};
-      const newMsg = {
-        id: saved.message_id ?? `m${Date.now()}`,
-        sender: "me",
-        text: saved.content ?? text,
-        ts: Date.parse(saved.created_at ?? "") || Date.now(),
-      };
-
-      setMessagesByConv((prev) => {
-        const list = prev[activeId] ? [...prev[activeId], newMsg] : [newMsg];
-        return { ...prev, [activeId]: list };
-      });
-
-      setDraft("");
-    } catch (err) {
-      console.error(err);
-      // optional: surface a toast/error state here
-    }
-  }
-
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      sendMessage(draft);
+      setDraft("");
     }
   }
 
   // Header label: show the other user id for now
   const activeLabel = useMemo(() => {
     const c = conversations.find((x) => x.id === activeId);
-    return c ? c.otherUserName : "Select a chat";
+    return c ? c.receiverName : "Select a chat";
   }, [conversations, activeId]);
 
   return (
@@ -184,7 +57,6 @@ export default function ChatPage() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Chats</h2>
             </div>
             <ul
-              role="list"
               className="max-h-[70vh] overflow-y-auto p-2"
               aria-label="Conversation list"
             >
@@ -210,7 +82,7 @@ export default function ChatPage() {
                         aria-current={isActive ? "true" : undefined}
                       >
                         <span className="truncate font-medium">
-                          {c.otherUserName}
+                          {c.receiverName}
                         </span>
                       </button>
                     </li>
@@ -244,7 +116,7 @@ export default function ChatPage() {
                     Select a chat to view messages.
                   </p>
                 </div>
-              ) : chatErrorByConv[activeId] ? (
+              ) : chatByConvError[activeId] ? (
                 <p className="text-center text-sm text-red-600 dark:text-red-400">
                   Something went wrong, please try again later
                 </p>
@@ -270,7 +142,7 @@ export default function ChatPage() {
                           : "bg-gray-100 text-gray-900")
                       }
                     >
-                      <p className="whitespace-pre-wrap">{m.text}</p>
+                      <p className="whitespace-pre-wrap">{m.content}</p>
                       <div
                         className={
                           "mt-1 text-[10px] " +
@@ -313,7 +185,10 @@ export default function ChatPage() {
                 </div>
 
                 <button
-                  onClick={sendMessage}
+                  onClick={() => {
+                    sendMessage(draft);
+                    setDraft("");
+                  }}
                   className="h-[44px] shrink-0 rounded-2xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   aria-label="Send message"
                 >
