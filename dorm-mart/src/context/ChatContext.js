@@ -71,12 +71,11 @@ export function ChatProvider({ children }) {
 
             const raw = res.messages || [];
             const normalized = raw.map((m) => {
-                const iso = m.created_at.includes("T") ? m.created_at : m.created_at.replace(" ", "T") + "Z";
                 return {
                     id: m.message_id,
                     sender: m.sender_id === myIdRef.current ? "me" : "them",
                     content: m.content,
-                    ts: new Date(iso).getTime()
+                    ts: Date.parse(m.created_at),
                 }
             });
 
@@ -84,6 +83,8 @@ export function ChatProvider({ children }) {
             lastTsRefByConv.current[convId] = normalized.length
             ? Math.max(...normalized.map((m) => Number(m.ts) || 0))
             : 0;
+
+            console.log(...normalized.map((m) => Number(m.ts)));
 
         } catch(err) {
             if (err.name !== "AbortError") {
@@ -113,8 +114,8 @@ export function ChatProvider({ children }) {
             const newMsg = {
                 id: saved.message_id,
                 sender: "me",
-                content: trimmed,
-                ts: Date.now(),
+                content: saved.content,
+                ts: Date.parse(saved.created_at),
             };
 
             setMessagesByConv((prev) => {
@@ -122,10 +123,6 @@ export function ChatProvider({ children }) {
                 return {...prev, [activeId]: list};
             });
 
-            lastTsRefByConv.current[activeId] = Math.mat(
-                lastTsRefByConv.current[activeId] || 0,
-                Number(newMsg.ts) || 0
-            );
         } catch (err) {
             setSendMsgError(true);
         }
@@ -148,18 +145,17 @@ export function ChatProvider({ children }) {
             // new AbortController per tick avoids overlapping slow requests
             const controller = new AbortController();
             try {
-                const sinceMs = lastTsRefByConv.current[activeId] || 0;
-                const res = await fetch_new_messages(activeId, sinceMs, controller.signal);
+                const sinceSec = Math.floor((lastTsRefByConv.current[activeId] || 0) / 1000);
+                const res = await fetch_new_messages(activeId, sinceSec, controller.signal);
                 const raw = res.messages
                 if (!raw.length) return;
 
                 const incoming = raw.map((m) => {
-                    const iso = m.created_at.includes("T") ? m.created_at : m.created_at.replace(" ", "T") + "Z";
                     return {
                         id: m.message_id,
                         sender: m.sender_id === myIdRef.current ? "me" : "them",
                         content: m.content,
-                        ts: new Date(iso).getTime()
+                        ts: Date.parse(m.created_at),
                     }
                 });
 
@@ -175,6 +171,8 @@ export function ChatProvider({ children }) {
                     lastTsRefByConv.current[activeId] || 0,
                     maxTs
                 );
+
+                console.log(maxTs);
 
             } catch (err) {
                 throw new Error(`failed to read new messages}`);
