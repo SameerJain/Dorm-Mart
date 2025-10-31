@@ -5,8 +5,18 @@ function SellerDashboardPage() {
     const navigate = useNavigate();
     const [selectedStatus, setSelectedStatus] = useState('All Status');
     const [selectedSort, setSelectedSort] = useState('Newest First');
+    const [selectedCategory, setSelectedCategory] = useState('All Categories');
     const [listings, setListings] = useState([]); // Will hold product listings from backend
     const [loading, setLoading] = useState(false); // Loading state for API calls
+
+    // Delete confirmation modal state
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingDeleteId, setPendingDeleteId] = useState(null);
+
+    // Set Status modal state
+    const [statusOpen, setStatusOpen] = useState(false);
+    const [pendingStatusId, setPendingStatusId] = useState(null);
+    const [pendingStatusValue, setPendingStatusValue] = useState('Active');
 
     // Summary metrics state - will be calculated from listings data
     const [summaryMetrics, setSummaryMetrics] = useState({
@@ -21,7 +31,7 @@ function SellerDashboardPage() {
         navigate('/app/product-listing/new');
     };
 
-    // Calculate summary metrics from listings data
+    // Calculate summary metrics from listings data (using item_status)
     const calculateSummaryMetrics = (listingsData) => {
         const metrics = {
             activeListings: 0,
@@ -32,25 +42,11 @@ function SellerDashboardPage() {
         };
 
         listingsData.forEach(listing => {
-            // Count active listings (no buyer_user_id and status is not 'draft' or 'removed')
-            if (!listing.buyer_user_id && listing.status !== 'draft' && listing.status !== 'removed') {
-                metrics.activeListings++;
-            }
-
-            // Count pending sales (has buyer_user_id but not completed)
-            if (listing.buyer_user_id && listing.status === 'pending') {
-                metrics.pendingSales++;
-            }
-
-            // Count sold items (has buyer_user_id and status is 'sold')
-            if (listing.buyer_user_id && listing.status === 'sold') {
-                metrics.itemsSold++;
-            }
-
-            // Count saved drafts (status is 'draft')
-            if (listing.status === 'draft') {
-                metrics.savedDrafts++;
-            }
+            const st = String(listing.status || '').toLowerCase();
+            if (st === 'active') metrics.activeListings++;
+            if (st === 'pending') metrics.pendingSales++;
+            if (st === 'sold') metrics.itemsSold++;
+            if (st === 'draft') metrics.savedDrafts++;
 
             // Total views - for now set to 0, will be calculated from backend when view tracking is implemented
             // metrics.totalViews += listing.views || 0;
@@ -64,16 +60,59 @@ function SellerDashboardPage() {
         fetchListings();
     }, []);
 
+    const handleDelete = async (id) => {
+        try {
+            const BASE = (process.env.REACT_APP_API_BASE || "api");
+            const res = await fetch(`${BASE}/seller-dashboard/delete_listing.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({ id })
+            });
+            const result = await res.json();
+            if (!res.ok || !result.success) {
+                throw new Error(result.error || `Delete failed (${res.status})`);
+            }
+
+            // Remove from local state and recompute metrics
+            const nextListings = listings.filter(l => l.id !== id);
+            setListings(nextListings);
+            const metrics = calculateSummaryMetrics(nextListings);
+            setSummaryMetrics(metrics);
+            setConfirmOpen(false);
+            setPendingDeleteId(null);
+        } catch (e) {
+            // minimal alert
+            console.error('Delete error:', e);
+            alert('Failed to delete listing.');
+        }
+    };
+
+    const openDeleteConfirm = (id) => {
+        setPendingDeleteId(id);
+        setConfirmOpen(true);
+    };
+    const closeDeleteConfirm = () => {
+        setConfirmOpen(false);
+        setPendingDeleteId(null);
+    };
+
     // Function to filter listings based on selected status
     // Note: Current transacted_items table doesn't have status column
     // This will work when status column is added to the database
     const getFilteredListings = () => {
-        if (selectedStatus === 'All Status') {
-            return listings;
-        }
-        // For now, return all listings since status column doesn't exist yet
-        // TODO: Implement actual status filtering when status column is added
-        return listings;
+        const statusFilter = String(selectedStatus || 'All Status');
+        const catFilter = String(selectedCategory || 'All Categories');
+        return listings.filter(l => {
+            const st = String(l.status || '').toLowerCase();
+            const okStatus = (statusFilter === 'All Status') ? true : (st === statusFilter.toLowerCase());
+            const cats = Array.isArray(l.categories) ? l.categories : [];
+            const okCat = (catFilter === 'All Categories') ? true : cats.includes(catFilter);
+            return okStatus && okCat;
+        });
     };
 
     // Function to sort listings based on selected sort option
@@ -97,7 +136,7 @@ function SellerDashboardPage() {
     const fetchListings = async () => {
         setLoading(true);
         try {
-            const BASE = (process.env.REACT_APP_API_BASE || "/api");
+            const BASE = (process.env.REACT_APP_API_BASE || "api");
             // TODO: Create manage_seller_listings.php endpoint similar to fetch-transacted-items.php
             // This will query transacted_items WHERE seller_user_id = current_user_id
             const response = await fetch(`${BASE}/seller-dashboard/manage_seller_listings.php`, {
@@ -106,6 +145,7 @@ function SellerDashboardPage() {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify({}) // May need user_id or session token
             });
 
@@ -118,11 +158,12 @@ function SellerDashboardPage() {
                     id: item.id,
                     title: item.title,
                     price: item.price || 0,
-                    status: item.status || 'active',
+                    status: item.status || 'Active',
                     createdAt: item.created_at, // Use correct field name
                     image: item.image_url,
                     seller_user_id: item.seller_user_id,
-                    buyer_user_id: item.buyer_user_id
+                    buyer_user_id: item.buyer_user_id,
+                    categories: Array.isArray(item.categories) ? item.categories : []
                 }));
                 setListings(transformedListings);
 
@@ -171,8 +212,15 @@ function SellerDashboardPage() {
                         <div className="flex items-center w-full sm:w-auto">
                             <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Category</label>
                             <div className="relative ml-1 flex-1 sm:flex-none">
-                                <select className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer">
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
+                                >
                                     <option>All Categories</option>
+                                    {Array.from(new Set(listings.flatMap(l => Array.isArray(l.categories) ? l.categories : []))).map((c) => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,8 +238,8 @@ function SellerDashboardPage() {
                                     onChange={(e) => setSelectedSort(e.target.value)}
                                     className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
                                 >
-                                    <option value="Newest First">Newest First</option>
-                                    <option value="Oldest First">Oldest First</option>
+                                    <option value="Newest First">Newest First (Date Only)</option>
+                                    <option value="Oldest First">Oldest First (Date Only)</option>
                                     <option value="Price: Low to High">Price: Low to High</option>
                                     <option value="Price: High to Low">Price: High to Low</option>
                                 </select>
@@ -290,17 +338,36 @@ function SellerDashboardPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between sm:justify-end space-x-3">
-                                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${listing.buyer_user_id
-                                                ? 'bg-blue-100 text-blue-800' // Sold/transacted
-                                                : 'bg-green-100 text-green-800' // Active listing
-                                            }`}>
-                                            {listing.buyer_user_id ? 'Sold' : 'Active'}
-                                        </span>
+                                        {(() => {
+                                            const st = String(listing.status || '').toLowerCase();
+                                            let cls = 'bg-gray-100 text-gray-800';
+                                            if (st === 'active') cls = 'bg-green-100 text-green-800';
+                                            else if (st === 'pending') cls = 'bg-orange-100 text-orange-800';
+                                            else if (st === 'draft') cls = 'bg-yellow-100 text-yellow-800';
+                                            else if (st === 'sold') cls = 'bg-blue-100 text-blue-800';
+                                            return (
+                                                <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${cls}`}>
+                                                    {String(listing.status)}
+                                                </span>
+                                            );
+                                        })()}
+                                        <button
+                                            onClick={() => { setPendingStatusId(listing.id); setPendingStatusValue(listing.status || 'Active'); setStatusOpen(true); }}
+                                            className="text-gray-700 hover:text-gray-900 font-medium text-sm sm:text-base"
+                                        >
+                                            Set Status
+                                        </button>
                                         <button
                                             onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
                                             className="text-blue-600 hover:text-blue-800 font-medium text-sm sm:text-base"
                                         >
                                             Edit
+                                        </button>
+                                        <button
+                                            onClick={() => openDeleteConfirm(listing.id)}
+                                            className="text-red-600 hover:text-red-800 font-medium text-sm sm:text-base"
+                                        >
+                                            Delete
                                         </button>
                                     </div>
                                 </div>
@@ -308,7 +375,96 @@ function SellerDashboardPage() {
                         ))}
                     </div>
                 )}
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        {confirmOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+                <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+                    <div className="px-6 pt-6">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Are you sure you want to delete?</h2>
+                        <p className="mt-2 text-gray-600 dark:text-gray-300">This action cannot be undone.</p>
+                    </div>
+                    <div className="px-6 py-4 flex justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={closeDeleteConfirm}
+                            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => pendingDeleteId && handleDelete(pendingDeleteId)}
+                            className="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
             </div>
+        )}
+
+        {/* Set Status Modal */}
+        {statusOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+                <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+                    <div className="px-6 pt-6">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Set Status</h2>
+                        <div className="mt-4">
+                            <select
+                                value={pendingStatusValue}
+                                onChange={(e) => setPendingStatusValue(e.target.value)}
+                                className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option>Active</option>
+                                <option>Pending</option>
+                                <option>Draft</option>
+                                <option>Sold</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="px-6 py-4 flex justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={() => { setStatusOpen(false); setPendingStatusId(null); }}
+                            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                try {
+                                    const BASE = (process.env.REACT_APP_API_BASE || "api");
+                                    const res = await fetch(`${BASE}/seller-dashboard/set_item_status.php`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                                        credentials: 'include',
+                                        body: JSON.stringify({ id: pendingStatusId, status: pendingStatusValue })
+                                    });
+                                    const result = await res.json();
+                                    if (!res.ok || !result.success) throw new Error(result.error || `Status update failed (${res.status})`);
+
+                                    const next = listings.map(l => l.id === pendingStatusId ? { ...l, status: pendingStatusValue } : l);
+                                    setListings(next);
+                                    const metrics = calculateSummaryMetrics(next);
+                                    setSummaryMetrics(metrics);
+                                    setStatusOpen(false);
+                                    setPendingStatusId(null);
+                                } catch (e) {
+                                    console.error('Set status error:', e);
+                                    alert('Failed to set status.');
+                                }
+                            }}
+                            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
+                        >
+                            Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
         </div>
     );
 }

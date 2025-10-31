@@ -161,12 +161,13 @@ try {
 
   // INSERT
   $sql = "INSERT INTO INVENTORY
-            (title, categories, item_location, item_condition, description, photos, listing_price, trades, price_nego, seller_id)
+            (title, categories, item_location, item_condition, description, photos, listing_price, item_status, trades, price_nego, seller_id)
           VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
   $stmt = $conn->prepare($sql);
+  $status = 'Active';
   $stmt->bind_param(
-    'ssssssdiii',
+    'ssssssdsiii',
     $title,
     $categoriesJson,
     $itemLocation,
@@ -174,6 +175,7 @@ try {
     $description,
     $photosJson,
     $price,
+    $status,
     $trades,
     $priceNego,
     $userId
