@@ -1,44 +1,95 @@
-import React, { useState } from 'react';
+// src/components/ItemCardNew.jsx
+import React from "react";
 
-export default function ItemCardNew({ title, price, seller, rating, location, tags = [], status, image }) {
-  const [imgError, setImgError] = useState(false);
-  const showImage = Boolean(image) && !imgError;
+export default function ItemCardNew({
+  id,
+  title,
+  price,
+  tags,
+  image,
+  status,
+  seller,
+}) {
+  const isNew =
+    typeof status === "string" && status.toUpperCase().includes("JUST");
+
+  const primaryTag =
+    Array.isArray(tags) && tags.length > 0 ? String(tags[0]) : null;
+
+  const handleClick = () => {
+    if (!id) return;
+    window.location.href = `/dorm-mart/#/app/viewProduct?id=${encodeURIComponent(
+      id
+    )}`;
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow w-full">
-      {showImage ? (
-        <img
-          src={image}
-          alt={title}
-          className="w-full h-44 object-cover rounded-lg mb-3"
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <div className="w-full h-44 rounded-lg mb-3 bg-gray-100 dark:bg-gray-700 grid place-items-center text-gray-400 dark:text-gray-500 text-sm">
-          Image coming soon
-        </div>
-      )}
-      <div className="flex items-start justify-between gap-3 mb-1">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 leading-snug line-clamp-2">{title}</h3>
-        {status && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md whitespace-nowrap self-start">{status}</span>}
+    <div
+      onClick={handleClick}
+      className="group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200/90 dark:border-gray-700/70 overflow-hidden
+                 w-[210px] h-[330px] cursor-pointer transition-all duration-200
+                 hover:shadow-xl hover:-translate-y-1"
+    >
+      {/* subtle top accent */}
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+
+      {/* IMAGE */}
+      <div className="relative w-full aspect-square bg-gray-50 dark:bg-gray-700 flex justify-center items-center overflow-hidden">
+        {image ? (
+          <img
+            src={image}
+            alt={title}
+            className="object-contain w-full h-full p-2 transition-transform duration-200 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <div className="text-gray-400 dark:text-gray-500 text-xs">
+            Image coming soon
+          </div>
+        )}
+
+        {/* NEW badge */}
+        {isNew && (
+          <div className="absolute top-2 right-2 z-20 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow">
+            NEW
+          </div>
+        )}
+
+        {/* Tag chip */}
+        {primaryTag && (
+          <div className="absolute bottom-2 left-2 bg-white/95 dark:bg-gray-900/90 text-[10px] font-medium text-gray-800 dark:text-gray-100 px-2 py-0.5 rounded-full border border-gray-100/50">
+            {primaryTag}
+          </div>
+        )}
+
+        {/* dim overlay on hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"></div>
       </div>
-      <p className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">{typeof price === 'number' ? `$${price.toFixed(2)}` : price}</p>
-      <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-2">
-        <span className="truncate">👤 {seller}</span>
-        <span>⭐ {rating}</span>
+
+      {/* BODY */}
+      <div className="flex flex-col gap-1 px-3 py-3 flex-grow">
+        {/* title */}
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">
+          {title}
+        </h3>
+
+        {/* seller */}
+        {seller ? (
+          <p className="text-[11px] text-gray-500 dark:text-gray-300 flex items-center gap-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            {seller}
+          </p>
+        ) : null}
+
+        {/* price */}
+        <p className="text-lg font-bold text-gray-900 dark:text-gray-50 mt-1">
+          {typeof price === "string"
+            ? price
+            : `$${price?.toFixed?.(2) ?? price ?? "0.00"}`}
+        </p>
       </div>
-      <p className="text-xs text-red-500 dark:text-red-400 mb-3">📍 {location}</p>
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {tags.map((t, i) => (
-            <span key={`${t}-${i}`} className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] px-2 py-0.5 rounded-full">
-              {t}
-            </span>
-          ))}
-        </div>
-      )}
-      <button className="w-full bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white py-2 rounded-lg font-medium">
-        View
-      </button>
+
+      {/* bottom gradient accent */}
+      <div className="absolute inset-x-0 bottom-0 h-9 bg-gradient-to-r from-blue-50 via-transparent to-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"></div>
     </div>
   );
 }
