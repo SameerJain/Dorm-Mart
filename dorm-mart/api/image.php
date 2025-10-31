@@ -5,7 +5,7 @@ declare(strict_types=1);
 // Serves images that are stored under /data/images/ on disk
 // Accepts either ?file=filename.png OR ?url=/data/images/filename.png
 
-$IMAGE_DIR = realpath(__DIR__ . '/../data/images');
+$IMAGE_DIR = realpath(__DIR__ . '/../images');
 if ($IMAGE_DIR === false) {
     http_response_code(500);
     exit('Image directory not found');

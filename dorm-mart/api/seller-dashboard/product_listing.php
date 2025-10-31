@@ -89,8 +89,8 @@ try {
   // Configurable via env so deployments under subpaths (e.g., Aptitude) work
   $envDir  = getenv('DATA_IMAGES_DIR');
   $envBase = getenv('DATA_IMAGES_URL_BASE');
-  $imageDirFs   = rtrim($envDir !== false && $envDir !== '' ? $envDir : (dirname($API_ROOT) . '/data/images'), '/') . '/';
-  $imageBaseUrl = rtrim($envBase !== false && $envBase !== '' ? $envBase : '/data/images', '/');
+  $imageDirFs   = rtrim($envDir !== false && $envDir !== '' ? $envDir : (dirname($API_ROOT) . '/images'), '/') . '/';
+  $imageBaseUrl = rtrim($envBase !== false && $envBase !== '' ? $envBase : '/images', '/');
   if (!is_dir($imageDirFs)) { @mkdir($imageDirFs, 0775, true); }
 
   $imageUrls = [];
