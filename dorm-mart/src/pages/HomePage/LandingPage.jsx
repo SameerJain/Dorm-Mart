@@ -1,138 +1,596 @@
 // src/pages/HomePage/LandingPage.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import ItemCardNew from "../../components/ItemCardNew";
 import keyboard from "../../assets/product-images/keyboard.jpg";
 import mouse from "../../assets/product-images/wireless-mouse.jpg";
-import puppy from "../../assets/icons/puppy.jpg";
 
-const PUBLIC_BASE = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
-// Expect the file at: public/assets/product-images/smallcarpet.png
+const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 const carpetUrl = `${PUBLIC_BASE}/assets/product-images/smallcarpet.png`;
 
-// local fallback data to show something if API is down
 const FALLBACK_ITEMS = [
-  { id: 1, title: "Wireless Keyboard", price: 40, img: keyboard, tags: ["Electronics", "Accessories"], seller: "Ava P.", rating: 4.8, location: "North Campus", status: "JUST POSTED" },
-  { id: 2, title: "Small Carpet (5x7)", price: 25, img: carpetUrl, tags: ["Furniture", "Decor"], seller: "Mark D.", rating: 4.4, location: "Ellicott", status: "AVAILABLE" },
-  { id: 3, title: "Wireless Mouse", price: 30, img: mouse, tags: ["Electronics", "Accessories"], seller: "Sara T.", rating: 4.9, location: "South Campus", status: "PRICE DROP" },
+  {
+    id: 1,
+    title: "Wireless Keyboard",
+    price: 40,
+    img: keyboard,
+    tags: ["Electronics", "Accessories"],
+    seller: "Ava P.",
+    rating: 4.8,
+    location: "North Campus",
+    status: "JUST POSTED",
+    category: "Electronics",
+  },
+  {
+    id: 2,
+    title: "Small Carpet (5x7)",
+    price: 25,
+    img: carpetUrl,
+    tags: ["Furniture", "Decor"],
+    seller: "Mark D.",
+    rating: 4.4,
+    location: "Ellicott",
+    status: "AVAILABLE",
+    category: "Home & Dorm",
+  },
+  {
+    id: 3,
+    title: "Wireless Mouse",
+    price: 30,
+    img: mouse,
+    tags: ["Electronics", "Accessories"],
+    seller: "Sara T.",
+    rating: 4.9,
+    location: "South Campus",
+    status: "PRICE DROP",
+    category: "Electronics",
+  },
 ];
 
 export default function LandingPage() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [interests, setInterests] = useState([]);
+  const [allItems, setAllItems] = useState([]);
+  const [loadingUser, setLoadingUser] = useState(false);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [errorUser, setErrorUser] = useState(false);
+  const [errorItems, setErrorItems] = useState(false);
 
+  // rotating statement in blue
+  const rotatingLines = [
+    "Welcome to Dorm Mart!",
+    "A UB student marketplace run and developed by students.",
+    "Happy Shopping!",
+  ];
+  const [bannerIdx, setBannerIdx] = useState(0);
+
+  // correct URLs
+  const LIST_ITEM_URL = "/dorm-mart/#/app/product-listing/new";
+  const MANAGE_INTERESTS_URL = "/dorm-mart/#/app/setting/user-preferences";
+
+  const openExternalRoute = (url) => {
+    window.location.href = url;
+  };
+
+  // rotate banner
+  useEffect(() => {
+    const id = setInterval(
+      () => setBannerIdx((p) => (p + 1) % rotatingLines.length),
+      4000
+    );
+    return () => clearInterval(id);
+  }, [rotatingLines.length]);
+
+  // fetch user
   useEffect(() => {
     const controller = new AbortController();
-    async function load() {
+    (async () => {
       try {
-        setLoading(true);
-        const PUBLIC = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
-        const BASE = process.env.REACT_APP_API_BASE || `${PUBLIC}/api`;
-        const r = await fetch(`${BASE}/landingListings.php`, { signal: controller.signal });
+        setLoadingUser(true);
+        const r = await fetch(`${API_BASE}/me.php`, {
+          signal: controller.signal,
+          credentials: "include",
+        });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
-        // normalize data to our card props shape
+
+        let cats = [];
+        if (Array.isArray(data?.interested_categories)) {
+          cats = data.interested_categories.filter(Boolean).slice(0, 3);
+        } else {
+          const c1 = data?.interested_category_1 || null;
+          const c2 = data?.interested_category_2 || null;
+          const c3 = data?.interested_category_3 || null;
+          cats = [c1, c2, c3].filter(Boolean);
+        }
+
+        setUser(data || null);
+        setInterests(cats);
+        setErrorUser(false);
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          console.error("me.php failed:", e);
+          setUser(null);
+          setInterests([]);
+          setErrorUser(true);
+        }
+      } finally {
+        setLoadingUser(false);
+      }
+    })();
+    return () => controller.abort();
+  }, []);
+
+  // fetch items
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      try {
+        setLoadingItems(true);
+        const r = await fetch(`${API_BASE}/landingListings.php`, {
+          signal: controller.signal,
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+
         const normalized = (Array.isArray(data) ? data : []).map((d, i) => {
-          const priceNum = typeof d.price === 'number' ? d.price : parseFloat(`${d.price}`.replace(/[^0-9.]/g, '')) || 0;
-          const img = d.image || d.image_url || null;
+          const priceNum =
+            typeof d.price === "number"
+              ? d.price
+              : parseFloat(`${d.price}`.replace(/[^0-9.]/g, "")) || 0;
+
+          const rawImg = d.image || d.image_url || null;
+          const img = rawImg
+            ? `${API_BASE}/image.php?url=${encodeURIComponent(rawImg)}`
+            : null;
+
           const createdAt = d.created_at ? new Date(d.created_at) : null;
           let status = d.status || null;
           if (!status && createdAt instanceof Date && !isNaN(createdAt)) {
             const hours = (Date.now() - createdAt.getTime()) / 36e5;
-            status = hours < 48 ? 'JUST POSTED' : 'AVAILABLE';
+            status = hours < 48 ? "JUST POSTED" : "AVAILABLE";
           }
-          const seller = d.seller || d.sold_by || d.seller_name || 'Unknown Seller';
-          const rating = typeof d.rating === 'number' ? d.rating : 4.7;
-          const location = d.location || d.campus || 'North Campus';
+
           const tags = Array.isArray(d.tags)
             ? d.tags
-            : (typeof d.tags === 'string' ? d.tags.split(',').map(t => t.trim()).filter(Boolean) : []);
+            : typeof d.tags === "string"
+            ? d.tags.split(",").map((t) => t.trim()).filter(Boolean)
+            : [];
+
+          const category = d.category || (tags.length ? tags[0] : "General");
+
           return {
             id: d.id ?? i,
-            title: d.title ?? 'Untitled',
+            title: d.title ?? "Untitled",
             price: priceNum,
             img,
             tags,
-            seller,
-            rating,
-            location,
-            status: status || 'AVAILABLE',
+            status: status || "AVAILABLE",
+            category,
+            createdAtTs:
+              createdAt instanceof Date && !isNaN(createdAt)
+                ? createdAt.getTime()
+                : 0,
+            // still keeping seller/location/rating in case we need later
+            seller: d.seller || d.sold_by || d.seller_name || "Unknown Seller",
+            rating: typeof d.rating === "number" ? d.rating : 4.7,
+            location: d.location || d.campus || "North Campus",
           };
         });
-        setItems(normalized.length ? normalized : FALLBACK_ITEMS);
-        setError(false);
+
+        setAllItems(normalized.length ? normalized : FALLBACK_ITEMS);
+        setErrorItems(false);
       } catch (e) {
-        if (e.name === 'AbortError') return;
-        console.error(e);
-        setError(true);
-        setItems(FALLBACK_ITEMS);
+        if (e.name !== "AbortError") {
+          console.error("landingListings.php failed:", e);
+          setErrorItems(true);
+          setAllItems(FALLBACK_ITEMS);
+        }
       } finally {
-        setLoading(false);
+        setLoadingItems(false);
       }
-    }
-    load();
+    })();
     return () => controller.abort();
   }, []);
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      {/* Hero Section (responsive, dynamic height) */}
-      <section className="mt-4 px-4">
-        <div className="mx-auto w-full max-w-6xl rounded-2xl bg-blue-600 px-6 py-8 md:px-10 md:py-10 text-center flex flex-col items-center justify-center">
-          <h1 className="mb-3 text-white font-bold text-4xl sm:text-5xl md:text-6xl leading-tight">
-            Welcome to Dorm Mart
-          </h1>
-          <p className="text-slate-100 font-semibold text-lg sm:text-2xl md:text-3xl max-w-prose">
-            Find what you need
-          </p>
-        </div>
-      </section>
+  // dedupe into interests and explore
+  const { itemsByInterest, exploreItems } = useMemo(() => {
+    if (!interests.length) {
+      return { itemsByInterest: {}, exploreItems: allItems };
+    }
 
-      {/* Browse Listings Title */}
-      <div className="w-full mt-8 px-6 md:px-16">
-        <div className="flex items-end justify-between flex-wrap gap-3 mb-3">
-          <h2
-            style={{
-              fontFamily: 'Tai Heritage Pro, serif',
-              fontSize: "28px",
-              fontWeight: 700,
-              fontStyle: "normal",
-              lineHeight: "normal",
-              letterSpacing: "0.5px"
-            }}
-            className="text-left text-blue-600"
-          >
-            Browse Listings
-          </h2>
+    const byInterest = {};
+    interests.forEach((c) => (byInterest[c] = []));
+    const used = new Set();
+
+    allItems.forEach((item) => {
+      const itemCat = (item.category || "").toLowerCase();
+      const itemTags = Array.isArray(item.tags)
+        ? item.tags.map((t) => t.toLowerCase())
+        : [];
+
+      let best = null;
+      for (const ic of interests) {
+        const icLower = ic.toLowerCase();
+        const tagIdx = itemTags.indexOf(icLower);
+        const isTagMatch = tagIdx !== -1;
+        const isCatMatch = itemCat === icLower;
+
+        if (isTagMatch) {
+          if (!best || best.kind !== "tag" || tagIdx < best.tagIdx) {
+            best = { ic, kind: "tag", tagIdx };
+          }
+        } else if (isCatMatch) {
+          if (!best) {
+            best = { ic, kind: "category" };
+          }
+        }
+      }
+
+      if (best) {
+        byInterest[best.ic].push(item);
+        used.add(item.id);
+      }
+    });
+
+    // Sort each interest bucket: primary tag (category) first, then by newest date
+    const cmp = (cat) => (a, b) => {
+      const catLower = (cat || "").toLowerCase();
+      const aPrimary = Array.isArray(a.tags) && a.tags[0]
+        ? String(a.tags[0]).toLowerCase() === catLower
+        : false;
+      const bPrimary = Array.isArray(b.tags) && b.tags[0]
+        ? String(b.tags[0]).toLowerCase() === catLower
+        : false;
+      if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
+      const at = typeof a.createdAtTs === "number" ? a.createdAtTs : 0;
+      const bt = typeof b.createdAtTs === "number" ? b.createdAtTs : 0;
+      return bt - at; // newer first
+    };
+
+    Object.keys(byInterest).forEach((cat) => {
+      byInterest[cat].sort(cmp(cat));
+    });
+
+    return {
+      itemsByInterest: byInterest,
+      exploreItems: allItems.filter((it) => !used.has(it.id)),
+    };
+  }, [allItems, interests]);
+
+  const isLoading = loadingUser || loadingItems;
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-50 overflow-x-hidden">
+      {/* TOP BAR with rotating statement and interests on right */}
+      <div className="w-full border-b border-gray-200 bg-white/80 backdrop-blur px-1 sm:px-2 md:px-3 py-3 flex items-center justify-between gap-3">
+        {/* rotating blue chip */}
+        <div className="flex-1 mr-3">
+          <div className="inline-flex items-center gap-2 bg-blue-100/60 px-4 py-1.5 rounded-full border border-blue-200 min-h-[36px]">
+            <span className="h-2 w-2 rounded-full bg-blue-500 inline-block"></span>
+            <p className="text-sm font-medium text-blue-700 transition-all duration-500 ease-in-out">
+              {rotatingLines[bannerIdx]}
+            </p>
+          </div>
+        </div>
+
+        {/* interest chips */}
+        <div className="flex gap-2 flex-wrap justify-end">
+          {interests.length ? (
+            interests.map((cat) => (
+              <button
+                key={cat}
+                onClick={() =>
+                  openExternalRoute(
+                    `/dorm-mart/#/app/listings?category=${encodeURIComponent(cat)}`
+                  )
+                }
+                className="inline-flex items-center rounded-full bg-blue-50 px-4 py-1.5 text-sm font-medium text-blue-700 border border-blue-100 hover:bg-blue-100 transition"
+              >
+                {cat}
+              </button>
+            ))
+          ) : (
+            <span className="text-sm text-gray-400 italic">
+              No interests set
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Featured Items */}
-      <section id="shop" className="py-16 px-6 md:px-16 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-            {items.map((item, idx) => (
-              <ItemCardNew
-                key={item.id || idx}
-                title={item.title}
-                price={typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : (item.price || '$0.00')}
-                seller={item.seller}
-                rating={item.rating}
-                location={item.location}
-                tags={Array.isArray(item.tags) ? item.tags : []}
-                status={item.status}
-                image={item.img || undefined}
-              />
-            ))}
+      {/* HERO + METRICS */}
+      <div className="w-full px-1 sm:px-2 md:px-3 pt-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.35fr,0.65fr] gap-3">
+          {/* hero */}
+          <div className="bg-white rounded-lg border border-gray-200/70 shadow-sm px-4 py-4 flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="uppercase text-xs md:text-sm text-gray-400 tracking-[0.35em] mb-1">
+                  personalized feed
+                </p>
+                <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+                  Items from categories you actually picked
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Real UB students • on-campus meetups • no shipping
+                </p>
+              </div>
+              <div className="hidden sm:flex">
+                <button
+                  onClick={() => navigate("/app/product-listing/new")}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+                >
+                  List an item
+                </button>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-1">
+              <button className="px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 text-sm font-medium border border-blue-100">
+                For you
+              </button>
+              <button
+                onClick={() => openExternalRoute("/dorm-mart/#/app/listings?sort=new")}
+                className="px-4 py-1.5 rounded-full bg-white text-gray-600 text-sm font-medium border border-gray-100 hover:text-gray-700"
+              >
+                Newest
+              </button>
+            </div>
+          </div>
+
+          {/* metrics */}
+          <div className="bg-blue-50 rounded-lg border border-blue-100 px-4 py-4 flex flex-col gap-4">
+            <p className="text-sm font-semibold text-blue-700 tracking-tight">
+              Today’s snapshot
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white rounded-lg border border-blue-100/70 px-3 py-3">
+                <p className="text-sm text-gray-400 mb-1">New listings</p>
+                <p className="text-2xl font-bold text-blue-700 leading-none">+8</p>
+                <p className="text-xs text-blue-500 mt-1">in last 24h</p>
+              </div>
+              <div className="bg-white rounded-lg border border-blue-100/70 px-3 py-3">
+                <p className="text-sm text-gray-400 mb-1">Near you</p>
+                <p className="text-2xl font-bold text-blue-700 leading-none">12</p>
+                <p className="text-xs text-blue-500 mt-1">North Campus</p>
+              </div>
+              <div className="bg-white rounded-lg border border-blue-100/70 px-3 py-3">
+                <p className="text-sm text-gray-400 mb-1">Interested</p>
+                <p className="text-2xl font-bold text-blue-700 leading-none">
+                  {interests.length ? interests.length : "0"}
+                </p>
+                <p className="text-xs text-blue-500 mt-1">categories</p>
+              </div>
+            </div>
           </div>
         </div>
-      </section>
-      {loading && (
-        <p className="text-center text-gray-500 italic pb-8">Loading listings…</p>
-      )}
-      {error && (
-        <p className="text-center text-red-600 italic pb-8">Couldn’t load latest listings. Showing sample items.</p>
-      )}
+      </div>
+
+      {/* MAIN GRID */}
+      <div className="w-full flex-1 px-1 sm:px-2 md:px-3 py-5 pb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[0.22fr,1fr,0.22fr] gap-3 items-start">
+          {/* LEFT */}
+          <aside className="hidden lg:flex flex-col gap-3 sticky top-20">
+            <div className="bg-white rounded-md border border-gray-200/70 shadow-sm p-4">
+              <p className="text-sm font-semibold text-gray-700 mb-3">
+                Quick filters
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => openExternalRoute("/dorm-mart/#/app/listings")}
+                  className="px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 text-sm border border-blue-100"
+                >
+                  All
+                </button>
+                <button
+                  onClick={() =>
+                    openExternalRoute("/dorm-mart/#/app/listings?category=Electronics")
+                  }
+                  className="px-4 py-1.5 rounded-full bg-white text-gray-700 text-sm border border-gray-100 hover:bg-gray-50"
+                >
+                  Electronics
+                </button>
+                <button
+                  onClick={() =>
+                    openExternalRoute("/dorm-mart/#/app/listings?category=Kitchen")
+                  }
+                  className="px-4 py-1.5 rounded-full bg-white text-gray-700 text-sm border border-gray-100 hover:bg-gray-50"
+                >
+                  Kitchen
+                </button>
+                <button
+                  onClick={() =>
+                    openExternalRoute("/dorm-mart/#/app/listings?category=Furniture")
+                  }
+                  className="px-4 py-1.5 rounded-full bg-white text-gray-700 text-sm border border-gray-100 hover:bg-gray-50"
+                >
+                  Furniture
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 rounded-md border border-blue-100 p-4">
+              <p className="text-sm font-semibold text-blue-700 mb-1">
+                Tips
+              </p>
+              <p className="text-sm text-blue-500">
+                Items posted in the last 48h show “NEW”. Check these first.
+              </p>
+            </div>
+          </aside>
+
+          {/* CENTER */}
+          <main className="flex flex-col gap-6 min-w-0">
+            {/* For you */}
+            {interests.length ? (
+              <section className="space-y-4">
+                <header className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-blue-600">
+                      For you
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Based on your categories
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/app/setting/user-preferences')}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Manage interests
+                  </button>
+                </header>
+
+                <div className="space-y-5">
+                  {interests.map((cat) => {
+                    const catItems = itemsByInterest[cat] || [];
+                    return (
+                      <div key={cat} className="space-y-3">
+                        <h4 className="text-sm md:text-base font-semibold text-gray-800">
+                          {cat}
+                        </h4>
+                        <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-blue-200 w-full max-w-full min-w-0">
+                          {catItems.length ? (
+                            catItems.map((item) => (
+                              <div
+                                key={item.id}
+                                className="flex-shrink-0"
+                              >
+                                <ItemCardNew
+                                  id={item.id}
+                                  title={item.title}
+                                  price={item.price}
+                                  tags={item.tags}
+                                  image={item.img || undefined}
+                                  status={item.status}
+                                  seller={item.seller}
+                                />
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-gray-400 italic">
+                              No items in this category yet.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+
+            {/* Explore */}
+            <section className="space-y-4">
+              <header>
+                <h3 className="text-base font-semibold text-blue-600">
+                  {interests.length ? "Explore more" : "Recommended for you"}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {interests.length
+                    ? "Other listings on Dorm Mart."
+                    : "Popular items from UB students."}
+                </p>
+              </header>
+
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                {exploreItems.map((item, idx) => (
+                  <ItemCardNew
+  id={item.id}
+  title={item.title}
+  price={item.price}
+  tags={item.tags}
+  image={item.img || undefined}
+  status={item.status}
+  seller={item.seller}
+/>
+                ))}
+              </div>
+            </section>
+
+            {/* status */}
+            <div className="space-y-1">
+              {isLoading ? (
+                <p className="text-center text-sm text-gray-400">
+                  Loading your feed…
+                </p>
+              ) : null}
+              {errorUser ? (
+                <p className="text-center text-sm text-red-500">
+                  Couldn’t load your preferences — showing general items.
+                </p>
+              ) : null}
+              {errorItems ? (
+                <p className="text-center text-sm text-red-500">
+                  Couldn’t load latest listings. Showing sample items.
+                </p>
+              ) : null}
+            </div>
+          </main>
+
+          {/* RIGHT */}
+          <aside className="hidden lg:flex flex-col gap-3 sticky top-20">
+            <div className="bg-white rounded-md border border-gray-200/70 shadow-sm p-4">
+              <p className="text-sm font-semibold text-gray-700 mb-2">
+                Trending now
+              </p>
+              <ul className="space-y-2">
+                <li className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={() =>
+                      openExternalRoute("/dorm-mart/#/app/listings?category=Electronics")
+                    }
+                    className="text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    Electronics
+                  </button>
+                  <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                    5 new
+                  </span>
+                </li>
+                <li className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={() =>
+                      openExternalRoute("/dorm-mart/#/app/listings?category=Kitchen")
+                    }
+                    className="text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    Kitchen
+                  </button>
+                  <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                    2 new
+                  </span>
+                </li>
+                <li className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={() =>
+                      openExternalRoute(
+                        "/dorm-mart/#/app/listings?category=Dorm%20Essentials"
+                      )
+                    }
+                    className="text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    Dorm essentials
+                  </button>
+                  <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                    hot
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-blue-50 rounded-md border border-blue-100 p-4">
+              <p className="text-sm font-semibold text-blue-700 mb-1">
+                Your campus
+              </p>
+              <p className="text-sm text-blue-600">
+                North Campus is most active 3–6pm. Post then for faster replies.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </div>
     </div>
   );
 }

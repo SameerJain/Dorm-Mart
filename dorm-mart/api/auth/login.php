@@ -119,7 +119,20 @@ try {
     }
 
     $userId = (int)$row['user_id'];
+    
+    // Get user's theme preference
+    $themeStmt = $conn->prepare('SELECT theme FROM user_accounts WHERE user_id = ?');
+    $themeStmt->bind_param('i', $userId);
+    $themeStmt->execute();
+    $themeRes = $themeStmt->get_result();
+    $themeRow = $themeRes->fetch_assoc();
+    $themeStmt->close();
     $conn->close();
+    
+    $theme = 'light'; // default
+    if ($themeRow && isset($themeRow['theme'])) {
+        $theme = $themeRow['theme'] ? 'dark' : 'light';
+    }
 
     // Regenerate session ID to prevent session fixation attacks
     regenerate_session_on_login();
@@ -128,7 +141,7 @@ try {
     // Persist across restarts
     issue_remember_cookie($userId);
 
-    echo json_encode(['ok' => true]);
+    echo json_encode(['ok' => true, 'theme' => $theme]);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Server error']);
