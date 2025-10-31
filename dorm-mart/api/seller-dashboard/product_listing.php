@@ -86,8 +86,11 @@ try {
   }
 
   // --- Save images (no finfo) ---
-  $imageDirFs   = dirname($API_ROOT) . '/data/images/'; // projectRoot/data/images
-  $imageBaseUrl = '/data/images/';
+  // Configurable via env so deployments under subpaths (e.g., Aptitude) work
+  $envDir  = getenv('DATA_IMAGES_DIR');
+  $envBase = getenv('DATA_IMAGES_URL_BASE');
+  $imageDirFs   = rtrim($envDir !== false && $envDir !== '' ? $envDir : (dirname($API_ROOT) . '/data/images'), '/') . '/';
+  $imageBaseUrl = rtrim($envBase !== false && $envBase !== '' ? $envBase : '/data/images', '/');
   if (!is_dir($imageDirFs)) { @mkdir($imageDirFs, 0775, true); }
 
   $imageUrls = [];
@@ -111,7 +114,7 @@ try {
 
       $fname = uniqid('img_', true) . '.' . $ext;
       if (move_uploaded_file($tmpPath, $imageDirFs . $fname)) {
-        $imageUrls[] = $imageBaseUrl . $fname;
+        $imageUrls[] = $imageBaseUrl . '/' . $fname;
         $cnt++;
       }
     }
@@ -161,12 +164,13 @@ try {
 
   // INSERT
   $sql = "INSERT INTO INVENTORY
-            (title, categories, item_location, item_condition, description, photos, listing_price, trades, price_nego, seller_id)
+            (title, categories, item_location, item_condition, description, photos, listing_price, item_status, trades, price_nego, seller_id)
           VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
   $stmt = $conn->prepare($sql);
+  $status = 'Active';
   $stmt->bind_param(
-    'ssssssdiii',
+    'ssssssdsiii',
     $title,
     $categoriesJson,
     $itemLocation,
@@ -174,6 +178,7 @@ try {
     $description,
     $photosJson,
     $price,
+    $status,
     $trades,
     $priceNego,
     $userId
