@@ -19,6 +19,7 @@ import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
+import ViewProduct from "./itemDetails/viewProduct.jsx";
 // theme load
 // Chat
 // import { ChatProvider } from "./context/ChatContext.js";
@@ -119,6 +120,11 @@ export const router = createHashRouter([
           { path: "edit/:id", element: <ProductListingPage key="edit" /> },
         ],
       },
+      // View Product
+      { path: "viewProduct", element: <ViewProduct /> },
+      { path: "viewProduct/:id", element: <ViewProduct /> },
+      { path: "viewproduct", element: <ViewProduct /> },
+      { path: "viewproduct/:id", element: <ViewProduct /> },
       {
         path: "purchase-history",
         element: <PurchaseHistoryLayout />,
