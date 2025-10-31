@@ -22,6 +22,7 @@ import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx
 // theme load
 // Chat
 // import { ChatProvider } from "./context/ChatContext.js";
+import { ChatProvider } from "./context/ChatContext.js";
 import ChatPage from "./pages/Chat/Chat.jsx";
 
 // Load user theme immediately when app starts
@@ -129,7 +130,10 @@ export const router = createHashRouter([
       {
         path: "chat",
         children: [
-          { index: true, element: < ChatPage/>}
+          { index: true, element: 
+          <ChatProvider>
+            < ChatPage/>
+          </ChatProvider> }
         ]
       },
       // Seller Dashboard

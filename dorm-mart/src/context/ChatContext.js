@@ -1,75 +1,214 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { getSocket, ensureSocket } from "../server/ws-demo";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import { fetch_me, fetch_conversations, fetch_chat, create_message, fetch_new_messages } from "./chat_util";
 
 const ChatContext = createContext(null);
 
 export function ChatProvider({ children }) {
-    // "open" | "connecting" | "closed"
-    const [status, setStatus] = useState("closed");
-    const wsRef = useRef(null);
+    const POLL_MS = 1000;
+    const CONV_REFRESH_MS = 15000;
 
-    useEffect(()=> {
-        const ws = getSocket() || ensureSocket();
-        wsRef.current = ws;
+    const [myId, setMyId] = useState(null);
+    const myIdRef = useRef(null);
+    useEffect(() => { myIdRef.current = myId; }, [myId]);
 
-        // used to keep ws status within chatContext
-        const onOpen = () => setStatus("open");
-        const onClose = () => setStatus("closed");
-        const onError = () => {}
+    const [conversations, setConversations] = useState([]);
+    const [activeId, setActiveId] = useState(null);
+    const [messagesByConv, setMessagesByConv] = useState({});
+    const [convError, setConvError] = useState(false);
+    const [chatByConvError, setChatByConvError] = useState({});
+    const [sendMsgError, setSendMsgError] = useState({});
 
-        // as chatContext mounts, add these listeners
-        ws.addEventListener("open",  onOpen);
-        ws.addEventListener("close", onClose);
-        ws.addEventListener("error", onError);
+    const pollTimerRef = useRef(null);
+    const lastTsRefByConv = useRef({}); // { [convId]: last-message-ts }
 
-        // as chatContext unmounts, remove added listeners
-        return () => {
-            // ws stays connected
-            ws.removeEventListener("open",  onOpen);
-            ws.removeEventListener("close", onClose);
-            ws.removeEventListener("error", onError);
-        };
+    useEffect(() => {
+        const controller = new AbortController();
 
+        (async () => {
+            try {
+                setConvError(false);
+                const me = await fetch_me(controller.signal);
+                setMyId(me.user_id);
+                const res = await fetch_conversations(controller.signal);
+                const view = (res.conversations || []).map((c) => {
+                    const iAmUser1 = c.user1_id === me.user_id;
+                    return {
+                        id: c.conv_id,
+                        otherUserName: iAmUser1 ? c.user2_fname : c.user1_fname,
+                    };
+                });
+                setConversations(view);
+            } catch (err) {
+                setConvError(true);
+            }
+        })();
+
+        return () => controller.abort();
     }, []);
 
-    const api = useMemo(() => ({
-        ws: wsRef.current, // direct access if you need it
-        wsStatus: status,            // "open" | "connecting" | "closed"
+    async function selectConversation(convId) {
+        setActiveId(convId);
+        setChatByConvError((m) => ({...m, [convId]: false}));
 
-        // Safe sender: only sends if socket is OPEN. Returns boolean success.
-        send(type, payload) {
-            const s = wsRef.current;
-            if (!s || s.readyState !== WebSocket.OPEN) return false;
-            s.send(JSON.stringify({ type, payload }));
-            return true;
-        },
+        // lazy-load messages first time
+        if (messagesByConv[convId]) {
+            const existing = messagesByConv[convId];
+            lastTsRefByConv.current[convId] = existing.length
+            ? Math.max(...existing.map((m) => Number(m.ts) || 0))
+            : 0;
+            return;
+        }
 
-        // Subscribe to messages. Returns an unsubscribe function.
-        // Comment: wraps 'message' events and hands you parsed JSON when possible.
-        addMessageListener(handler) {
-            const s = wsRef.current;
-            if (!s) return () => {};
-            const fn = (e) => {
-                const text = String(e.data);
-                try { handler(JSON.parse(text)); }
-                catch { handler({ type: "text", payload: text }); }
+        const controler = new AbortController();
+        try {
+            const res = await fetch_chat(convId, controler.signal)
+            const raw = res.messages || [];
+
+            const normalized = raw.map((m) => ({
+                id: m.message_id,
+                sender: m.sender_id === myIdRef.current ? "me" : "them",
+                content: m.content,
+                ts: m.created_at
+            }));
+
+            setMessagesByConv((prev) => ({...prev, [convId]: normalized}));
+
+            lastTsRefByConv.current[convId] = normalized.length
+            ? Math.max(...normalized.map((m) => Number(m.ts) || 0))
+            : 0;
+        } catch(err) {
+            if (err.name !== "AbortError") {
+                setChatByConvError((m) => ({...m, [convId]: true}));
+            }
+        }
+    }
+
+    async function sendMessage(content) {
+        setSendMsgError(false);
+        const trimmed = (content ?? "").trim();
+        if (!trimmed || !activeId || !myIdRef.current) return;
+
+        const convo = conversations.find((x) => x.id === activeId);
+        if (!convo) return;
+
+        try {
+            const res = await create_message({
+                senderId: myIdRef.current,
+                receiverId: convo.otherUserId,
+                content: trimmed,
+                signal: undefined,
+            });
+
+            const saved = res.message;
+            const newMsg = {
+                id: saved.message_id,
+                sender: "me",
+                content: trimmed,
+                ts: Date.now(),
             };
-            s.addEventListener("message", fn);
-            return () => s.removeEventListener("message", fn);
-        },
 
-    }), [status]); // wsRef.current is stable; status drives UI
+            setMessagesByConv((prev) => {
+                const list = prev[activeId] ? [...prev[activeId], newMsg] : [newMsg];
+                return {...prev, [activeId]: list};
+            });
 
+            lastTsRefByConv.current[activeId] = Math.mat(
+                lastTsRefByConv.current[activeId] || 0,
+                Number(newMsg.ts) || 0
+            );
+        } catch (err) {
+            setSendMsgError(true);
+        }
+    }
+    
+    useEffect(() => {
+        // clear any previous interval when activeId changes / unmounts
+        if (pollTimerRef.current) {
+            clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null
+        }
 
-    return (
-        <ChatContext.Provider value={{api}}>
-            {children}
-        </ChatContext.Provider>
-    );
+        // if no active chat, return
+        if (!activeId) return;
+
+        // only poll when the tab is visible to reduce noise
+        const shouldPollNow = () => document.visibilityState === "visible";
+
+        const tick = async() => {
+            if (!shouldPollNow()) return;
+
+            // new AbortController per tick avoids overlapping slow requests
+            const controller = new AbortController();
+
+            try {
+                const sinceMs = lastTsRefByConv.current[activeId] || 0;
+
+                const res = await fetch_new_messages(activeId, sinceMs, controller.signal);
+
+                const raw = res.messages
+                if (!raw.length) return;
+
+                const incoming = raw.map((m) => ({
+                    id: m.message_id,
+                    sender: m.sender_id === myIdRef.current ? "me" : "them",
+                    content: m.content,
+                    ts: m.created_at
+                }));
+
+                setMessagesByConv((prev) => {
+                    const existing = prev[activeId] ?? [];
+                    const seen = new Set(existing.map((m) => m.id));
+                    const merged = existing.concat(incoming.filter((m) => !seen.has(m.id)));
+                    return {...prev, [activeId]: merged};
+                });
+
+                const maxTs = Math.max(...incoming.map((m) => Number(m.ts) || 0));
+                    lastTsRefByConv.current[activeId] = Math.max(
+                    lastTsRefByConv.current[activeId] || 0,
+                    maxTs
+                );
+
+            } catch (err) {
+                throw new Error(`failed to read new messages}`);
+            }
+        };
+
+        tick();
+        const handle = setInterval(tick, POLL_MS);
+
+        return () => {
+            if (handle) clearInterval(handle);
+        };
+    }, [activeId]);
+
+    const value = {
+        // state
+        conversations,
+        activeId,
+        messagesByConv,
+        convError,
+        chatErrorByConv: chatByConvError,
+        sendMsgError,
+        // actions
+        selectConversation,
+        sendMessage,
+        // config (optional: useful for tests or dynamic tuning)
+        _config: { POLL_MS, CONV_REFRESH_MS },
+  };
+
+    return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
 }
 
 export function useChat() {
-    const ctx = useContext(ChatContext);
-    if (!ctx) throw new Error("useChat must be used within <ChatProvider>");
-    return ctx;
+  const ctx = useContext(ChatContext);
+  if (!ctx) throw new Error("useChat must be used within <ChatProvider>");
+  return ctx;
 }

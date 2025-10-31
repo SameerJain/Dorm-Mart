@@ -1,12 +1,8 @@
 /* eslint-env browser */
 let ws = null;
 const scheme = window.location.protocol === "https:" ? "wss" : "ws";
-const WS_URL = `
-${scheme}://
-${process.env.REACT_APP_WS_ADDRESS}:
-${process.env.REACT_APP_WS_PORT}
-`
-
+const WS_URL = `${scheme}://${process.env.REACT_APP_WS_ADDRESS}:${process.env.REACT_APP_WS_PORT}`
+console.log(WS_URL);
 export async function ensureSocket() {
   // reuse if it's already open/connecting
   // only recreate if it was CLOSED
@@ -14,7 +10,7 @@ export async function ensureSocket() {
   
   // if ws is used, then, the handshake request won't include credentials
   // therefore, fetch ws_token to identify the user
-  if (scheme == "ws") {
+  if (scheme === "ws") {
       const BASE = process.env.REACT_APP_API_BASE || "/api";
       const r = await fetch(`${BASE}/auth/ws_token.php`, {
         method: "GET",

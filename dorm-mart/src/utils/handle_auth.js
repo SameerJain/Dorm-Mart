@@ -1,5 +1,3 @@
-import { closeSocket } from '../server/ws-demo';
-
 const BASE = process.env.REACT_APP_API_BASE || "http://localhost/api";
 
 // Logout function - calls backend to clear auth token
@@ -31,9 +29,6 @@ export async function logout() {
       const userThemeKey = `userTheme_${userId}`;
       localStorage.removeItem(userThemeKey);
     }
-
-    // disconnets websocket
-    closeSocket();
 
     return response.ok;
   } catch (error) {

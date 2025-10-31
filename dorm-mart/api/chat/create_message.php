@@ -9,16 +9,11 @@ setSecureCORS();
 
 require __DIR__ . '/../database/db_connect.php';
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
 session_start(); // read the PHP session cookie to identify the caller
 
 // --- auth: require a logged-in user ---
-$userId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+$userId = $userId = (int)($_SESSION['user_id'] ?? 0);
+
 if ($userId <= 0) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Not authenticated']);
@@ -28,8 +23,9 @@ if ($userId <= 0) {
 $conn = db();
 $conn->set_charset('utf8mb4');
 
+
+$sender = $userId;
 $body = json_decode(file_get_contents('php://input'), true);
-$sender   = isset($body['sender_id'])   ? trim((string)$body['sender_id'])   : '';
 $receiver = isset($body['receiver_id']) ? trim((string)$body['receiver_id']) : '';
 $content  = isset($body['content'])     ? trim((string)$body['content'])     : '';
 

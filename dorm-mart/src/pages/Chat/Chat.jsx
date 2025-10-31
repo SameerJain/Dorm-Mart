@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  fetchMe,
-  fetchConversation,
-  fetchChat,
-  createMessage,
-} from "./chat_util";
+  fetch_me,
+  fetch_conversations,
+  fetch_chat,
+  create_message,
+} from "../../context/chat_util";
 import { useNavigate } from "react-router-dom";
-import { ensureSocket, getSocket } from "../../server/ws-demo";
 
 export default function ChatPage() {
-  const wsRef = useRef(null);
   const navigate = useNavigate();
   const MAX_LEN = 500; // hard cap; used by textarea and counter
   const [myId, setMyId] = useState(null);
@@ -30,93 +28,6 @@ export default function ChatPage() {
   const [convError, setConvError] = useState(false); // read_conversation failed
   const [chatErrorByConv, setChatErrorByConv] = useState({}); // per-conv read_chat failure map
 
-  function sendWS(type, payload) {
-    const s = wsRef.current;
-    if (!s) {
-      console.warn("[ws] not ready");
-      return;
-    }
-
-    const msg = JSON.stringify({ type, payload }); // convention: {type, payload}
-
-    if (s.readyState === WebSocket.OPEN) {
-      s.send(msg); // goes out immediately
-    } else {
-      // If the socket is still CONNECTING, wait once for "open" then send.
-      const onOpen = () => {
-        s.removeEventListener("open", onOpen); // ensure it fires once
-        s.send(msg);
-      };
-      s.addEventListener("open", onOpen);
-    }
-  }
-
-  useEffect(async () => {
-    const s = await getSocket();
-    wsRef.current = s;
-
-    const onMsg = (e) => {
-      let parsed;
-      try {
-        parsed = JSON.parse(e.data); // guard against non-JSON frames
-      } catch {
-        return;
-      }
-      if (parsed.type !== "new_message") return;
-
-      const { convId, fromUserId, content } = parsed.payload || {};
-      if (!convId) return; // need convo bucket to update
-
-      // Match your normalized shape: { id, sender, text, ts }
-      const msg = {
-        id: undefined, // backend isn't sending an id yet
-        sender: fromUserId === myIdRef.current ? "me" : "them",
-        text: content ?? "",
-        ts: Date.now(), // no server time provided; use client time for now
-      };
-
-      // Functional update to avoid race conditions
-      setMessagesByConv((prev) => {
-        const list = prev[convId] ?? [];
-        return { ...prev, [convId]: [...list, msg] }; // append
-      });
-    };
-
-    s.addEventListener("message", onMsg);
-
-    let onOpen = null; // keep a ref so we can unbind if this component unmounts early
-
-    async function joinPool() {
-      const me = await fetchMe();
-      const msg = JSON.stringify({
-        type: "join_pool",
-        payload: { userId: me.user_id },
-      });
-
-      if (s.readyState === WebSocket.OPEN) {
-        // socket is ready now → send immediately
-        s.send(msg);
-      } else if (s.readyState === WebSocket.CONNECTING) {
-        // not open yet → send once it opens, then remove the listener
-        onOpen = () => {
-          s.removeEventListener("open", onOpen); // ensure it fires once
-          s.send(msg);
-        };
-        s.addEventListener("open", onOpen);
-      } else {
-        // CLOSED or CLOSING; optionally log/handle
-        console.warn("[ws] cannot send; state:", s.readyState);
-      }
-    }
-
-    joinPool();
-
-    return () => {
-      s.removeEventListener("message", onMsg);
-      if (onOpen) s.removeEventListener("open", onOpen); // cleanup if unmounted before open
-    };
-  }, []);
-
   // Load me + conversations on mount
   useEffect(() => {
     const controller = new AbortController();
@@ -124,10 +35,10 @@ export default function ChatPage() {
     async function loadConversations() {
       try {
         setConvError(false); // clear previous error before fetching
-        const me = await fetchMe(controller.signal);
+        const me = await fetch_me(controller.signal);
         setMyId(me.user_id);
 
-        const res = await fetchConversation(me.user_id, controller.signal);
+        const res = await fetch_conversations(controller.signal);
         const view = res.conversations.map((c) => {
           const u1 = c.user1_id;
           const u2 = c.user2_id;
@@ -175,7 +86,7 @@ export default function ChatPage() {
     currentFetch.current = controller;
 
     try {
-      const res = await fetchChat(convId, controller.signal);
+      const res = await fetch_chat(convId, controller.signal);
       const raw = res.messages ?? res.data ?? [];
       const normalized = raw.map((m) => ({
         id: m.message_id ?? m.id,
@@ -223,8 +134,7 @@ export default function ChatPage() {
     const receiverId = convo.otherUserId;
 
     try {
-      const res = await createMessage({
-        senderId: myId,
+      const res = await create_message({
         receiverId,
         content: text,
         signal: undefined, // optional: wire an AbortController if you want
@@ -242,13 +152,6 @@ export default function ChatPage() {
       setMessagesByConv((prev) => {
         const list = prev[activeId] ? [...prev[activeId], newMsg] : [newMsg];
         return { ...prev, [activeId]: list };
-      });
-
-      sendWS("send_message", {
-        convId: convo.id,
-        fromUserId: myId,
-        toUserId: receiverId,
-        content: text,
       });
 
       setDraft("");
