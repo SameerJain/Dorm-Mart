@@ -98,14 +98,15 @@ export default function ViewProduct() {
       }
     }
 
-    const meetLocation = d.meet_location || d.location || null;
+    const itemLocation = d.item_location || d.meet_location || d.location || null;
     const itemCondition = d.item_condition || d.condition || null;
     const trades = typeof d.trades === "boolean" ? d.trades : String(d.trades || "").toLowerCase() === "1" || String(d.trades || "").toLowerCase() === "true";
     const priceNego = typeof d.price_nego === "boolean" ? d.price_nego : String(d.price_nego || "").toLowerCase() === "1" || String(d.price_nego || "").toLowerCase() === "true";
     const sold = typeof d.sold === "boolean" ? d.sold : String(d.sold || "").toLowerCase() === "1" || String(d.sold || "").toLowerCase() === "true";
 
     const sellerId = d.seller_id ?? null;
-    const sellerName = d.seller || d.sold_by || d.seller_name || (sellerId != null ? `Seller #${sellerId}` : "Unknown Seller");
+    const sellerName = d.seller || (sellerId != null ? `Seller #${sellerId}` : "Unknown Seller");
+    const sellerEmail = d.email || null;
     const soldTo = d.sold_to ?? null;
 
     const dateListedStr = d.date_listed || d.created_at || null;
@@ -120,7 +121,7 @@ export default function ViewProduct() {
       price,
       photoUrls,
       tags,
-      meetLocation,
+      itemLocation,
       itemCondition,
       trades,
       priceNego,
@@ -128,6 +129,7 @@ export default function ViewProduct() {
       sellerId,
       sellerName,
       soldTo,
+      sellerEmail,
       dateListed,
       dateSold,
       finalPrice: d.final_price ?? null,
@@ -141,6 +143,8 @@ export default function ViewProduct() {
 
   const hasPrev = activeIdx > 0;
   const hasNext = normalized?.photoUrls && activeIdx < normalized.photoUrls.length - 1;
+
+  // no-op
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -158,21 +162,35 @@ export default function ViewProduct() {
         ) : !normalized ? (
           <p className="text-center text-sm text-gray-400">No product found.</p>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-[1.1fr,0.9fr] gap-4 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-6 items-start">
             {/* Left: photos */}
-            <section className="bg-white rounded-lg border border-gray-200/70 shadow-sm p-3 lg:sticky lg:top-20">
-              <div className="w-full aspect-square bg-gray-100 rounded-md overflow-hidden relative">
+            <section className="flex gap-3 items-start justify-center lg:sticky lg:top-20">
+              {/* Vertical thumbnails (md+) */}
+              {normalized.photoUrls && normalized.photoUrls.length > 1 ? (
+                <div className="hidden md:flex md:flex-col gap-2 md:max-h-[32rem] overflow-y-auto pr-1">
+                  {normalized.photoUrls.map((u, idx) => (
+                    <button
+                      key={`thumb-${idx}`}
+                      onClick={() => setActiveIdx(idx)}
+                      className={`h-16 w-16 rounded-md overflow-hidden border bg-white ${idx === activeIdx ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200"}`}
+                    >
+                      <img src={u} alt={`thumb-${idx}`} className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              {/* Main image card (square) */}
+              <div className="bg-white rounded-lg border border-gray-200/70 shadow-sm w-full max-w-[28rem] md:max-w-[32rem] aspect-square mx-auto overflow-hidden relative">
                 {normalized.photoUrls && normalized.photoUrls.length ? (
                   <img
                     alt={normalized.title}
                     src={normalized.photoUrls[activeIdx]}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                   />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center text-gray-400">No image</div>
                 )}
-
-                {/* arrows */}
                 {normalized.photoUrls && normalized.photoUrls.length > 1 ? (
                   <>
                     <button
@@ -195,14 +213,14 @@ export default function ViewProduct() {
                 ) : null}
               </div>
 
-              {/* thumbnails */}
+              {/* Horizontal thumbnails (sm) */}
               {normalized.photoUrls && normalized.photoUrls.length > 1 ? (
-                <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-blue-200">
+                <div className="md:hidden absolute -bottom-12 left-0 right-0 flex gap-2 justify-center">
                   {normalized.photoUrls.map((u, idx) => (
                     <button
-                      key={`thumb-${idx}`}
+                      key={`thumb-sm-${idx}`}
                       onClick={() => setActiveIdx(idx)}
-                      className={`h-16 w-16 rounded-md overflow-hidden border ${idx === activeIdx ? "border-blue-500" : "border-gray-200"}`}
+                      className={`h-12 w-12 rounded-md overflow-hidden border bg-white ${idx === activeIdx ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200"}`}
                     >
                       <img src={u} alt={`thumb-${idx}`} className="h-full w-full object-cover" />
                     </button>
@@ -212,40 +230,72 @@ export default function ViewProduct() {
             </section>
 
             {/* Right: details */}
-            <section className="bg-white rounded-lg border border-gray-200/70 shadow-sm p-4 flex flex-col gap-4 min-w-0">
-              <div className="flex items-start justify-between gap-3">
-                <h2 className="text-xl font-bold text-gray-900 break-words">{normalized.title}</h2>
-                {normalized.sold ? (
-                  <span className="shrink-0 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">SOLD</span>
+            <section className="flex flex-col gap-4 min-w-0">
+              {/* Title */}
+              <h2 className="text-2xl font-semibold text-gray-900 leading-snug">{normalized.title}</h2>
+
+              {/* Meta row */}
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-gray-600">Sold by</span>
+                <span className="font-medium text-gray-800">{normalized.sellerName}</span>
+                {normalized.tags && normalized.tags.length ? (
+                  <span className="text-gray-300">|</span>
+                ) : null}
+                {normalized.tags && normalized.tags.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {normalized.tags.slice(0, 3).map((t, i) => (
+                      <span key={`tag-top-${i}`} className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-full px-2 py-0.5">{String(t)}</span>
+                    ))}
+                  </div>
                 ) : null}
               </div>
 
-              <div className="flex items-center gap-3">
-                <p className="text-2xl font-semibold text-blue-700">${normalized.price?.toFixed(2)}</p>
-                {normalized.priceNego ? (
-                  <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">Negotiable</span>
-                ) : null}
-                {normalized.trades ? (
-                  <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">Open to trades</span>
-                ) : null}
+              {/* Buy box (Amazon-like, but with our palette and only Message Seller) */}
+              <div className="bg-white rounded-lg border border-gray-200/70 shadow-sm p-4 w-full max-w-md">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-semibold text-gray-900">${normalized.price?.toFixed(2)}</span>
+                  {normalized.priceNego ? (
+                  <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">Price Negotiable</span>
+                  ) : null}
+                  {normalized.trades ? (
+                    <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">Open to trades</span>
+                  ) : null}
+                </div>
+                <p className="text-sm text-emerald-700 mt-1">{normalized.sold ? 'Not available' : 'In Stock'}</p>
+                <p className="text-xs text-gray-500">Pickup: {normalized.itemLocation || 'On campus'}</p>
+
+                <div className="mt-3 space-y-2">
+                  <button
+                    onClick={() => navigate(`/app/chat${normalized.sellerId ? `?to=${encodeURIComponent(normalized.sellerId)}` : ''}`)}
+                    disabled={!normalized.sellerId}
+                    className="w-full rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2"
+                  >
+                    Message Seller
+                  </button>
+                </div>
               </div>
 
+              {/* Description */}
               {normalized.description ? (
-                <div>
-                  <p className="text-sm text-gray-600 whitespace-pre-line">{normalized.description}</p>
+                <div className="prose prose-sm max-w-none">
+                  <h3 className="text-base font-semibold text-gray-900 mb-1">About this item</h3>
+                  <p className="text-sm text-gray-700 whitespace-pre-line">{normalized.description}</p>
                 </div>
               ) : null}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Detailed info (no duplicates with meta above) */}
+              <div className="bg-white rounded-lg border border-gray-200/70 p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Detail label="Seller" value={normalized.sellerName} />
-                  <Detail label="Meet location" value={normalized.meetLocation || "—"} />
-                  <Detail label="Condition" value={normalized.itemCondition || "—"} />
+                  <Detail label="Item location" value={normalized.itemLocation || '—'} />
+                  <Detail label="Condition" value={normalized.itemCondition || '—'} />
+                  <Detail label="Price Negotiable" value={normalized.priceNego ? 'Yes' : 'No'} />
+                  <Detail label="Accepts trades" value={normalized.trades ? 'Yes' : 'No'} />
+                  <Detail label="Seller email" value={normalized.sellerEmail ? (<a href={`mailto:${normalized.sellerEmail}`} className="text-blue-600 hover:underline">{normalized.sellerEmail}</a>) : '—'} />
                 </div>
                 <div className="space-y-2">
-                  <Detail label="Date listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : "—"} />
+                  <Detail label="Date listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : '—'} />
                   {normalized.sold ? (
-                    <Detail label="Date sold" value={normalized.dateSold ? formatDate(normalized.dateSold) : "—"} />
+                    <Detail label="Date sold" value={normalized.dateSold ? formatDate(normalized.dateSold) : '—'} />
                   ) : null}
                   {normalized.sold && normalized.finalPrice != null ? (
                     <Detail label="Final price" value={`$${Number(normalized.finalPrice).toFixed(2)}`} />
@@ -253,17 +303,8 @@ export default function ViewProduct() {
                 </div>
               </div>
 
-              {normalized.tags && normalized.tags.length ? (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {normalized.tags.map((t, i) => (
-                    <span key={`tag-${i}`} className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-full px-2 py-0.5">{String(t)}</span>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="pt-2 flex gap-2">
-                <button onClick={() => navigate(-1)} className="px-4 py-2 rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm">Back</button>
-                {/* Placeholder for actions like message seller */}
+              <div className="pt-1">
+                <button onClick={() => navigate(-1)} className="text-sm text-blue-600 hover:underline">Back to results</button>
               </div>
             </section>
           </div>
@@ -289,4 +330,3 @@ function formatDate(d) {
     return String(d);
   }
 }
-

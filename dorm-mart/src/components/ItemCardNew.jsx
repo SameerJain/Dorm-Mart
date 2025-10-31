@@ -1,5 +1,6 @@
 // src/components/ItemCardNew.jsx
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function ItemCardNew({
   id,
@@ -10,6 +11,7 @@ export default function ItemCardNew({
   status,
   seller,
 }) {
+  const navigate = useNavigate();
   const isNew =
     typeof status === "string" && status.toUpperCase().includes("JUST");
 
@@ -18,9 +20,8 @@ export default function ItemCardNew({
 
   const handleClick = () => {
     if (!id) return;
-    window.location.href = `/dorm-mart/#/app/viewProduct?id=${encodeURIComponent(
-      id
-    )}`;
+    // Prefer param route to avoid full page reload
+    navigate(`/app/viewProduct/${encodeURIComponent(id)}`);
   };
 
   return (

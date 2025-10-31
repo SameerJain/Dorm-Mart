@@ -33,7 +33,8 @@
     "build-cattle-mac":  "env-cmd -f .env.cattle bash -c 'echo Building prod && PUBLIC_URL=/CSE442/2025-Fall/cse-442j react-scripts build'",
     "build-cattle-win": "env-cmd -f .env.cattle cross-env PUBLIC_URL=/CSE442/2025-Fall/cse-442j react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "build-deploy": "npm run build-local-win && deploy.bat"
   },
   "eslintConfig": {
     "extends": [

@@ -497,14 +497,15 @@ export default function LandingPage() {
               <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {exploreItems.map((item, idx) => (
                   <ItemCardNew
-  id={item.id}
-  title={item.title}
-  price={item.price}
-  tags={item.tags}
-  image={item.img || undefined}
-  status={item.status}
-  seller={item.seller}
-/>
+                    key={item.id ?? idx}
+                    id={item.id}
+                    title={item.title}
+                    price={item.price}
+                    tags={item.tags}
+                    image={item.img || undefined}
+                    status={item.status}
+                    seller={item.seller}
+                  />
                 ))}
               </div>
             </section>
