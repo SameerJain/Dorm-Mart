@@ -122,7 +122,7 @@ export function ChatProvider({ children }) {
                 return {...prev, [activeId]: list};
             });
 
-            lastTsRefByConv.current[activeId] = Math.mat(
+            lastTsRefByConv.current[activeId] = Math.max(
                 lastTsRefByConv.current[activeId] || 0,
                 Number(newMsg.ts) || 0
             );

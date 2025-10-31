@@ -34,7 +34,7 @@ $stmt = $conn->prepare(
          DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at    -- ISO UTC (NULL stays NULL)
        FROM messages
       WHERE conv_id = ?
-        AND created_at > ?
+        AND created_at > FROM_UNIXTIME(?)
       ORDER BY message_id ASC'
 );
 // 'is' = integer (conv_id), string (ts as DATETIME in UTC)

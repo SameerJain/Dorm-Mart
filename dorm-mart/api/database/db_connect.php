@@ -36,6 +36,7 @@ function db(): mysqli
     $conn->autocommit(true);
     
     // set timezone to UTC for consistent token expiration handling
+    date_default_timezone_set('UTC'); 
     $conn->query("SET time_zone = '+00:00'");
 
     return $conn;

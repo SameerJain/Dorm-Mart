@@ -27,6 +27,7 @@ if ($userId <= 0) {
 $conn = db();
 $conn->set_charset('utf8mb4');
 
+
 $sender = $userId;
 $body = json_decode(file_get_contents('php://input'), true);
 $receiver = isset($body['receiver_id']) ? trim((string)$body['receiver_id']) : '';
@@ -58,6 +59,8 @@ $lockKey = "conv:$u1:$u2"; // used for advisory lock
 
 $convId = null;
 $msgId  = null;
+/* will hold ISO-8601 UTC string, e.g., 2025-10-31T03:05:06Z */
+$createdIso = null; // <-- will be filled after insert
 
 try {
     $conn->begin_transaction();
@@ -145,6 +148,18 @@ try {
     $msgId = $conn->insert_id;
     $stmt->close();
 
+    /* Fetch the DB-assigned created_at in ISO-8601 UTC (matches your readers) */
+    $stmt = $conn->prepare(
+        'SELECT DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at
+           FROM messages
+          WHERE message_id = ?'
+    );
+    $stmt->bind_param('i', $msgId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    $createdIso = $row ? (string)$row['created_at'] : null; // fallback handled below if null
+
     // Update receiver's unread counters
     $stmt = $conn->prepare(
         'UPDATE conversation_participants
@@ -167,11 +182,22 @@ try {
 
     $conn->commit();
 
+    if ($createdIso === null) {
+        // Very defensive fallback; should rarely trigger since we SELECTed above.
+        $createdIso = gmdate('Y-m-d\TH:i:s\Z'); // UTC "now"
+    }
+
     echo json_encode([
         'success'     => true,
         'conv_id'     => $convId,
-        'message_id'  => $msgId
-    ]);
+        'message_id'  => $msgId,
+        // Return the fields you asked for as a single object for the client
+        'message'     => [
+            'message_id' => $msgId,
+            'content'    => $content,
+            'created_at' => $createdIso, // ISO-8601 UTC, e.g., 2025-10-31T03:05:06Z
+        ],
+    ], JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
     if ($conn->errno === 0) {
         $conn->rollback();
