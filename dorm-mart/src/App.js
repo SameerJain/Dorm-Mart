@@ -20,9 +20,7 @@ import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
 import ViewProduct from "./itemDetails/viewProduct.jsx";
-// theme load
 // Chat
-// import { ChatProvider } from "./context/ChatContext.js";
 import { ChatProvider } from "./context/ChatContext.js";
 import ChatPage from "./pages/Chat/ChatPage.jsx";
 
@@ -90,7 +88,7 @@ const loadUserTheme = async () => {
 };
 
 // Load theme immediately
-// loadUserTheme();
+loadUserTheme();
 
 export const router = createHashRouter([
   // redirect default hash `#/` to `#/login`
@@ -106,7 +104,11 @@ export const router = createHashRouter([
   // Main app
   {
     path: "/app",
-    element: <RootLayout />,
+    element: (
+      <ChatProvider>
+        <RootLayout />
+      </ChatProvider>
+    ),
     children: [
     { index: true,
       element: <LandingPage /> 
@@ -136,10 +138,7 @@ export const router = createHashRouter([
       {
         path: "chat",
         children: [
-          { index: true, element: 
-          <ChatProvider>
-            < ChatPage/>
-          </ChatProvider> }
+          { index: true, element: < ChatPage/>}
         ]
       },
       // Seller Dashboard
