@@ -1,11 +1,9 @@
 <?php
 
 declare(strict_types=1);
-header('Content-Type: application/json');
-
-// __DIR__ points to api/
-require __DIR__ . '/../database/db_connect.php';
+header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../security/security.php';
+require __DIR__ . '/../database/db_connect.php';
 setSecurityHeaders();
 // Ensure CORS headers are present for React dev server and local PHP server
 setSecureCORS();
@@ -15,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
+
 $conn = db();
 
 session_start(); // read the PHP session cookie to identify the caller
@@ -63,6 +62,7 @@ $stmt = $conn->prepare(
             first_unread_msg_id = 0
       WHERE conv_id = ? AND user_id = ?'
 );
+
 $stmt->bind_param('ii', $convId, $userId);
 $stmt->execute();
 $stmt->close();

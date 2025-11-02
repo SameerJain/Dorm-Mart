@@ -1,19 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useChat } from "../../context/ChatContext";
-
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { ChatContext } from "../../context/ChatContext";
+import fmtTime from "./chat_page_utils";
 export default function ChatPage() {
 
+  const ctx = useContext(ChatContext);
   const {
+      //chat
       conversations,
-      activeId,
+      activeConvId,
       messages,
       convError,
       chatByConvError,
-      sendMsgError,
+      unreadByConv,
+      //sendMsgError,
       // actions
-      selectConversation,
-      sendMessage,
-  } = useChat();
+      fetchConversation,
+      createMessage,
+  } = ctx;
 
   const MAX_LEN = 500; // hard cap; used by textarea and counter
 
@@ -25,27 +28,22 @@ export default function ChatPage() {
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [activeId, messages.length]);
-
-  // Small time formatter
-  function fmtTime(ts) {
-    const d = new Date(ts);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }
+  }, [activeConvId, messages.length]);
 
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(draft);
+      createMessage(draft);
       setDraft("");
     }
   }
 
   // Header label: show the other user id for now
   const activeLabel = useMemo(() => {
-    const c = conversations.find((x) => x.id === activeId);
+    const c = conversations.find((c) => c.con_id === activeConvId);
     return c ? c.receiverName : "Select a chat";
-  }, [conversations, activeId]);
+  }, [conversations, activeConvId]);
+
 
   return (
     <div className="h-screen w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -68,22 +66,28 @@ export default function ChatPage() {
                 </li>
               ) : (
                 conversations.map((c) => {
-                  const isActive = c.id === activeId;
+                  const isActive = c.conv_id === activeConvId;
+                  const unread = unreadByConv?.[c.conv_id] ?? 0;
+
                   return (
-                    <li key={c.id}>
+                    <li key={c.conv_id}>
                       <button
-                        onClick={() => selectConversation(c.id)}
+                        onClick={() => fetchConversation(c.conv_id)}
                         className={
                           "flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition " +
-                          (isActive
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "hover:bg-blue-600")
+                          (isActive ? "bg-indigo-50 text-indigo-700" : "hover:bg-blue-600")
                         }
                         aria-current={isActive ? "true" : undefined}
                       >
-                        <span className="truncate font-medium">
-                          {c.receiverName}
-                        </span>
+                        <span className="truncate font-medium">{c.receiverName}</span>
+                        {unread > 0 && (
+                          <span
+                            className="ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-xs leading-5"
+                            aria-label={`${unread} unread`}
+                          >
+                            {unread > 99 ? "99+" : unread}
+                          </span>
+                        )}
                       </button>
                     </li>
                   );
@@ -109,13 +113,13 @@ export default function ChatPage() {
               aria-live="polite"
               aria-relevant="additions"
             >
-              {!activeId ? (
+              {!activeConvId ? (
                 <div className="flex h-full items-center justify-center">
                   <p className="text-sm text-gray-500">
                     Select a chat to view messages.
                   </p>
                 </div>
-              ) : chatByConvError[activeId] ? (
+              ) : chatByConvError[activeConvId] ? (
                 <p className="text-center text-sm text-red-600 dark:text-red-400">
                   Something went wrong, please try again later
                 </p>
@@ -126,7 +130,7 @@ export default function ChatPage() {
               ) : (
                 messages.map((m) => (
                   <div
-                    key={m.id}
+                    key={m.message_id}
                     className={
                       m.sender === "me"
                         ? "flex justify-end"
@@ -185,7 +189,7 @@ export default function ChatPage() {
 
                 <button
                   onClick={() => {
-                    sendMessage(draft);
+                    createMessage(draft);
                     setDraft("");
                   }}
                   className="h-[44px] shrink-0 rounded-2xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"

@@ -14,6 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+$conn = db();
+$conn->set_charset('utf8mb4');
+
 session_start(); // read the PHP session cookie to identify the caller
 
 // --- auth: require a logged-in user ---
@@ -24,8 +27,6 @@ if ($userId <= 0) {
     exit;
 }
 
-$conn = db();
-$conn->set_charset('utf8mb4');
 
 
 $sender = $userId;

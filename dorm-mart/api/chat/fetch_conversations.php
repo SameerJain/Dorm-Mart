@@ -1,17 +1,20 @@
 <?php
 // api/list-user-conversations.php
 
+header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../security/security.php';
+require __DIR__ . '/../database/db_connect.php';
 setSecurityHeaders();
 // Ensure CORS headers are present for React dev server and local PHP server
 setSecureCORS();
 
-header('Content-Type: application/json; charset=utf-8');
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
-require __DIR__ . '/../database/db_connect.php';
-$mysqli = db(); // <-- this should return a mysqli connection
-
-
+$conn = db();
 
 /*
 login.php
@@ -51,10 +54,10 @@ $sql = "
   ORDER BY created_at DESC
 ";
 
-$stmt = $mysqli->prepare($sql);
+$stmt = $conn->prepare($sql);
 if (!$stmt) {
   http_response_code(500);
-  echo json_encode(['success' => false, 'error' => 'Prepare failed', 'detail' => $mysqli->error]);
+  echo json_encode(['success' => false, 'error' => 'Prepare failed', 'detail' => $db->error]);
   exit;
 }
 
