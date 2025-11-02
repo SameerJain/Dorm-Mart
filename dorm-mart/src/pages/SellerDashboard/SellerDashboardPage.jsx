@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
+const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+
 function SellerDashboardPage() {
     const navigate = useNavigate();
     const [selectedStatus, setSelectedStatus] = useState('All Status');
@@ -29,6 +32,11 @@ function SellerDashboardPage() {
 
     const handleCreateNewListing = () => {
         navigate('/app/product-listing/new');
+    };
+
+    const openViewProduct = (id) => {
+        if (!id) return;
+        navigate(`/app/viewProduct/${id}`);
     };
 
     // Calculate summary metrics from listings data (using item_status)
@@ -154,17 +162,23 @@ function SellerDashboardPage() {
 
             if (result.success) {
                 // Transform backend data to match frontend expectations
-                const transformedListings = result.data.map(item => ({
-                    id: item.id,
-                    title: item.title,
-                    price: item.price || 0,
-                    status: item.status || 'Active',
-                    createdAt: item.created_at, // Use correct field name
-                    image: item.image_url,
-                    seller_user_id: item.seller_user_id,
-                    buyer_user_id: item.buyer_user_id,
-                    categories: Array.isArray(item.categories) ? item.categories : []
-                }));
+                const transformedListings = result.data.map(item => {
+                    const rawImg = item.image_url || item.image || null;
+                    const proxied = rawImg
+                        ? `${API_BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
+                        : null;
+                    return {
+                        id: item.id,
+                        title: item.title,
+                        price: item.price || 0,
+                        status: item.status || 'Active',
+                        createdAt: item.created_at, // Use correct field name
+                        image: proxied,
+                        seller_user_id: item.seller_user_id,
+                        buyer_user_id: item.buyer_user_id,
+                        categories: Array.isArray(item.categories) ? item.categories : []
+                    };
+                });
                 setListings(transformedListings);
 
                 // Calculate and set summary metrics
@@ -320,17 +334,28 @@ function SellerDashboardPage() {
                             <div key={listing.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 sm:p-6">
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                     <div className="flex items-center space-x-3 sm:space-x-4">
-                                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => openViewProduct(listing.id)}
+                                            className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden hover:ring-2 hover:ring-blue-300 transition"
+                                            aria-label={`Open ${listing.title}`}
+                                        >
                                             {listing.image ? (
-                                                <img src={listing.image} alt={listing.title} className="w-full h-full object-cover rounded-lg" />
+                                                <img src={listing.image} alt={listing.title} className="w-full h-full object-cover" />
                                             ) : (
                                                 <svg className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                 </svg>
                                             )}
-                                        </div>
+                                        </button>
                                         <div className="min-w-0 flex-1">
-                                            <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 truncate">{listing.title}</h3>
+                                            <button
+                                                type="button"
+                                                onClick={() => openViewProduct(listing.id)}
+                                                className="text-left text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 truncate hover:underline"
+                                            >
+                                                {listing.title}
+                                            </button>
                                             {listing.price > 0 && <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">${listing.price}</p>}
                                             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                                                 {listing.sold_by ? `Sold by ${listing.sold_by}` : 'Posted'} - {new Date(listing.createdAt).toLocaleDateString()}
