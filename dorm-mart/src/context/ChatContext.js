@@ -6,7 +6,15 @@ import {
   useState,
 } from "react";
 import { useLocation } from "react-router-dom";
-import { fetch_me, fetch_conversations, fetch_conversation, create_message, tick_fetch_new_messages, tick_fetch_unread_msg_count } from "./chat_context_utils";
+import { 
+    fetch_me,
+    fetch_conversations,
+    fetch_conversation,
+    create_message,
+    tick_fetch_new_messages,
+    tick_fetch_unread_msg_count,
+    envBool 
+} from "./chat_context_utils";
 
 export const ChatContext = createContext(null);
 
@@ -171,8 +179,6 @@ export function ChatProvider({ children }) {
                     maxTs
                 );
 
-                console.log(maxTs);
-
             } catch (err) {
                 throw new Error(`failed to read new messages}`);
             }
@@ -209,8 +215,10 @@ export function ChatProvider({ children }) {
             clearInterval(unreadPollRef.current);
             unreadPollRef.current = null;
         }
-        
+        const notificationOn = envBool(process.env.REACT_APP_CHAT_NOTIFICATION_ON, true);
+        if (!notificationOn) return;
         if (!myId) return;
+        
 
         const shouldPollNow = () => document.visibilityState === "visible";
 

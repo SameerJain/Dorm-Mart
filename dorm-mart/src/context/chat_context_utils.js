@@ -93,8 +93,6 @@ export async function tick_fetch_unread_msg_count(signal) {
 
 }
 
-
-
 export async function create_message({ receiverId, content, signal }) {
   const r = await fetch(`${BASE}/chat/create_message.php`, {
     method: "POST",
@@ -111,4 +109,14 @@ export async function create_message({ receiverId, content, signal }) {
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();                        // expect JSON back from PHP
+}
+
+
+export function envBool(value, fallback = false) {
+  if (value == null) return fallback;
+  const v = String(value).trim().toLowerCase();
+  // Accept common truthy/falsey spellings
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return fallback;
 }
