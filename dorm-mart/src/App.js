@@ -20,6 +20,7 @@ import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
 import ViewProduct from "./itemDetails/viewProduct.jsx";
+import SearchResults from "./pages/search/searchResults.jsx";
 // Chat
 import { ChatProvider } from "./context/ChatContext.js";
 import ChatPage from "./pages/Chat/ChatPage.jsx";
@@ -113,6 +114,8 @@ export const router = createHashRouter([
     { index: true,
       element: <LandingPage /> 
     },
+      // Search Results
+      { path: "listings", element: <SearchResults /> },
       // Product Listing
       {
         path: "product-listing",

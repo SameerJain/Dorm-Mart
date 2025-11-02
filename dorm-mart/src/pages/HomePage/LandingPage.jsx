@@ -24,7 +24,7 @@ const FALLBACK_ITEMS = [
   },
   {
     id: 2,
-    title: "Small Carpet (5x7)",
+    title: "Small Carpet (5x7)", 
     price: 25,
     img: carpetUrl,
     tags: ["Furniture", "Decor"],
@@ -284,7 +284,7 @@ export default function LandingPage() {
                 key={cat}
                 onClick={() =>
                   openExternalRoute(
-                    `/dorm-mart/#/app/listings?category=${encodeURIComponent(cat)}`
+                    `${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`
                   )
                 }
                 className="inline-flex items-center rounded-full bg-blue-50 px-4 py-1.5 text-sm font-medium text-blue-700 border border-blue-100 hover:bg-blue-100 transition"
@@ -331,7 +331,7 @@ export default function LandingPage() {
                 For you
               </button>
               <button
-                onClick={() => openExternalRoute("/dorm-mart/#/app/listings?sort=new")}
+                onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?sort=new`)}
                 className="px-4 py-1.5 rounded-full bg-white text-gray-600 text-sm font-medium border border-gray-100 hover:text-gray-700"
               >
                 Newest
@@ -378,14 +378,14 @@ export default function LandingPage() {
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => openExternalRoute("/dorm-mart/#/app/listings")}
+                  onClick={() => openExternalRoute("dorm-mart/#/app/listings")}
                   className="px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 text-sm border border-blue-100"
                 >
                   All
                 </button>
                 <button
                   onClick={() =>
-                    openExternalRoute("/dorm-mart/#/app/listings?category=Electronics")
+                    openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Electronics`)
                   }
                   className="px-4 py-1.5 rounded-full bg-white text-gray-700 text-sm border border-gray-100 hover:bg-gray-50"
                 >
@@ -393,7 +393,7 @@ export default function LandingPage() {
                 </button>
                 <button
                   onClick={() =>
-                    openExternalRoute("/dorm-mart/#/app/listings?category=Kitchen")
+                    openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Kitchen`)
                   }
                   className="px-4 py-1.5 rounded-full bg-white text-gray-700 text-sm border border-gray-100 hover:bg-gray-50"
                 >
@@ -401,7 +401,7 @@ export default function LandingPage() {
                 </button>
                 <button
                   onClick={() =>
-                    openExternalRoute("/dorm-mart/#/app/listings?category=Furniture")
+                    openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Furniture`)
                   }
                   className="px-4 py-1.5 rounded-full bg-white text-gray-700 text-sm border border-gray-100 hover:bg-gray-50"
                 >
@@ -540,7 +540,7 @@ export default function LandingPage() {
                 <li className="flex items-center justify-between gap-2">
                   <button
                     onClick={() =>
-                      openExternalRoute("/dorm-mart/#/app/listings?category=Electronics")
+                      openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Electronics`)
                     }
                     className="text-sm text-gray-600 hover:text-gray-800"
                   >
@@ -553,7 +553,7 @@ export default function LandingPage() {
                 <li className="flex items-center justify-between gap-2">
                   <button
                     onClick={() =>
-                      openExternalRoute("/dorm-mart/#/app/listings?category=Kitchen")
+                      openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Kitchen`)
                     }
                     className="text-sm text-gray-600 hover:text-gray-800"
                   >
@@ -567,7 +567,7 @@ export default function LandingPage() {
                   <button
                     onClick={() =>
                       openExternalRoute(
-                        "/dorm-mart/#/app/listings?category=Dorm%20Essentials"
+                        `${PUBLIC_BASE}/#/app/listings?category=Dorm%20Essentials`
                       )
                     }
                     className="text-sm text-gray-600 hover:text-gray-800"
