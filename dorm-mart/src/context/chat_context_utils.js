@@ -61,8 +61,8 @@ export async function fetch_new_messages(activeConvId, ts, signal) {
   return r.json();
 }
 
-export async function tick_fetch_unread_msg_count(signal) {
-  const res = await fetch_unread_msg_count(signal);
+export async function tick_fetch_unread_messages(signal) {
+  const res = await fetch_unread_messages(signal);
   const raw = res.unreads ?? [];
 
   // build { conv_id -> count }
@@ -79,8 +79,8 @@ export async function tick_fetch_unread_msg_count(signal) {
   return { unreads, total };
 }
 
-export async function fetch_unread_msg_count(signal) {
-  const r = await fetch(`${BASE}/chat/fetch_unread_msg_count.php`, {
+export async function fetch_unread_messages(signal) {
+  const r = await fetch(`${BASE}/chat/fetch_unread_messages.php`, {
     method: "GET",
     headers: { Accept: "application/json" },
     credentials: "include", // session-based auth

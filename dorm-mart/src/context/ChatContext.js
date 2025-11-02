@@ -12,7 +12,7 @@ import {
     fetch_conversation,
     create_message,
     tick_fetch_new_messages,
-    tick_fetch_unread_msg_count,
+    tick_fetch_unread_messages,
     envBool 
 } from "./chat_context_utils";
 
@@ -233,7 +233,7 @@ export function ChatProvider({ children }) {
             if (!shouldPollNow()) return;
             const controller = new AbortController();
             try {
-                const { unreads, total } = await tick_fetch_unread_msg_count(controller.signal);
+                const { unreads, total } = await tick_fetch_unread_messages(controller.signal);
                 setUnreadByConv(unreads);
                 setUnreadTotal(total);
             } catch (e) {
