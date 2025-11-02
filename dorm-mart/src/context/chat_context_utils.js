@@ -73,17 +73,25 @@ export async function fetch_unread_msg_count(signal) {
   return r.json();
 }
 
-// export async function tick_fetch_unread_msg_count(singal) {
-//   const res = await fetch_unread_msg_count(signal);
-//   const raw = res.unreads
-//   if (!raw.length) return [];
+export async function tick_fetch_unread_msg_count(signal) {
+  const res = await fetch_unread_msg_count(signal);
+  const raw = res.unreads ?? [];
 
-//   const unreads = raw.map((m) => {
-//     return {
+  // build { conv_id -> count }
+  const unreads = {};
+  let total = 0;
+  for (const u of raw) {
+      const cid = Number(u.conv_id);
+      const cnt = Number(u.unread_count) || 0;
+      if (cid > 0 && cnt > 0) {
+        unreads[cid] = cnt;
+        total += cnt;
+      }
+  }
 
-//     }
-//   })
-// }
+  return { unreads, total };
+
+}
 
 
 

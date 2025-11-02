@@ -3,13 +3,15 @@ import { ChatContext } from "../../context/ChatContext";
 import fmtTime from "./chat_page_utils";
 export default function ChatPage() {
 
-  const ctx = useContext(ChatContext)
+  const ctx = useContext(ChatContext);
   const {
+      //chat
       conversations,
       activeConvId,
       messages,
       convError,
       chatByConvError,
+      unreadByConv,
       //sendMsgError,
       // actions
       fetchConversation,
@@ -42,6 +44,7 @@ export default function ChatPage() {
     return c ? c.receiverName : "Select a chat";
   }, [conversations, activeConvId]);
 
+
   return (
     <div className="h-screen w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <div className="mx-auto h-full max-w-[1200px] px-4 py-6">
@@ -64,21 +67,27 @@ export default function ChatPage() {
               ) : (
                 conversations.map((c) => {
                   const isActive = c.conv_id === activeConvId;
+                  const unread = unreadByConv?.[c.conv_id] ?? 0;
+
                   return (
                     <li key={c.conv_id}>
                       <button
                         onClick={() => fetchConversation(c.conv_id)}
                         className={
                           "flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition " +
-                          (isActive
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "hover:bg-blue-600")
+                          (isActive ? "bg-indigo-50 text-indigo-700" : "hover:bg-blue-600")
                         }
                         aria-current={isActive ? "true" : undefined}
                       >
-                        <span className="truncate font-medium">
-                          {c.receiverName}
-                        </span>
+                        <span className="truncate font-medium">{c.receiverName}</span>
+                        {unread > 0 && (
+                          <span
+                            className="ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-xs leading-5"
+                            aria-label={`${unread} unread`}
+                          >
+                            {unread > 99 ? "99+" : unread}
+                          </span>
+                        )}
                       </button>
                     </li>
                   );

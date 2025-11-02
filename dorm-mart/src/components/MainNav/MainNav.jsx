@@ -8,6 +8,8 @@ import Icon from './Icon'
 import searchIcon from '../../assets/icons/icons8-search-96.png';
 import filterIcon from '../../assets/icons/icons8-filter-96.png';
 import { logout } from '../../utils/handle_auth';
+import { ChatContext } from "../../context/ChatContext";
+import { useContext } from 'react';
 
 function MainNav() {
     const [showDropdown, setShowDropdown] = useState(false);
@@ -16,6 +18,9 @@ function MainNav() {
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
     const mobileMenuRef = useRef(null);
+
+    const ctx = useContext(ChatContext);
+    const { unreadTotal } = ctx;
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -105,7 +110,8 @@ function MainNav() {
                         src={notificationIcon}
                         alt="Notification"
                     />
-                    <Icon to="/app/chat" src={chatIcon} alt="Chat" />
+
+                    <Icon to="/app/chat" src={chatIcon} alt="Chat" badge={unreadTotal} />
 
                     {/* User icon with dropdown */}
                     <li className="relative" ref={dropdownRef}>
