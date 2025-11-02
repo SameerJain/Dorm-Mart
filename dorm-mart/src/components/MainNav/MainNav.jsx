@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import chatIcon from '../../assets/icons/icons8-chat-96.png'
 import userIcon from '../../assets/icons/icons8-user-icon-96.png'
 import notificationIcon from '../../assets/icons/icons8-notification-96.png'
 import settingIcon from '../../assets/icons/icons8-setting-96.png'
 import Icon from './Icon'
 import searchIcon from '../../assets/icons/icons8-search-96.png';
-import filterIcon from '../../assets/icons/icons8-filter-96.png';
+// filter icon removed; filters move to search page
 import { logout } from '../../utils/handle_auth';
 import { ChatContext } from "../../context/ChatContext";
 import { useContext } from 'react';
@@ -18,11 +18,14 @@ function MainNav() {
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
     const mobileMenuRef = useRef(null);
+    // no filter panel in nav
+    const location = useLocation();
 
     const ctx = useContext(ChatContext);
     const { unreadTotal } = ctx;
+    // no filters state in nav
 
-    // Close dropdown when clicking outside
+    // Close dropdowns/menus when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -35,6 +38,7 @@ function MainNav() {
                 setShowMobileMenu(false);
                 setShowMobileUserDropdown(false);
             }
+            // no filter panel to close
         };
 
         if (showDropdown || showMobileMenu) {
@@ -61,6 +65,37 @@ function MainNav() {
         navigate("/app/seller-dashboard");
     };
 
+    // Search state + handlers
+    const [searchText, setSearchText] = useState("");
+
+    const handleSearchSubmit = (value) => {
+        const term = (value || "").trim();
+        if (!term) return;
+        // Determine include-description preference from current URL or localStorage
+        let includeDesc = false;
+        try {
+            const spCurrent = new URLSearchParams(location.search || "");
+            const qDesc = spCurrent.get('desc') || spCurrent.get('includeDescription');
+            if (qDesc && (qDesc === '1' || qDesc === 'true')) {
+                includeDesc = true;
+            } else {
+                includeDesc = (localStorage.getItem('dm_include_desc') === '1');
+            }
+        } catch (_) {}
+
+        const sp = new URLSearchParams();
+        sp.set('search', term);
+        if (includeDesc) sp.set('desc', '1');
+        // Navigate to listings with search query (persisting desc)
+        navigate(`/app/listings?${sp.toString()}`);
+    };
+
+    // removed: filters moved to search page
+
+    // removed: filters moved to search page
+
+    // removed: filters moved to search page
+
     return (
         <nav className="bg-blue-600 text-slate-100 dark:bg-gray-800 dark:text-gray-100">
             <div className="mx-auto flex items-center gap-1 sm:gap-2 md:gap-4 p-2 md:p-3">
@@ -75,6 +110,7 @@ function MainNav() {
                         {/* Search icon */}
                         <button
                             type="button"
+                            onClick={(e) => { e.preventDefault(); handleSearchSubmit(searchText); }}
                             className="flex h-full w-10 sm:w-12 md:w-16 lg:w-20 items-center justify-center border-r border-slate-200 border-black flex-shrink-0"
                         >
                             <img
@@ -87,19 +123,18 @@ function MainNav() {
                         <input
                             type="text"
                             placeholder="Search..."
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSearchSubmit(searchText);
+                                }
+                            }}
                             className="h-full w-full px-2 sm:px-3 text-sm md:text-base text-slate-900 placeholder-slate-400 focus:outline-none min-w-0"
                         />
 
-                        <button
-                            type="button"
-                            className="flex h-12 w-10 sm:w-12 md:w-16 lg:w-20 items-center justify-center border-l border-slate-200 border-black flex-shrink-0"
-                        >
-                            <img
-                                src={filterIcon}
-                                alt="Filter"
-                                className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8"
-                            />
-                        </button>
+                        {/* filter icon and panel removed; filters live on search page */}
                     </div>
                 </div>
 
