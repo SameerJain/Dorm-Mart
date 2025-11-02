@@ -53,6 +53,7 @@ export default function LandingPage() {
   const [user, setUser] = useState(null);
   const [interests, setInterests] = useState([]);
   const [allItems, setAllItems] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
   const [loadingUser, setLoadingUser] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
   const [errorUser, setErrorUser] = useState(false);
@@ -190,6 +191,22 @@ export default function LandingPage() {
         }
       } finally {
         setLoadingItems(false);
+      }
+    })();
+    return () => controller.abort();
+  }, []);
+
+  // fetch categories for quick filters
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/utility/get_categories.php`, { signal: controller.signal });
+        if (!r.ok) return;
+        const data = await r.json();
+        if (Array.isArray(data)) setAllCategories(data);
+      } catch (e) {
+        // ignore
       }
     })();
     return () => controller.abort();
@@ -336,6 +353,18 @@ export default function LandingPage() {
               >
                 Newest
               </button>
+              <button
+                onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?maxPrice=20`)}
+                className="px-4 py-1.5 rounded-full bg-white text-gray-600 text-sm font-medium border border-gray-100 hover:bg-gray-50"
+              >
+                Under $20
+              </button>
+              <button
+                onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?minPrice=100`)}
+                className="px-4 py-1.5 rounded-full bg-white text-gray-600 text-sm font-medium border border-gray-100 hover:bg-gray-50"
+              >
+                Luxury
+              </button>
             </div>
           </div>
 
@@ -377,36 +406,17 @@ export default function LandingPage() {
                 Quick filters
               </p>
               <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => openExternalRoute("dorm-mart/#/app/listings")}
-                  className="px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 text-sm border border-blue-100"
-                >
-                  All
-                </button>
-                <button
-                  onClick={() =>
-                    openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Electronics`)
-                  }
-                  className="px-4 py-1.5 rounded-full bg-white text-gray-700 text-sm border border-gray-100 hover:bg-gray-50"
-                >
-                  Electronics
-                </button>
-                <button
-                  onClick={() =>
-                    openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Kitchen`)
-                  }
-                  className="px-4 py-1.5 rounded-full bg-white text-gray-700 text-sm border border-gray-100 hover:bg-gray-50"
-                >
-                  Kitchen
-                </button>
-                <button
-                  onClick={() =>
-                    openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Furniture`)
-                  }
-                  className="px-4 py-1.5 rounded-full bg-white text-gray-700 text-sm border border-gray-100 hover:bg-gray-50"
-                >
-                  Furniture
-                </button>
+                {(allCategories.length ? allCategories : ["Electronics","Kitchen","Furniture","Dorm Essentials"]).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() =>
+                      openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`)
+                    }
+                    className="px-4 py-1.5 rounded-full bg-white text-gray-700 text-sm border border-gray-100 hover:bg-gray-50"
+                  >
+                    {cat}
+                  </button>
+                ))}
               </div>
             </div>
 

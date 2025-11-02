@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 // dorm-mart/api/image.php
-// Serves images that are stored under /data/images/ on disk
-// Accepts either ?file=filename.png OR ?url=/data/images/filename.png
+// Serves images that are stored under /images/ on disk
+// Accepts either ?file=filename.png OR ?url=/images/filename.png
 
 $IMAGE_DIR = realpath(__DIR__ . '/../images');
 if ($IMAGE_DIR === false) {

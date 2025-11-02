@@ -38,20 +38,43 @@ try {
 
     $q         = isset($body['q']) ? trim((string)$body['q']) : (isset($body['search']) ? trim((string)$body['search']) : '');
     $category  = isset($body['category']) ? trim((string)$body['category']) : '';
+    // Optional multiple categories support
+    $categories = [];
+    if (isset($body['categories'])) {
+        if (is_array($body['categories'])) {
+            foreach ($body['categories'] as $c) {
+                $c = trim((string)$c);
+                if ($c !== '') $categories[] = $c;
+            }
+        } else {
+            $parts = explode(',', (string)$body['categories']);
+            foreach ($parts as $c) {
+                $c = trim($c);
+                if ($c !== '') $categories[] = $c;
+            }
+        }
+    }
     $condition = isset($body['condition']) ? trim((string)$body['condition']) : '';
     $location  = isset($body['location']) ? trim((string)$body['location']) : '';
     $status    = isset($body['status']) ? strtoupper(trim((string)$body['status'])) : '';
     $minPrice  = isset($body['minPrice']) ? (float)$body['minPrice'] : null;
     $maxPrice  = isset($body['maxPrice']) ? (float)$body['maxPrice'] : null;
     $sort      = isset($body['sort']) ? strtolower(trim((string)$body['sort'])) : '';
+    // Optional: include description in search when true
+    $includeDesc = false;
+    if (isset($body['includeDescription'])) {
+        $v = strtolower(trim((string)$body['includeDescription']));
+        $includeDesc = in_array($v, ['1','true','yes','on'], true);
+    } elseif (isset($body['scope'])) {
+        $includeDesc = strtolower(trim((string)$body['scope'])) !== 'title';
+    }
     $limit     = isset($body['limit']) ? max(1, min(100, (int)$body['limit'])) : 50;
 
     mysqli_report(MYSQLI_REPORT_OFF);
     $mysqli = db();
 
-    // Base select
-    $sql = "
-        SELECT 
+    // Base select (we may append a dynamic relevance column when searching)
+    $selectCols = "
             i.product_id,
             i.title,
             i.categories,
@@ -68,9 +91,35 @@ try {
             ua.first_name,
             ua.last_name,
             ua.email
-        FROM INVENTORY AS i
-        LEFT JOIN user_accounts AS ua ON i.seller_id = ua.user_id
     ";
+
+    $relevanceSql = '';
+    $relevanceParams = [];
+    $relevanceTypes = '';
+
+    // If searching and not explicitly sorting by newest or price, prioritize title similarity
+    $useRelevance = ($q !== '') && !in_array($sort, ['new', 'newest', 'price_asc', 'price_desc'], true);
+    if ($useRelevance) {
+        // Weighted matches: exact > prefix > contains (title), optional description contains
+        $relevanceSql = ", ( ".
+            " (CASE WHEN i.title = ? THEN 100 ELSE 0 END) +".
+            " (CASE WHEN i.title LIKE ? THEN 50 ELSE 0 END) +".
+            " (CASE WHEN i.title LIKE ? THEN 20 ELSE 0 END) ";
+        $relevanceParams[] = $q;                 // exact
+        $relevanceParams[] = $q . '%';           // prefix
+        $relevanceParams[] = '%' . $q . '%';     // title contains
+        $relevanceTypes   .= 'sss';
+        if ($includeDesc) {
+            $relevanceSql .= "+ (CASE WHEN i.description LIKE ? THEN 10 ELSE 0 END) ";
+            $relevanceParams[] = '%' . $q . '%'; // desc contains
+            $relevanceTypes   .= 's';
+        }
+        $relevanceSql .= ") AS relevance ";
+    }
+
+    $sql = "SELECT " . $selectCols . $relevanceSql . "\n" .
+           "FROM INVENTORY AS i\n" .
+           "LEFT JOIN user_accounts AS ua ON i.seller_id = ua.user_id\n";
 
     $where = [];
     $params = [];
@@ -85,10 +134,21 @@ try {
 
     // Category is stored as JSON array (column: categories)
     if ($category !== '') {
-        // Use JSON_CONTAINS to match a string inside the root array
+        // Match a single category
         $where[] = 'JSON_CONTAINS(i.categories, ?, "$")';
         $params[] = json_encode($category, JSON_UNESCAPED_UNICODE);
         $types   .= 's';
+    } elseif (!empty($categories)) {
+        // Match any of the provided categories
+        $parts = [];
+        foreach ($categories as $cat) {
+            $parts[] = 'JSON_CONTAINS(i.categories, ?, "$")';
+            $params[] = json_encode($cat, JSON_UNESCAPED_UNICODE);
+            $types   .= 's';
+        }
+        if (!empty($parts)) {
+            $where[] = '(' . implode(' OR ', $parts) . ')';
+        }
     }
 
     // Condition and location (exact matches)
@@ -103,13 +163,35 @@ try {
         $types   .= 's';
     }
 
-    // Search query across title and description
+    // Optional toggles
+    $priceNegoIn = null;
+    if (isset($body['priceNego'])) $priceNegoIn = (string)$body['priceNego'];
+    if (isset($body['priceNegotiable'])) $priceNegoIn = (string)$body['priceNegotiable'];
+    if ($priceNegoIn !== null) {
+        $priceNegoBool = in_array(strtolower(trim($priceNegoIn)), ['1','true','yes','on'], true);
+        if ($priceNegoBool) {
+            $where[] = 'i.price_nego = 1';
+        }
+    }
+    if (isset($body['trades'])) {
+        $tradesBool = in_array(strtolower(trim((string)$body['trades'])), ['1','true','yes','on'], true);
+        if ($tradesBool) {
+            $where[] = 'i.trades = 1';
+        }
+    }
+
+    // Search query across title (and optionally description)
     if ($q !== '') {
-        $where[] = '(i.title LIKE ? OR i.description LIKE ?)';
-        $like = '%' . $mysqli->real_escape_string($q) . '%';
-        $params[] = $like;
-        $params[] = $like;
-        $types   .= 'ss';
+        if ($includeDesc) {
+            $where[] = '(i.title LIKE ? OR i.description LIKE ?)';
+            $params[] = '%' . $q . '%';
+            $params[] = '%' . $q . '%';
+            $types   .= 'ss';
+        } else {
+            $where[] = 'i.title LIKE ?';
+            $params[] = '%' . $q . '%';
+            $types   .= 's';
+        }
     }
 
     // Price range
@@ -130,8 +212,12 @@ try {
 
     // Sorting
     $order = ' ORDER BY i.date_listed DESC, i.product_id DESC ';
-    if ($sort === 'new' || $sort === 'newest') {
+    if ($useRelevance) {
+        $order = ' ORDER BY relevance DESC, i.date_listed DESC, i.product_id DESC ';
+    } elseif ($sort === 'new' || $sort === 'newest') {
         $order = ' ORDER BY i.date_listed DESC, i.product_id DESC ';
+    } elseif ($sort === 'old' || $sort === 'oldest') {
+        $order = ' ORDER BY i.date_listed ASC, i.product_id ASC ';
     } elseif ($sort === 'price_asc') {
         $order = ' ORDER BY i.listing_price ASC, i.product_id DESC ';
     } elseif ($sort === 'price_desc') {
@@ -145,9 +231,9 @@ try {
         throw new Exception('Prepare failed: ' . $mysqli->error);
     }
 
-    // Bind params (plus limit at the end)
-    $typesWithLimit = $types . 'i';
-    $paramsWithLimit = $params;
+    // Bind params: where params, then relevance params (if any), then limit
+    $typesWithLimit = $relevanceTypes . $types . 'i';
+    $paramsWithLimit = array_merge($relevanceParams, $params);
     $paramsWithLimit[] = $limit;
 
     if ($typesWithLimit !== '') {
@@ -243,4 +329,3 @@ try {
     ]);
     exit;
 }
-
