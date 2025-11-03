@@ -67,10 +67,10 @@ function MainNav() {
 
     // Search state + handlers
     const [searchText, setSearchText] = useState("");
+    const inputRef = useRef(null);
 
     const handleSearchSubmit = (value) => {
         const term = (value || "").trim();
-        if (!term) return;
         // Determine include-description preference from current URL or localStorage
         let includeDesc = false;
         try {
@@ -84,10 +84,11 @@ function MainNav() {
         } catch (_) {}
 
         const sp = new URLSearchParams();
-        sp.set('search', term);
+        if (term) sp.set('search', term);
         if (includeDesc) sp.set('desc', '1');
-        // Navigate to listings with search query (persisting desc)
-        navigate(`/app/listings?${sp.toString()}`);
+        // Navigate to listings; allow empty term to show all
+        const qs = sp.toString();
+        navigate(qs ? `/app/listings?${qs}` : "/app/listings");
     };
 
     // removed: filters moved to search page
@@ -124,6 +125,7 @@ function MainNav() {
                             type="text"
                             placeholder="Search..."
                             value={searchText}
+                            ref={inputRef}
                             onChange={(e) => setSearchText(e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
@@ -133,6 +135,18 @@ function MainNav() {
                             }}
                             className="h-full w-full px-2 sm:px-3 text-sm md:text-base text-slate-900 placeholder-slate-400 focus:outline-none min-w-0"
                         />
+
+                        {/* Clear button shows only when text present */}
+                        {searchText ? (
+                            <button
+                                type="button"
+                                onClick={() => { setSearchText(""); inputRef.current?.focus(); }}
+                                aria-label="Clear search"
+                                className="px-3 h-full text-slate-500 hover:text-slate-700"
+                            >
+                                ×
+                            </button>
+                        ) : null}
 
                         {/* filter icon and panel removed; filters live on search page */}
                     </div>
