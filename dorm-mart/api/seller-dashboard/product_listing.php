@@ -33,6 +33,14 @@ try {
   auth_boot_session();
   $userId = require_login();
 
+  /* Conditional CSRF validation - only validate if token is provided */
+  $token = $_POST['csrf_token'] ?? null;
+  if ($token !== null && !validate_csrf_token($token)) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
+    exit;
+  }
+
   mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
   $conn = db();
   $conn->set_charset('utf8mb4');

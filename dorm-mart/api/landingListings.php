@@ -3,6 +3,11 @@ declare(strict_types=1);
 
 // dorm-mart/api/landingListings.php
 
+// Include security utilities
+require_once __DIR__ . '/security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

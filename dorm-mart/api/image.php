@@ -5,6 +5,11 @@ declare(strict_types=1);
 // Serves images that are stored under /images/ on disk
 // Accepts either ?file=filename.png OR ?url=/images/filename.png
 
+// Include security utilities
+require_once __DIR__ . '/security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
 $IMAGE_DIR = realpath(__DIR__ . '/../images');
 if ($IMAGE_DIR === false) {
     http_response_code(500);

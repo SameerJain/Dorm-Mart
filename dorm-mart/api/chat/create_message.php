@@ -4,6 +4,7 @@ declare(strict_types=1);
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 setSecurityHeaders();
 setSecureCORS();
@@ -17,20 +18,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $conn = db();
 $conn->set_charset('utf8mb4');
 
-session_start(); // read the PHP session cookie to identify the caller
+auth_boot_session();
 
 // --- auth: require a logged-in user ---
-$userId = $userId = (int)($_SESSION['user_id'] ?? 0);
-if ($userId <= 0) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
-}
-
-
+$userId = require_login();
 
 $sender = $userId;
 $body = json_decode(file_get_contents('php://input'), true);
+
+/* Conditional CSRF validation - only validate if token is provided */
+$token = $body['csrf_token'] ?? null;
+if ($token !== null && !validate_csrf_token($token)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'CSRF token validation failed']);
+    exit;
+}
+
 $receiver = isset($body['receiver_id']) ? trim((string)$body['receiver_id']) : '';
 $contentRaw  = isset($body['content'])     ? trim((string)$body['content'])     : '';
 

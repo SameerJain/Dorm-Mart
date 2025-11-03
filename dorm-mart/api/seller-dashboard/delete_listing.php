@@ -25,12 +25,22 @@ require __DIR__ . '/../database/db_connect.php';
 
 try {
     $userId = require_login();
+    
     $conn = db();
     $conn->set_charset('utf8mb4');
 
     $raw = file_get_contents('php://input');
     $input = json_decode($raw, true);
     if (!is_array($input)) $input = [];
+    
+    /* Conditional CSRF validation - only validate if token is provided */
+    $token = $input['csrf_token'] ?? null;
+    if ($token !== null && !validate_csrf_token($token)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'CSRF token validation failed']);
+        exit;
+    }
+    
     $id = isset($input['id']) ? (int)$input['id'] : 0;
     if ($id <= 0) {
         http_response_code(400);
