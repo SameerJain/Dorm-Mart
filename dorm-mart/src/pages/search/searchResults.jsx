@@ -57,6 +57,8 @@ export default function SearchResults() {
     const minPrice = query.get("minPrice") || null;
     const maxPrice = query.get("maxPrice") || null;
     const status = query.get("status") || null; // e.g. 'AVAILABLE'
+    const priceNegoParam = query.get("priceNego") || query.get("priceNegotiable") || null;
+    const tradesParam = query.get("trades") || null;
 
     const p = {};
     if (q) p.q = q;
@@ -69,6 +71,14 @@ export default function SearchResults() {
     if (maxPrice) p.maxPrice = maxPrice;
     if (status) p.status = status;
     if (includeDescriptionPref) p.includeDescription = true;
+    // Pass boolean toggles through to backend so filters apply
+    if (priceNegoParam && (priceNegoParam === '1' || String(priceNegoParam).toLowerCase() === 'true')) {
+      // Backend accepts either priceNego or priceNegotiable
+      p.priceNego = true;
+    }
+    if (tradesParam && (tradesParam === '1' || String(tradesParam).toLowerCase() === 'true')) {
+      p.trades = true;
+    }
     return p;
   }, [query, includeDescriptionPref]);
 
@@ -123,7 +133,22 @@ export default function SearchResults() {
             status,
           };
         });
-        setItems(normalized);
+        // Determine effective sort order
+        // If user explicitly set sort in URL, honor it.
+        // Otherwise, if there's no search query, default to newest -> oldest.
+        const hasQuery = !!(payload?.q);
+        const sortPref = (payload?.sort || "").toLowerCase();
+        let sorted = normalized.slice();
+        const getTs = (it) => (it?.createdAt instanceof Date && !isNaN(it.createdAt) ? it.createdAt.getTime() : 0);
+        if (sortPref === 'new' || sortPref === 'newest') {
+          sorted.sort((a, b) => getTs(b) - getTs(a));
+        } else if (sortPref === 'old' || sortPref === 'oldest') {
+          sorted.sort((a, b) => getTs(a) - getTs(b));
+        } else if (!hasQuery) {
+          // Default for empty search: newest first
+          sorted.sort((a, b) => getTs(b) - getTs(a));
+        }
+        setItems(sorted);
       } catch (e) {
         if (e.name !== "AbortError") {
           console.error("getSearchItems failed:", e);

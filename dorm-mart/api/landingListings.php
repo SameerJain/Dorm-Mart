@@ -58,6 +58,7 @@ try {
         FROM INVENTORY AS i
         LEFT JOIN user_accounts AS ua ON i.seller_id = ua.user_id
         WHERE (i.sold = 0 OR i.sold IS NULL)
+          AND i.item_status = 'Active'
         ORDER BY i.date_listed DESC, i.product_id DESC
         LIMIT 40
     ";
