@@ -37,9 +37,15 @@ $conn = db();
 // Helpers
 function getPrefs(mysqli $conn, int $userId)
 {
-  // Get all preferences from user_accounts table
+  // ============================================================================
+  // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+  // ============================================================================
+  // Using prepared statement with '?' placeholder and bind_param() to safely
+  // handle $userId. Even if malicious SQL is in $userId, it cannot execute
+  // because it's bound as an integer parameter, not concatenated into SQL.
+  // ============================================================================
   $stmt = $conn->prepare('SELECT theme, promotional, reveal_contact_info, interested_category_1, interested_category_2, interested_category_3 FROM user_accounts WHERE user_id = ?');
-  $stmt->bind_param('i', $userId);
+  $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
   $res = $stmt->get_result();
   $userRow = $res->fetch_assoc();
@@ -261,9 +267,15 @@ try {
       }
     }
 
-    // Update user_accounts table with theme, email preferences, contact reveal setting, and interested categories
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // All user preference data is bound as parameters using bind_param().
+    // The '?' placeholders ensure user input is treated as data, not executable SQL.
+    // Interests come from predefined categories (dropdown), minimizing XSS risk.
+    // ============================================================================
     $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, promotional = ?, reveal_contact_info = ?, interested_category_1 = ?, interested_category_2 = ?, interested_category_3 = ? WHERE user_id = ?');
-    $stmt->bind_param('iiisssi', $theme, $promo, $reveal, $int1, $int2, $int3, $userId);
+    $stmt->bind_param('iiisssi', $theme, $promo, $reveal, $int1, $int2, $int3, $userId);  // 'i'=integer, 's'=string
     $result = $stmt->execute();
     if (!$result) {
       error_log("Failed to update user_accounts: " . $stmt->error);
