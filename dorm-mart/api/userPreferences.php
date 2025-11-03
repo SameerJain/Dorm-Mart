@@ -240,6 +240,14 @@ try {
     $body = json_decode($raw, true);
     if (!is_array($body)) $body = [];
 
+    /* Conditional CSRF validation - only validate if token is provided */
+    $token = $body['csrf_token'] ?? null;
+    if ($token !== null && !validate_csrf_token($token)) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
+        exit;
+    }
+
     $promo = isset($body['promoEmails']) ? (int)!!$body['promoEmails'] : 0;
     $reveal = isset($body['revealContact']) ? (int)!!$body['revealContact'] : 0;
     $interests = isset($body['interests']) && is_array($body['interests']) ? array_slice($body['interests'], 0, 3) : [];

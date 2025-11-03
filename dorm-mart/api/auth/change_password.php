@@ -42,6 +42,14 @@ if (strpos($ct, 'application/json') !== false) {
   $next    = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
 }
 
+/* Conditional CSRF validation - only validate if token is provided */
+$token = $_POST['csrf_token'] ?? ($data['csrf_token'] ?? null);
+if ($token !== null && !validate_csrf_token($token)) {
+  http_response_code(403);
+  echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
+  exit;
+}
+
 /* Validate inputs */
 $MAX_LEN = 64;
 if ($current === '' || $next === '') {

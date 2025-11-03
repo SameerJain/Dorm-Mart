@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 try {
     // Require authentication - this will redirect to login if not authenticated
     $userId = require_login();
-
+    
     // DB connection
     $conn = db();
     $conn->set_charset('utf8mb4');
