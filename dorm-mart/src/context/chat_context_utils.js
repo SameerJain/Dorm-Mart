@@ -34,17 +34,6 @@ export async function fetch_conversation(convId, signal) {
   return r.json();
 }
 
-export async function fetch_new_messages(activeConvId, ts, signal) {
-  const r = await fetch(`${BASE}/chat/fetch_new_messages.php?conv_id=${activeConvId}&ts=${ts}`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    credentials: "include", // session-based auth
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
 export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, signal) {
   const res = await fetch_new_messages(activeConvId, sinceSec, signal);
   const raw = res.messages
@@ -58,12 +47,11 @@ export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, sign
           ts: Date.parse(m.created_at),
       }
   });
-
   return incoming
 }
 
-export async function fetch_unread_msg_count(signal) {
-  const r = await fetch(`${BASE}/chat/fetch_unread_msg_count.php`, {
+export async function fetch_new_messages(activeConvId, ts, signal) {
+  const r = await fetch(`${BASE}/chat/fetch_new_messages.php?conv_id=${activeConvId}&ts=${ts}`, {
     method: "GET",
     headers: { Accept: "application/json" },
     credentials: "include", // session-based auth
@@ -73,8 +61,8 @@ export async function fetch_unread_msg_count(signal) {
   return r.json();
 }
 
-export async function tick_fetch_unread_msg_count(signal) {
-  const res = await fetch_unread_msg_count(signal);
+export async function tick_fetch_unread_messages(signal) {
+  const res = await fetch_unread_messages(signal);
   const raw = res.unreads ?? [];
 
   // build { conv_id -> count }
@@ -88,9 +76,18 @@ export async function tick_fetch_unread_msg_count(signal) {
         total += cnt;
       }
   }
-
   return { unreads, total };
+}
 
+export async function fetch_unread_messages(signal) {
+  const r = await fetch(`${BASE}/chat/fetch_unread_messages.php`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    credentials: "include", // session-based auth
+    signal,
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
 }
 
 export async function create_message({ receiverId, content, signal }) {
@@ -110,7 +107,6 @@ export async function create_message({ receiverId, content, signal }) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();                        // expect JSON back from PHP
 }
-
 
 export function envBool(value, fallback = false) {
   if (value == null) return fallback;

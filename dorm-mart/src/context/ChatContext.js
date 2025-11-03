@@ -12,7 +12,7 @@ import {
     fetch_conversation,
     create_message,
     tick_fetch_new_messages,
-    tick_fetch_unread_msg_count,
+    tick_fetch_unread_messages,
     envBool 
 } from "./chat_context_utils";
 
@@ -43,6 +43,7 @@ export function ChatProvider({ children }) {
     const [unreadByConv, setUnreadByConv] = useState({});  // { [conv_id]: count }
     const [unreadTotal, setUnreadTotal] = useState(0);     // sum of counts
 
+    // on context load, fetch all conversations
     useEffect(() => {
         const controller = new AbortController();
 
@@ -73,6 +74,7 @@ export function ChatProvider({ children }) {
         return () => controller.abort();
     }, []);
 
+    // when a chat is selected
     async function fetchConversation(convId) {
         setActiveConvId(convId);
         setChatByConvError((m) => ({...m, [convId]: false}));
@@ -99,7 +101,7 @@ export function ChatProvider({ children }) {
             ? Math.max(...normalized.map((m) => Number(m.ts) || 0))
             : 0;
 
-            clearUnreadFor(convId);
+            clearUnreadMsgFor(convId);
 
         } catch(err) {
             if (err.name !== "AbortError") {
@@ -143,12 +145,17 @@ export function ChatProvider({ children }) {
         }
     }
     
+    // tick for fetching new messages
     useEffect(() => {
-        // clear any previous interval when activeId changes / unmounts
-        if (newMsgPollRef.current) {
-            clearInterval(newMsgPollRef.current);
-            newMsgPollRef.current = null
-        }
+        // clear interval when activeId changes / unmounts or error occurs
+        const stopPolling = () => {
+            if (newMsgPollRef.current) {
+            clearInterval(newMsgPollRef.current);   // stop the repeating timer
+            newMsgPollRef.current = null;           // mark “no active interval”
+            }
+        };
+
+        stopPolling();
 
         // if not in chat, or no active conversation, do nothing
         if (!isOnChatRoute || !activeConvId) return;
@@ -171,7 +178,7 @@ export function ChatProvider({ children }) {
                     return {...prev, [activeConvId]: merged};
                 });
 
-                clearUnreadFor(activeConvId);
+                clearUnreadMsgFor(activeConvId);
 
                 const maxTs = Math.max(...incoming.map((m) => Number(m.ts) || 0));
                     lastTsRefByConv.current[activeConvId] = Math.max(
@@ -179,24 +186,21 @@ export function ChatProvider({ children }) {
                     maxTs
                 );
 
-            } catch (err) {
-                throw new Error(`failed to read new messages}`);
+            } catch (e) {
+                stopPolling();
+            } finally {
+                controller.abort();
             }
         };
 
         tick(); // run once immediately
         newMsgPollRef.current = setInterval(tick, NEW_MSG_POLL_MS);
 
-        return () => {
-            if (newMsgPollRef.current) {
-            clearInterval(newMsgPollRef.current);
-            newMsgPollRef.current = null;
-    }
-        };
+        return stopPolling;
     }, [activeConvId, isOnChatRoute]);
 
-    const clearUnreadFor = (convId) => {
-        setUnreadByConv((prev) => {
+    function clearUnreadMsgFor(convId) {
+    setUnreadByConv((prev) => {
         const prevCnt = Number(prev[convId]) || 0;   // normalize
         if (prevCnt === 0) return prev;              // nothing to clear
 
@@ -208,41 +212,40 @@ export function ChatProvider({ children }) {
         });
     };
 
-    // poll unread counts every CONV_REFRESH_MS while not on /app/chat
+    // tick for fetching unread messages
     useEffect(() => {
         // clear any previous unread interval
-        if (unreadPollRef.current) {
-            clearInterval(unreadPollRef.current);
-            unreadPollRef.current = null;
-        }
+        const stopPolling = () => {
+            if (unreadPollRef.current) {
+            clearInterval(unreadPollRef.current);   // stop the repeating timer
+            unreadPollRef.current = null;           // mark “no active interval”
+            }
+        };
+        stopPolling();
+
         const notificationOn = envBool(process.env.REACT_APP_CHAT_NOTIFICATION_ON, true);
         if (!notificationOn) return;
         if (!myId) return;
         
-
         const shouldPollNow = () => document.visibilityState === "visible";
 
         const tick = async () => {
             if (!shouldPollNow()) return;
             const controller = new AbortController();
             try {
-                const { unreads, total } = await tick_fetch_unread_msg_count(controller.signal);
+                const { unreads, total } = await tick_fetch_unread_messages(controller.signal);
                 setUnreadByConv(unreads);
                 setUnreadTotal(total);
             } catch (e) {
-                throw new Error(`failed to read unread messages}`);
+               stopPolling();
+            } finally {
+                controller.abort();
             }
         };
 
         tick();
         unreadPollRef.current = setInterval(tick, UNREAD_MSG_POLL_MS);
-
-        return () => {
-            if (unreadPollRef.current) {
-            clearInterval(unreadPollRef.current);
-            unreadPollRef.current = null;
-            }
-        };
+        return stopPolling;
     }, [UNREAD_MSG_POLL_MS, myId]);
 
     const messages = useMemo(() => messagesByConv[activeConvId] || [], [messagesByConv, activeConvId]);
