@@ -42,14 +42,31 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
     $raw  = file_get_contents('php://input');
-    // XSS PROTECTION: Sanitizing JSON input to prevent XSS attacks
-    $data = sanitize_json($raw) ?: [];
-    $email = validateInput(strtolower(trim((string)($data['email'] ?? ''))), 50, '/^[^@\s]+@buffalo\.edu$/');
-    $password = validateInput((string)($data['password'] ?? ''), 64);
+    // XSS PROTECTION: Decode JSON first, then validate individual fields (don't HTML-encode JSON)
+    $data = json_decode($raw, true);
+    if (!is_array($data)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Invalid JSON format']);
+        exit;
+    }
+    
+    $emailRaw = strtolower(trim((string)($data['email'] ?? '')));
+    $passwordRaw = (string)($data['password'] ?? '');
 } else {
-    $email = validateInput(strtolower(trim((string)($_POST['email'] ?? ''))), 50, '/^[^@\s]+@buffalo\.edu$/');
-    $password = validateInput((string)($_POST['password'] ?? ''), 64);
+    $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
+    $passwordRaw = (string)($_POST['password'] ?? '');
 }
+
+// XSS PROTECTION: Check for XSS patterns in email field (single check, no duplication)
+// Note: SQL injection is already prevented by prepared statements
+if (containsXSSPattern($emailRaw)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
+    exit;
+}
+
+$email = validateInput($emailRaw, 50, '/^[^@\s]+@buffalo\.edu$/');
+$password = validateInput($passwordRaw, 64);
 
 if ($email === false || $password === false) {
     http_response_code(400);
@@ -84,9 +101,17 @@ try {
     }
 
     $conn = db();
-    // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
+    
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // Using mysqli prepared statements with parameter binding (bind_param) to prevent SQL injection.
+    // The '?' placeholder ensures user input ($email) is treated as data, not executable SQL.
+    // Even if malicious SQL is in $email, it cannot execute because it's bound as a string parameter.
+    // This is the industry-standard defense against SQL injection attacks.
+    // ============================================================================
     $stmt = $conn->prepare('SELECT user_id, hash_pass, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ? LIMIT 1');
-    $stmt->bind_param('s', $email);
+    $stmt->bind_param('s', $email);  // 's' = string type, $email is safely bound as parameter
     $stmt->execute();
     $res = $stmt->get_result();
 
@@ -120,9 +145,9 @@ try {
 
     $userId = (int)$row['user_id'];
     
-    // Get user's theme preference
+    // SQL INJECTION PROTECTION: Prepared statement for theme query (user_id parameter bound safely)
     $themeStmt = $conn->prepare('SELECT theme FROM user_accounts WHERE user_id = ?');
-    $themeStmt->bind_param('i', $userId);
+    $themeStmt->bind_param('i', $userId);  // 'i' = integer type
     $themeStmt->execute();
     $themeRes = $themeStmt->get_result();
     $themeRow = $themeRes->fetch_assoc();

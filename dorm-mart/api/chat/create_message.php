@@ -32,13 +32,23 @@ if ($userId <= 0) {
 $sender = $userId;
 $body = json_decode(file_get_contents('php://input'), true);
 $receiver = isset($body['receiver_id']) ? trim((string)$body['receiver_id']) : '';
-$content  = isset($body['content'])     ? trim((string)$body['content'])     : '';
+$contentRaw  = isset($body['content'])     ? trim((string)$body['content'])     : '';
 
-if ($sender === '' || $receiver === '' || $content === '') {
+if ($sender === '' || $receiver === '' || $contentRaw === '') {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'missing_fields']);
     exit;
 }
+
+// XSS PROTECTION: Check for XSS patterns in message content
+// Note: SQL injection is already prevented by prepared statements
+if (containsXSSPattern($contentRaw)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Invalid characters in message']);
+    exit;
+}
+
+$content = $contentRaw;
 
 $len = function_exists('mb_strlen') ? mb_strlen($content, 'UTF-8') : strlen($content); // mb_strlen counts Unicode chars
 if ($len > 500) {
@@ -137,13 +147,19 @@ try {
     $stmt->execute();
     $stmt->close();
 
-    // Insert the message WITH names (NEW SCHEMA: sender_fname/receiver_fname)
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // All message data (content, names) is bound as parameters using bind_param().
+    // The '?' placeholders ensure user input is treated as data, not executable SQL.
+    // This prevents SQL injection attacks even if malicious SQL code is in any field.
+    // ============================================================================
     $stmt = $conn->prepare(
         'INSERT INTO messages
            (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content)
          VALUES (?, ?, ?, ?, ?, ?)'
     );
-    // 'iiisss' => 3 ints, 3 strings
+    // 'iiisss' => 3 ints, 3 strings - all safely bound as parameters
     $stmt->bind_param('iiisss', $convId, $senderId, $receiverId, $senderName, $receiverName, $content);
     $stmt->execute();
     $msgId = $conn->insert_id;

@@ -42,14 +42,36 @@ function LoginPage() {
       return;
     }
 
+    // XSS PROTECTION: Check for XSS patterns in email field
+    const xssPatterns = [
+      /<script/i,
+      /javascript:/i,
+      /onerror=/i,
+      /onload=/i,
+      /onclick=/i,
+      /<iframe/i,
+      /<object/i,
+      /<embed/i,
+      /<img[^>]*on/i,
+      /<svg[^>]*on/i,
+      /vbscript:/i
+    ];
+    
+    const emailTrimmed = email.trim();
+    if (xssPatterns.some(pattern => pattern.test(emailTrimmed))) {
+      setError("Invalid email format");
+      setLoading(false);
+      return;
+    }
+
     // Frontend validation
-    if (email.trim() === "" && password.trim() === "") {
+    if (emailTrimmed === "" && password.trim() === "") {
       setError("Missing required fields");
       setLoading(false);
       return;
     }
 
-    if (email.trim() === "") {
+    if (emailTrimmed === "") {
       setError("Please input a valid email address");
       setLoading(false);
       return;

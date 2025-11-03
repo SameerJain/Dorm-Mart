@@ -25,16 +25,21 @@ require __DIR__ . '/../database/db_connect.php';
 auth_boot_session();
 $userId = require_login();
 
-/* Read body (JSON or form) and sanitize */
+/* Read body (JSON or form) - IMPORTANT: Do NOT HTML-encode passwords before hashing */
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
   $raw  = file_get_contents('php://input');
-  $data = sanitize_json($raw) ?: [];
-  $current = sanitize_string((string)($data['currentPassword'] ?? ''), 64);
-  $next    = sanitize_string((string)($data['newPassword'] ?? ''), 64);
+  $data = json_decode($raw, true);
+  if (!is_array($data)) {
+    $data = [];
+  }
+  // Passwords must remain raw - they're hashed, not displayed
+  $current = isset($data['currentPassword']) ? (string)$data['currentPassword'] : '';
+  $next    = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
 } else {
-  $current = sanitize_string((string)($_POST['currentPassword'] ?? ''), 64);
-  $next    = sanitize_string((string)($_POST['newPassword'] ?? ''), 64);
+  // Passwords must remain raw - they're hashed, not displayed
+  $current = isset($_POST['currentPassword']) ? (string)$_POST['currentPassword'] : '';
+  $next    = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
 }
 
 /* Validate inputs */
@@ -64,9 +69,15 @@ if (
 try {
   $conn = db();
 
-  /* Fetch current hash */
+  // ============================================================================
+  // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+  // ============================================================================
+  // Using prepared statement with '?' placeholder and bind_param() to safely
+  // handle $userId. Even if malicious SQL is in $userId, it cannot execute
+  // because it's bound as an integer parameter, not concatenated into SQL.
+  // ============================================================================
   $stmt = $conn->prepare('SELECT hash_pass FROM user_accounts WHERE user_id = ? LIMIT 1');
-  $stmt->bind_param('i', $userId);
+  $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
   $res = $stmt->get_result();
 
@@ -105,8 +116,15 @@ try {
    * SECURITY NOTE: password_hash() automatically generates a random SALT and
    * returns a salted bcrypt hash. Only the hash is stored in the DB. */
   $newHash = password_hash($next, PASSWORD_BCRYPT);
+  
+  // ============================================================================
+  // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+  // ============================================================================
+  // The password hash and user_id are bound as parameters using bind_param().
+  // This prevents SQL injection even if malicious SQL were in these values.
+  // ============================================================================
   $upd = $conn->prepare('UPDATE user_accounts SET hash_pass = ?, hash_auth = NULL WHERE user_id = ?');
-  $upd->bind_param('si', $newHash, $userId);
+  $upd->bind_param('si', $newHash, $userId);  // 's' = string, 'i' = integer
   $upd->execute();
   $upd->close();
 

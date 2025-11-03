@@ -25,6 +25,14 @@ try {
     mysqli_report(MYSQLI_REPORT_OFF);
     $mysqli = db();
 
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Safe Query (No User Input)
+    // ============================================================================
+    // This query contains no user input - it uses only hardcoded values (0, NULL, 40).
+    // There are no WHERE clause parameters from user input, so SQL injection is not possible.
+    // If this query were to accept user input (e.g., filtering by search terms), we would
+    // need to use prepared statements with parameter binding.
+    // ============================================================================
     $sql = "
         SELECT 
             i.product_id,
@@ -106,6 +114,8 @@ try {
             $seller = $row['email'];
         }
 
+        // XSS PROTECTION: json_encode() automatically escapes special characters for JSON
+        // No need to manually escape - json_encode handles it safely
         $out[] = [
             'id'         => (int)$row['product_id'],
             'title'      => $row['title'] ?? 'Untitled',

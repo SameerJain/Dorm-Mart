@@ -175,11 +175,25 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
     $raw = file_get_contents('php://input');
-    $data = sanitize_json($raw) ?: [];
-    $email = validateInput(strtolower(trim((string)($data['email'] ?? ''))), 50, '/^[^@\s]+@buffalo\.edu$/');
+    // IMPORTANT: Decode JSON first, then validate - don't HTML-encode email before validation
+    $data = json_decode($raw, true);
+    if (!is_array($data)) {
+        $data = [];
+    }
+    $emailRaw = strtolower(trim((string)($data['email'] ?? '')));
 } else {
-    $email = validateInput(strtolower(trim((string)($_POST['email'] ?? ''))), 50, '/^[^@\s]+@buffalo\.edu$/');
+    $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
 }
+
+// XSS PROTECTION: Check for XSS patterns in email field
+// Note: SQL injection is already prevented by prepared statements
+if ($emailRaw !== '' && containsXSSPattern($emailRaw)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Invalid input format']);
+    exit;
+}
+
+$email = validateInput($emailRaw, 50, '/^[^@\s]+@buffalo\.edu$/');
 
 if ($email === false) {
     http_response_code(400);
@@ -190,9 +204,15 @@ if ($email === false) {
 try {
     $conn = db();
 
-    // Check if email exists and rate limiting in one query
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // Using prepared statement with '?' placeholder and bind_param() to safely
+    // handle $email. Even if malicious SQL is in $email, it cannot execute
+    // because it's bound as a string parameter, not concatenated into SQL.
+    // ============================================================================
     $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email, last_reset_request FROM user_accounts WHERE email = ?');
-    $stmt->bind_param('s', $email);
+    $stmt->bind_param('s', $email);  // 's' = string type, safely bound as parameter
     $stmt->execute();
     $result = $stmt->get_result();
 
