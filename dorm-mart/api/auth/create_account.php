@@ -327,13 +327,25 @@ if (!is_array($data)) {
     exit;
 }
 
-// Extract and sanitize the values
+// Extract the values (before validation)
+$firstNameRaw = trim($data['firstName'] ?? '');
+$lastNameRaw = trim($data['lastName'] ?? '');
+$emailRaw = strtolower(trim($data['email'] ?? ''));
+
+// XSS PROTECTION: Check for XSS patterns in firstName and lastName fields
+// Note: SQL injection is already prevented by prepared statements and regex validation
+if (containsXSSPattern($firstNameRaw) || containsXSSPattern($lastNameRaw)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
+    exit;
+}
+
 // XSS PROTECTION: Input validation with regex patterns to prevent XSS attacks
-$firstName = validateInput(trim($data['firstName'] ?? ''), 100, '/^[a-zA-Z\s\-\']+$/');
-$lastName = validateInput(trim($data['lastName'] ?? ''), 100, '/^[a-zA-Z\s\-\']+$/');
+$firstName = validateInput($firstNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
+$lastName = validateInput($lastNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
 $gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
 $gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
-$email = validateInput(strtolower(trim($data['email'] ?? '')), 255, '/^[^@\s]+@buffalo\.edu$/');
+$email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
 $promos    = !empty($data['promos']);
 
 if ($firstName === false || $lastName === false || $email === false) {
@@ -383,9 +395,15 @@ if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > 
 require "../database/db_connect.php";
 $conn = db();
 try {
-    // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // Check if email already exists using prepared statement.
+    // The '?' placeholder and bind_param() ensure $email is treated as data, not SQL.
+    // This prevents SQL injection even if malicious SQL code is in the email field.
+    // ============================================================================
     $chk = $conn->prepare('SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1');
-    $chk->bind_param('s', $email);
+    $chk->bind_param('s', $email);  // 's' = string type, safely bound as parameter
     $chk->execute();
     $chk->store_result();                   // needed to use num_rows without fetching
     if ($chk->num_rows > 0) {
@@ -405,12 +423,19 @@ try {
     $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
 
     // 3) Insert user
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // All user input (firstName, lastName, email, etc.) is inserted using prepared statement
+    // with parameter binding. The '?' placeholders ensure user input is treated as data,
+    // not executable SQL. This prevents SQL injection attacks even if malicious SQL code
+    // is present in any of the input fields.
+    // ============================================================================
     $sql = 'INSERT INTO user_accounts
           (first_name, last_name, grad_month, grad_year, email, promotional, hash_pass, hash_auth, join_date, seller, theme, received_intro_promo_email)
         VALUES
           (?, ?, ?, ?, ?, ?, ?, NULL, CURRENT_DATE, 0, 0, ?)';
 
-    // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
     $ins = $conn->prepare($sql);
     /*
     types: s=string, i=int

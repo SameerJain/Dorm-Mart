@@ -4,10 +4,11 @@
  * This file demonstrates that XSS protection is working
  */
 
-// Include security headers
-require __DIR__ . '/../../security_headers.php';
-require __DIR__ . '/../../input_sanitizer.php';
+// Include security headers and functions
 require __DIR__ . '/security.php';
+
+// Set security headers
+setSecurityHeaders();
 
 header('Content-Type: text/html; charset=utf-8');
 
@@ -57,10 +58,10 @@ echo "<!DOCTYPE html>
         <h3>Test XSS Attempts:</h3>
         <p>Try these URLs to test XSS protection:</p>
         <ul>
-            <li><a href='?test=<script>alert(\"XSS\")</script>'>Script Tag Test</a></li>
-            <li><a href='?test=<img src=x onerror=alert(\"XSS\")>'>Image XSS Test</a></li>
-            <li><a href='?test=<svg onload=alert(\"XSS\")>'>SVG XSS Test</a></li>
-            <li><a href='?test=javascript:alert(\"XSS\")'>JavaScript URL Test</a></li>
+            <li><a href='?test=" . urlencode("<script>alert(\"XSS\")</script>") . "'>Script Tag Test</a></li>
+            <li><a href='?test=" . urlencode("<img src=x onerror=alert(\"XSS\")>") . "'>Image XSS Test</a></li>
+            <li><a href='?test=" . urlencode("<svg onload=alert(\"XSS\")>") . "'>SVG XSS Test</a></li>
+            <li><a href='?test=" . urlencode("javascript:alert(\"XSS\")") . "'>JavaScript URL Test</a></li>
         </ul>
     </div>
     

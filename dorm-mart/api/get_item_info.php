@@ -1,14 +1,12 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/security_headers.php';
-require __DIR__ . '/input_sanitizer.php';
+// Include security functions and set headers
+require __DIR__ . '/security/security.php';
+setSecurityHeaders();
+setSecureCORS();
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']); exit; }
@@ -30,6 +28,13 @@ $productId = (int)$prod_id;
 $conn = db();
 $conn->set_charset('utf8mb4');
 
+// ============================================================================
+// SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+// ============================================================================
+// Using prepared statement with '?' placeholder and bind_param() to safely
+// handle $productId. Even if $productId contains malicious SQL, it cannot
+// execute because it's bound as an integer parameter, not concatenated into SQL.
+// ============================================================================
 $sql = "SELECT 
     product_id,
     title,
@@ -57,7 +62,7 @@ if (!$stmt) {
     exit;
 }
 
-$stmt->bind_param('i', $productId);
+$stmt->bind_param('i', $productId);  // 'i' = integer type, safely bound as parameter
 
 if (!$stmt->execute()) {
     http_response_code(500);
