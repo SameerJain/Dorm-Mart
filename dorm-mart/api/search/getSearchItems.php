@@ -139,12 +139,11 @@ try {
     $params = [];
     $types = '';
 
-    // Status filter: AVAILABLE (sold = 0 or NULL), SOLD (sold = 1)
-    if ($status === 'AVAILABLE') {
-        $where[] = '(i.sold = 0 OR i.sold IS NULL)';
-    } elseif ($status === 'SOLD') {
-        $where[] = '(i.sold = 1)';
-    }
+    // Enforce only Active and not sold
+    $where[] = 'i.item_status = ?';
+    $params[] = 'Active';
+    $types   .= 's';
+    $where[] = '(i.sold IS NULL OR i.sold = 0)';
 
     // Category is stored as JSON array (column: categories)
     if ($category !== '') {
