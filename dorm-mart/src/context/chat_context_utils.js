@@ -16,6 +16,7 @@ export async function fetch_conversations(signal) {
   const r = await fetch(`${BASE}/chat/fetch_conversations.php`, {
     method: "GET",
     headers: { Accept: "application/json" },
+    credentials: "include",
     signal,
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
