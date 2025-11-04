@@ -15,6 +15,7 @@ export default function ChatPage() {
     // actions
     fetchConversation,
     createMessage,
+    clearActiveConversation
   } = ctx;
 
   const MAX_LEN = 500;
@@ -137,7 +138,10 @@ export default function ChatPage() {
 
               {/* Mobile-only Back button, anchored to header’s bottom-right */}
               <button
-                onClick={() => setIsMobileList(true)}
+                onClick={() => {
+                  setIsMobileList(true);
+                  clearActiveConversation();
+                }}
                 className="md:hidden absolute right-4 bottom-3 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-gray-700 dark:text-gray-200"
                 aria-label="Back to conversations"
               >
@@ -145,8 +149,6 @@ export default function ChatPage() {
               </button>
               {/* ^ absolute + right-4 bottom-3 => positions the button at the header's bottom-right */}
             </div>
-
-
 
             {/* Messages */}
             <div
