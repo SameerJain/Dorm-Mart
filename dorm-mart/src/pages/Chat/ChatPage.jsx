@@ -174,7 +174,7 @@ export default function ChatPage() {
             {/* Messages */}
             <div
               ref={scrollRef}
-              className="flex-1 space-y-2 overflow-y-auto px-4 py-4"
+              className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden space-y-2 px-4 py-4"
               role="log"
               aria-live="polite"
               aria-relevant="additions"
@@ -207,7 +207,7 @@ export default function ChatPage() {
                           : "bg-gray-100 text-gray-900")
                       }
                     >
-                      <p className="whitespace-pre-wrap">{m.content}</p>
+                      <p className="whitespace-pre-wrap break-words">{m.content}</p>
                       <div
                         className={
                           "mt-1 text-[10px] " +
@@ -233,7 +233,17 @@ export default function ChatPage() {
                     rows={2}
                     maxLength={MAX_LEN}
                     aria-describedby="message-char-remaining"
-                    className="min-h-[44px] w-full resize-y rounded-2xl border border-gray-300 dark:border-gray-600 px-3 py-2 pr-12 pb-6 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    // Ensures lines wrap visually without inserting CRLF into the value
+                    wrap="soft"
+                    className="
+                      min-h-[44px] w-full resize-y rounded-2xl
+                      border border-gray-300 dark:border-gray-600
+                      px-3 py-2 pr-12 pb-6 text-sm outline-none
+                      focus:ring-2 focus:ring-indigo-500
+                      bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                      whitespace-pre-wrap    /* allow wrapping + preserve user newlines */
+                      break-words            /* break long unbroken strings to avoid overflow */
+                    "
                     aria-label="Message input"
                   />
                   <span
