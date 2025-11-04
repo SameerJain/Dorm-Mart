@@ -2,6 +2,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import MainNav from "../components/MainNav/MainNav";
 import { fetch_me } from "../utils/handle_auth.js";
+import { loadUserTheme } from "../utils/load_theme.js";
 
 // once user logs in, load websocket
 function RootLayout() {
@@ -17,6 +18,8 @@ function RootLayout() {
         await fetch_me(controller.signal);
         setIsAuthenticated(true);
         setIsChecking(false);
+        // Load user theme after authentication is confirmed
+        loadUserTheme();
       } catch (error) {
         // AbortError means component unmounted, don't update state or navigate
         if (error.name === 'AbortError') {

@@ -8,16 +8,13 @@ setSecurityHeaders();
 setSecureCORS();
 
 header('Content-Type: application/json');
-session_start(); // <-- pulls existing PHP session (cookie)
 
-if (empty($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
-}
+// Use require_login() which calls ensure_session() to restore sessions from persistent cookies
+require_once __DIR__ . '/auth_handle.php';
+$userId = require_login();
 
 echo json_encode([
     'success' => true,
-    'user_id' => (int) $_SESSION['user_id'],
+    'user_id' => $userId,
     // add other fields if you want: 'name' => $_SESSION['name'] ?? null
 ]);

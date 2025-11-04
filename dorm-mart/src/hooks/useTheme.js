@@ -1,27 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
 export function useTheme() {
   const [theme, setTheme] = useState('light');
   const [isLoading, setIsLoading] = useState(true);
+  const userInitiatedChangeRef = useRef(null); // Track when user changes theme
+  const loadAbortControllerRef = useRef(null); // Track abort controller for load operations
+  const saveAbortControllerRef = useRef(null); // Track abort controller for save operations
 
   // Load theme from backend on mount
   useEffect(() => {
+    // Cancel any previous load operation
+    if (loadAbortControllerRef.current) {
+      loadAbortControllerRef.current.abort();
+    }
+    
+    const controller = new AbortController();
+    loadAbortControllerRef.current = controller;
+    
     const loadTheme = async () => {
       // Get user ID for user-specific localStorage
       let userId = null;
       try {
         const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
           method: 'GET', 
-          credentials: 'include' 
+          credentials: 'include',
+          signal: controller.signal
         });
         if (meRes.ok) {
           const meJson = await meRes.json();
           userId = meJson.user_id;
         }
       } catch (e) {
+        if (e.name === 'AbortError') return;
         // User not authenticated
+      }
+
+      // Check if user just changed theme - skip backend load if so
+      if (userInitiatedChangeRef.current) {
+        const timeSinceChange = Date.now() - userInitiatedChangeRef.current;
+        if (timeSinceChange < 2000) {
+          // User changed theme within last 2 seconds, skip backend load
+          setIsLoading(false);
+          return;
+        }
       }
 
       try {
@@ -41,11 +64,21 @@ export function useTheme() {
         // Then get from backend and override localStorage
         const res = await fetch(`${API_BASE}/userPreferences.php`, { 
           method: 'GET', 
-          credentials: 'include' 
+          credentials: 'include',
+          signal: controller.signal
         });
         if (res.ok) {
           const json = await res.json();
           if (json?.ok && json?.data?.theme) {
+            // Check again if user changed theme during fetch
+            if (userInitiatedChangeRef.current) {
+              const timeSinceChange = Date.now() - userInitiatedChangeRef.current;
+              if (timeSinceChange < 2000) {
+                // User changed theme during fetch, don't overwrite
+                setIsLoading(false);
+                return;
+              }
+            }
             setTheme(json.data.theme);
             applyTheme(json.data.theme);
             // Update localStorage with backend value
@@ -66,6 +99,7 @@ export function useTheme() {
           }
         }
       } catch (e) {
+        if (e.name === 'AbortError') return;
         console.warn('Failed to load theme:', e);
         // Fallback to localStorage if API fails
         if (userId) {
@@ -77,11 +111,18 @@ export function useTheme() {
           }
         }
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadTheme();
+    
+    // Cleanup: abort on unmount
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   // Apply theme to document
@@ -95,18 +136,28 @@ export function useTheme() {
 
   // Save theme to backend and localStorage
   const saveTheme = async (newTheme) => {
+    // Cancel any previous save operation
+    if (saveAbortControllerRef.current) {
+      saveAbortControllerRef.current.abort();
+    }
+    
+    const controller = new AbortController();
+    saveAbortControllerRef.current = controller;
+    
     // Get user ID for user-specific localStorage
     let userId = null;
     try {
       const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
         method: 'GET', 
-        credentials: 'include' 
+        credentials: 'include',
+        signal: controller.signal
       });
       if (meRes.ok) {
         const meJson = await meRes.json();
         userId = meJson.user_id;
       }
     } catch (e) {
+      if (e.name === 'AbortError') return;
       // User not authenticated
     }
 
@@ -117,53 +168,29 @@ export function useTheme() {
     }
     
     try {
-      // First get current preferences to avoid overwriting them
-      const getRes = await fetch(`${API_BASE}/userPreferences.php`, { 
-        method: 'GET', 
-        credentials: 'include' 
-      });
-      
-      let currentPrefs = {
-        promoEmails: false,
-        revealContact: false,
-        interests: []
-      };
-      
-      if (getRes.ok) {
-        const getJson = await getRes.json();
-        if (getJson?.ok && getJson?.data) {
-          currentPrefs = {
-            promoEmails: getJson.data.promoEmails || false,
-            revealContact: getJson.data.revealContact || false,
-            interests: getJson.data.interests || []
-          };
-        }
-      }
-      
-      // Now save with all preferences including the new theme
-      const saveData = { 
-        ...currentPrefs,
-        theme: newTheme 
-      };
-      console.log('Saving theme to backend:', saveData);
+      // POST theme directly - UserPreferences already handles full preferences save
+      // This is a minimal save that won't conflict with UserPreferences auto-save
       const res = await fetch(`${API_BASE}/userPreferences.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(saveData),
+        body: JSON.stringify({ theme: newTheme }),
+        signal: controller.signal,
       });
-      if (!res.ok) {
+      if (!res.ok && !controller.signal.aborted) {
         console.warn('Failed to save theme to backend');
-      } else {
-        console.log('Theme saved successfully to backend');
       }
     } catch (e) {
-      console.warn('Failed to save theme:', e);
+      if (e.name !== 'AbortError') {
+        console.warn('Failed to save theme:', e);
+      }
     }
   };
 
   // Update theme function
   const updateTheme = (newTheme) => {
+    // Mark that user initiated this change
+    userInitiatedChangeRef.current = Date.now();
     setTheme(newTheme);
     applyTheme(newTheme);
     saveTheme(newTheme);

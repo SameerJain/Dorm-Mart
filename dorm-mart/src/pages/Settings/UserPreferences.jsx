@@ -107,14 +107,15 @@ function UserPreferences() {
         const res = await fetch(`${API_BASE}/userPreferences.php`, { method: 'GET', credentials: 'include' });
         if (!res.ok) return;
         const json = await res.json();
-        console.log('UserPreferences: Received data from backend:', json);
         if (!json || json.ok !== true || !json.data) return;
         const { promoEmails, revealContact, interests, theme } = json.data;
         if (cancelled) return;
         setPromotionalEmails(!!promoEmails);
         setRevealContact(!!revealContact);
         if (Array.isArray(interests)) setSelectedInterests(interests);
-        if (theme) updateTheme(theme);
+        // Don't call updateTheme() here - just sync the theme state
+        // The useTheme hook will handle theme state, and auto-save will persist it
+        // This prevents race condition where updateTheme() triggers saveTheme() which conflicts with auto-save
       } catch (e) {
         // ignore errors, keep defaults
         console.warn('UserPreferences: GET failed', e);
@@ -136,7 +137,6 @@ function UserPreferences() {
           interests: selectedInterests,
           theme: theme,
         };
-        console.log('UserPreferences: Saving preferences with theme:', body);
         await fetch(`${API_BASE}/userPreferences.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
