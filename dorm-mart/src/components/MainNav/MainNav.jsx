@@ -229,14 +229,26 @@ function MainNav() {
                                 <span>Notification</span>
                             </button>
                             <button
-                                onClick={() => {
-                                    navigate("/app/chat");
-                                    setShowMobileMenu(false);
-                                }}
-                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            onClick={() => {
+                                navigate("/app/chat");
+                                setShowMobileMenu(false);
+                            }}
+                            className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
+                            {/* relative wrapper so the badge can be positioned on the icon */}
+                            <span className="relative inline-block">
                                 <img src={chatIcon} alt="" className="h-6 w-6" />
-                                <span>Chat</span>
+                                {unreadTotal > 0 && (
+                                <span
+                                    className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
+                                    aria-label={`${unreadTotal} unread`}
+                                >
+                                    {unreadTotal > 99 ? "99+" : unreadTotal}
+                                </span>
+                                )}
+                            </span>
+
+                            <span>Chat</span>
                             </button>
                             <button
                                 onClick={() => {
