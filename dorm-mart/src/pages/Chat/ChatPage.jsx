@@ -1,7 +1,7 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ChatContext } from "../../context/ChatContext";
 import fmtTime from "./chat_page_utils";
-
+import { useNavigate, useLocation } from "react-router-dom";
 export default function ChatPage() {
   const ctx = useContext(ChatContext);
   const {
@@ -48,9 +48,21 @@ export default function ChatPage() {
 
   // Header label: show the other user id for now
   const activeLabel = useMemo(() => {
-  const c = conversations.find((c) => c.conv_id === activeConvId);
-  return c ? c.receiverName : "Select a chat";
-}, [conversations, activeConvId]);
+    const c = conversations.find((c) => c.conv_id === activeConvId);
+    return c ? c.receiverName : "Select a chat";
+  }, [conversations, activeConvId]);
+
+  const navigate = useNavigate();         // router: for navigation
+  const location = useLocation();         // router: to inspect history state
+
+  function goBackOrHome() {
+    // If there is prior history in this tab, go back; otherwise go to landing
+    if (location.key !== "default") {
+      navigate(-1);
+    } else {
+      navigate("/app");                   // your landing/home route
+    }
+  }
 
   return (
     <div className="h-[calc(100dvh-var(--nav-h))] w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
@@ -65,8 +77,17 @@ export default function ChatPage() {
               (isMobileList ? "block" : "hidden") + " md:block"
             }
           >
-            <div className="border-b-4 border-gray-200 dark:border-gray-700 p-4">
+            <div className="border-b-4 border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Chats</h2>
+
+              {/* Mobile-only Back button to home page */}
+              <button
+                onClick={goBackOrHome}                // ← go back or to /app
+                className="md:hidden rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-gray-700 dark:text-gray-200"
+                aria-label="Back to previous page"
+              >
+                Back
+              </button>
             </div>
             <ul
               className="max-h-[70vh] overflow-y-auto p-2"
