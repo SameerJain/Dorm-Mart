@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import backgroundImage from "../assets/images/login-page-left-side-background.jpg";
+import { fetch_me } from "../utils/handle_auth.js";
 // Client no longer inspects cookies; auth is enforced server-side on protected routes
 
 function LoginPage() {
@@ -11,6 +12,32 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Check if user is already authenticated on mount
+  useEffect(() => {
+    const controller = new AbortController();
+    
+    const checkAuth = async () => {
+      try {
+        await fetch_me(controller.signal);
+        // User is authenticated, redirect to app
+        navigate("/app", { replace: true });
+      } catch (error) {
+        // AbortError means component unmounted, don't navigate
+        if (error.name === 'AbortError') {
+          return;
+        }
+        // User is not authenticated, stay on login page
+      }
+    };
+
+    checkAuth();
+    
+    // Cleanup: abort fetch if component unmounts
+    return () => {
+      controller.abort();
+    };
+  }, [navigate]);
 
   // Handle URL parameters
   useEffect(() => {
@@ -27,8 +54,6 @@ function LoginPage() {
       setSuccess("Password has been reset successfully. You can now log in with your new password.");
     }
   }, [searchParams]);
-
-  // No client-side cookie check
 
   const handleLogin = async (e) => {
     e.preventDefault();
