@@ -236,7 +236,7 @@ function sendPromoWelcomeEmail(array $user): array
         $first   = $user['firstName'] ?: 'Student';
         $subject = 'Welcome to Dorm Mart Promotional Updates';
 
-        // HTML email content
+        // HTML email content - Subtle improvements to dark theme
         $html = <<<HTML
 <!doctype html>
 <html>
@@ -246,19 +246,40 @@ function sendPromoWelcomeEmail(array $user): array
     <title>{$subject}</title>
   </head>
   <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
-    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
-      <p style="color:#eee;">Dear {$first},</p>
-      <p style="color:#eee;">Thank you for opting into promotional updates from <strong>Dorm Mart</strong>!</p>
-      <p style="color:#eee;">You'll now receive exciting updates about:</p>
-      <ul style="color:#eee;">
-        <li>Important updates and announcements</li>
-        <li>Emails about new notifcations</li>
-      </ul>
-      <p style="color:#eee;">We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.</p>
-      <p style="color:#eee;">Happy trading,<br/>The Dorm Mart Team</p>
-      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
-      <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
-      <a href="mailto:dormmartsupport@gmail.com" style="color:#9db7ff;">dormmartsupport@gmail.com</a></p>
+    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:12px;padding:24px;border:1px solid #333;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#2563EB;margin:0;font-size:24px;font-weight:bold;">📧 Promotional Updates</h1>
+        <div style="width:60px;height:3px;background:linear-gradient(90deg, #2563EB, #1d4ed8);margin:8px auto;border-radius:2px;"></div>
+      </div>
+      
+      <p style="color:#eee;font-size:16px;margin:0 0 16px 0;">Dear {$first},</p>
+      
+      <p style="color:#eee;margin:0 0 20px 0;">Thank you for opting into promotional updates from <strong style="color:#2563EB;">Dorm Mart</strong>!</p>
+      
+      <div style="background:#2a2a2a;border-radius:8px;padding:20px;margin:20px 0;border-left:4px solid #2563EB;">
+        <p style="color:#eee;margin:0 0 12px 0;font-weight:bold;">You'll now receive updates about:</p>
+        <ul style="color:#ddd;margin:0;padding-left:20px;">
+          <li style="margin:6px 0;">Emails about your notifcations tab</li>
+          <li style="margin:6px 0;">New website news and updates</li>
+        </ul>
+      </div>
+      
+      <p style="color:#eee;margin:20px 0;">This is a one-time email for the first time you ever sign up for promotional updates with an account. We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.</p>
+      
+      <div style="text-align:center;margin:24px 0;">
+        <div style="display:inline-block;background:#333;padding:12px 24px;border-radius:6px;border:1px solid #2563EB;">
+          <span style="color:#2563EB;font-weight:bold;">✓ Successfully Subscribed</span>
+        </div>
+      </div>
+      
+      <p style="color:#eee;margin:20px 0 0 0;">
+        Happy trading,<br/>
+        <strong style="color:#2563EB;">The Dorm Mart Team</strong>
+      </p>
+      
+      <hr style="border:none;border-top:1px solid #333;margin:20px 0;">
+      <p style="font-size:12px;color:#aaa;margin:0;">This is an automated message; do not reply. For support:
+      <a href="mailto:dormmartsupport@gmail.com" style="color:#2563EB;">dormmartsupport@gmail.com</a></p>
     </div>
   </body>
 </html>
@@ -266,15 +287,20 @@ HTML;
 
         // Plain-text version
         $text = <<<TEXT
+Promotional Updates - Dorm Mart
+
 Dear {$first},
 
 Thank you for opting into promotional updates from Dorm Mart!
 
-You'll now receive exciting updates about:
+You'll now receive updates about:
 - Important updates and announcements
-- Emails about new notifcations
+- New features and improvements  
+- Campus marketplace tips
 
 We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.
+
+✓ Successfully Subscribed
 
 Happy trading,
 The Dorm Mart Team

@@ -82,4 +82,7 @@ The "homepage" field in your package.json tells the React build tools (like reac
 **Production Build APTITUDE:** *(Note: This just creates a folder called prod-build with the needed files so you can paste into the aptitude folder):*
 `C:\xampp\htdocs\f25-no-brainers\build-scripts-win\aptitude.bat` 
 
+**Production Build CATTLE:** *(Note: This just creates a folder called cattle-build with the needed files so you can paste into the cattle folder):*
+`C:\xampp\htdocs\f25-no-brainers\build-scripts-win\cattle.bat` 
+
 

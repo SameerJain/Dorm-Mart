@@ -132,6 +132,7 @@ export default function LandingPage() {
         setLoadingItems(true);
         const r = await fetch(`${API_BASE}/landingListings.php`, {
           signal: controller.signal,
+          credentials: "include",
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
