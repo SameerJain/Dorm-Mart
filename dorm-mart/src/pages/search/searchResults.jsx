@@ -300,8 +300,13 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
     if (catSingle) cats = Array.from(new Set([...cats, catSingle]));
     setSelectedCategories(cats);
 
-    const s = query.get("sort") || "";
-    setSortOrder(s === "old" || s === "oldest" ? "old" : s === "new" || s === "newest" ? "new" : "");
+    const s = (query.get("sort") || "").toLowerCase();
+    setSortOrder(
+      s === "old" || s === "oldest" ? "old" :
+      s === "new" || s === "newest" ? "new" :
+      (s === "best" || s === "best_match" || s === "relevance") ? "best" :
+      ""
+    );
 
     const mn = parseFloat(query.get("minPrice"));
     const mx = parseFloat(query.get("maxPrice"));
@@ -330,6 +335,7 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
     if (selectedCategories.length) sp.set("categories", selectedCategories.join(","));
     if (sortOrder === "new") sp.set("sort", "new");
     else if (sortOrder === "old") sp.set("sort", "old");
+    else if (sortOrder === "best") sp.set("sort", "best");
     if (Number.isFinite(minPrice)) sp.set("minPrice", String(Math.max(0, Math.min(5000, minPrice))));
     if (Number.isFinite(maxPrice)) sp.set("maxPrice", String(Math.max(0, Math.min(5000, maxPrice))));
     if (itemLocation) sp.set("location", itemLocation);

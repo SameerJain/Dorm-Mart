@@ -524,7 +524,7 @@ export default function LandingPage() {
             {/* status */}
             <div className="space-y-1">
               {isLoading ? (
-                <p className="text-center text-sm text-gray-400">
+                <p className="text-center text-sm text-gray-400 dark:text-gray-500">
                   Loading your feed…
                 </p>
               ) : null}

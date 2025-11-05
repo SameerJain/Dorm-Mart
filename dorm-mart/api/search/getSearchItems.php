@@ -111,8 +111,8 @@ try {
     $relevanceParams = [];
     $relevanceTypes = '';
 
-    // If searching and not explicitly sorting by newest or price, prioritize title similarity
-    $useRelevance = ($q !== '') && !in_array($sort, ['new', 'newest', 'price_asc', 'price_desc'], true);
+    // If searching and sort is empty or explicitly set to best, prioritize similarity
+    $useRelevance = ($q !== '') && in_array($sort, ['', 'best', 'best_match', 'relevance'], true);
     if ($useRelevance) {
         // Weighted matches: exact > prefix > contains (title), optional description contains
         $relevanceSql = ", ( ".
