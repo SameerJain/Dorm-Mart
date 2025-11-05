@@ -148,20 +148,20 @@ export default function ViewProduct() {
   // no-op
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <div className="w-full border-b border-gray-200 bg-white/80 backdrop-blur px-2 md:px-4 py-3 flex items-center justify-between">
-        <button onClick={() => navigate(-1)} className="text-sm text-blue-600 hover:underline">Back</button>
-        <h1 className="text-base md:text-lg font-semibold text-gray-900">Product Details</h1>
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 flex items-center justify-between">
+        <button onClick={() => navigate(-1)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back</button>
+        <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100">Product Details</h1>
         <div />
       </div>
 
       <div className="w-full px-2 md:px-4 py-4">
         {loading ? (
-          <p className="text-center text-sm text-gray-400">Loading product…</p>
+          <p className="text-center text-sm text-gray-400 dark:text-gray-500">Loading product…</p>
         ) : error ? (
-          <p className="text-center text-sm text-red-500">Couldn’t load product.</p>
+          <p className="text-center text-sm text-red-500 dark:text-red-400">Couldn't load product.</p>
         ) : !normalized ? (
-          <p className="text-center text-sm text-gray-400">No product found.</p>
+          <p className="text-center text-sm text-gray-400 dark:text-gray-500">No product found.</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-6 items-start">
             {/* Left: photos */}
@@ -173,7 +173,7 @@ export default function ViewProduct() {
                     <button
                       key={`thumb-${idx}`}
                       onClick={() => setActiveIdx(idx)}
-                      className={`h-16 w-16 rounded-md overflow-hidden border bg-white ${idx === activeIdx ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200"}`}
+                      className={`h-16 w-16 rounded-md overflow-hidden border bg-white dark:bg-gray-800 ${idx === activeIdx ? "border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-700" : "border-gray-200 dark:border-gray-700"}`}
                     >
                       <img src={u} alt={`thumb-${idx}`} className="h-full w-full object-cover" />
                     </button>
@@ -182,7 +182,7 @@ export default function ViewProduct() {
               ) : null}
 
               {/* Main image card (square) */}
-              <div className="bg-white rounded-lg border border-gray-200/70 shadow-sm w-full max-w-[28rem] md:max-w-[32rem] aspect-square mx-auto overflow-hidden relative">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm w-full max-w-[28rem] md:max-w-[32rem] aspect-square mx-auto overflow-hidden relative">
                 {normalized.photoUrls && normalized.photoUrls.length ? (
                   <img
                     alt={normalized.title}
@@ -190,14 +190,14 @@ export default function ViewProduct() {
                     className="h-full w-full object-contain"
                   />
                 ) : (
-                  <div className="h-full w-full flex items-center justify-center text-gray-400">No image</div>
+                  <div className="h-full w-full flex items-center justify-center text-gray-400 dark:text-gray-500">No image</div>
                 )}
                 {normalized.photoUrls && normalized.photoUrls.length > 1 ? (
                   <>
                     <button
                       onClick={() => hasPrev && setActiveIdx((i) => Math.max(0, i - 1))}
                       disabled={!hasPrev}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 border border-gray-200 rounded-full h-9 w-9 flex items-center justify-center disabled:opacity-40"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full h-9 w-9 flex items-center justify-center disabled:opacity-40"
                       aria-label="Previous image"
                     >
                       ‹
@@ -205,7 +205,7 @@ export default function ViewProduct() {
                     <button
                       onClick={() => hasNext && setActiveIdx((i) => Math.min((normalized.photoUrls?.length || 1) - 1, i + 1))}
                       disabled={!hasNext}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 border border-gray-200 rounded-full h-9 w-9 flex items-center justify-center disabled:opacity-40"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full h-9 w-9 flex items-center justify-center disabled:opacity-40"
                       aria-label="Next image"
                     >
                       ›
@@ -221,7 +221,7 @@ export default function ViewProduct() {
                     <button
                       key={`thumb-sm-${idx}`}
                       onClick={() => setActiveIdx(idx)}
-                      className={`h-12 w-12 rounded-md overflow-hidden border bg-white ${idx === activeIdx ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200"}`}
+                      className={`h-12 w-12 rounded-md overflow-hidden border bg-white dark:bg-gray-800 ${idx === activeIdx ? "border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-700" : "border-gray-200 dark:border-gray-700"}`}
                     >
                       <img src={u} alt={`thumb-${idx}`} className="h-full w-full object-cover" />
                     </button>
@@ -233,43 +233,43 @@ export default function ViewProduct() {
             {/* Right: details */}
             <section className="flex flex-col gap-4 min-w-0">
               {/* Title */}
-              <h2 className="text-2xl font-semibold text-gray-900 leading-snug">{normalized.title}</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug">{normalized.title}</h2>
 
               {/* Meta row */}
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-gray-600">Sold by</span>
-                <span className="font-medium text-gray-800">{normalized.sellerName}</span>
+                <span className="text-gray-600 dark:text-gray-400">Sold by</span>
+                <span className="font-medium text-gray-800 dark:text-gray-200">{normalized.sellerName}</span>
                 {normalized.tags && normalized.tags.length ? (
-                  <span className="text-gray-300">|</span>
+                  <span className="text-gray-300 dark:text-gray-600">|</span>
                 ) : null}
                 {normalized.tags && normalized.tags.length ? (
                   <div className="flex flex-wrap gap-1">
                     {normalized.tags.slice(0, 3).map((t, i) => (
-                      <span key={`tag-top-${i}`} className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-full px-2 py-0.5">{String(t)}</span>
+                      <span key={`tag-top-${i}`} className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-700 rounded-full px-2 py-0.5">{String(t)}</span>
                     ))}
                   </div>
                 ) : null}
               </div>
 
               {/* Buy box (Amazon-like, but with our palette and only Message Seller) */}
-              <div className="bg-white rounded-lg border border-gray-200/70 shadow-sm p-4 w-full max-w-md">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4 w-full max-w-md">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-semibold text-gray-900">${normalized.price?.toFixed(2)}</span>
+                  <span className="text-3xl font-semibold text-gray-900 dark:text-gray-100">${normalized.price?.toFixed(2)}</span>
                   {normalized.priceNego ? (
-                  <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">Price Negotiable</span>
+                  <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-full px-2 py-0.5">Price Negotiable</span>
                   ) : null}
                   {normalized.trades ? (
-                    <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">Open to trades</span>
+                    <span className="text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-full px-2 py-0.5">Open to trades</span>
                   ) : null}
                 </div>
-                <p className="text-sm text-emerald-700 mt-1">{normalized.sold ? 'Not available' : 'In Stock'}</p>
-                <p className="text-xs text-gray-500">Pickup: {normalized.itemLocation || 'On campus'}</p>
+                <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1">{normalized.sold ? 'Not available' : 'In Stock'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Pickup: {normalized.itemLocation || 'On campus'}</p>
 
                 <div className="mt-3 space-y-2">
                   <button
                     onClick={() => navigate(`/app/chat${normalized.sellerId ? `?to=${encodeURIComponent(normalized.sellerId)}` : ''}`)}
                     disabled={!normalized.sellerId}
-                    className="w-full rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2"
+                    className="w-full rounded-full bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2"
                   >
                     Message Seller
                   </button>
@@ -278,20 +278,20 @@ export default function ViewProduct() {
 
               {/* Description */}
               {normalized.description ? (
-                <div className="prose prose-sm max-w-none">
-                  <h3 className="text-base font-semibold text-gray-900 mb-1">About this item</h3>
-                  <p className="text-sm text-gray-700 whitespace-pre-line">{normalized.description}</p>
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">About this item</h3>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{normalized.description}</p>
                 </div>
               ) : null}
 
               {/* Detailed info (no duplicates with meta above) */}
-              <div className="bg-white rounded-lg border border-gray-200/70 p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Detail label="Item location" value={normalized.itemLocation || '—'} />
                   <Detail label="Condition" value={normalized.itemCondition || '—'} />
                   <Detail label="Price Negotiable" value={normalized.priceNego ? 'Yes' : 'No'} />
                   <Detail label="Accepts trades" value={normalized.trades ? 'Yes' : 'No'} />
-                  <Detail label="Seller email" value={normalized.sellerEmail ? (<a href={`mailto:${normalized.sellerEmail}`} className="text-blue-600 hover:underline">{normalized.sellerEmail}</a>) : '—'} />
+                  <Detail label="Seller email" value={normalized.sellerEmail ? (<a href={`mailto:${normalized.sellerEmail}`} className="text-blue-600 dark:text-blue-400 hover:underline">{normalized.sellerEmail}</a>) : '—'} />
                 </div>
                 <div className="space-y-2">
                   <Detail label="Date listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : '—'} />
@@ -305,7 +305,7 @@ export default function ViewProduct() {
               </div>
 
               <div className="pt-1">
-                <button onClick={() => navigate(-1)} className="text-sm text-blue-600 hover:underline">Back to results</button>
+                <button onClick={() => navigate(-1)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back to results</button>
               </div>
             </section>
           </div>
@@ -318,8 +318,8 @@ export default function ViewProduct() {
 function Detail({ label, value }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs uppercase tracking-wide text-gray-400">{label}</span>
-      <span className="text-sm text-gray-700">{value}</span>
+      <span className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">{label}</span>
+      <span className="text-sm text-gray-700 dark:text-gray-300">{value}</span>
     </div>
   );
 }
