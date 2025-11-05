@@ -32,6 +32,7 @@ export default function ViewProduct() {
         setError(null);
         const r = await fetch(`${API_BASE}/viewProduct.php?product_id=${encodeURIComponent(productId)}`, {
           signal: controller.signal,
+          credentials: "include",
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const json = await r.json();
