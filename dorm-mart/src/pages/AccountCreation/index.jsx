@@ -44,10 +44,31 @@ function CreateAccountPage() {
     const last = formData.lastName.trim();
     const email = formData.email.trim();
 
+    // XSS PROTECTION: Check for XSS patterns in firstName and lastName
+    const xssPatterns = [
+      /<script/i,
+      /javascript:/i,
+      /onerror=/i,
+      /onload=/i,
+      /onclick=/i,
+      /<iframe/i,
+      /<object/i,
+      /<embed/i,
+      /<img[^>]*on/i,
+      /<svg[^>]*on/i,
+      /vbscript:/i
+    ];
+
     if (!first) newErrors.firstName = "First name is required";
+    else if (xssPatterns.some(pattern => pattern.test(first))) {
+      newErrors.firstName = "Invalid characters in first name";
+    }
     else if (first.length > 100) newErrors.firstName = "First name must be 100 characters or fewer";
 
     if (!last) newErrors.lastName = "Last name is required";
+    else if (xssPatterns.some(pattern => pattern.test(last))) {
+      newErrors.lastName = "Invalid characters in last name";
+    }
     else if (last.length > 100) newErrors.lastName = "Last name must be 100 characters or fewer";
 
     if (!formData.gradMonth || !formData.gradYear) {
@@ -328,7 +349,7 @@ function CreateAccountPage() {
           />
           {/* card */}
           <div className="relative z-10 w-full max-w-lg mx-4 rounded-xl shadow-2xl border border-white/10"
-               style={{ backgroundColor: '#3d3eb5' }}>
+            style={{ backgroundColor: '#3d3eb5' }}>
             <div className="p-6">
               <h3 className="text-2xl font-serif text-white mb-3 text-center">Check Your Email</h3>
               <p className="text-white/90 text-center leading-relaxed">

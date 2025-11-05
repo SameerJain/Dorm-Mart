@@ -22,6 +22,7 @@
     "_commint_start-local": "used to enforce locally running react to load .env.development",
     "start-local-mac": "env-cmd -f .env.development bash -c 'echo Using $REACT_APP_API_BASE && react-scripts start'",
     "start-local-win": "env-cmd -f .env.development cross-env react-scripts start",
+    "start-local-win-clean": "env-cmd -f .env.development cross-env NODE_NO_WARNINGS=1 react-scripts start",
     "build": "react-scripts build",
     "_comment_build-local": "used to build local server app",
     "build-local-mac": "env-cmd -f .env.local bash -c 'echo Using $REACT_APP_API_BASE && PUBLIC_URL=/serve/dorm-mart react-scripts build'",
@@ -32,7 +33,8 @@
     "build-cattle-mac":  "env-cmd -f .env.cattle bash -c 'echo Building prod && PUBLIC_URL=/CSE442/2025-Fall/cse-442j react-scripts build'",
     "build-cattle-win": "env-cmd -f .env.cattle cross-env PUBLIC_URL=/CSE442/2025-Fall/cse-442j react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "build-deploy": "npm run build-local-win && deploy.bat"
   },
   "eslintConfig": {
     "extends": [

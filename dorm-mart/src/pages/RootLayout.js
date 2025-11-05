@@ -1,21 +1,67 @@
-import { useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import MainNav from '../components/MainNav/MainNav';
+import { Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import MainNav from "../components/MainNav/MainNav";
+import { fetch_me } from "../utils/handle_auth.js";
+import { loadUserTheme } from "../utils/load_theme.js";
 
-function RootLayout(){
-    const navigate = useNavigate();
+// once user logs in, load websocket
+function RootLayout() {
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
-    useEffect(() => {
-        // Do not do client-side auth checks; rely on server on each protected API call
-    }, [navigate]);
+  useEffect(() => {
+    const controller = new AbortController();
+    
+    const checkAuth = async () => {
+      try {
+        await fetch_me(controller.signal);
+        setIsAuthenticated(true);
+        setIsChecking(false);
+        // Load user theme after authentication is confirmed
+        loadUserTheme();
+      } catch (error) {
+        // AbortError means component unmounted, don't update state or navigate
+        if (error.name === 'AbortError') {
+          return;
+        }
+        // Not authenticated, redirect to login
+        setIsChecking(false);
+        navigate("/login", { replace: true });
+      }
+    };
 
+    checkAuth();
+    
+    // Cleanup: abort fetch if component unmounts
+    return () => {
+      controller.abort();
+    };
+  }, [navigate]);
+
+  // Show loading state while checking authentication
+  if (isChecking) {
     return (
-    <>
-        <MainNav />
-        <Outlet />
-    </>
-    )
-}
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // Only render if authenticated
+  if (!isAuthenticated) {
+    return null; // Will redirect, but return null as fallback
+  }
+
+  return (
+    <>
+      <MainNav />
+      <Outlet />
+    </>
+  );
+}
 
 export default RootLayout;

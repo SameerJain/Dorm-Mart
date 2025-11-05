@@ -7,7 +7,7 @@ const MAX_LEN = 64;
 
 const hasLower = (s) => /[a-z]/.test(s);
 const hasUpper = (s) => /[A-Z]/.test(s);
-const hasDigit  = (s) => /\d/.test(s);
+const hasDigit = (s) => /\d/.test(s);
 const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
 
 function RequirementRow({ ok, text }) {

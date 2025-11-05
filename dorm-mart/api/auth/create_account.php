@@ -1,5 +1,12 @@
 <?php
 
+// Include security utilities
+require_once __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
+header('Content-Type: application/json; charset=utf-8');
+
 /*composer needs to be installed in order to enable mailing services
 Get composer from getcomposer.org
 Run in cmd at dorm-mart
@@ -15,9 +22,9 @@ $PROJECT_ROOT = dirname(__DIR__, 2);
 if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
     require $PROJECT_ROOT . '/vendor/autoload.php';
 } else {
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/PHPMailer.php';
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/SMTP.php';
-    require $PROJECT_ROOT.'/vendor/PHPMailer/src/Exception.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/PHPMailer.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/SMTP.php';
+    require $PROJECT_ROOT . '/vendor/PHPMailer/src/Exception.php';
 }
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -26,7 +33,8 @@ use PHPMailer\PHPMailer\Exception;
 
 
 
-function generatePassword(int $length = 12): string {
+function generatePassword(int $length = 12): string
+{
     if ($length < 8) $length = 8;
 
     $uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -60,7 +68,8 @@ function generatePassword(int $length = 12): string {
 // Example:
 // echo generatePassword(12);
 
-function sendWelcomeGmail(array $user, string $tempPassword): array {
+function sendWelcomeGmail(array $user, string $tempPassword): array
+{
     global $PROJECT_ROOT;
 
     // pick an env file (cleaned)
@@ -83,7 +92,7 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
 
     $mail = new PHPMailer(true);
     try {
-        // SMTP
+        // SMTP Configuration with optimizations for production servers
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
@@ -91,6 +100,17 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
         $mail->Password   = getenv('GMAIL_PASSWORD');
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // or STARTTLS 587
         $mail->Port       = 465;
+
+        // Optimizations for faster email delivery
+        $mail->Timeout = 30; // Reduced timeout for faster failure detection
+        $mail->SMTPKeepAlive = false; // Close connection after sending
+        $mail->SMTPOptions = [
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            ]
+        ];
 
         // Tell PHPMailer we are sending UTF-8 and how to encode it
         $mail->CharSet   = 'UTF-8';
@@ -100,7 +120,7 @@ function sendWelcomeGmail(array $user, string $tempPassword): array {
         // From/To
         $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
-        $mail->addAddress($user['email'], trim(($user['firstName'] ?? '').' '.($user['lastName'] ?? '')));
+        $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
         $first   = $user['firstName'] ?: 'Student';
         $subject = 'Welcome to Dorm Mart';
@@ -160,12 +180,128 @@ TEXT;
     }
 }
 
+function sendPromoWelcomeEmail(array $user): array
+{
+    global $PROJECT_ROOT;
 
+    // Load environment variables
+    foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
+        if (is_readable($envFile)) {
+            foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                $line = trim($line);
+                if ($line === '' || str_starts_with($line, '#')) continue;
+                [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
+                putenv(trim($k) . '=' . trim($v));
+            }
+            break;
+        }
+    }
+
+    // Ensure PHP is using UTF-8 internally
+    if (function_exists('mb_internal_encoding')) {
+        @mb_internal_encoding('UTF-8');
+    }
+
+    $mail = new PHPMailer(true);
+    try {
+        // SMTP Configuration
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = getenv('GMAIL_USERNAME');
+        $mail->Password   = getenv('GMAIL_PASSWORD');
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        $mail->Port       = 465;
+
+        // Optimizations for faster email delivery
+        $mail->Timeout = 30;
+        $mail->SMTPKeepAlive = false;
+        $mail->SMTPOptions = [
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            ]
+        ];
+
+        // Tell PHPMailer we are sending UTF-8
+        $mail->CharSet   = 'UTF-8';
+        $mail->Encoding  = 'base64';
+
+        // From/To
+        $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
+        $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
+        $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
+
+        $first   = $user['firstName'] ?: 'Student';
+        $subject = 'Welcome to Dorm Mart Promotional Updates';
+
+        // HTML email content
+        $html = <<<HTML
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{$subject}</title>
+  </head>
+  <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
+    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
+      <p style="color:#eee;">Dear {$first},</p>
+      <p style="color:#eee;">Thank you for opting into promotional updates from <strong>Dorm Mart</strong>!</p>
+      <p style="color:#eee;">You'll now receive exciting updates about:</p>
+      <ul style="color:#eee;">
+        <li>Important updates and announcements</li>
+        <li>Emails about new notifcations</li>
+      </ul>
+      <p style="color:#eee;">We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.</p>
+      <p style="color:#eee;">Happy trading,<br/>The Dorm Mart Team</p>
+      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
+      <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
+      <a href="mailto:dormmartsupport@gmail.com" style="color:#9db7ff;">dormmartsupport@gmail.com</a></p>
+    </div>
+  </body>
+</html>
+HTML;
+
+        // Plain-text version
+        $text = <<<TEXT
+Dear {$first},
+
+Thank you for opting into promotional updates from Dorm Mart!
+
+You'll now receive exciting updates about:
+- Important updates and announcements
+- Emails about new notifcations
+
+We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.
+
+Happy trading,
+The Dorm Mart Team
+
+(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
+TEXT;
+
+        $mail->Subject = $subject;
+        $mail->isHTML(true);
+        $mail->Body    = $html;
+        $mail->AltBody = $text;
+
+        $mail->send();
+        return ['ok' => true, 'error' => null];
+    } catch (Exception $e) {
+        return ['ok' => false, 'error' => $mail->ErrorInfo];
+    }
+}
+
+
+
+// Include security headers for XSS protection
+require_once __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
 
 // Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -191,13 +327,32 @@ if (!is_array($data)) {
     exit;
 }
 
-// Extract the values
-$firstName = trim($data['firstName'] ?? '');
-$lastName  = trim($data['lastName'] ?? '');
-$gradMonth = $data['gradMonth'] ?? '';
-$gradYear  = $data['gradYear'] ?? '';
-$email     = strtolower(trim($data['email'] ?? ''));
+// Extract the values (before validation)
+$firstNameRaw = trim($data['firstName'] ?? '');
+$lastNameRaw = trim($data['lastName'] ?? '');
+$emailRaw = strtolower(trim($data['email'] ?? ''));
+
+// XSS PROTECTION: Check for XSS patterns in firstName and lastName fields
+// Note: SQL injection is already prevented by prepared statements and regex validation
+if (containsXSSPattern($firstNameRaw) || containsXSSPattern($lastNameRaw)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
+    exit;
+}
+
+// XSS PROTECTION: Input validation with regex patterns to prevent XSS attacks
+$firstName = validateInput($firstNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
+$lastName = validateInput($lastNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
+$gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
+$gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
+$email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
 $promos    = !empty($data['promos']);
+
+if ($firstName === false || $lastName === false || $email === false) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
+    exit;
+}
 
 // Validate
 if ($firstName === '' || $lastName === '' || $email === '') {
@@ -237,74 +392,96 @@ if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > 
     exit;
 }
 
-require "../db_connect.php";
+require "../database/db_connect.php";
 $conn = db();
 try {
-  $chk = $conn->prepare('SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1');
-$chk->bind_param('s', $email);
-$chk->execute();
-$chk->store_result();                   // needed to use num_rows without fetching
-if ($chk->num_rows > 0) {
-  http_response_code(200);
-  echo json_encode(['ok'=>true]);
-  exit;
-}
-$chk->close();
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // Check if email already exists using prepared statement.
+    // The '?' placeholder and bind_param() ensure $email is treated as data, not SQL.
+    // This prevents SQL injection even if malicious SQL code is in the email field.
+    // ============================================================================
+    $chk = $conn->prepare('SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1');
+    $chk->bind_param('s', $email);  // 's' = string type, safely bound as parameter
+    $chk->execute();
+    $chk->store_result();                   // needed to use num_rows without fetching
+    if ($chk->num_rows > 0) {
+        http_response_code(200);
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+    $chk->close();
 
-// 2) Generate & hash password
-// SECURITY NOTE:
-// We NEVER store plaintext passwords. We generate a temporary password for the
-// new user and immediately hash it with password_hash(), which automatically
-// generates a unique SALT and embeds it into the returned hash (bcrypt here).
-// The database only stores this salted, one-way hash (column: hash_pass).
-$tempPassword = generatePassword(12);
-$hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
+    // 2) Generate & hash password
+    // SECURITY NOTE:
+    // We NEVER store plaintext passwords. We generate a temporary password for the
+    // new user and immediately hash it with password_hash(), which automatically
+    // generates a unique SALT and embeds it into the returned hash (bcrypt here).
+    // The database only stores this salted, one-way hash (column: hash_pass).
+    $tempPassword = generatePassword(12);
+    $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
 
-// 3) Insert user
-$sql = 'INSERT INTO user_accounts
-          (first_name, last_name, grad_month, grad_year, email, promotional, hash_pass, hash_auth, join_date, seller, theme)
+    // 3) Insert user
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // All user input (firstName, lastName, email, etc.) is inserted using prepared statement
+    // with parameter binding. The '?' placeholders ensure user input is treated as data,
+    // not executable SQL. This prevents SQL injection attacks even if malicious SQL code
+    // is present in any of the input fields.
+    // ============================================================================
+    $sql = 'INSERT INTO user_accounts
+          (first_name, last_name, grad_month, grad_year, email, promotional, hash_pass, hash_auth, join_date, seller, theme, received_intro_promo_email)
         VALUES
-          (?, ?, ?, ?, ?, ?, ?, NULL, CURRENT_DATE, 0, 0)';
+          (?, ?, ?, ?, ?, ?, ?, NULL, CURRENT_DATE, 0, 0, ?)';
 
-$ins = $conn->prepare($sql);
-/*
- types: s=string, i=int
- first_name(s), last_name(s), grad_month(i), grad_year(i),
- email(s), promotional(i), hash_pass(s), hash_auth(s)
+    $ins = $conn->prepare($sql);
+    /*
+    types: s=string, i=int
+    first_name(s), last_name(s), grad_month(i), grad_year(i),
+    email(s), promotional(i), hash_pass(s), hash_auth(s), received_intro_promo_email(i)
 */
-$promotional = $promos ? 1 : 0;
-$ins->bind_param(
-  'ssiisis',
-  $firstName,
-  $lastName,
-  $gradMonth,
-  $gradYear,
-  $email,
-  $promotional,
-  $hashPass,
-);
+    $promotional = $promos ? 1 : 0;
+    $receivedIntroPromoEmail = $promos ? 1 : 0; // Set to TRUE if promotional emails are enabled
+    $ins->bind_param(
+        'ssiisisi',
+        $firstName,
+        $lastName,
+        $gradMonth,
+        $gradYear,
+        $email,
+        $promotional,
+        $hashPass,
+        $receivedIntroPromoEmail,
+    );
 
-$ok = $ins->execute();
-$ins->close();
+    $ok = $ins->execute();
+    $ins->close();
 
-if (!$ok) {
-  http_response_code(500);
-  echo json_encode(['ok'=>false, 'error'=>'Insert failed']);
-  exit;
-}
+    if (!$ok) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'Insert failed']);
+        exit;
+    }
 
-// Send email (ignore result here)
-sendWelcomeGmail(["firstName"=>$firstName,"lastName"=>$lastName,"email"=>$email], $tempPassword);
+    // Send welcome email (ignore result here)
+    sendWelcomeGmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
 
-// Success
-echo json_encode([
-  'ok' => true
-]);
+    // Send promo welcome email if user opted into promotional emails
+    if ($promos) {
+        $promoEmailResult = sendPromoWelcomeEmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email]);
+        if (!$promoEmailResult['ok']) {
+            error_log("Failed to send promo welcome email during account creation: " . $promoEmailResult['error']);
+        }
+    }
 
+    // Success
+    echo json_encode([
+        'ok' => true
+    ]);
 } catch (Throwable $e) {
-  // Log $e->getMessage() server-side
-  http_response_code(500);
-  echo json_encode(['ok'=>false, 'error'=>"There was an error"]);
+    // Log $e->getMessage() server-side
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'error' => "There was an error"]);
 }
-
-

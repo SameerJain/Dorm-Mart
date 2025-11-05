@@ -1,63 +1,173 @@
 <?php
+
 declare(strict_types=1);
+
+// Include security headers for XSS protection
+require_once __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+// Ensure CORS headers are present for React dev server and local PHP server
+setSecureCORS();
+
 header('Content-Type: application/json; charset=utf-8');
 
-require __DIR__ . '/auth_handle.php';
-require __DIR__ . '/../db_connect.php';
+// HTTPS enforcement for production (exclude localhost for development)
+$isLocalhost = (
+    ($_SERVER['HTTP_HOST'] ?? '') === 'localhost' ||
+    ($_SERVER['HTTP_HOST'] ?? '') === 'localhost:8080' ||
+    strpos($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1') === 0
+);
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']); exit; }
+if (!$isLocalhost && (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] !== 'on')) {
+    $httpsUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? '') . ($_SERVER['REQUEST_URI'] ?? '');
+    header("Location: $httpsUrl", true, 301);
+    exit;
+}
+
+require __DIR__ . '/auth_handle.php';
+require __DIR__ . '/../database/db_connect.php';
+
+// Respond to CORS preflight after setting CORS headers
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+// Rate limiting will be checked after recording failed attempts
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
+    exit;
+}
 
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-  $raw  = file_get_contents('php://input');
-  $data = json_decode($raw, true) ?: [];
-  $email = strtolower(trim((string)($data['email'] ?? '')));
-  $password = (string)($data['password'] ?? '');
+    $raw  = file_get_contents('php://input');
+    // XSS PROTECTION: Decode JSON first, then validate individual fields (don't HTML-encode JSON)
+    $data = json_decode($raw, true);
+    if (!is_array($data)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Invalid JSON format']);
+        exit;
+    }
+    
+    $emailRaw = strtolower(trim((string)($data['email'] ?? '')));
+    $passwordRaw = (string)($data['password'] ?? '');
 } else {
-  $email = strtolower(trim((string)($_POST['email'] ?? '')));
-  $password = (string)($_POST['password'] ?? '');
+    $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
+    $passwordRaw = (string)($_POST['password'] ?? '');
 }
 
-if ($email === '' || $password === '') { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Missing required fields']); exit; }
-if (strlen($email) >= 50 || strlen($password) >= 64) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Username or password is too large']); exit; }
-if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Email must be @buffalo.edu']); exit; }
+// XSS PROTECTION: Check for XSS patterns in email field (single check, no duplication)
+// Note: SQL injection is already prevented by prepared statements
+if (containsXSSPattern($emailRaw)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
+    exit;
+}
+
+$email = validateInput($emailRaw, 50, '/^[^@\s]+@buffalo\.edu$/');
+$password = validateInput($passwordRaw, 64);
+
+if ($email === false || $password === false) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
+    exit;
+}
+
+if ($email === '' || $password === '') {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Missing required fields']);
+    exit;
+}
+if (strlen($email) >= 50 || strlen($password) >= 64) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Username or password is too large']);
+    exit;
+}
+if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);
+    exit;
+}
 
 try {
-  $conn = db();
-  $stmt = $conn->prepare('SELECT user_id, hash_pass FROM user_accounts WHERE email = ? LIMIT 1');
-  $stmt->bind_param('s', $email);
-  $stmt->execute();
-  $res = $stmt->get_result();
+    // CRITICAL: Check rate limiting FIRST, before any password verification
+    $rateLimitCheck = check_rate_limit($email);
+    if ($rateLimitCheck['blocked']) {
+        $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
+        http_response_code(429);
+        echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
+        exit;
+    }
 
-  if ($res->num_rows === 0) {
-    $stmt->close(); $conn->close();
-    http_response_code(401); echo json_encode(['ok'=>false,'error'=>'Invalid credentials']); exit;
-  }
-  $row = $res->fetch_assoc();
-  $stmt->close();
+    $conn = db();
+    
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // Using mysqli prepared statements with parameter binding (bind_param) to prevent SQL injection.
+    // The '?' placeholder ensures user input ($email) is treated as data, not executable SQL.
+    // Even if malicious SQL is in $email, it cannot execute because it's bound as a string parameter.
+    // This is the industry-standard defense against SQL injection attacks.
+    // ============================================================================
+    $stmt = $conn->prepare('SELECT user_id, hash_pass, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ? LIMIT 1');
+    $stmt->bind_param('s', $email);  // 's' = string type, $email is safely bound as parameter
+    $stmt->execute();
+    $res = $stmt->get_result();
 
-  // SECURITY NOTE: password_verify() safely checks the submitted
-  // plaintext against the STORED salted hash from password_hash(). The salt is
-  // inside the hash; we never store or handle it separately.
-  if (!password_verify($password, (string)$row['hash_pass'])) {
+    if ($res->num_rows === 0) {
+        $stmt->close();
+        $conn->close();
+        
+        // Record failed attempt for non-existent user (but don't reveal this)
+        record_failed_attempt($email);
+        
+        http_response_code(401);
+        echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
+        exit;
+    }
+    $row = $res->fetch_assoc();
+    $stmt->close();
+
+    // SECURITY NOTE: password_verify() safely checks the submitted
+    // plaintext against the STORED salted hash from password_hash(). The salt is
+    // inside the hash; we never store or handle it separately.
+    if (!password_verify($password, (string)$row['hash_pass'])) {
+        $conn->close();
+        
+        // Record failed attempt
+        record_failed_attempt($email);
+        
+        http_response_code(401);
+        echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
+        exit;
+    }
+
+    $userId = (int)$row['user_id'];
+    
+    // SQL INJECTION PROTECTION: Prepared statement for theme query (user_id parameter bound safely)
+    $themeStmt = $conn->prepare('SELECT theme FROM user_accounts WHERE user_id = ?');
+    $themeStmt->bind_param('i', $userId);  // 'i' = integer type
+    $themeStmt->execute();
+    $themeRes = $themeStmt->get_result();
+    $themeRow = $themeRes->fetch_assoc();
+    $themeStmt->close();
     $conn->close();
-    http_response_code(401); echo json_encode(['ok'=>false,'error'=>'Invalid credentials']); exit;
-  }
+    
+    $theme = 'light'; // default
+    if ($themeRow && isset($themeRow['theme'])) {
+        $theme = $themeRow['theme'] ? 'dark' : 'light';
+    }
 
-  $userId = (int)$row['user_id'];
-  $conn->close();
+    // Regenerate session ID to prevent session fixation attacks
+    regenerate_session_on_login();
+    $_SESSION['user_id'] = $userId;
 
-  auth_boot_session();
-  regenerate_session_on_login();
-  $_SESSION['user_id'] = $userId;
+    // Persist across restarts
+    issue_remember_cookie($userId);
 
-  // Persist across restarts
-  issue_remember_cookie($userId);
-
-  echo json_encode(['ok'=>true]);
+    echo json_encode(['ok' => true, 'theme' => $theme]);
 } catch (Throwable $e) {
-  if (isset($stmt) && $stmt) { $stmt->close(); }
-  if (isset($conn) && $conn) { $conn->close(); }
-  http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Server error']);
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'error' => 'Server error']);
 }

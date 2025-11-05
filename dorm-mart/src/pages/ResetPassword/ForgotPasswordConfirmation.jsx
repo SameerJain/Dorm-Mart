@@ -7,11 +7,14 @@ function ForgotPasswordConfirmation() {
     <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#364156' }}>
       {/* Centered confirmation card, reused styling without "Stay Here" */}
       <div className="relative z-10 w-full max-w-lg mx-auto rounded-xl shadow-2xl border border-white/10"
-           style={{ backgroundColor: '#3d3eb5' }}>
+        style={{ backgroundColor: '#3d3eb5' }}>
         <div className="p-6 sm:p-8">
           <h3 className="text-xl sm:text-2xl font-serif text-white mb-3 text-center">Check Your Email</h3>
           <p className="text-sm sm:text-base text-white/90 text-center leading-relaxed">
-            A link to reset your password is sent to your email.
+            If an account with this email address exists, then a link to reset your password was sent to your inbox!
+          </p>
+          <p className="text-xs text-white/70 text-center italic mt-2">
+            Note: Another email can only be sent after 10 minutes.
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <button

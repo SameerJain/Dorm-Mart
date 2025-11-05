@@ -1,63 +1,92 @@
 <?php
+
 declare(strict_types=1);
+
+// Include security headers for XSS protection
+require __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
 header('Content-Type: application/json; charset=utf-8');
 
-
-/* CORS: allow ALL origins (development or production) */
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-header('Access-Control-Allow-Credentials: true');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']); exit; }
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+  http_response_code(204);
+  exit;
+}
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+  http_response_code(405);
+  echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
+  exit;
+}
 
 require __DIR__ . '/auth_handle.php';
-require __DIR__ . '/../db_connect.php';
+require __DIR__ . '/../database/db_connect.php';
 
 auth_boot_session();
 $userId = require_login();
 
-/* Read body (JSON or form) */
+/* Read body (JSON or form) - IMPORTANT: Do NOT HTML-encode passwords before hashing */
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
   $raw  = file_get_contents('php://input');
-  $data = json_decode($raw, true) ?: [];
-  $current = (string)($data['currentPassword'] ?? '');
-  $next    = (string)($data['newPassword'] ?? '');
+  $data = json_decode($raw, true);
+  if (!is_array($data)) {
+    $data = [];
+  }
+  // Passwords must remain raw - they're hashed, not displayed
+  $current = isset($data['currentPassword']) ? (string)$data['currentPassword'] : '';
+  $next    = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
 } else {
-  $current = (string)($_POST['currentPassword'] ?? '');
-  $next    = (string)($_POST['newPassword'] ?? '');
+  // Passwords must remain raw - they're hashed, not displayed
+  $current = isset($_POST['currentPassword']) ? (string)$_POST['currentPassword'] : '';
+  $next    = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
 }
 
 /* Validate inputs */
 $MAX_LEN = 64;
 if ($current === '' || $next === '') {
-  http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Missing required fields']); exit;
+  http_response_code(400);
+  echo json_encode(['ok' => false, 'error' => 'Missing required fields']);
+  exit;
 }
 if (strlen($current) > $MAX_LEN || strlen($next) > $MAX_LEN) {
-  http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Entered password is too long']); exit;
+  http_response_code(400);
+  echo json_encode(['ok' => false, 'error' => 'Entered password is too long']);
+  exit;
 }
-if (strlen($next) < 8
-    || !preg_match('/[a-z]/', $next)
-    || !preg_match('/[A-Z]/', $next)
-    || !preg_match('/\d/', $next)
-    || !preg_match('/[^A-Za-z0-9]/', $next)) {
-  http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Password does not meet policy']); exit;
+if (
+  strlen($next) < 8
+  || !preg_match('/[a-z]/', $next)
+  || !preg_match('/[A-Z]/', $next)
+  || !preg_match('/\d/', $next)
+  || !preg_match('/[^A-Za-z0-9]/', $next)
+) {
+  http_response_code(400);
+  echo json_encode(['ok' => false, 'error' => 'Password does not meet policy']);
+  exit;
 }
 
 try {
   $conn = db();
 
-  /* Fetch current hash */
+  // ============================================================================
+  // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+  // ============================================================================
+  // Using prepared statement with '?' placeholder and bind_param() to safely
+  // handle $userId. Even if malicious SQL is in $userId, it cannot execute
+  // because it's bound as an integer parameter, not concatenated into SQL.
+  // ============================================================================
   $stmt = $conn->prepare('SELECT hash_pass FROM user_accounts WHERE user_id = ? LIMIT 1');
-  $stmt->bind_param('i', $userId);
+  $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
   $res = $stmt->get_result();
 
   if ($res->num_rows === 0) {
-    $stmt->close(); $conn->close();
-    http_response_code(404); echo json_encode(['ok'=>false,'error'=>'User not found']); exit;
+    $stmt->close();
+    $conn->close();
+    http_response_code(404);
+    echo json_encode(['ok' => false, 'error' => 'User not found']);
+    exit;
   }
 
   $row = $res->fetch_assoc();
@@ -70,21 +99,32 @@ try {
    * was created or changed. We never compare against or store plaintext. */
   if (!password_verify($current, (string)$row['hash_pass'])) {
     $conn->close();
-    http_response_code(401); echo json_encode(['ok'=>false,'error'=>'Invalid current password']); exit;
+    http_response_code(401);
+    echo json_encode(['ok' => false, 'error' => 'Invalid current password']);
+    exit;
   }
 
   /* Optional: reject reuse of the same password */
   if (password_verify($next, (string)$row['hash_pass'])) {
     $conn->close();
-    http_response_code(400); echo json_encode(['ok'=>false,'error'=>'New password must differ from current']); exit;
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'New password must differ from current']);
+    exit;
   }
 
   /* Update password; also clear any persisted token column if present
    * SECURITY NOTE: password_hash() automatically generates a random SALT and
    * returns a salted bcrypt hash. Only the hash is stored in the DB. */
   $newHash = password_hash($next, PASSWORD_BCRYPT);
+  
+  // ============================================================================
+  // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+  // ============================================================================
+  // The password hash and user_id are bound as parameters using bind_param().
+  // This prevents SQL injection even if malicious SQL were in these values.
+  // ============================================================================
   $upd = $conn->prepare('UPDATE user_accounts SET hash_pass = ?, hash_auth = NULL WHERE user_id = ?');
-  $upd->bind_param('si', $newHash, $userId);
+  $upd->bind_param('si', $newHash, $userId);  // 's' = string, 'i' = integer
   $upd->execute();
   $upd->close();
 
@@ -106,10 +146,17 @@ try {
   // End the session so the client must log in again (your UI already redirects)
   logout_destroy_session();
 
-  echo json_encode(['ok'=>true]);
+  echo json_encode(['ok' => true]);
 } catch (Throwable $e) {
-  if (isset($stmt) && $stmt) { $stmt->close(); }
-  if (isset($upd) && $upd) { $upd->close(); }
-  if (isset($conn) && $conn) { $conn->close(); }
-  http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Server error']);
+  if (isset($stmt) && $stmt) {
+    $stmt->close();
+  }
+  if (isset($upd) && $upd) {
+    $upd->close();
+  }
+  if (isset($conn) && $conn) {
+    $conn->close();
+  }
+  http_response_code(500);
+  echo json_encode(['ok' => false, 'error' => 'Server error']);
 }

@@ -32,6 +32,26 @@ html, body, #root {
   min-height: 100vh;
   overflow-x: hidden;
   overflow-y: auto; /* allow vertical scrolling */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode base styles */
+html.dark, html.dark body, html.dark #root {
+  background-color: #111827; /* gray-900 */
+  color: #f3f4f6; /* gray-100 */
+}
+
+/* Ensure input fields are always visible */
+input, textarea, select {
+  background-color: white !important;
+  color: #1f2937 !important; /* gray-800 */
+  border-color: #d1d5db !important; /* gray-300 */
+}
+
+html.dark input, html.dark textarea, html.dark select {
+  background-color: white !important;
+  color: #1f2937 !important; /* gray-800 */
+  border-color: #d1d5db !important; /* gray-300 */
 }
 
 :root {

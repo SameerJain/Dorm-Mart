@@ -4,7 +4,8 @@
 const REMEMBER_COOKIE = 'remember_token';
 const REMEMBER_TTL_DAYS = 30; // persistent login length
 
-function auth_boot_session(): void {
+function auth_boot_session(): void
+{
   static $booted = false;
   if ($booted) return;
 
@@ -25,15 +26,17 @@ function auth_boot_session(): void {
   $booted = true;
 }
 
-function regenerate_session_on_login(): void {
+function regenerate_session_on_login(): void
+{
   auth_boot_session();
   session_regenerate_id(true);
 }
 
-/* ---------- Persistent login (“remember me”) ---------- */
+/* ---------- Persistent login ("remember me") ---------- */
 
-function issue_remember_cookie(int $userId): void {
-  require_once __DIR__ . '/../db_connect.php';
+function issue_remember_cookie(int $userId): void
+{
+  require_once __DIR__ . '/../database/db_connect.php';
   $token = bin2hex(random_bytes(32));                 // 64 hex chars
   $hash  = password_hash($token, PASSWORD_DEFAULT);   // store only the hash
 
@@ -54,10 +57,11 @@ function issue_remember_cookie(int $userId): void {
   ]);
 }
 
-function clear_remember_cookie(?int $userId = null): void {
+function clear_remember_cookie(?int $userId = null): void
+{
   // clear server-side
   if ($userId) {
-    require_once __DIR__ . '/../db_connect.php';
+    require_once __DIR__ . '/../database/db_connect.php';
     $conn = db();
     $stmt = $conn->prepare('UPDATE user_accounts SET hash_auth = NULL WHERE user_id = ?');
     $stmt->bind_param('i', $userId);
@@ -78,7 +82,8 @@ function clear_remember_cookie(?int $userId = null): void {
 /**
  * Ensure a session exists; if not, hydrate it from the persistent cookie.
  */
-function ensure_session(): void {
+function ensure_session(): void
+{
   auth_boot_session();
   if (!empty($_SESSION['user_id'])) return;
 
@@ -90,18 +95,25 @@ function ensure_session(): void {
   if (!ctype_digit($uidStr) || $token === '' || strlen($token) > 256) return;
   $uid = (int)$uidStr;
 
-  require_once __DIR__ . '/../db_connect.php';
+  require_once __DIR__ . '/../database/db_connect.php';
   $conn = db();
   $stmt = $conn->prepare('SELECT hash_auth FROM user_accounts WHERE user_id = ? LIMIT 1');
   $stmt->bind_param('i', $uid);
   $stmt->execute();
   $res  = $stmt->get_result();
-  if ($res->num_rows !== 1) { $stmt->close(); $conn->close(); return; }
+  if ($res->num_rows !== 1) {
+    $stmt->close();
+    $conn->close();
+    return;
+  }
   $row  = $res->fetch_assoc();
   $stmt->close();
 
   $hash = (string)($row['hash_auth'] ?? '');
-  if ($hash === '' || !password_verify($token, $hash)) { $conn->close(); return; }
+  if ($hash === '' || !password_verify($token, $hash)) {
+    $conn->close();
+    return;
+  }
 
   // success → hydrate session and rotate token
   session_regenerate_id(true);
@@ -126,7 +138,8 @@ function ensure_session(): void {
 }
 
 /** Require auth (calls ensure_session) */
-function require_login(): int {
+function require_login(): int
+{
   ensure_session();
   if (empty($_SESSION['user_id'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -138,7 +151,8 @@ function require_login(): int {
 }
 
 /** Destroy session + clear persistent cookie */
-function logout_destroy_session(): void {
+function logout_destroy_session(): void
+{
   auth_boot_session();
   $uid = $_SESSION['user_id'] ?? null;
 
@@ -155,4 +169,48 @@ function logout_destroy_session(): void {
   session_destroy();
 
   clear_remember_cookie($uid);
+}
+
+/* ---------- CSRF Protection ---------- */
+
+/**
+ * Generate or retrieve CSRF token from session
+ * @return string CSRF token (64-character hex string)
+ */
+function generate_csrf_token(): string {
+  auth_boot_session();
+  
+  if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+  }
+  return $_SESSION['csrf_token'];
+}
+
+/**
+ * Validate CSRF token using timing-safe comparison
+ * @param string $token Token to validate
+ * @return bool True if token is valid
+ */
+function validate_csrf_token(string $token): bool {
+  auth_boot_session();
+  
+  if (!isset($_SESSION['csrf_token'])) {
+    return false;
+  }
+  
+  return hash_equals($_SESSION['csrf_token'], $token);
+}
+
+/**
+ * Require valid CSRF token for state-changing operations
+ * Returns 403 if token is missing or invalid
+ */
+function require_csrf_token(): void {
+  $token = $_POST['csrf_token'] ?? $_GET['csrf_token'] ?? null;
+  
+  if (!$token || !validate_csrf_token($token)) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
+    exit;
+  }
 }
