@@ -27,12 +27,17 @@ require_once __DIR__ . '/../database/db_connect.php';
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
     $raw = file_get_contents('php://input');
-    $data = sanitize_json($raw) ?: [];
-    $token = sanitize_string((string)($data['token'] ?? ''), 64);
-    $newPassword = sanitize_string((string)($data['newPassword'] ?? ''), 64);
+    $data = json_decode($raw, true);
+    if (!is_array($data)) {
+        $data = [];
+    }
+    // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
+    $token = isset($data['token']) ? trim((string)$data['token']) : '';
+    $newPassword = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
 } else {
-    $token = sanitize_string((string)($_POST['token'] ?? ''), 64);
-    $newPassword = sanitize_string((string)($_POST['newPassword'] ?? ''), 64);
+    // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
+    $token = isset($_POST['token']) ? trim((string)$_POST['token']) : '';
+    $newPassword = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
 }
 
 // Validate inputs
@@ -65,7 +70,13 @@ if (
 try {
     $conn = db();
     
-    // Check if token is valid and not expired
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement (No User Input in Query)
+    // ============================================================================
+    // This query contains no user input - it checks all reset tokens and uses
+    // password_verify() to validate the token. The token comparison happens
+    // in PHP using password_verify(), not in SQL, so SQL injection is not possible.
+    // ============================================================================
     $stmt = $conn->prepare('
         SELECT user_id, hash_auth, reset_token_expires 
         FROM user_accounts 
@@ -97,13 +108,19 @@ try {
     // Hash the new password
     $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
 
-    // Update the password and clear the reset token
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // The password hash and user_id are bound as parameters using bind_param().
+    // Even if malicious SQL were somehow in the hash or user_id, it cannot execute
+    // because it's bound as a parameter, not concatenated into SQL.
+    // ============================================================================
     $stmt = $conn->prepare('
         UPDATE user_accounts 
         SET hash_pass = ?, hash_auth = NULL, reset_token_expires = NULL 
         WHERE user_id = ?
     ');
-    $stmt->bind_param('si', $hashedPassword, $userId);
+    $stmt->bind_param('si', $hashedPassword, $userId);  // 's' = string, 'i' = integer
     $stmt->execute();
     
     if ($stmt->affected_rows === 0) {

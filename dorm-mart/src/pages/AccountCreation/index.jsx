@@ -44,10 +44,31 @@ function CreateAccountPage() {
     const last = formData.lastName.trim();
     const email = formData.email.trim();
 
+    // XSS PROTECTION: Check for XSS patterns in firstName and lastName
+    const xssPatterns = [
+      /<script/i,
+      /javascript:/i,
+      /onerror=/i,
+      /onload=/i,
+      /onclick=/i,
+      /<iframe/i,
+      /<object/i,
+      /<embed/i,
+      /<img[^>]*on/i,
+      /<svg[^>]*on/i,
+      /vbscript:/i
+    ];
+
     if (!first) newErrors.firstName = "First name is required";
+    else if (xssPatterns.some(pattern => pattern.test(first))) {
+      newErrors.firstName = "Invalid characters in first name";
+    }
     else if (first.length > 100) newErrors.firstName = "First name must be 100 characters or fewer";
 
     if (!last) newErrors.lastName = "Last name is required";
+    else if (xssPatterns.some(pattern => pattern.test(last))) {
+      newErrors.lastName = "Invalid characters in last name";
+    }
     else if (last.length > 100) newErrors.lastName = "Last name must be 100 characters or fewer";
 
     if (!formData.gradMonth || !formData.gradYear) {

@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 // dorm-mart/api/search/getSearchItems.php
 
+require_once __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -36,8 +40,18 @@ try {
         $body = $_POST ?? [];
     }
 
-    $q         = isset($body['q']) ? trim((string)$body['q']) : (isset($body['search']) ? trim((string)$body['search']) : '');
+    $qRaw      = isset($body['q']) ? trim((string)$body['q']) : (isset($body['search']) ? trim((string)$body['search']) : '');
     $category  = isset($body['category']) ? trim((string)$body['category']) : '';
+    
+    // XSS PROTECTION: Check for XSS patterns in search query
+    // Note: SQL injection is already prevented by prepared statements
+    if ($qRaw !== '' && containsXSSPattern($qRaw)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Invalid characters in search query']);
+        exit;
+    }
+    
+    $q = $qRaw;
     // Optional multiple categories support
     $categories = [];
     if (isset($body['categories'])) {
@@ -224,13 +238,21 @@ try {
     }
     $sql .= $order . "\n" . ' LIMIT ? ';
 
-    // Prepare statement
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // All search parameters (query, category, condition, location, prices, etc.) 
+    // are bound as parameters using bind_param() with type specifiers ('s'=string, 'd'=double, 'i'=integer).
+    // The '?' placeholders ensure user input is treated as data, not executable SQL.
+    // This prevents SQL injection attacks even if malicious SQL code is in any search field.
+    // ============================================================================
     $stmt = $mysqli->prepare($sql);
     if ($stmt === false) {
         throw new Exception('Prepare failed: ' . $mysqli->error);
     }
 
     // Bind params: where params, then relevance params (if any), then limit
+    // All parameters are safely bound, preventing SQL injection
     $typesWithLimit = $relevanceTypes . $types . 'i';
     $paramsWithLimit = array_merge($relevanceParams, $params);
     $paramsWithLimit[] = $limit;

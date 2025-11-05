@@ -291,6 +291,71 @@ function validateInput($input, $maxLength = 255, $allowedChars = null) {
     return $input;
 }
 
+/**
+ * Check if input contains XSS attack patterns
+ * @param string $input Input to check
+ * @return bool True if XSS pattern detected
+ */
+function containsXSSPattern($input) {
+    if (!is_string($input)) {
+        return false;
+    }
+    
+    $xssPatterns = [
+        '/<script/i',
+        '/javascript:/i',
+        '/onerror=/i',
+        '/onload=/i',
+        '/onclick=/i',
+        '/onmouseover=/i',
+        '/<iframe/i',
+        '/<object/i',
+        '/<embed/i',
+        '/<img[^>]*on/i',
+        '/<svg[^>]*on/i',
+        '/expression\s*\(/i',
+        '/vbscript:/i'
+    ];
+    
+    foreach ($xssPatterns as $pattern) {
+        if (preg_match($pattern, $input)) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Check if input contains SQL injection attack patterns
+ * @param string $input Input to check
+ * @return bool True if SQL injection pattern detected
+ */
+function containsSQLInjectionPattern($input) {
+    if (!is_string($input)) {
+        return false;
+    }
+    
+    $sqlPatterns = [
+        '/;\s*(DROP|DELETE|INSERT|UPDATE|ALTER|CREATE|TRUNCATE|EXEC|EXECUTE)/i',
+        '/\'\s*;\s*--/',
+        '/\/\*/',
+        '/UNION\s+SELECT/i',
+        '/OR\s+1\s*=\s*1/i',
+        '/OR\s+\'1\'\s*=\s*\'1\'/i',
+        '/\'\s+OR\s+\'\'/i',
+        '/\'\s+OR\s+1\s*=/i'
+    ];
+    
+    foreach ($sqlPatterns as $pattern) {
+        if (preg_match($pattern, $input)) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 // ============================================================================
 // RATE LIMITING FUNCTIONS
 // ============================================================================

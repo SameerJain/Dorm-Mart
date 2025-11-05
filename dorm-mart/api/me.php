@@ -3,6 +3,11 @@ declare(strict_types=1);
 
 // api/me.php
 
+// Include security headers and CORS
+require_once __DIR__ . '/security/security.php';
+setSecurityHeaders();
+setSecureCORS();
+
 header('Content-Type: application/json; charset=utf-8');
 
 // CORS / preflight

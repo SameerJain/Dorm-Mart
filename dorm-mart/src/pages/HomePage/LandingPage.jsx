@@ -132,6 +132,7 @@ export default function LandingPage() {
         setLoadingItems(true);
         const r = await fetch(`${API_BASE}/landingListings.php`, {
           signal: controller.signal,
+          credentials: "include",
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
@@ -285,8 +286,8 @@ export default function LandingPage() {
       <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-1 sm:px-2 md:px-3 py-3 flex items-center justify-between gap-3">
         {/* rotating blue chip */}
         <div className="flex-1 mr-3">
-          <div className="inline-flex items-center gap-2 bg-blue-100/60 px-4 py-1.5 rounded-full border border-blue-200 min-h-[36px]">
-            <span className="h-2 w-2 rounded-full bg-blue-500 inline-block"></span>
+          <div className="inline-flex items-center gap-2 bg-blue-100/60 dark:bg-blue-900/30 px-4 py-1.5 rounded-full border border-blue-200 dark:border-blue-700 min-h-[36px]">
+            <span className="h-2 w-2 rounded-full bg-blue-500 dark:bg-blue-400 inline-block"></span>
             <p className="text-sm font-medium text-blue-700 dark:text-blue-300 transition-all duration-500 ease-in-out">
               {rotatingLines[bannerIdx]}
             </p>
@@ -304,7 +305,7 @@ export default function LandingPage() {
                     `${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`
                   )
                 }
-                className="inline-flex items-center rounded-full bg-blue-50 px-4 py-1.5 text-sm font-medium text-blue-700 border border-blue-100 hover:bg-blue-100 transition"
+                className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-4 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
               >
                 {cat}
               </button>
@@ -321,7 +322,7 @@ export default function LandingPage() {
       <div className="w-full px-1 sm:px-2 md:px-3 pt-4">
         <div className="grid grid-cols-1 lg:grid-cols-[1.35fr,0.65fr] gap-3">
           {/* hero */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700 shadow-sm px-4 py-4 flex flex-col gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm px-4 py-4 flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="uppercase text-xs md:text-sm text-gray-400 dark:text-gray-500 tracking-[0.35em] mb-1">
@@ -330,38 +331,38 @@ export default function LandingPage() {
                 <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-gray-100">
                   Items from categories you actually picked
                 </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-300">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   Real UB students • on-campus meetups • no shipping
                 </p>
               </div>
               <div className="hidden sm:flex">
                 <button
                   onClick={() => navigate("/app/product-listing/new")}
-                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+                  className="px-4 py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition"
                 >
                   List an item
                 </button>
               </div>
             </div>
             <div className="flex gap-2 mt-1">
-              <button className="px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-medium border border-blue-100 dark:border-blue-900/40">
+              <button className="px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-medium border border-blue-100 dark:border-blue-700">
                 For you
               </button>
               <button
                 onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?sort=new`)}
-                className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-100 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:text-gray-700 dark:hover:bg-gray-600"
+                className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200"
               >
                 Newest
               </button>
               <button
                 onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?maxPrice=20`)}
-                className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-100 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
               >
                 Under $20
               </button>
               <button
                 onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?minPrice=100`)}
-                className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-100 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
               >
                 Luxury
               </button>
@@ -369,27 +370,27 @@ export default function LandingPage() {
           </div>
 
           {/* metrics */}
-          <div className="bg-blue-50 dark:bg-gray-800 rounded-lg border border-blue-100 dark:border-gray-700 px-4 py-4 flex flex-col gap-4">
-            <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 tracking-tight">
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 px-4 py-4 flex flex-col gap-4">
+                          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 tracking-tight">
               Today’s snapshot
             </p>
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white dark:bg-gray-900 rounded-lg border border-blue-100/70 dark:border-gray-700 px-3 py-3">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-blue-100/70 dark:border-blue-800/70 px-3 py-3">
                 <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">New listings</p>
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-300 leading-none">+8</p>
-                <p className="text-xs text-blue-500 dark:text-blue-300 mt-1">in last 24h</p>
+                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 leading-none">+8</p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">in last 24h</p>
               </div>
-              <div className="bg-white dark:bg-gray-900 rounded-lg border border-blue-100/70 dark:border-gray-700 px-3 py-3">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-blue-100/70 dark:border-blue-800/70 px-3 py-3">
                 <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">Near you</p>
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-300 leading-none">12</p>
-                <p className="text-xs text-blue-500 dark:text-blue-300 mt-1">North Campus</p>
+                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 leading-none">12</p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">North Campus</p>
               </div>
-              <div className="bg-white dark:bg-gray-900 rounded-lg border border-blue-100/70 dark:border-gray-700 px-3 py-3">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-blue-100/70 dark:border-blue-800/70 px-3 py-3">
                 <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">Interested</p>
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-300 leading-none">
+                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 leading-none">
                   {interests.length ? interests.length : "0"}
                 </p>
-                <p className="text-xs text-blue-500 dark:text-blue-300 mt-1">categories</p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">categories</p>
               </div>
             </div>
           </div>
@@ -401,8 +402,8 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[0.22fr,1fr,0.22fr] gap-3 items-start">
           {/* LEFT */}
           <aside className="hidden lg:flex flex-col gap-3 sticky top-20">
-            <div className="bg-white dark:bg-gray-800 rounded-md border border-gray-200/70 dark:border-gray-700 shadow-sm p-4">
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
+            <div className="bg-white dark:bg-gray-800 rounded-md border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4">
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                 Quick filters
               </p>
               <div className="flex flex-wrap gap-2">
@@ -412,7 +413,7 @@ export default function LandingPage() {
                     onClick={() =>
                       openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`)
                     }
-                    className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 text-sm border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                    className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                   >
                     {cat}
                   </button>
@@ -420,11 +421,11 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="bg-blue-50 dark:bg-gray-800 rounded-md border border-blue-100 dark:border-gray-700 p-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800 p-4">
               <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
                 Tips
               </p>
-              <p className="text-sm text-blue-500 dark:text-blue-300">
+              <p className="text-sm text-blue-500 dark:text-blue-400">
                 Items posted in the last 48h show “NEW”. Check these first.
               </p>
             </div>
@@ -437,16 +438,16 @@ export default function LandingPage() {
               <section className="space-y-4">
                 <header className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-semibold text-blue-600 dark:text-blue-300">
+                    <h3 className="text-base font-semibold text-blue-600 dark:text-blue-400">
                       For you
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-300">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Based on your categories
                     </p>
                   </div>
                   <button
                     onClick={() => navigate('/app/setting/user-preferences')}
-                    className="text-sm text-blue-600 dark:text-blue-300 hover:underline"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     Manage interests
                   </button>
@@ -460,7 +461,7 @@ export default function LandingPage() {
                         <h4 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">
                           {cat}
                         </h4>
-                        <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-blue-200 w-full max-w-full min-w-0">
+                        <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-blue-200 dark:scrollbar-thumb-blue-700 w-full max-w-full min-w-0">
                           {catItems.length ? (
                             catItems.map((item) => (
                               <div
@@ -494,10 +495,10 @@ export default function LandingPage() {
             {/* Explore */}
             <section className="space-y-4">
               <header>
-                <h3 className="text-base font-semibold text-blue-600 dark:text-blue-300">
+                <h3 className="text-base font-semibold text-blue-600 dark:text-blue-400">
                   {interests.length ? "Explore more" : "Recommended for you"}
                 </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-300">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {interests.length
                     ? "Other listings on Dorm Mart."
                     : "Popular items from UB students."}
@@ -542,8 +543,8 @@ export default function LandingPage() {
 
           {/* RIGHT */}
           <aside className="hidden lg:flex flex-col gap-3 sticky top-20">
-            <div className="bg-white dark:bg-gray-800 rounded-md border border-gray-200/70 dark:border-gray-700 shadow-sm p-4">
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+            <div className="bg-white dark:bg-gray-800 rounded-md border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4">
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Trending now
               </p>
               <ul className="space-y-2">
@@ -552,11 +553,11 @@ export default function LandingPage() {
                     onClick={() =>
                       openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Electronics`)
                     }
-                    className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                   >
                     Electronics
                   </button>
-                  <span className="text-xs text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                  <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
                     5 new
                   </span>
                 </li>
@@ -565,11 +566,11 @@ export default function LandingPage() {
                     onClick={() =>
                       openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Kitchen`)
                     }
-                    className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                   >
                     Kitchen
                   </button>
-                  <span className="text-xs text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                  <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
                     2 new
                   </span>
                 </li>
@@ -580,22 +581,22 @@ export default function LandingPage() {
                         `${PUBLIC_BASE}/#/app/listings?category=Dorm%20Essentials`
                       )
                     }
-                    className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                   >
                     Dorm essentials
                   </button>
-                  <span className="text-xs text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                  <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
                     hot
                   </span>
                 </li>
               </ul>
             </div>
 
-            <div className="bg-blue-50 dark:bg-gray-800 rounded-md border border-blue-100 dark:border-gray-700 p-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800 p-4">
               <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
                 Your campus
               </p>
-              <p className="text-sm text-blue-600 dark:text-blue-300">
+              <p className="text-sm text-blue-600 dark:text-blue-400">
                 North Campus is most active 3–6pm. Post then for faster replies.
               </p>
             </div>

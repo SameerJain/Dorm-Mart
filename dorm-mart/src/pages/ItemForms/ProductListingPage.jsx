@@ -223,14 +223,33 @@ function ProductListingPage() {
   const validateAll = () => {
     const newErrors = {};
 
+    // XSS PROTECTION: Check for XSS patterns in title and description
+    const xssPatterns = [
+      /<script/i,
+      /javascript:/i,
+      /onerror=/i,
+      /onload=/i,
+      /onclick=/i,
+      /<iframe/i,
+      /<object/i,
+      /<embed/i,
+      /<img[^>]*on/i,
+      /<svg[^>]*on/i,
+      /vbscript:/i
+    ];
+
     if (!title.trim()) {
       newErrors.title = "Title is required";
+    } else if (xssPatterns.some(pattern => pattern.test(title))) {
+      newErrors.title = "Invalid characters in title";
     } else if (title.length > LIMITS.title) {
       newErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
     }
 
     if (!description.trim()) {
       newErrors.description = "Description is required";
+    } else if (xssPatterns.some(pattern => pattern.test(description))) {
+      newErrors.description = "Invalid characters in description";
     } else if (description.length > LIMITS.description) {
       newErrors.description = `Description must be ${LIMITS.description} characters or fewer`;
     }

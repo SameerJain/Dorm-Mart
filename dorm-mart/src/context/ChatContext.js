@@ -39,6 +39,15 @@ export function ChatProvider({ children }) {
     const [chatByConvError, setChatByConvError] = useState({});
     const [sendMsgError, setSendMsgError] = useState(false);
 
+    function selectConversation(id) {           // used when opening a chat
+        setActiveConvId(id);
+        fetchConversation(id);
+    }
+
+    function clearActiveConversation() {
+        setActiveConvId(null); // stops new-message polling because the effect below bails when no activeConvId
+    }
+
     // notification
     const [unreadByConv, setUnreadByConv] = useState({});  // { [conv_id]: count }
     const [unreadTotal, setUnreadTotal] = useState(0);     // sum of counts
@@ -162,10 +171,20 @@ export function ChatProvider({ children }) {
 
         const shouldPollNow = () => document.visibilityState === "visible";
 
+        // keep a handle to the current in-flight request so we can cancel it properly
+        const inFlightRef = { ctrl: null }; // { ctrl: AbortController | null }
+
         const tick = async() => {
             if (!shouldPollNow()) return;
-            // new AbortController per tick avoids overlapping slow requests
+
+            // cancel any previous unfinished request before starting a new one
+            if (inFlightRef.ctrl) inFlightRef.ctrl.abort();
+
             const controller = new AbortController();
+            inFlightRef.ctrl = controller;
+
+            // new AbortController per tick avoids overlapping slow requests
+
             try {
                 const sinceSec = Math.floor((lastTsRefByConv.current[activeConvId] || 0) / 1000);
                 const incoming = await tick_fetch_new_messages(activeConvId, myIdRef.current, sinceSec, controller.signal);
@@ -187,16 +206,22 @@ export function ChatProvider({ children }) {
                 );
 
             } catch (e) {
-                stopPolling();
+                if (e.name !== "AbortError") stopPolling();
             } finally {
-                controller.abort();
+                // IMPORTANT: do NOT abort here — aborting after completion makes
+                // Chrome mark the request as (canceled) in the Network tab.
+                inFlightRef.ctrl = null; // clear handle; request is done
             }
         };
 
         tick(); // run once immediately
         newMsgPollRef.current = setInterval(tick, NEW_MSG_POLL_MS);
 
-        return stopPolling;
+        return () => {
+            stopPolling();
+            // abort any in-flight request on unmount/dep-change
+            if (inFlightRef.ctrl) inFlightRef.ctrl.abort();
+        };
     }, [activeConvId, isOnChatRoute]);
 
     function clearUnreadMsgFor(convId) {
@@ -264,6 +289,7 @@ export function ChatProvider({ children }) {
         // actions
         fetchConversation,
         createMessage,
+        clearActiveConversation,
         // config (optional: useful for tests or dynamic tuning)
         _config: { POLL_MS: NEW_MSG_POLL_MS, UNREAD_MSG_POLL_MS },
   };

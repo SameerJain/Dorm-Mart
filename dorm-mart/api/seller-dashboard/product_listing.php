@@ -33,6 +33,14 @@ try {
   auth_boot_session();
   $userId = require_login();
 
+  /* Conditional CSRF validation - only validate if token is provided */
+  $token = $_POST['csrf_token'] ?? null;
+  if ($token !== null && !validate_csrf_token($token)) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
+    exit;
+  }
+
   mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
   $conn = db();
   $conn->set_charset('utf8mb4');
@@ -41,7 +49,7 @@ try {
   $mode   = isset($_POST['mode']) ? trim((string)$_POST['mode']) : 'create';   // 'create' | 'update'
   $itemId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 
-  $title = isset($_POST['title']) ? trim((string)$_POST['title']) : '';
+  $titleRaw = isset($_POST['title']) ? trim((string)$_POST['title']) : '';
 
   // Accept new categories[] or legacy tags[]
   $catsRaw = $_POST['categories'] ?? ($_POST['tags'] ?? []);
@@ -51,12 +59,34 @@ try {
   if (count($catsArr) > 3) { $catsArr = array_slice($catsArr, 0, 3); }
 
   // Accept new itemLocation or legacy meetLocation
-  $itemLocation  = (($t = ($_POST['itemLocation'] ?? ($_POST['meetLocation'] ?? ''))) !== '') ? trim((string)$t) : null;
+  $itemLocationRaw  = (($t = ($_POST['itemLocation'] ?? ($_POST['meetLocation'] ?? ''))) !== '') ? trim((string)$t) : null;
 
   // Item condition
   $itemCondition = (($t = $_POST['condition'] ?? '') !== '') ? trim((string)$t) : null;
 
-  $description = (($t = $_POST['description'] ?? '') !== '') ? trim((string)$t) : null;
+  $descriptionRaw = (($t = $_POST['description'] ?? '') !== '') ? trim((string)$t) : null;
+
+  // XSS PROTECTION: Check for XSS patterns in user-visible fields
+  // Note: SQL injection is already prevented by prepared statements
+  if ($titleRaw !== '' && containsXSSPattern($titleRaw)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid characters in title']);
+    exit;
+  }
+  if ($descriptionRaw !== null && $descriptionRaw !== '' && containsXSSPattern($descriptionRaw)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid characters in description']);
+    exit;
+  }
+  if ($itemLocationRaw !== null && $itemLocationRaw !== '' && containsXSSPattern($itemLocationRaw)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid characters in location']);
+    exit;
+  }
+
+  $title = $titleRaw;
+  $description = $descriptionRaw;
+  $itemLocation = $itemLocationRaw;
 
   $priceStr  = isset($_POST['price']) ? (string)$_POST['price'] : '';
   $price     = ($priceStr !== '' && is_numeric($priceStr)) ? (float)$priceStr : 0.0;
@@ -126,6 +156,13 @@ try {
 
   // --- Create / Update ---
   if ($mode === 'update' && $itemId > 0) {
+    // ============================================================================
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // ============================================================================
+    // All user input (title, description, itemLocation, etc.) is bound as parameters.
+    // The '?' placeholders ensure user input is treated as data, not executable SQL.
+    // This prevents SQL injection attacks even if malicious SQL code is in any field.
+    // ============================================================================
     $sql = "UPDATE INVENTORY
                SET title=?,
                    categories=?,
@@ -140,17 +177,17 @@ try {
     $stmt = $conn->prepare($sql);
     $stmt->bind_param(
       'ssssssdiiii',
-      $title,
-      $categoriesJson,
-      $itemLocation,
-      $itemCondition,
-      $description,
-      $photosJson,
-      $price,
-      $trades,
-      $priceNego,
-      $itemId,
-      $userId
+      $title,            // safely bound as string parameter
+      $categoriesJson,   // safely bound as string parameter
+      $itemLocation,     // safely bound as string parameter
+      $itemCondition,    // safely bound as string parameter
+      $description,      // safely bound as string parameter
+      $photosJson,       // safely bound as string parameter
+      $price,            // safely bound as double parameter
+      $trades,           // safely bound as integer parameter
+      $priceNego,        // safely bound as integer parameter
+      $itemId,           // safely bound as integer parameter
+      $userId            // safely bound as integer parameter
     );
     $stmt->execute();
 
@@ -163,6 +200,13 @@ try {
   }
 
   // INSERT
+  // ============================================================================
+  // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+  // ============================================================================
+  // All user input is inserted using prepared statement with parameter binding.
+  // The '?' placeholders ensure user input is treated as data, not executable SQL.
+  // This prevents SQL injection attacks even if malicious SQL code is in any field.
+  // ============================================================================
   $sql = "INSERT INTO INVENTORY
             (title, categories, item_location, item_condition, description, photos, listing_price, item_status, trades, price_nego, seller_id)
           VALUES
@@ -171,17 +215,17 @@ try {
   $status = 'Active';
   $stmt->bind_param(
     'ssssssdsiii',
-    $title,
-    $categoriesJson,
-    $itemLocation,
-    $itemCondition,
-    $description,
-    $photosJson,
-    $price,
-    $status,
-    $trades,
-    $priceNego,
-    $userId
+    $title,            // safely bound as string parameter
+    $categoriesJson,   // safely bound as string parameter
+    $itemLocation,     // safely bound as string parameter
+    $itemCondition,   // safely bound as string parameter
+    $description,      // safely bound as string parameter
+    $photosJson,       // safely bound as string parameter
+    $price,            // safely bound as double parameter
+    $status,           // hardcoded value (safe)
+    $trades,           // safely bound as integer parameter
+    $priceNego,        // safely bound as integer parameter
+    $userId            // safely bound as integer parameter
   );
   $stmt->execute();
 

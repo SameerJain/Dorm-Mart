@@ -1,6 +1,6 @@
 <?php
 // api/list-user-conversations.php
-
+declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../security/security.php';
 require __DIR__ . '/../database/db_connect.php';
@@ -31,10 +31,7 @@ if ($okPassword) {
 // reads PHPSESSID from Cookie header and loads that session
 session_start(); 
 $userId = (int)($_SESSION['user_id'] ?? 0);
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  http_response_code(204);
-  exit;
-}
+
 if ($userId <= 0) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Not authenticated']);
