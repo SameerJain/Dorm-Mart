@@ -1,6 +1,7 @@
 // src/pages/ItemForms/ProductListingPage.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useMatch, useNavigate } from "react-router-dom";
+import { MEET_LOCATION_OPTIONS } from "../../constants/meetLocations";
 
 function ProductListingPage() {
   const { id } = useParams();
@@ -268,7 +269,7 @@ function ProductListingPage() {
       newErrors.categories = `Select at most ${CATEGORIES_MAX} categories`;
     }
 
-    if (!itemLocation || itemLocation === "<Select Option>") {
+    if (!itemLocation) {
       newErrors.itemLocation = "Select an item location";
     }
     if (!condition || condition === "<Select Option>") {
@@ -784,11 +785,11 @@ function ProductListingPage() {
                       : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                   }`}
                 >
-                  <option>{"<Select Option>"}</option>
-                  <option>North Campus</option>
-                  <option>South Campus</option>
-                  <option>Ellicott</option>
-                  <option>Other</option>
+                  {MEET_LOCATION_OPTIONS.map((opt) => (
+                    <option key={opt.value || "unselected"} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
                 {errors.itemLocation && (
                   <p className="text-red-600 dark:text-red-400 text-sm mt-1">

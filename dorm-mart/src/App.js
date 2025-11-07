@@ -19,6 +19,8 @@ import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
+import SchedulePurchasePage from "./pages/SellerDashboard/SchedulePurchasePage.jsx";
+import OngoingPurchasesPage from "./pages/SellerDashboard/OngoingPurchasesPage.jsx";
 import ViewProduct from "./itemDetails/viewProduct.jsx";
 import SearchResults from "./pages/search/searchResults.jsx";
 // Chat
@@ -82,6 +84,14 @@ export const router = createHashRouter([
       {
         path: "seller-dashboard",
         element: <SellerDashboardPage />,
+      },
+      {
+        path: "seller-dashboard/schedule-purchase",
+        element: <SchedulePurchasePage />,
+      },
+      {
+        path: "seller-dashboard/ongoing-purchases",
+        element: <OngoingPurchasesPage />,
       },
       // Settings (under /app)
       {

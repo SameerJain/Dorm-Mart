@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { ChatContext } from "../context/ChatContext";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -22,6 +23,15 @@ export default function ViewProduct() {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [msgLoading, setMsgLoading] = useState(false);
+  const [msgError, setMsgError] = useState(null);
+
+  const chatCtx = useContext(ChatContext);
+
+  useEffect(() => {
+    setMsgLoading(false);
+    setMsgError(null);
+  }, [productId]);
 
   useEffect(() => {
     if (!productId) return;
@@ -147,6 +157,55 @@ export default function ViewProduct() {
 
   // no-op
 
+  const handleMessageSeller = async () => {
+    if (msgLoading || !normalized?.sellerId) return;
+
+    setMsgError(null);
+    setMsgLoading(true);
+
+    try {
+      const payload = {
+        product_id: normalized?.productId ?? (productId ? Number(productId) : undefined),
+        seller_user_id: normalized?.sellerId ?? undefined,
+      };
+
+      const res = await fetch(`${API_BASE}/chat/ensure_conversation.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.success) {
+        const message = result?.error || `Failed to start chat (${res.status})`;
+        throw new Error(message);
+      }
+
+      if (result.conversation && chatCtx?.registerConversation) {
+        chatCtx.registerConversation(result.conversation);
+      }
+
+      const convId = result.conversation?.conv_id ?? result.conv_id ?? null;
+      const navState = {
+        convId,
+        receiverId: normalized?.sellerId ?? null,
+        receiverName: normalized?.sellerName ?? null,
+        autoMessage: result.auto_message ?? null,
+      };
+
+      navigate("/app/chat", { state: navState });
+    } catch (err) {
+      console.error("Message seller error", err);
+      setMsgError(err?.message || "Unable to open chat.");
+    } finally {
+      setMsgLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 flex items-center justify-between">
@@ -267,12 +326,15 @@ export default function ViewProduct() {
 
                 <div className="mt-3 space-y-2">
                   <button
-                    onClick={() => navigate(`/app/chat${normalized.sellerId ? `?to=${encodeURIComponent(normalized.sellerId)}` : ''}`)}
-                    disabled={!normalized.sellerId}
+                    onClick={handleMessageSeller}
+                    disabled={!normalized.sellerId || msgLoading}
                     className="w-full rounded-full bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2"
                   >
-                    Message Seller
+                    {msgLoading ? "Opening chat..." : "Message Seller"}
                   </button>
+                  {msgError ? (
+                    <p className="text-xs text-red-600 dark:text-red-400">{msgError}</p>
+                  ) : null}
                 </div>
               </div>
 

@@ -2,6 +2,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ChatContext } from "../../context/ChatContext";
 import fmtTime from "./chat_page_utils";
 import { useNavigate, useLocation } from "react-router-dom";
+import MessageCard from "./components/MessageCard";
 export default function ChatPage() {
   const ctx = useContext(ChatContext);
   const {
@@ -46,14 +47,18 @@ export default function ChatPage() {
     }
   }
 
+  const navigate = useNavigate();         // router: for navigation
+  const location = useLocation();         // router: to inspect history state
+  const navigationState = location.state && typeof location.state === "object" ? location.state : null;
+
   // Header label: show the other user id for now
   const activeLabel = useMemo(() => {
     const c = conversations.find((c) => c.conv_id === activeConvId);
-    return c ? c.receiverName : "Select a chat";
-  }, [conversations, activeConvId]);
-
-  const navigate = useNavigate();         // router: for navigation
-  const location = useLocation();         // router: to inspect history state
+    if (c) return c.receiverName;
+    if (navigationState?.receiverName) return navigationState.receiverName;
+    if (navigationState?.receiverId) return `User ${navigationState.receiverId}`;
+    return "Select a chat";
+  }, [conversations, activeConvId, navigationState]);
 
   function goBackOrHome() {
     // If there is prior history in this tab, go back; otherwise go to landing
@@ -199,24 +204,31 @@ export default function ChatPage() {
                     key={m.message_id}
                     className={m.sender === "me" ? "flex justify-end" : "flex justify-start"}
                   >
-                    <div
-                      className={
-                        "max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " +
-                        (m.sender === "me"
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-100 text-gray-900")
-                      }
-                    >
-                      <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                    {m.metadata && m.metadata.type === "listing_intro" ? (
+                      <MessageCard
+                        message={m}
+                        isMine={m.sender === "me"}
+                      />
+                    ) : (
                       <div
                         className={
-                          "mt-1 text-[10px] " +
-                          (m.sender === "me" ? "text-indigo-100" : "text-gray-500")
+                          "max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " +
+                          (m.sender === "me"
+                            ? "bg-indigo-600 text-white"
+                            : "bg-gray-100 text-gray-900")
                         }
                       >
-                        {fmtTime(m.ts)}
+                        <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                        <div
+                          className={
+                            "mt-1 text-[10px] " +
+                            (m.sender === "me" ? "text-indigo-100" : "text-gray-500")
+                          }
+                        >
+                          {fmtTime(m.ts)}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ))
               )}

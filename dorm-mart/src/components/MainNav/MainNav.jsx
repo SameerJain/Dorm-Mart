@@ -65,6 +65,14 @@ function MainNav() {
         navigate("/app/seller-dashboard");
     };
 
+    const handleSchedulePurchase = () => {
+        navigate("/app/seller-dashboard/schedule-purchase");
+    };
+
+    const handleOngoingPurchases = () => {
+        navigate("/app/seller-dashboard/ongoing-purchases");
+    };
+
     // Search state + handlers
     const [searchText, setSearchText] = useState("");
     const inputRef = useRef(null);
@@ -179,19 +187,31 @@ function MainNav() {
                         {showDropdown && (
                             <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
                                 <button
-                                    onClick={handleSellerDashboard}
+                                    onClick={() => { handleSellerDashboard(); setShowDropdown(false); }}
                                     className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Seller Dashboard
                                 </button>
                                 <button
-                                    onClick={handlePurchaseHistory}
+                                    onClick={() => { handleSchedulePurchase(); setShowDropdown(false); }}
+                                    className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                    Schedule Purchase
+                                </button>
+                                <button
+                                    onClick={() => { handleOngoingPurchases(); setShowDropdown(false); }}
+                                    className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                    Ongoing Purchases
+                                </button>
+                                <button
+                                    onClick={() => { handlePurchaseHistory(); setShowDropdown(false); }}
                                     className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Purchase History
                                 </button>
                                 <button
-                                    onClick={handleLogout}
+                                    onClick={() => { handleLogout(); setShowDropdown(false); }}
                                     className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Log Out
@@ -259,6 +279,26 @@ function MainNav() {
                             >
                                 <img src={userIcon} alt="" className="h-6 w-6" />
                                 <span>Seller Dashboard</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handleSchedulePurchase();
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <img src={userIcon} alt="" className="h-6 w-6" />
+                                <span>Schedule Purchase</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handleOngoingPurchases();
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <img src={userIcon} alt="" className="h-6 w-6" />
+                                <span>Ongoing Purchases</span>
                             </button>
                             <button
                                 onClick={() => {
