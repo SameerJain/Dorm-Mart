@@ -9,9 +9,17 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const messageType = metadata.type;
   const requestId = metadata.request_id;
   const [isResponding, setIsResponding] = useState(false);
+  
+  // Track local response status to update UI immediately after Accept/Deny
+  // Initialize from messageType if already responded, otherwise null
+  const [localResponseStatus, setLocalResponseStatus] = useState(() => {
+    if (messageType === 'schedule_accepted') return 'accepted';
+    if (messageType === 'schedule_denied') return 'declined';
+    return null;
+  });
 
   const handleAction = async (action) => {
-    if (!requestId || isResponding) return;
+    if (!requestId || isResponding || localResponseStatus !== null) return;
     setIsResponding(true);
     try {
       const res = await fetch(`${API_BASE}/scheduled-purchases/respond.php`, {
@@ -31,8 +39,12 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
         throw new Error(errorData.error || `Failed to ${action} request`);
       }
       const result = await res.json();
-      if (result.success && onRespond) {
-        onRespond();
+      if (result.success) {
+        // Update local state immediately to reflect response
+        setLocalResponseStatus(action === 'accept' ? 'accepted' : 'declined');
+        if (onRespond) {
+          onRespond();
+        }
       } else {
         throw new Error(result.error || `Failed to ${action} request`);
       }
@@ -65,7 +77,27 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   };
 
   // Use consistent styling for all schedule messages - matching site's color scheme
+  // Check localResponseStatus first for immediate UI update after Accept/Deny
   const getMessageConfig = () => {
+    // If local response status is set, use that for immediate visual feedback
+    if (localResponseStatus === 'accepted') {
+      return {
+        bgColor: 'bg-green-600 to-green-700',
+        borderColor: 'border-green-400',
+        iconColor: 'text-green-100',
+        showActions: false,
+      };
+    }
+    if (localResponseStatus === 'declined') {
+      return {
+        bgColor: 'bg-red-600 to-red-700',
+        borderColor: 'border-red-400',
+        iconColor: 'text-red-100',
+        showActions: false,
+      };
+    }
+    
+    // Otherwise, use messageType from props
     switch (messageType) {
       case 'schedule_request':
         return {
@@ -90,9 +122,9 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
         };
       case 'schedule_cancelled':
         return {
-          bgColor: 'bg-orange-500 to-orange-600',
-          borderColor: 'border-orange-400',
-          iconColor: 'text-orange-100',
+          bgColor: 'bg-red-600 to-red-700',
+          borderColor: 'border-red-400',
+          iconColor: 'text-red-100',
           showActions: false,
         };
       default:
@@ -117,9 +149,15 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     <div className={`max-w-[85%] rounded-2xl border-2 ${config.borderColor} bg-gradient-to-br ${config.bgColor} text-white shadow-lg overflow-hidden`}>
       <div className="p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <svg className={`w-5 h-5 ${config.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
+          {(messageType === 'schedule_cancelled' || localResponseStatus === 'declined') ? (
+            <svg className={`w-5 h-5 ${config.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className={`w-5 h-5 ${config.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          )}
           <p className="font-bold text-base text-white">
             {message.content}
           </p>
@@ -159,18 +197,18 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
           </div>
         )}
 
-        {config.showActions && messageType === 'schedule_request' && (
+        {config.showActions && messageType === 'schedule_request' && localResponseStatus === null && (
           <div className="flex gap-2 pt-2">
             <button
               onClick={handleAccept}
-              disabled={isResponding}
+              disabled={isResponding || localResponseStatus !== null}
               className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition shadow-md"
             >
               {isResponding ? 'Processing...' : 'Accept'}
             </button>
             <button
               onClick={handleDeny}
-              disabled={isResponding}
+              disabled={isResponding || localResponseStatus !== null}
               className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition shadow-md"
             >
               {isResponding ? 'Processing...' : 'Deny'}

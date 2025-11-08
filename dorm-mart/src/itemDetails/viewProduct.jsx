@@ -12,8 +12,12 @@ function useQuery() {
 
 export default function ViewProduct() {
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams();
   const query = useQuery();
+  
+  // Check if we came from chat page and should return there
+  const returnTo = location.state?.returnTo;
 
   const productIdFromParams = params.product_id || params.id || null;
   const productIdFromQuery = query.get("product_id") || query.get("id");
@@ -204,7 +208,12 @@ export default function ViewProduct() {
         autoMessage: result.auto_message ?? null,
       };
 
-      navigate("/app/chat", { state: navState });
+      // If we have a returnTo path, use it; otherwise go to chat
+      if (returnTo) {
+        navigate(returnTo);
+      } else {
+        navigate("/app/chat", { state: navState });
+      }
     } catch (err) {
       console.error("Message seller error", err);
       setMsgError(err?.message || "Unable to open chat.");
@@ -216,7 +225,18 @@ export default function ViewProduct() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 flex items-center justify-between">
-        <button onClick={() => navigate(-1)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back</button>
+        <button 
+          onClick={() => {
+            if (returnTo) {
+              navigate(returnTo);
+            } else {
+              navigate(-1);
+            }
+          }} 
+          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          Back
+        </button>
         <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100">Product Details</h1>
         <div />
       </div>
@@ -384,7 +404,18 @@ export default function ViewProduct() {
               </div>
 
               <div className="pt-1">
-                <button onClick={() => navigate(-1)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back to results</button>
+                <button 
+                  onClick={() => {
+                    if (returnTo) {
+                      navigate(returnTo);
+                    } else {
+                      navigate(-1);
+                    }
+                  }} 
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Back to results
+                </button>
               </div>
             </section>
           </div>

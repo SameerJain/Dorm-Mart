@@ -4,6 +4,10 @@ import fmtTime from "./chat_page_utils";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import MessageCard from "./components/MessageCard";
 import ScheduleMessageCard from "./components/ScheduleMessageCard";
+
+const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+
 export default function ChatPage() {
   const ctx = useContext(ChatContext);
   const {
@@ -35,6 +39,9 @@ export default function ChatPage() {
 
   // MOBILE: controls which pane is visible on small screens (list first)
   const [isMobileList, setIsMobileList] = useState(true);
+  
+  // Track if there's an active scheduled purchase for the current product
+  const [hasActiveScheduledPurchase, setHasActiveScheduledPurchase] = useState(false);
 
   // Handle conv query parameter to auto-open conversation
   useEffect(() => {
@@ -97,9 +104,72 @@ export default function ChatPage() {
   const hasListingIntro = messages.some(m => m.metadata?.type === "listing_intro");
   const listingIntroMsg = messages.find(m => m.metadata?.type === "listing_intro");
   const isSeller = hasListingIntro && listingIntroMsg && listingIntroMsg.sender === "them";
+  
+  // Determine if current user is seller or buyer for header color
+  const isSellerPerspective = activeConversation?.productId && activeConversation?.productSellerId && myId && 
+    Number(activeConversation.productSellerId) === Number(myId);
+  const headerBgColor = isSellerPerspective 
+    ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+    : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
+
+  // Check for active scheduled purchase when product changes
+  useEffect(() => {
+    const productId = activeConversation?.productId;
+    const isSellerPerspective = activeConversation?.productId && activeConversation?.productSellerId && myId && 
+      Number(activeConversation.productSellerId) === Number(myId);
+    
+    // Only check if seller is viewing their own product
+    if (!productId || !isSellerPerspective) {
+      setHasActiveScheduledPurchase(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    
+    async function checkActiveScheduledPurchase() {
+      try {
+        const res = await fetch(`${API_BASE}/scheduled-purchases/check_active.php`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          credentials: 'include',
+          signal: controller.signal,
+          body: JSON.stringify({
+            product_id: productId,
+          }),
+        });
+        
+        if (!res.ok) {
+          console.error('Failed to check active scheduled purchase');
+          setHasActiveScheduledPurchase(false);
+          return;
+        }
+        
+        const result = await res.json();
+        if (result.success) {
+          setHasActiveScheduledPurchase(result.has_active === true);
+        } else {
+          setHasActiveScheduledPurchase(false);
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Error checking active scheduled purchase:', error);
+          setHasActiveScheduledPurchase(false);
+        }
+      }
+    }
+    
+    checkActiveScheduledPurchase();
+    
+    return () => {
+      controller.abort();
+    };
+  }, [activeConversation?.productId, activeConversation?.productSellerId, myId]);
 
   function handleSchedulePurchase() {
-    if (!activeConvId || !activeConversation?.productId) return;
+    if (!activeConvId || !activeConversation?.productId || hasActiveScheduledPurchase) return;
     navigate("/app/seller-dashboard/schedule-purchase", {
       state: {
         convId: activeConvId,
@@ -225,6 +295,16 @@ export default function ChatPage() {
             <span className="truncate text-sm">{c.receiverName}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {/* Product image */}
+            {c.productImageUrl && (
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
+                <img 
+                  src={c.productImageUrl.startsWith('http') ? `${API_BASE}/image.php?url=${encodeURIComponent(c.productImageUrl)}` : c.productImageUrl}
+                  alt={c.productTitle || 'Product'}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
             {unread > 0 && (
               <span
                 className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-xs leading-5"
@@ -342,32 +422,71 @@ export default function ChatPage() {
             }
           >
             {/* Header */}
-            <div className="relative border-4 border-gray-200 dark:border-gray-700 px-5 py-4">
+            <div className={`relative border-4 ${headerBgColor} px-5 py-4`}>
               {/* ^ relative => allows the Back button to be absolutely positioned inside this header */}
 
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between">
+                {/* Left: User name */}
+                <div className="flex flex-col">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {activeLabel}
                   </h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Direct message</p>
                 </div>
 
-                <p className="text-xs text-gray-500 dark:text-gray-400">Direct message</p>
+                {/* Center: Item name */}
+                {(activeConversation?.productTitle || activeConversation?.productId) && (
+                  <div className="flex-1 flex flex-col items-center text-center">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {activeConversation.productTitle || `Item #${activeConversation.productId}`}
+                    </h2>
+                  </div>
+                )}
+
+                {/* Right: Product image, View Item button and Back button (mobile) */}
+                <div className="flex items-center gap-2">
+                  {/* Product image */}
+                  {activeConversation?.productImageUrl && (
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
+                      <img 
+                        src={activeConversation.productImageUrl.startsWith('http') ? `${API_BASE}/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
+                        alt={activeConversation.productTitle || 'Product'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  {activeConversation?.productId && (
+                    <button
+                      onClick={() => {
+                        navigate(`/app/viewProduct/${activeConversation.productId}`, {
+                          state: {
+                            returnTo: `/app/chat?conv=${activeConvId}`
+                          }
+                        });
+                      }}
+                      className={`px-3 py-1.5 text-sm text-white rounded-lg font-medium transition-colors ${
+                        isSellerPerspective
+                          ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
+                          : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+                      }`}
+                      aria-label="View item"
+                    >
+                      View Item
+                    </button>
+                  )}
+                  {/* Mobile-only Back button */}
+                  <button
+                    onClick={() => {
+                      setIsMobileList(true);
+                      clearActiveConversation();
+                    }}
+                    className="md:hidden rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-gray-700 dark:text-gray-200"
+                    aria-label="Back to conversations"
+                  >
+                    Back
+                  </button>
+                </div>
               </div>
-
-
-              {/* Mobile-only Back button, anchored to header's bottom-right */}
-              <button
-                onClick={() => {
-                  setIsMobileList(true);
-                  clearActiveConversation();
-                }}
-                className="md:hidden absolute right-4 bottom-3 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-gray-700 dark:text-gray-200"
-                aria-label="Back to conversations"
-              >
-                Back
-              </button>
-              {/* ^ absolute + right-4 bottom-3 => positions the button at the header's bottom-right */}
             </div>
 
             {/* Messages */}
@@ -453,7 +572,13 @@ export default function ChatPage() {
                 <div className="mb-2">
                   <button
                     onClick={handleSchedulePurchase}
-                    className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                    disabled={hasActiveScheduledPurchase}
+                    className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
+                      hasActiveScheduledPurchase
+                        ? 'bg-gray-400 cursor-not-allowed text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                    title={hasActiveScheduledPurchase ? 'There is already a Scheduled Purchase for this item' : ''}
                   >
                     Schedule Purchase
                   </button>
