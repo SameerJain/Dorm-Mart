@@ -92,6 +92,7 @@ export function ChatProvider({ children }) {
 
     const lastNavConvRef = useRef(null);
     const refreshInFlightRef = useRef(false);
+    const pendingConvFetchesRef = useRef(new Set()); // Track conversations waiting for myId
 
     // chat
     const [conversations, setConversations] = useState([]);
@@ -163,9 +164,27 @@ export function ChatProvider({ children }) {
         });
     }, [myId]);
 
+    // Retry pending conversation fetches when myId becomes available
+    useEffect(() => {
+        if (!myId) return;
+        const pending = Array.from(pendingConvFetchesRef.current);
+        if (pending.length === 0) return;
+        
+        // Clear the pending set and retry each conversation
+        pendingConvFetchesRef.current.clear();
+        pending.forEach((convId) => {
+            fetchConversation(convId);
+        });
+    }, [myId]);
+
     useEffect(() => {
         if (!location.pathname.startsWith("/app/chat")) {
             lastNavConvRef.current = null;
+            return;
+        }
+
+        // Guard: Only auto-load conversations when myId is available
+        if (!myId) {
             return;
         }
 
@@ -200,12 +219,20 @@ export function ChatProvider({ children }) {
                 fetchConversation(convId);
             }
         }
-    }, [location, conversations]);
+    }, [location, conversations, myId]);
 
     // when a chat is selected
     async function fetchConversation(convId) {
         setActiveConvId(convId);
         setChatByConvError((m) => ({...m, [convId]: false}));
+
+        // Check if myId is available before proceeding
+        const currentMyId = myIdRef.current;
+        if (!currentMyId) {
+            // Queue this conversation for retry once myId is loaded
+            pendingConvFetchesRef.current.add(convId);
+            return;
+        }
 
         const controller = new AbortController();
         try {
@@ -215,10 +242,6 @@ export function ChatProvider({ children }) {
             }
 
             const raw = res.messages || [];
-            const currentMyId = myIdRef.current;
-            if (!currentMyId) {
-                throw new Error("User ID not available");
-            }
             const myIdNum = Number(currentMyId);
             if (!Number.isInteger(myIdNum) || myIdNum <= 0) {
                 throw new Error("Invalid user ID");
@@ -260,10 +283,15 @@ export function ChatProvider({ children }) {
             : 0;
 
             clearUnreadMsgFor(convId);
+            
+            // Remove from pending set on success
+            pendingConvFetchesRef.current.delete(convId);
 
         } catch(err) {
             if (err.name !== "AbortError") {
                 setChatByConvError((m) => ({...m, [convId]: true}));
+                // Remove from pending set on error (will be retried if myId becomes available)
+                pendingConvFetchesRef.current.delete(convId);
             }
         }
     }
