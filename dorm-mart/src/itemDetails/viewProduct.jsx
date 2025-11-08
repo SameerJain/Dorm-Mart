@@ -238,7 +238,16 @@ export default function ViewProduct() {
           Back
         </button>
         <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100">Product Details</h1>
-        <div />
+        {myId && normalized?.sellerId && Number(myId) === Number(normalized.sellerId) ? (
+          <button
+            onClick={() => navigate('/app/seller-dashboard')}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+          >
+            View Seller Dashboard
+          </button>
+        ) : (
+          <div />
+        )}
       </div>
 
       <div className="w-full px-2 md:px-4 py-4">

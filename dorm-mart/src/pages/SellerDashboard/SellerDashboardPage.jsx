@@ -157,12 +157,28 @@ function SellerDashboardPage() {
                 body: JSON.stringify({}) // May need user_id or session token
             });
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                // Try to parse error response
+                let errorResult;
+                try {
+                    errorResult = await response.json();
+                } catch (e) {
+                    errorResult = { error: `HTTP ${response.status}` };
+                }
+                console.error('API Error Response:', errorResult);
+                throw new Error(errorResult.error || `HTTP ${response.status}`);
+            }
             const result = await response.json();
 
+            console.log('Seller dashboard API response:', result); // Debug log
+
             if (result.success) {
+                // Ensure result.data is an array
+                const dataArray = Array.isArray(result.data) ? result.data : [];
+                console.log('Fetched listings count:', dataArray.length); // Debug log
+                
                 // Transform backend data to match frontend expectations
-                const transformedListings = result.data.map(item => {
+                const transformedListings = dataArray.map(item => {
                     const rawImg = item.image_url || item.image || null;
                     const proxied = rawImg
                         ? `${API_BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
@@ -196,7 +212,14 @@ function SellerDashboardPage() {
             }
         } catch (error) {
             console.error('Error fetching listings:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack
+            });
+            
             setListings([]); // Set empty array on error
+            // Show error message to user
+            alert(`Failed to load listings: ${error.message}`);
         } finally {
             setLoading(false);
         }
