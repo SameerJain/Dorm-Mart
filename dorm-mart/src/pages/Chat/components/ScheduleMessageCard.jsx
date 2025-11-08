@@ -76,16 +76,19 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     }
   };
 
-  // Use consistent styling for all schedule messages
+  // Use consistent styling matching site's design system
+  // Light backgrounds, solid borders, text matching border color
   // schedule_request always stays blue regardless of response status
   // Other message types (accepted/denied/cancelled) keep their colors
   const getMessageConfig = () => {
     // schedule_request card always stays blue, regardless of localResponseStatus
     if (messageType === 'schedule_request') {
       return {
-        bgColor: 'bg-blue-600 to-blue-700',
-        borderColor: 'border-blue-400',
-        iconColor: 'text-blue-100',
+        bgColor: 'bg-blue-50 dark:bg-blue-900/30',
+        borderColor: 'border-blue-400 dark:border-blue-700',
+        textColor: 'text-blue-600 dark:text-blue-300',
+        iconColor: 'text-blue-600 dark:text-blue-300',
+        innerBgColor: 'bg-blue-100/50 dark:bg-blue-800/30',
         showActions: localResponseStatus === null && !isMine, // Buyer sees actions only if not responded
       };
     }
@@ -94,30 +97,38 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     switch (messageType) {
       case 'schedule_accepted':
         return {
-          bgColor: 'bg-green-600 to-green-700',
-          borderColor: 'border-green-400',
-          iconColor: 'text-green-100',
+          bgColor: 'bg-green-50 dark:bg-green-900/30',
+          borderColor: 'border-green-400 dark:border-green-700',
+          textColor: 'text-green-600 dark:text-green-300',
+          iconColor: 'text-green-600 dark:text-green-300',
+          innerBgColor: 'bg-green-100/50 dark:bg-green-800/30',
           showActions: false,
         };
       case 'schedule_denied':
         return {
-          bgColor: 'bg-red-600 to-red-700',
-          borderColor: 'border-red-400',
-          iconColor: 'text-red-100',
+          bgColor: 'bg-red-50 dark:bg-red-900/30',
+          borderColor: 'border-red-400 dark:border-red-700',
+          textColor: 'text-red-600 dark:text-red-300',
+          iconColor: 'text-red-600 dark:text-red-300',
+          innerBgColor: 'bg-red-100/50 dark:bg-red-800/30',
           showActions: false,
         };
       case 'schedule_cancelled':
         return {
-          bgColor: 'bg-red-600 to-red-700',
-          borderColor: 'border-red-400',
-          iconColor: 'text-red-100',
+          bgColor: 'bg-red-50 dark:bg-red-900/30',
+          borderColor: 'border-red-400 dark:border-red-700',
+          textColor: 'text-red-600 dark:text-red-300',
+          iconColor: 'text-red-600 dark:text-red-300',
+          innerBgColor: 'bg-red-100/50 dark:bg-red-800/30',
           showActions: false,
         };
       default:
         return {
-          bgColor: 'bg-blue-600 to-blue-700',
-          borderColor: 'border-blue-400',
-          iconColor: 'text-blue-100',
+          bgColor: 'bg-blue-50 dark:bg-blue-900/30',
+          borderColor: 'border-blue-400 dark:border-blue-700',
+          textColor: 'text-blue-600 dark:text-blue-300',
+          iconColor: 'text-blue-600 dark:text-blue-300',
+          innerBgColor: 'bg-blue-100/50 dark:bg-blue-800/30',
           showActions: false,
         };
     }
@@ -132,7 +143,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const productId = metadata.product_id || metadata.inventory_product_id || null;
 
   return (
-    <div className={`max-w-[85%] rounded-2xl border-2 ${config.borderColor} bg-gradient-to-br ${config.bgColor} text-white shadow-lg overflow-hidden`}>
+    <div className={`max-w-[85%] rounded-2xl border-2 ${config.borderColor} ${config.bgColor} ${config.textColor} overflow-hidden`}>
       <div className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           {(messageType === 'schedule_cancelled' || localResponseStatus === 'declined') ? (
@@ -144,39 +155,39 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           )}
-          <p className="font-bold text-base text-white">
+          <p className={`font-bold text-base ${config.textColor}`}>
             {message.content}
           </p>
         </div>
         
         {/* Product title for schedule_request messages */}
         {messageType === 'schedule_request' && productTitle && (
-          <div className="px-3 py-2 rounded-lg bg-white/25 backdrop-blur-sm">
-            <p className="text-sm font-semibold text-white">
+          <div className={`px-3 py-2 rounded-lg ${config.innerBgColor} border ${config.borderColor}`}>
+            <p className={`text-sm font-semibold ${config.textColor}`}>
               <span className="font-bold">Item:</span> {productTitle}
             </p>
           </div>
         )}
         
         {(meetingAt || meetLocation || description || verificationCode) && (
-          <div className="px-3 py-2 rounded-lg bg-white/20 backdrop-blur-sm space-y-2">
+          <div className={`px-3 py-2 rounded-lg ${config.innerBgColor} border ${config.borderColor} space-y-2`}>
             {meetingAt && (
-              <p className="text-sm text-white/90">
+              <p className={`text-sm ${config.textColor}`}>
                 <span className="font-semibold">Meeting Time:</span> {meetingAt}
               </p>
             )}
             {meetLocation && (
-              <p className="text-sm text-white/90">
+              <p className={`text-sm ${config.textColor}`}>
                 <span className="font-semibold">Location:</span> {meetLocation}
               </p>
             )}
             {description && (
-              <p className="text-sm text-white/90">
+              <p className={`text-sm ${config.textColor}`}>
                 <span className="font-semibold">Description:</span> {description}
               </p>
             )}
             {verificationCode && (
-              <p className="text-sm text-white/90">
+              <p className={`text-sm ${config.textColor}`}>
                 <span className="font-semibold">Verification Code:</span> <span className="font-mono font-bold">{verificationCode}</span>
               </p>
             )}
@@ -188,14 +199,14 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
             <button
               onClick={handleAccept}
               disabled={isResponding || localResponseStatus !== null}
-              className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition shadow-md"
+              className="flex-1 px-4 py-2 bg-green-50 dark:bg-green-900/30 border-2 border-green-400 dark:border-green-700 text-green-600 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium text-sm transition"
             >
               {isResponding ? 'Processing...' : 'Accept'}
             </button>
             <button
               onClick={handleDeny}
               disabled={isResponding || localResponseStatus !== null}
-              className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition shadow-md"
+              className="flex-1 px-4 py-2 bg-red-50 dark:bg-red-900/30 border-2 border-red-400 dark:border-red-700 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium text-sm transition"
             >
               {isResponding ? 'Processing...' : 'Deny'}
             </button>
