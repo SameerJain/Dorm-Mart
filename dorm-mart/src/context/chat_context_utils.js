@@ -120,18 +120,22 @@ export async function fetch_unread_messages(signal) {
   return r.json();
 }
 
-export async function create_message({ receiverId, content, signal }) {
+export async function create_message({ receiverId, convId, content, signal }) {
+  const body = {
+    receiver_id: receiverId,
+    content
+  };
+  if (convId) {
+    body.conv_id = convId;
+  }
   const r = await fetch(`${BASE}/chat/create_message.php`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json", // tells PHP we’re sending JSON
+      "Content-Type": "application/json", // tells PHP we're sending JSON
       "Accept": "application/json"
     },
     credentials: "include",               // sends PHP session cookie if your server uses it
-    body: JSON.stringify({
-      receiver_id: receiverId,
-      content
-    }),
+    body: JSON.stringify(body),
     signal                                // lets you cancel if needed
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);

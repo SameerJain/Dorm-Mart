@@ -277,6 +277,7 @@ export function ChatProvider({ children }) {
             const res = await create_message({
                 senderId: myIdRef.current,
                 receiverId: convo.receiverId,
+                convId: activeConvId,
                 content: trimmed,
                 signal: undefined,
             });
