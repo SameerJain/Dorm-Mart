@@ -169,6 +169,86 @@ export default function ChatPage() {
     setDeleteError('');
   }
 
+  // Helper function to render a conversation item
+  // sectionType: 'sellers' for "Messages To Sellers", 'buyers' for "Messages to Buyers"
+  function renderConversationItem(c, sectionType = 'sellers') {
+    const isActive = c.conv_id === activeConvId;
+    const unread = unreadByConv?.[c.conv_id] ?? 0;
+    const isHighlighted = isActive && !isMobileList; // mobile "Back" sets list view => no highlight
+    
+    // Check if this conversation has a listing_intro message (created via Message Seller)
+    const activeMessages = isActive ? messages : [];
+    const hasListingIntro = activeMessages.some(m => m.metadata?.type === "listing_intro");
+    const listingIntroMsg = activeMessages.find(m => m.metadata?.type === "listing_intro");
+    // If there's a listing_intro, check if current user is buyer (sender) or seller (receiver)
+    const isBuyer = listingIntroMsg && listingIntroMsg.sender === "me";
+    const isSeller = listingIntroMsg && listingIntroMsg.sender === "them";
+    
+    // Determine color based on role
+    let buttonColorClass = "";
+    if (isHighlighted) {
+      if (hasListingIntro) {
+        if (isBuyer) {
+          buttonColorClass = "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
+        } else if (isSeller) {
+          buttonColorClass = "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+        } else {
+          buttonColorClass = "bg-indigo-50 text-indigo-700";
+        }
+      } else {
+        buttonColorClass = "bg-indigo-50 text-indigo-700";
+      }
+    }
+
+    // Determine hover color based on section type
+    const hoverColor = sectionType === 'buyers' ? "hover:bg-green-600" : "hover:bg-blue-600";
+
+    return (
+      <li key={c.conv_id} className="relative group">
+        <button
+          onClick={() => {
+            fetchConversation(c.conv_id);
+            setIsMobileList(false); // go to chat pane on mobile
+          }}
+          className={
+            "flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition " +
+            (buttonColorClass || (isHighlighted ? "bg-indigo-50 text-indigo-700" : hoverColor))
+          }
+          aria-current={isHighlighted ? "true" : undefined}
+        >
+          <div className="flex flex-col min-w-0 flex-1">
+            {(c.productTitle || c.productId) && (
+              <span className="truncate font-semibold text-sm">
+                {c.productTitle || `Item #${c.productId}`}
+              </span>
+            )}
+            <span className="truncate text-sm">{c.receiverName}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {unread > 0 && (
+              <span
+                className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-xs leading-5"
+                aria-label={`${unread} unread`}
+              >
+                {unread > 99 ? "99+" : unread}
+              </span>
+            )}
+            <button
+              onClick={(e) => handleDeleteClick(c.conv_id, e)}
+              className="opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400"
+              aria-label="Delete conversation"
+              title="Delete conversation"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </button>
+      </li>
+    );
+  }
+
   return (
     <div className="h-[calc(100dvh-var(--nav-h))] w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
     style={{ "--nav-h": "64px" }}>
@@ -204,80 +284,52 @@ export default function ChatPage() {
                     Something went wrong, please try again later
                   </div>
                 </li>
-              ) : (
-                  conversations.map((c) => {
-                    const isActive = c.conv_id === activeConvId;
-                    const unread = unreadByConv?.[c.conv_id] ?? 0;
-                    const isHighlighted = isActive && !isMobileList; // mobile "Back" sets list view => no highlight
+              ) : (() => {
+                  // Group conversations into "Messages To Sellers" (buyer) and "Messages to Buyers" (seller)
+                  const messagesToSellers = [];
+                  const messagesToBuyers = [];
+                  
+                  conversations.forEach((c) => {
+                    // Determine if current user is seller or buyer
+                    // If conversation has product_id and current user is seller of that product -> "Messages to Buyers"
+                    // Otherwise -> "Messages To Sellers"
+                    const isSellerConversation = c.productId && c.productSellerId && myId && Number(c.productSellerId) === Number(myId);
                     
-                    // Check if this conversation has a listing_intro message (created via Message Seller)
-                    const activeMessages = isActive ? messages : [];
-                    const hasListingIntro = activeMessages.some(m => m.metadata?.type === "listing_intro");
-                    const listingIntroMsg = activeMessages.find(m => m.metadata?.type === "listing_intro");
-                    // If there's a listing_intro, check if current user is buyer (sender) or seller (receiver)
-                    const isBuyer = listingIntroMsg && listingIntroMsg.sender === "me";
-                    const isSeller = listingIntroMsg && listingIntroMsg.sender === "them";
-                    
-                    // Determine color based on role
-                    let buttonColorClass = "";
-                    if (isHighlighted) {
-                      if (hasListingIntro) {
-                        if (isBuyer) {
-                          buttonColorClass = "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
-                        } else if (isSeller) {
-                          buttonColorClass = "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300";
-                        } else {
-                          buttonColorClass = "bg-indigo-50 text-indigo-700";
-                        }
-                      } else {
-                        buttonColorClass = "bg-indigo-50 text-indigo-700";
-                      }
+                    if (isSellerConversation) {
+                      messagesToBuyers.push(c);
+                    } else {
+                      messagesToSellers.push(c);
                     }
-
-                    return (
-                      <li key={c.conv_id} className="relative group">
-                        <button
-                          onClick={() => {
-                            fetchConversation(c.conv_id);
-                            setIsMobileList(false); // go to chat pane on mobile
-                          }}
-                          className={
-                            "flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition " +
-                            (buttonColorClass || (isHighlighted ? "bg-indigo-50 text-indigo-700" : "hover:bg-blue-600"))
-                          }
-                          aria-current={isHighlighted ? "true" : undefined}
-                        >
-                          <div className="flex flex-col min-w-0 flex-1">
-                            {c.productTitle && (
-                              <span className="truncate font-semibold text-sm">{c.productTitle}</span>
-                            )}
-                            <span className="truncate text-sm">{c.receiverName}</span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {unread > 0 && (
-                              <span
-                                className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-xs leading-5"
-                                aria-label={`${unread} unread`}
-                              >
-                                {unread > 99 ? "99+" : unread}
-                              </span>
-                            )}
-                            <button
-                              onClick={(e) => handleDeleteClick(c.conv_id, e)}
-                              className="opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400"
-                              aria-label="Delete conversation"
-                              title="Delete conversation"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </button>
-                      </li>
-                    );
-                  })
-                  )}
+                  });
+                  
+                  return (
+                    <>
+                      {/* Messages To Sellers Section */}
+                      {messagesToSellers.length > 0 && (
+                        <>
+                          <li className="px-2 py-2">
+                            <h3 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                              Messages To Sellers
+                            </h3>
+                          </li>
+                          {messagesToSellers.map((c) => renderConversationItem(c, 'sellers'))}
+                        </>
+                      )}
+                      
+                      {/* Messages to Buyers Section */}
+                      {messagesToBuyers.length > 0 && (
+                        <>
+                          <li className="px-2 py-2 mt-4">
+                            <h3 className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide">
+                              Messages to Buyers
+                            </h3>
+                          </li>
+                          {messagesToBuyers.map((c) => renderConversationItem(c, 'buyers'))}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
             </ul>
           </aside>
 

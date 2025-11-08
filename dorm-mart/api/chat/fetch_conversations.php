@@ -46,7 +46,8 @@ $sql = "
     c.user1_fname,
     c.user2_fname,
     c.product_id,
-    inv.title AS product_title
+    inv.title AS product_title,
+    inv.seller_id AS product_seller_id
   FROM conversations c
   LEFT JOIN INVENTORY inv ON inv.product_id = c.product_id
   WHERE (c.user1_id = ? AND c.user1_deleted = 0)
