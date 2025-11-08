@@ -449,6 +449,7 @@ export function ChatProvider({ children }) {
         conversations,
         activeConvId,
         messages,
+        messagesByConv, // Expose to check loading state
         convError,
         chatByConvError,
         sendMsgError,

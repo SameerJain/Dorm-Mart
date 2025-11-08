@@ -15,6 +15,7 @@ export default function ChatPage() {
     conversations,
     activeConvId,
     messages,
+    messagesByConv,
     convError,
     chatByConvError,
     unreadByConv,
@@ -503,10 +504,16 @@ export default function ChatPage() {
                     Select a chat to view messages.
                   </p>
                 </div>
-              ) : chatByConvError[activeConvId] ? (
+              ) : chatByConvError[activeConvId] === true ? (
                 <p className="text-center text-sm text-red-600 dark:text-red-400">
                   Something went wrong, please try again later
                 </p>
+              ) : messagesByConv[activeConvId] === undefined ? (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-sm text-gray-500">
+                    Loading messages...
+                  </p>
+                </div>
               ) : messages.length === 0 ? (
                 <p className="text-center text-sm text-gray-500">
                   No messages yet.

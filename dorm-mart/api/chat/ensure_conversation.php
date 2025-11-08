@@ -195,6 +195,26 @@ try {
         throw new RuntimeException('Unable to ensure conversation');
     }
 
+    // Add product details to conversation row for consistency with fetch_conversations.php
+    if ($productRow) {
+        $conversationRow['product_title'] = (string)($productRow['title'] ?? '');
+        $conversationRow['product_seller_id'] = isset($productRow['seller_id']) ? (int)$productRow['seller_id'] : null;
+        
+        // Extract first image URL for product_image_url
+        $firstImage = null;
+        if (!empty($productRow['photos'])) {
+            $decoded = json_decode((string)$productRow['photos'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && count($decoded)) {
+                $firstImage = $decoded[0];
+            }
+        }
+        $conversationRow['product_image_url'] = $firstImage;
+    } else {
+        $conversationRow['product_title'] = null;
+        $conversationRow['product_seller_id'] = null;
+        $conversationRow['product_image_url'] = null;
+    }
+
     $productDetails = null;
     $buyerName = null;
     $buyerFirst = null;
