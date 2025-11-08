@@ -21,6 +21,8 @@ import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
 import SchedulePurchasePage from "./pages/SellerDashboard/SchedulePurchasePage.jsx";
 import OngoingPurchasesPage from "./pages/SellerDashboard/OngoingPurchasesPage.jsx";
+import MarkCompletedPage from "./pages/SellerDashboard/MarkCompletedPage.jsx";
+import ReportIssuePage from "./pages/SellerDashboard/ReportIssuePage.jsx";
 import ViewProduct from "./itemDetails/viewProduct.jsx";
 import SearchResults from "./pages/search/searchResults.jsx";
 // Chat
@@ -92,6 +94,14 @@ export const router = createHashRouter([
       {
         path: "seller-dashboard/ongoing-purchases",
         element: <OngoingPurchasesPage />,
+      },
+      {
+        path: "scheduled-purchases/mark-completed/:requestId",
+        element: <MarkCompletedPage />,
+      },
+      {
+        path: "scheduled-purchases/report-issue/:requestId",
+        element: <ReportIssuePage />,
       },
       // Settings (under /app)
       {

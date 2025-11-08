@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    $sellerId = require_login();
+    $userId = require_login();
 
     $rawBody = file_get_contents('php://input');
     $payload = json_decode($rawBody, true);
@@ -75,7 +75,11 @@ try {
         exit;
     }
 
-    if ((int)$row['seller_user_id'] !== $sellerId) {
+    $sellerId = (int)$row['seller_user_id'];
+    $buyerId = (int)$row['buyer_user_id'];
+    
+    // Allow both seller and buyer to cancel
+    if ($userId !== $sellerId && $userId !== $buyerId) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Not authorized to cancel this request']);
         exit;
@@ -133,24 +137,24 @@ try {
     // Create special message in chat
     $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
     if ($conversationId > 0) {
-        // Get seller name
-        $sellerStmt = $conn->prepare('SELECT first_name, last_name FROM user_accounts WHERE user_id = ? LIMIT 1');
-        $sellerStmt->bind_param('i', $sellerId);
-        $sellerStmt->execute();
-        $sellerRes = $sellerStmt->get_result();
-        $sellerRow = $sellerRes ? $sellerRes->fetch_assoc() : null;
-        $sellerStmt->close();
+        // Get canceller name (could be seller or buyer)
+        $cancellerStmt = $conn->prepare('SELECT first_name, last_name FROM user_accounts WHERE user_id = ? LIMIT 1');
+        $cancellerStmt->bind_param('i', $userId);
+        $cancellerStmt->execute();
+        $cancellerRes = $cancellerStmt->get_result();
+        $cancellerRow = $cancellerRes ? $cancellerRes->fetch_assoc() : null;
+        $cancellerStmt->close();
         
-        $sellerFirstName = $sellerRow ? trim((string)$sellerRow['first_name']) : '';
-        $sellerLastName = $sellerRow ? trim((string)$sellerRow['last_name']) : '';
-        $sellerDisplayName = '';
-        if ($sellerFirstName !== '' && $sellerLastName !== '') {
-            $sellerDisplayName = $sellerFirstName . ' ' . $sellerLastName;
+        $cancellerFirstName = $cancellerRow ? trim((string)$cancellerRow['first_name']) : '';
+        $cancellerLastName = $cancellerRow ? trim((string)$cancellerRow['last_name']) : '';
+        $cancellerDisplayName = '';
+        if ($cancellerFirstName !== '' && $cancellerLastName !== '') {
+            $cancellerDisplayName = $cancellerFirstName . ' ' . $cancellerLastName;
         } else {
-            $sellerDisplayName = 'User ' . $sellerId;
+            $cancellerDisplayName = 'User ' . $userId;
         }
         
-        $messageContent = $sellerDisplayName . ' has cancelled the scheduled purchase.';
+        $messageContent = $cancellerDisplayName . ' has cancelled the scheduled purchase.';
         
         // Get conversation details
         $convStmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? LIMIT 1');
@@ -161,9 +165,8 @@ try {
         $convStmt->close();
         
         if ($convRow) {
-            $buyerId = (int)$row['buyer_user_id'];
-            $msgSenderId = $sellerId;
-            $msgReceiverId = ($convRow['user1_id'] == $sellerId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
+            $msgSenderId = $userId;
+            $msgReceiverId = ($convRow['user1_id'] == $userId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
             
             // Get names for message
             $nameStmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?)');
