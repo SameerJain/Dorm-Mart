@@ -29,14 +29,46 @@ export default function ViewProduct() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [msgLoading, setMsgLoading] = useState(false);
   const [msgError, setMsgError] = useState(null);
+  const [myId, setMyId] = useState(null);
 
   const chatCtx = useContext(ChatContext);
-  const myId = chatCtx?.myId ?? null;
+  // Try ChatContext first, but also fetch directly as fallback
+  const chatMyId = chatCtx?.myId ?? null;
 
   useEffect(() => {
     setMsgLoading(false);
     setMsgError(null);
   }, [productId]);
+
+  // Fetch user ID directly (fallback if ChatContext not loaded)
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      // Use ChatContext ID if available
+      if (chatMyId) {
+        setMyId(chatMyId);
+        return;
+      }
+      // Otherwise fetch directly
+      try {
+        const r = await fetch(`${API_BASE}/auth/me.php`, {
+          signal: controller.signal,
+          credentials: "include",
+        });
+        if (r.ok) {
+          const json = await r.json();
+          if (json.user_id) {
+            setMyId(json.user_id);
+          }
+        }
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          // Silently fail - user might not be logged in
+        }
+      }
+    })();
+    return () => controller.abort();
+  }, [chatMyId]);
 
   useEffect(() => {
     if (!productId) return;
@@ -92,10 +124,14 @@ export default function ViewProduct() {
     }
     photos = (photos || []).filter(Boolean);
 
-    // proxy remote images through image.php if present
+    // proxy remote images and /data/images/ paths through image.php if present
     const photoUrls = photos.map((p) => {
       const raw = String(p);
       if (/^https?:\/\//i.test(raw)) {
+        return `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
+      }
+      // Route /data/images/ and /images/ paths through image.php proxy (like other components)
+      if (raw.startsWith('/data/images/') || raw.startsWith('/images/')) {
         return `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
       }
       return raw.startsWith("/") ? `${PUBLIC_BASE}${raw}` : raw;
@@ -160,13 +196,14 @@ export default function ViewProduct() {
   const hasPrev = activeIdx > 0;
   const hasNext = normalized?.photoUrls && activeIdx < normalized.photoUrls.length - 1;
 
-  // no-op
+  // Check if current user is the seller (same condition used for yellow banner and grayed out button)
+  const isSellerViewingOwnProduct = myId && normalized?.sellerId && Number(myId) === Number(normalized.sellerId);
 
   const handleMessageSeller = async () => {
     if (msgLoading || !normalized?.sellerId) return;
 
     // Check if user is the seller
-    if (myId && normalized.sellerId && Number(myId) === Number(normalized.sellerId)) {
+    if (isSellerViewingOwnProduct) {
       setMsgError("You are the seller of this item.");
       return;
     }
@@ -238,7 +275,7 @@ export default function ViewProduct() {
           Back
         </button>
         <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100">Product Details</h1>
-        {myId && normalized?.sellerId && Number(myId) === Number(normalized.sellerId) ? (
+        {isSellerViewingOwnProduct ? (
           <button
             onClick={() => navigate('/app/seller-dashboard')}
             className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
@@ -259,7 +296,7 @@ export default function ViewProduct() {
           <p className="text-center text-sm text-gray-400 dark:text-gray-500">No product found.</p>
         ) : (
           <>
-            {myId && normalized.sellerId && Number(myId) === Number(normalized.sellerId) && (
+            {isSellerViewingOwnProduct && (
               <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">You are the seller of this item.</p>
               </div>
@@ -369,9 +406,9 @@ export default function ViewProduct() {
                 <div className="mt-3 space-y-2">
                   <button
                     onClick={handleMessageSeller}
-                    disabled={!normalized.sellerId || msgLoading || (myId && normalized.sellerId && Number(myId) === Number(normalized.sellerId))}
+                    disabled={!normalized.sellerId || msgLoading || isSellerViewingOwnProduct}
                     className={`w-full rounded-full font-medium py-2 ${
-                      myId && normalized.sellerId && Number(myId) === Number(normalized.sellerId)
+                      isSellerViewingOwnProduct
                         ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white"
                         : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
                     }`}
