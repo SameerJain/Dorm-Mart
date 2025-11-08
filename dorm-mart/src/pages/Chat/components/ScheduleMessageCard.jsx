@@ -76,36 +76,22 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     }
   };
 
-  // Use consistent styling for all schedule messages - matching site's color scheme
-  // Check localResponseStatus first for immediate UI update after Accept/Deny
+  // Use consistent styling for all schedule messages
+  // schedule_request always stays blue regardless of response status
+  // Other message types (accepted/denied/cancelled) keep their colors
   const getMessageConfig = () => {
-    // If local response status is set, use that for immediate visual feedback
-    if (localResponseStatus === 'accepted') {
+    // schedule_request card always stays blue, regardless of localResponseStatus
+    if (messageType === 'schedule_request') {
       return {
-        bgColor: 'bg-green-600 to-green-700',
-        borderColor: 'border-green-400',
-        iconColor: 'text-green-100',
-        showActions: false,
-      };
-    }
-    if (localResponseStatus === 'declined') {
-      return {
-        bgColor: 'bg-red-600 to-red-700',
-        borderColor: 'border-red-400',
-        iconColor: 'text-red-100',
-        showActions: false,
+        bgColor: 'bg-blue-600 to-blue-700',
+        borderColor: 'border-blue-400',
+        iconColor: 'text-blue-100',
+        showActions: localResponseStatus === null && !isMine, // Buyer sees actions only if not responded
       };
     }
     
-    // Otherwise, use messageType from props
+    // For other message types, use their specific colors
     switch (messageType) {
-      case 'schedule_request':
-        return {
-          bgColor: 'bg-blue-600 to-blue-700',
-          borderColor: 'border-blue-400',
-          iconColor: 'text-blue-100',
-          showActions: !isMine, // Buyer sees actions
-        };
       case 'schedule_accepted':
         return {
           bgColor: 'bg-green-600 to-green-700',
@@ -197,7 +183,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
           </div>
         )}
 
-        {config.showActions && messageType === 'schedule_request' && localResponseStatus === null && (
+        {config.showActions && (
           <div className="flex gap-2 pt-2">
             <button
               onClick={handleAccept}
