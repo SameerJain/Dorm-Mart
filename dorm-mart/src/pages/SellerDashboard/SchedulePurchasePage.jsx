@@ -1,25 +1,32 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ChatContext } from '../../context/ChatContext';
 import { MEET_LOCATION_OPTIONS, MEET_LOCATION_OTHER_VALUE } from '../../constants/meetLocations';
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
 function SchedulePurchasePage() {
+    const location = useLocation();
+    const navigate = useNavigate();
     const { conversations } = useContext(ChatContext) || { conversations: [] };
+    const navState = location.state && typeof location.state === 'object' ? location.state : null;
 
     const [listings, setListings] = useState([]);
-    const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [loadingRequests, setLoadingRequests] = useState(false);
     const [error, setError] = useState('');
     const [formError, setFormError] = useState('');
     const [formSuccess, setFormSuccess] = useState('');
 
-    const [selectedListingId, setSelectedListingId] = useState('');
-    const [selectedConversationId, setSelectedConversationId] = useState('');
+    const [selectedListingId, setSelectedListingId] = useState(navState?.productId ? String(navState.productId) : '');
+    const [selectedConversationId, setSelectedConversationId] = useState(navState?.convId ? String(navState.convId) : '');
     const [meetLocationChoice, setMeetLocationChoice] = useState('');
     const [customMeetLocation, setCustomMeetLocation] = useState('');
-    const [meetingAt, setMeetingAt] = useState(''); // datetime-local value
+    const [meetingDate, setMeetingDate] = useState('');
+    const [meetingHour, setMeetingHour] = useState('');
+    const [meetingMinute, setMeetingMinute] = useState('');
+    const [meetingAmPm, setMeetingAmPm] = useState('');
+    const [dateTimeError, setDateTimeError] = useState('');
+    const [description, setDescription] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -59,37 +66,6 @@ function SchedulePurchasePage() {
         return () => abort.abort();
     }, []);
 
-    useEffect(() => {
-        const abort = new AbortController();
-        async function loadRequests() {
-            setLoadingRequests(true);
-            try {
-                const res = await fetch(`${API_BASE}/scheduled-purchases/list_seller.php`, {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' },
-                    credentials: 'include',
-                    signal: abort.signal,
-                });
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
-                }
-                const payload = await res.json();
-                if (!payload.success) {
-                    throw new Error(payload.error || 'Failed to load scheduled purchases');
-                }
-                setRequests(Array.isArray(payload.data) ? payload.data : []);
-            } catch (e) {
-                if (e.name !== 'AbortError') {
-                    setError('Unable to load scheduled purchases right now.');
-                }
-            } finally {
-                setLoadingRequests(false);
-            }
-        }
-
-        loadRequests();
-        return () => abort.abort();
-    }, []);
 
     const conversationOptions = useMemo(() => {
         if (!Array.isArray(conversations)) return [];
@@ -115,26 +91,185 @@ function SchedulePurchasePage() {
         setSelectedConversationId('');
         setMeetLocationChoice('');
         setCustomMeetLocation('');
-        setMeetingAt('');
+        setMeetingDate('');
+        setMeetingHour('');
+        setMeetingMinute('');
+        setMeetingAmPm('');
+        setDateTimeError('');
+        setDescription('');
+    };
+
+    // Convert 12-hour format to 24-hour format
+    const convertTo24Hour = (hour, amPm) => {
+        const hourNum = parseInt(hour);
+        if (amPm === 'PM' && hourNum !== 12) {
+            return hourNum + 12;
+        } else if (amPm === 'AM' && hourNum === 12) {
+            return 0;
+        }
+        return hourNum;
+    };
+
+    // Get current Eastern Time as a Date object
+    const getEasternTime = () => {
+        const now = new Date();
+        // Get Eastern Time components
+        const easternFormatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/New_York',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
+        const parts = easternFormatter.formatToParts(now);
+        const year = parseInt(parts.find(p => p.type === 'year').value);
+        const month = parseInt(parts.find(p => p.type === 'month').value) - 1; // JS months are 0-indexed
+        const day = parseInt(parts.find(p => p.type === 'day').value);
+        const hour = parseInt(parts.find(p => p.type === 'hour').value);
+        const minute = parseInt(parts.find(p => p.type === 'minute').value);
+        const second = parseInt(parts.find(p => p.type === 'second').value);
+        
+        // Create date representing Eastern Time (treating it as if it were local time)
+        return new Date(year, month, day, hour, minute, second);
+    };
+
+    // Get today's date in Eastern Time (YYYY-MM-DD format for min attribute)
+    const getTodayDate = () => {
+        const easternNow = getEasternTime();
+        const year = easternNow.getFullYear();
+        const month = String(easternNow.getMonth() + 1).padStart(2, '0');
+        const day = String(easternNow.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    // Validate date and time (using Eastern Time)
+    const validateDateTime = () => {
+        setDateTimeError('');
+        
+        if (!meetingDate || !meetingHour || !meetingMinute || !meetingAmPm) {
+            setDateTimeError('Please complete all date and time fields.');
+            return false;
+        }
+
+        // Get current Eastern Time components
+        const easternNow = getEasternTime();
+        const easternYear = easternNow.getFullYear();
+        const easternMonth = easternNow.getMonth() + 1; // 1-12
+        const easternDay = easternNow.getDate();
+        const easternHour = easternNow.getHours();
+        const easternMinute = easternNow.getMinutes();
+
+        // Parse selected date (treat as Eastern Time)
+        const [year, month, day] = meetingDate.split('-').map(Number);
+
+        // Compare dates (both in Eastern Time)
+        if (year < easternYear || 
+            (year === easternYear && month < easternMonth) ||
+            (year === easternYear && month === easternMonth && day < easternDay)) {
+            setDateTimeError('Meeting date cannot be in the past.');
+            return false;
+        }
+
+        // If date is today, check if time is in the future (Eastern Time)
+        if (year === easternYear && month === easternMonth && day === easternDay) {
+            const selectedHour24 = convertTo24Hour(meetingHour, meetingAmPm);
+            const selectedMinute = parseInt(meetingMinute);
+            
+            // Compare time components directly (both in Eastern Time)
+            if (selectedHour24 < easternHour || 
+                (selectedHour24 === easternHour && selectedMinute <= easternMinute)) {
+                setDateTimeError('Meeting time must be in the future.');
+                return false;
+            }
+        }
+        // If date is in the future, any time is valid
+
+        return true;
+    };
+
+    // Convert separate fields to ISO datetime string (treats input as Eastern Time, converts to UTC)
+    const combineDateTime = () => {
+        if (!meetingDate || !meetingHour || !meetingMinute || !meetingAmPm) {
+            return null;
+        }
+
+        const hour24 = convertTo24Hour(meetingHour, meetingAmPm);
+        
+        // Parse date and create datetime (treat as Eastern Time)
+        const [year, month, day] = meetingDate.split('-').map(Number);
+        
+        // Create date string in Eastern Time format
+        const dateTimeString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour24).padStart(2, '0')}:${meetingMinute}:00`;
+        
+        // Options for formatting Eastern Time
+        const easternTimeOptions = {
+            timeZone: 'America/New_York',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        };
+        
+        // Helper function to check if UTC date matches desired Eastern Time
+        const checkUtcDate = (utcOffset) => {
+            const utcDate = new Date(`${dateTimeString}${utcOffset}`);
+            const utcAsEastern = utcDate.toLocaleString('en-US', easternTimeOptions);
+            const parts = utcAsEastern.match(/(\d+)\/(\d+)\/(\d+),?\s+(\d+):(\d+)/);
+            if (parts) {
+                const [, partMonth, partDay, partYear, partHour, partMinute] = parts.map(Number);
+                if (partYear === year && partMonth === month && partDay === day && 
+                    partHour === hour24 && partMinute === parseInt(meetingMinute)) {
+                    return utcDate.toISOString();
+                }
+            }
+            return null;
+        };
+        
+        // Try EST (UTC-5) first
+        const estResult = checkUtcDate('-05:00');
+        if (estResult) return estResult;
+        
+        // Try EDT (UTC-4)
+        const edtResult = checkUtcDate('-04:00');
+        if (edtResult) return edtResult;
+        
+        // Fallback: use EST
+        return new Date(`${dateTimeString}-05:00`).toISOString();
     };
 
     async function handleSubmit(e) {
         e.preventDefault();
         setFormError('');
         setFormSuccess('');
+        setDateTimeError('');
+
+        // Validate date and time first
+        if (!validateDateTime()) {
+            return;
+        }
 
         const trimmedCustomLocation = customMeetLocation.trim();
         const finalMeetLocation = meetLocationChoice === MEET_LOCATION_OTHER_VALUE
             ? trimmedCustomLocation
             : meetLocationChoice;
 
-        if (!selectedListingId || !selectedConversationId || !finalMeetLocation || !meetingAt) {
+        // If prefilled from navState, use those values
+        const finalListingId = navState?.productId ? String(navState.productId) : selectedListingId;
+        const finalConversationId = navState?.convId ? String(navState.convId) : selectedConversationId;
+        
+        if (!finalListingId || !finalConversationId || !finalMeetLocation) {
             setFormError('Please complete all required fields before submitting.');
             return;
         }
 
-        const meetingDate = new Date(meetingAt);
-        if (Number.isNaN(meetingDate.getTime())) {
+        const meetingDateTimeISO = combineDateTime();
+        if (!meetingDateTimeISO) {
             setFormError('Please provide a valid meeting date and time.');
             return;
         }
@@ -149,12 +284,13 @@ function SchedulePurchasePage() {
                 },
                 credentials: 'include',
                 body: JSON.stringify({
-                    inventory_product_id: Number(selectedListingId),
-                    conversation_id: Number(selectedConversationId),
+                    inventory_product_id: Number(finalListingId),
+                    conversation_id: Number(finalConversationId),
                     meet_location: finalMeetLocation,
                     meet_location_choice: meetLocationChoice,
                     custom_meet_location: meetLocationChoice === MEET_LOCATION_OTHER_VALUE ? trimmedCustomLocation : null,
-                    meeting_at: meetingDate.toISOString(),
+                    meeting_at: meetingDateTimeISO,
+                    description: description.trim() || null,
                 }),
             });
 
@@ -166,36 +302,16 @@ function SchedulePurchasePage() {
                 throw new Error(payload.error || 'Failed to create schedule');
             }
 
-            setFormSuccess('Schedule created successfully. Share the verification code with your buyer when you meet.');
-            resetForm();
-            await refreshRequests();
+            // Redirect back to chat page, optionally to the specific conversation
+            if (navState?.convId) {
+                navigate(`/app/chat?conv=${navState.convId}`);
+            } else {
+                navigate('/app/chat');
+            }
         } catch (err) {
             setFormError(err.message === 'Failed to create schedule' ? err.message : 'Could not create the schedule. Please try again.');
         } finally {
             setIsSubmitting(false);
-        }
-    }
-
-    async function refreshRequests() {
-        setLoadingRequests(true);
-        try {
-            const res = await fetch(`${API_BASE}/scheduled-purchases/list_seller.php`, {
-                method: 'GET',
-                headers: { 'Accept': 'application/json' },
-                credentials: 'include',
-            });
-            if (!res.ok) {
-                throw new Error('HTTP error');
-            }
-            const payload = await res.json();
-            if (!payload.success) {
-                throw new Error('Failed to load scheduled purchases');
-            }
-            setRequests(Array.isArray(payload.data) ? payload.data : []);
-        } catch (e) {
-            setError('Unable to refresh scheduled purchases.');
-        } finally {
-            setLoadingRequests(false);
         }
     }
 
@@ -211,14 +327,20 @@ function SchedulePurchasePage() {
                 </div>
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                    {navState && (navState.convId || navState.productId) && (
+                        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <p className="text-sm text-blue-800 dark:text-blue-200">Some fields have been prefilled from your chat conversation.</p>
+                        </div>
+                    )}
                     <form onSubmit={handleSubmit} className="space-y-5">
+                        {/* Always show listing dropdown, but disable if prefilled */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Select Listing</label>
                             <select
-                                value={selectedListingId}
+                                value={navState?.productId ? String(navState.productId) : selectedListingId}
                                 onChange={(e) => setSelectedListingId(e.target.value)}
-                                className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                disabled={loading || listingOptions.length === 0}
+                                className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+                                disabled={loading || listingOptions.length === 0 || !!navState?.productId}
                             >
                                 <option value="">{loading ? 'Loading your listings...' : 'Choose a listing'}</option>
                                 {listingOptions.map((listing) => (
@@ -229,13 +351,14 @@ function SchedulePurchasePage() {
                             </select>
                         </div>
 
+                        {/* Always show buyer dropdown, but disable if prefilled */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Select Buyer (Active Conversations)</label>
                             <select
-                                value={selectedConversationId}
+                                value={navState?.convId ? String(navState.convId) : selectedConversationId}
                                 onChange={(e) => setSelectedConversationId(e.target.value)}
-                                className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                disabled={conversationOptions.length === 0}
+                                className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+                                disabled={conversationOptions.length === 0 || !!navState?.convId}
                             >
                                 <option value="">{conversationOptions.length ? 'Choose a buyer' : 'No active conversations found'}</option>
                                 {conversationOptions.map((conv) => (
@@ -279,12 +402,93 @@ function SchedulePurchasePage() {
 
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Meeting Date &amp; Time</label>
-                            <input
-                                type="datetime-local"
-                                value={meetingAt}
-                                onChange={(e) => setMeetingAt(e.target.value)}
-                                className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div>
+                                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Date</label>
+                                    <input
+                                        type="date"
+                                        value={meetingDate}
+                                        onChange={(e) => {
+                                            setMeetingDate(e.target.value);
+                                            setDateTimeError('');
+                                        }}
+                                        min={getTodayDate()}
+                                        className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Hour</label>
+                                    <select
+                                        value={meetingHour}
+                                        onChange={(e) => {
+                                            setMeetingHour(e.target.value);
+                                            setDateTimeError('');
+                                        }}
+                                        className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">--</option>
+                                        {Array.from({ length: 12 }, (_, i) => i + 1).map((hour) => (
+                                            <option key={hour} value={String(hour)}>
+                                                {hour}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Minute</label>
+                                    <select
+                                        value={meetingMinute}
+                                        onChange={(e) => {
+                                            setMeetingMinute(e.target.value);
+                                            setDateTimeError('');
+                                        }}
+                                        className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">--</option>
+                                        {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => {
+                                            const minuteStr = String(minute).padStart(2, '0');
+                                            return (
+                                                <option key={minuteStr} value={minuteStr}>
+                                                    {minuteStr}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">AM/PM</label>
+                                    <select
+                                        value={meetingAmPm}
+                                        onChange={(e) => {
+                                            setMeetingAmPm(e.target.value);
+                                            setDateTimeError('');
+                                        }}
+                                        className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">--</option>
+                                        <option value="AM">AM</option>
+                                        <option value="PM">PM</option>
+                                    </select>
+                                </div>
+                            </div>
+                            {dateTimeError && (
+                                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{dateTimeError}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Description (Optional)</label>
+                            <textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                rows={4}
+                                maxLength={1000}
+                                placeholder="Add any additional details about the meeting..."
+                                className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
                             />
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                {description.length}/1000 characters
+                            </p>
                         </div>
 
                         {formError && (
@@ -304,51 +508,6 @@ function SchedulePurchasePage() {
                             </button>
                         </div>
                     </form>
-                </div>
-
-                <div className="mt-10">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Scheduled Purchases</h2>
-                        <button
-                            type="button"
-                            onClick={refreshRequests}
-                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                            disabled={loadingRequests}
-                        >
-                            {loadingRequests ? 'Refreshing...' : 'Refresh'}
-                        </button>
-                    </div>
-
-                    {loadingRequests ? (
-                        <div className="text-gray-600 dark:text-gray-300">Loading scheduled purchases...</div>
-                    ) : requests.length === 0 ? (
-                        <div className="text-gray-600 dark:text-gray-400">No scheduled purchases yet.</div>
-                    ) : (
-                        <div className="space-y-4">
-                            {requests.map((req) => (
-                                <div key={req.request_id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 shadow-sm">
-                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                        <div>
-                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{req.item?.title || 'Listing'}</h3>
-                                            <p className="text-sm text-gray-600 dark:text-gray-300">Buyer: {req.buyer?.first_name} {req.buyer?.last_name}</p>
-                                            <p className="text-sm text-gray-600 dark:text-gray-300">Location: {req.meet_location}</p>
-                                            <p className="text-sm text-gray-600 dark:text-gray-300">
-                                                Meeting: {req.meeting_at ? new Date(req.meeting_at).toLocaleString() : 'Not set'}
-                                            </p>
-                                            <p className="text-sm text-gray-600 dark:text-gray-300">Status: {req.status}</p>
-                                            <p className="text-sm text-gray-600 dark:text-gray-300">Verification Code: <span className="font-mono text-base text-blue-600 dark:text-blue-400">{req.verification_code}</span></p>
-                                        </div>
-                                        <div className="text-sm text-gray-500 dark:text-gray-400 self-start sm:self-center">
-                                            Created {req.created_at ? new Date(req.created_at).toLocaleString() : ''}
-                                            {req.buyer_response_at && (
-                                                <div>Buyer responded {new Date(req.buyer_response_at).toLocaleString()}</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
                 </div>
 
                 {error && (

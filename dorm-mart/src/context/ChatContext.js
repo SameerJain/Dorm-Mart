@@ -47,10 +47,18 @@ export function ChatProvider({ children }) {
         const receiverId = iAmUser1 ? user2Id : user1Id;
         const rawName = iAmUser1 ? (row.user2_fname ?? '') : (row.user1_fname ?? '');
         const receiverName = rawName && rawName.trim() !== '' ? rawName : `User ${receiverId}`;
+        const productTitle = row.product_title || null;
+        const productId = row.product_id ? Number(row.product_id) : null;
+        const productImageUrl = row.product_image_url || null;
+        const productSellerId = row.product_seller_id ? Number(row.product_seller_id) : null;
         return {
             conv_id: convId,
             receiverId,
             receiverName,
+            productTitle,
+            productId,
+            productImageUrl,
+            productSellerId,
         };
     }
 
@@ -207,6 +215,15 @@ export function ChatProvider({ children }) {
             }
 
             const raw = res.messages || [];
+            const currentMyId = myIdRef.current;
+            if (!currentMyId) {
+                throw new Error("User ID not available");
+            }
+            const myIdNum = Number(currentMyId);
+            if (!Number.isInteger(myIdNum) || myIdNum <= 0) {
+                throw new Error("Invalid user ID");
+            }
+            
             const normalized = raw.map((m) => {
                 const metadata = (() => {
                     if (!m.metadata) return null;
@@ -217,9 +234,20 @@ export function ChatProvider({ children }) {
                         return null;
                     }
                 })();
+                const senderIdNum = Number(m.sender_id);
+                if (!Number.isInteger(senderIdNum) || senderIdNum <= 0) {
+                    // Invalid sender_id, default to "them" for safety
+                    return {
+                        message_id: m.message_id,
+                        sender: "them",
+                        content: m.content,
+                        ts: Date.parse(m.created_at),
+                        metadata,
+                    };
+                }
                 return {
                     message_id: m.message_id,
-                    sender: m.sender_id === myIdRef.current ? "me" : "them",
+                    sender: senderIdNum === myIdNum ? "me" : "them",
                     content: m.content,
                     ts: Date.parse(m.created_at),
                     metadata,
@@ -287,8 +315,8 @@ export function ChatProvider({ children }) {
 
         stopPolling();
 
-        // if not in chat, or no active conversation, do nothing
-        if (!isOnChatRoute || !activeConvId) return;
+        // if not in chat, or no active conversation, or no user ID, do nothing
+        if (!isOnChatRoute || !activeConvId || !myIdRef.current) return;
 
         const shouldPollNow = () => document.visibilityState === "visible";
 
@@ -297,6 +325,10 @@ export function ChatProvider({ children }) {
 
         const tick = async() => {
             if (!shouldPollNow()) return;
+            
+            // Ensure myId is still available
+            const currentMyId = myIdRef.current;
+            if (!currentMyId) return;
 
             // cancel any previous unfinished request before starting a new one
             if (inFlightRef.ctrl) inFlightRef.ctrl.abort();
@@ -308,7 +340,7 @@ export function ChatProvider({ children }) {
 
             try {
                 const sinceSec = Math.floor((lastTsRefByConv.current[activeConvId] || 0) / 1000);
-                const incoming = await tick_fetch_new_messages(activeConvId, myIdRef.current, sinceSec, controller.signal);
+                const incoming = await tick_fetch_new_messages(activeConvId, currentMyId, sinceSec, controller.signal);
                 if (!incoming.length) return;
     
                 setMessagesByConv((prev) => {
@@ -343,7 +375,7 @@ export function ChatProvider({ children }) {
             // abort any in-flight request on unmount/dep-change
             if (inFlightRef.ctrl) inFlightRef.ctrl.abort();
         };
-    }, [activeConvId, isOnChatRoute]);
+    }, [activeConvId, isOnChatRoute, myId]);
 
     function clearUnreadMsgFor(convId) {
     setUnreadByConv((prev) => {
@@ -422,6 +454,8 @@ export function ChatProvider({ children }) {
         // unread state
         unreadByConv,
         unreadTotal,
+        // user info
+        myId,
         // actions
         fetchConversation,
         createMessage,

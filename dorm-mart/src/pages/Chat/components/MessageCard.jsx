@@ -1,20 +1,28 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 function MessageCard({ message, isMine }) {
+  const navigate = useNavigate();
   const metadata = message.metadata || {};
   const product = metadata.product || {};
   const previewText = message.content || "";
   const imageUrl = product.image_url;
+  const productId = product.product_id;
 
+  const handleClick = () => {
+    if (productId) {
+      navigate(`/app/viewProduct/${encodeURIComponent(productId)}`);
+    }
+  };
+
+  // Use consistent styling for listing_intro messages regardless of sender - matching site's blue color scheme
   return (
-    <div
-      className={
-        "max-w-[80%] rounded-2xl border shadow-sm overflow-hidden " +
-        (isMine ? "border-indigo-200 bg-indigo-700 text-white" : "border-gray-200 bg-white text-gray-900")
-      }
+    <div 
+      onClick={handleClick}
+      className={`max-w-[85%] rounded-2xl border-2 border-blue-400 bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg overflow-hidden ${productId ? 'cursor-pointer hover:shadow-xl hover:scale-[1.02] transition-all duration-200' : ''}`}
     >
       {imageUrl ? (
-        <div className="w-full h-40 overflow-hidden border-b border-gray-200">
+        <div className="w-full h-48 overflow-hidden border-b-2 border-blue-400/30">
           <img
             src={imageUrl}
             alt={product.title || "Listing image"}
@@ -22,13 +30,20 @@ function MessageCard({ message, isMine }) {
           />
         </div>
       ) : null}
-      <div className="p-4 space-y-2 text-sm">
-        <p className="font-semibold">
-          {product.title || "Listing"}
-        </p>
-        <p className="whitespace-pre-wrap break-words">
-          {previewText}
-        </p>
+      <div className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <svg className="w-5 h-5 text-blue-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+          <p className="font-bold text-base text-white">
+            {product.title || "Listing"}
+          </p>
+        </div>
+        <div className="px-3 py-2 rounded-lg bg-blue-500/30 backdrop-blur-sm">
+          <p className="whitespace-pre-wrap break-words text-sm text-blue-50">
+            {previewText}
+          </p>
+        </div>
       </div>
     </div>
   );

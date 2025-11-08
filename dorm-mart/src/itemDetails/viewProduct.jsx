@@ -27,6 +27,7 @@ export default function ViewProduct() {
   const [msgError, setMsgError] = useState(null);
 
   const chatCtx = useContext(ChatContext);
+  const myId = chatCtx?.myId ?? null;
 
   useEffect(() => {
     setMsgLoading(false);
@@ -160,6 +161,12 @@ export default function ViewProduct() {
   const handleMessageSeller = async () => {
     if (msgLoading || !normalized?.sellerId) return;
 
+    // Check if user is the seller
+    if (myId && normalized.sellerId && Number(myId) === Number(normalized.sellerId)) {
+      setMsgError("You are the seller of this item.");
+      return;
+    }
+
     setMsgError(null);
     setMsgLoading(true);
 
@@ -222,6 +229,12 @@ export default function ViewProduct() {
         ) : !normalized ? (
           <p className="text-center text-sm text-gray-400 dark:text-gray-500">No product found.</p>
         ) : (
+          <>
+            {myId && normalized.sellerId && Number(myId) === Number(normalized.sellerId) && (
+              <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">You are the seller of this item.</p>
+              </div>
+            )}
           <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-6 items-start">
             {/* Left: photos */}
             <section className="flex gap-3 items-start justify-center lg:sticky lg:top-20">
@@ -327,8 +340,12 @@ export default function ViewProduct() {
                 <div className="mt-3 space-y-2">
                   <button
                     onClick={handleMessageSeller}
-                    disabled={!normalized.sellerId || msgLoading}
-                    className="w-full rounded-full bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2"
+                    disabled={!normalized.sellerId || msgLoading || (myId && normalized.sellerId && Number(myId) === Number(normalized.sellerId))}
+                    className={`w-full rounded-full font-medium py-2 ${
+                      myId && normalized.sellerId && Number(myId) === Number(normalized.sellerId)
+                        ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white"
+                        : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
+                    }`}
                   >
                     {msgLoading ? "Opening chat..." : "Message Seller"}
                   </button>
@@ -371,6 +388,7 @@ export default function ViewProduct() {
               </div>
             </section>
           </div>
+          </>
         )}
       </div>
     </div>

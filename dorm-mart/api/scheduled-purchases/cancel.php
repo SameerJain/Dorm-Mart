@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    $buyerId = require_login();
+    $sellerId = require_login();
 
     $rawBody = file_get_contents('php://input');
     $payload = json_decode($rawBody, true);
@@ -34,9 +34,8 @@ try {
     }
 
     $requestId = isset($payload['request_id']) ? (int)$payload['request_id'] : 0;
-    $action = isset($payload['action']) ? strtolower(trim((string)$payload['action'])) : '';
 
-    if ($requestId <= 0 || ($action !== 'accept' && $action !== 'decline')) {
+    if ($requestId <= 0) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid request']);
         exit;
@@ -49,13 +48,10 @@ try {
         SELECT
             spr.request_id,
             spr.status,
-            spr.buyer_user_id,
             spr.seller_user_id,
-            spr.verification_code,
-            spr.inventory_product_id,
+            spr.buyer_user_id,
             spr.conversation_id,
-            spr.meet_location,
-            spr.meeting_at,
+            spr.inventory_product_id,
             inv.title AS item_title
         FROM scheduled_purchase_requests spr
         INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
@@ -79,64 +75,57 @@ try {
         exit;
     }
 
-    if ((int)$row['buyer_user_id'] !== $buyerId) {
+    if ((int)$row['seller_user_id'] !== $sellerId) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Not authorized to respond to this request']);
+        echo json_encode(['success' => false, 'error' => 'Not authorized to cancel this request']);
         exit;
     }
 
-    if ($row['status'] !== 'pending') {
+    $currentStatus = (string)$row['status'];
+    if ($currentStatus === 'cancelled') {
         http_response_code(409);
-        echo json_encode(['success' => false, 'error' => 'Request has already been handled']);
+        echo json_encode(['success' => false, 'error' => 'Request is already cancelled']);
         exit;
     }
 
-    $nextStatus = $action === 'accept' ? 'accepted' : 'declined';
+    if ($currentStatus === 'declined') {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'error' => 'Cannot cancel a declined request']);
+        exit;
+    }
 
-    $updateStmt = $conn->prepare('UPDATE scheduled_purchase_requests SET status = ?, buyer_response_at = NOW() WHERE request_id = ? LIMIT 1');
+    $updateStmt = $conn->prepare('UPDATE scheduled_purchase_requests SET status = ? WHERE request_id = ? LIMIT 1');
     if (!$updateStmt) {
         throw new RuntimeException('Failed to prepare update');
     }
-    $updateStmt->bind_param('si', $nextStatus, $requestId);
+    $status = 'cancelled';
+    $updateStmt->bind_param('si', $status, $requestId);
     $updateStmt->execute();
     $updateStmt->close();
     
-    // Update item status based on scheduled purchase status
+    // Update item status back to "Active" when cancelled (only if currently Pending from this scheduled purchase)
     $inventoryProductId = (int)$row['inventory_product_id'];
     if ($inventoryProductId > 0) {
-        if ($nextStatus === 'accepted') {
-            // When accepted, set item status to "Pending" (only if not already Sold)
-            $itemStatusStmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND item_status != ?');
+        // Check if there are other accepted scheduled purchases for this item
+        $checkOtherAcceptedStmt = $conn->prepare('SELECT COUNT(*) as cnt FROM scheduled_purchase_requests WHERE inventory_product_id = ? AND status = ? AND request_id != ?');
+        $acceptedStatus = 'accepted';
+        $checkOtherAcceptedStmt->bind_param('isi', $inventoryProductId, $acceptedStatus, $requestId);
+        $checkOtherAcceptedStmt->execute();
+        $checkRes = $checkOtherAcceptedStmt->get_result();
+        $checkRow = $checkRes ? $checkRes->fetch_assoc() : null;
+        $checkOtherAcceptedStmt->close();
+        
+        $hasOtherAccepted = $checkRow && (int)$checkRow['cnt'] > 0;
+        
+        // Only set back to Active if no other accepted scheduled purchases exist
+        if (!$hasOtherAccepted) {
+            $itemStatusStmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND item_status = ?');
             if ($itemStatusStmt) {
+                $activeStatus = 'Active';
                 $pendingStatus = 'Pending';
-                $soldStatus = 'Sold';
-                $itemStatusStmt->bind_param('sis', $pendingStatus, $inventoryProductId, $soldStatus);
+                $itemStatusStmt->bind_param('sis', $activeStatus, $inventoryProductId, $pendingStatus);
                 $itemStatusStmt->execute();
                 $itemStatusStmt->close();
-            }
-        } elseif ($nextStatus === 'declined') {
-            // When denied, set item status back to "Active" (only if currently Pending from this scheduled purchase)
-            // Check if there are other accepted scheduled purchases for this item
-            $checkOtherAcceptedStmt = $conn->prepare('SELECT COUNT(*) as cnt FROM scheduled_purchase_requests WHERE inventory_product_id = ? AND status = ? AND request_id != ?');
-            $acceptedStatus = 'accepted';
-            $checkOtherAcceptedStmt->bind_param('isi', $inventoryProductId, $acceptedStatus, $requestId);
-            $checkOtherAcceptedStmt->execute();
-            $checkRes = $checkOtherAcceptedStmt->get_result();
-            $checkRow = $checkRes ? $checkRes->fetch_assoc() : null;
-            $checkOtherAcceptedStmt->close();
-            
-            $hasOtherAccepted = $checkRow && (int)$checkRow['cnt'] > 0;
-            
-            // Only set back to Active if no other accepted scheduled purchases exist
-            if (!$hasOtherAccepted) {
-                $itemStatusStmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND item_status = ?');
-                if ($itemStatusStmt) {
-                    $activeStatus = 'Active';
-                    $pendingStatus = 'Pending';
-                    $itemStatusStmt->bind_param('sis', $activeStatus, $inventoryProductId, $pendingStatus);
-                    $itemStatusStmt->execute();
-                    $itemStatusStmt->close();
-                }
             }
         }
     }
@@ -144,25 +133,24 @@ try {
     // Create special message in chat
     $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
     if ($conversationId > 0) {
-        // Get buyer name
-        $buyerStmt = $conn->prepare('SELECT first_name, last_name FROM user_accounts WHERE user_id = ? LIMIT 1');
-        $buyerStmt->bind_param('i', $buyerId);
-        $buyerStmt->execute();
-        $buyerRes = $buyerStmt->get_result();
-        $buyerRow = $buyerRes ? $buyerRes->fetch_assoc() : null;
-        $buyerStmt->close();
+        // Get seller name
+        $sellerStmt = $conn->prepare('SELECT first_name, last_name FROM user_accounts WHERE user_id = ? LIMIT 1');
+        $sellerStmt->bind_param('i', $sellerId);
+        $sellerStmt->execute();
+        $sellerRes = $sellerStmt->get_result();
+        $sellerRow = $sellerRes ? $sellerRes->fetch_assoc() : null;
+        $sellerStmt->close();
         
-        $buyerFirstName = $buyerRow ? trim((string)$buyerRow['first_name']) : '';
-        $buyerLastName = $buyerRow ? trim((string)$buyerRow['last_name']) : '';
-        $buyerDisplayName = '';
-        if ($buyerFirstName !== '' && $buyerLastName !== '') {
-            $buyerDisplayName = $buyerFirstName . ' ' . $buyerLastName;
+        $sellerFirstName = $sellerRow ? trim((string)$sellerRow['first_name']) : '';
+        $sellerLastName = $sellerRow ? trim((string)$sellerRow['last_name']) : '';
+        $sellerDisplayName = '';
+        if ($sellerFirstName !== '' && $sellerLastName !== '') {
+            $sellerDisplayName = $sellerFirstName . ' ' . $sellerLastName;
         } else {
-            $buyerDisplayName = 'User ' . $buyerId;
+            $sellerDisplayName = 'User ' . $sellerId;
         }
         
-        $actionText = $action === 'accept' ? 'accepted' : 'denied';
-        $messageContent = $buyerDisplayName . ' has ' . $actionText . ' the scheduled purchase.';
+        $messageContent = $sellerDisplayName . ' has cancelled the scheduled purchase.';
         
         // Get conversation details
         $convStmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? LIMIT 1');
@@ -173,8 +161,9 @@ try {
         $convStmt->close();
         
         if ($convRow) {
-            $msgSenderId = $buyerId;
-            $msgReceiverId = ($convRow['user1_id'] == $buyerId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
+            $buyerId = (int)$row['buyer_user_id'];
+            $msgSenderId = $sellerId;
+            $msgReceiverId = ($convRow['user1_id'] == $sellerId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
             
             // Get names for message
             $nameStmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?)');
@@ -193,7 +182,7 @@ try {
             $receiverName = $names[$msgReceiverId] ?? ('User ' . $msgReceiverId);
             
             $metadata = json_encode([
-                'type' => $action === 'accept' ? 'schedule_accepted' : 'schedule_denied',
+                'type' => 'schedule_cancelled',
                 'request_id' => $requestId,
             ], JSON_UNESCAPED_SLASHES);
             
@@ -211,39 +200,18 @@ try {
         }
     }
 
-    $meetingAtIso = null;
-    if (!empty($row['meeting_at'])) {
-        $dt = date_create($row['meeting_at'], new DateTimeZone('UTC'));
-        if ($dt) {
-            $meetingAtIso = $dt->format(DateTime::ATOM);
-        }
-    }
-
-    $responseAtIso = (new DateTime('now', new DateTimeZone('UTC')))->format(DateTime::ATOM);
-
     $response = [
         'success' => true,
         'data' => [
             'request_id' => $requestId,
-            'status' => $nextStatus,
-            'verification_code' => (string)$row['verification_code'],
-            'seller_user_id' => (int)$row['seller_user_id'],
-            'buyer_user_id' => $buyerId,
-            'inventory_product_id' => (int)$row['inventory_product_id'],
-            'meet_location' => (string)$row['meet_location'],
-            'meeting_at' => $meetingAtIso,
-            'buyer_response_at' => $responseAtIso,
-            'item' => [
-                'title' => (string)$row['item_title'],
-            ],
+            'status' => 'cancelled',
         ],
     ];
 
     echo json_encode($response);
 } catch (Throwable $e) {
-    error_log('scheduled-purchase respond error: ' . $e->getMessage());
+    error_log('scheduled-purchase cancel error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }
-
 

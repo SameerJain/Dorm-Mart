@@ -29,7 +29,7 @@ $tsSec  = isset($_GET['ts']) ? (int)$_GET['ts'] : 0;
 
 $stmt = $conn->prepare(
     'SELECT
-         message_id, conv_id, sender_id, receiver_id, content,
+         message_id, conv_id, sender_id, receiver_id, content, metadata,
          /* Keep only ISO fields so JS can parse reliably */
          DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at,
          DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at

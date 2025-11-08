@@ -40,12 +40,41 @@ export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, sign
   const raw = res.messages
   if (!raw.length) return [];
 
+  const myIdNum = Number(myId);
+  if (!Number.isInteger(myIdNum) || myIdNum <= 0) {
+    console.error('Invalid myId in tick_fetch_new_messages:', myId);
+    return [];
+  }
+  
   const incoming = raw.map((m) => {
+      const senderIdNum = Number(m.sender_id);
+      if (!Number.isInteger(senderIdNum) || senderIdNum <= 0) {
+          // Invalid sender_id, default to "them" for safety
+          return {
+              message_id: m.message_id,
+              sender: "them",
+              content: m.content,
+              ts: Date.parse(m.created_at),
+              metadata: null,
+          };
+      }
+      
+      const metadata = (() => {
+          if (!m.metadata) return null;
+          if (typeof m.metadata === "object") return m.metadata;
+          try {
+              return JSON.parse(m.metadata);
+          } catch {
+              return null;
+          }
+      })();
+      
       return {
           message_id: m.message_id,
-          sender: m.sender_id === myId ? "me" : "them",
+          sender: senderIdNum === myIdNum ? "me" : "them",
           content: m.content,
           ts: Date.parse(m.created_at),
+          metadata,
       }
   });
   return incoming
