@@ -49,16 +49,12 @@ export function ChatProvider({ children }) {
         const receiverName = rawName && rawName.trim() !== '' ? rawName : `User ${receiverId}`;
         const productTitle = row.product_title || null;
         const productId = row.product_id ? Number(row.product_id) : null;
-        const productImageUrl = row.product_image_url || null;
-        const productSellerId = row.product_seller_id ? Number(row.product_seller_id) : null;
         return {
             conv_id: convId,
             receiverId,
             receiverName,
             productTitle,
             productId,
-            productImageUrl,
-            productSellerId,
         };
     }
 

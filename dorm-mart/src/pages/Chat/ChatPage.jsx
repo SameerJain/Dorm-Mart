@@ -210,16 +210,18 @@ export default function ChatPage() {
                     const unread = unreadByConv?.[c.conv_id] ?? 0;
                     const isHighlighted = isActive && !isMobileList; // mobile "Back" sets list view => no highlight
                     
-                    // Determine buyer/seller role based on product seller ID
-                    // If conversation has a product and current user is the seller, they are seller; otherwise buyer
-                    const isItemSpecific = c.productId && c.productSellerId;
-                    const isSeller = isItemSpecific && c.productSellerId === myId;
-                    const isBuyer = isItemSpecific && c.productSellerId !== myId;
+                    // Check if this conversation has a listing_intro message (created via Message Seller)
+                    const activeMessages = isActive ? messages : [];
+                    const hasListingIntro = activeMessages.some(m => m.metadata?.type === "listing_intro");
+                    const listingIntroMsg = activeMessages.find(m => m.metadata?.type === "listing_intro");
+                    // If there's a listing_intro, check if current user is buyer (sender) or seller (receiver)
+                    const isBuyer = listingIntroMsg && listingIntroMsg.sender === "me";
+                    const isSeller = listingIntroMsg && listingIntroMsg.sender === "them";
                     
                     // Determine color based on role
                     let buttonColorClass = "";
                     if (isHighlighted) {
-                      if (isItemSpecific) {
+                      if (hasListingIntro) {
                         if (isBuyer) {
                           buttonColorClass = "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
                         } else if (isSeller) {
@@ -292,31 +294,13 @@ export default function ChatPage() {
               {/* ^ relative => allows the Back button to be absolutely positioned inside this header */}
 
               <div className="flex flex-col">
-                <div className="flex items-center gap-3">
-                  {/* Product image thumbnail */}
-                  {activeConversation?.productImageUrl && (
-                    <img
-                      src={activeConversation.productImageUrl}
-                      alt={activeConversation.productTitle || "Product"}
-                      className="w-12 h-12 rounded-lg object-cover border border-gray-300 dark:border-gray-600 flex-shrink-0"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    {/* Product title if available */}
-                    {activeConversation?.productTitle && (
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
-                        {activeConversation.productTitle}
-                      </h2>
-                    )}
-                    {/* Receiver name */}
-                    <h3 className={`text-sm font-medium text-gray-700 dark:text-gray-300 ${activeConversation?.productTitle ? 'mt-0.5' : 'text-lg font-semibold text-gray-900 dark:text-gray-100'}`}>
-                      {activeLabel}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {activeConversation?.productTitle ? 'Item conversation' : 'Direct message'}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    {activeLabel}
+                  </h2>
                 </div>
+
+                <p className="text-xs text-gray-500 dark:text-gray-400">Direct message</p>
               </div>
 
 

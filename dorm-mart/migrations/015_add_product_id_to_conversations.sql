@@ -13,6 +13,8 @@ ADD CONSTRAINT fk_conv_product
     ON UPDATE CASCADE;
 
 -- Add unique index to prevent duplicate item-specific conversations
+-- Note: MySQL allows multiple NULL values in unique indexes, so users can have
+-- multiple general conversations (product_id = NULL) but only one per product
 ALTER TABLE conversations
 ADD UNIQUE KEY uq_conv_users_product (user1_id, user2_id, product_id);
 

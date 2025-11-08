@@ -97,12 +97,27 @@ try {
         }
 
         // Fetch existing conversation if present
-        $stmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_fname, user2_fname FROM conversations WHERE user1_id = ? AND user2_id = ? LIMIT 1');
-        $stmt->bind_param('ii', $orderedA, $orderedB);
+        // Check for conversation with matching product_id (or NULL if no product)
+        if ($productId > 0) {
+            $stmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_fname, user2_fname, product_id FROM conversations WHERE user1_id = ? AND user2_id = ? AND product_id = ? LIMIT 1');
+            $stmt->bind_param('iii', $orderedA, $orderedB, $productId);
+        } else {
+            $stmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_fname, user2_fname, product_id FROM conversations WHERE user1_id = ? AND user2_id = ? AND product_id IS NULL LIMIT 1');
+            $stmt->bind_param('ii', $orderedA, $orderedB);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         $conversationRow = $result ? $result->fetch_assoc() : null;
         $stmt->close();
+
+        if ($conversationRow) {
+            // Ensure conversation participants exist even for existing conversations
+            $convId = (int)$conversationRow['conv_id'];
+            $stmt = $conn->prepare('INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count) VALUES (?, ?, 0, 0), (?, ?, 0, 0)');
+            $stmt->bind_param('iiii', $convId, $orderedA, $convId, $orderedB);
+            $stmt->execute();
+            $stmt->close();
+        }
 
         if (!$conversationRow) {
             // Need names for both participants
@@ -128,8 +143,14 @@ try {
             $user1Name = $names[$orderedA] ?? ('User ' . $orderedA);
             $user2Name = $names[$orderedB] ?? ('User ' . $orderedB);
 
-            $stmt = $conn->prepare('INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname) VALUES (?, ?, ?, ?)');
-            $stmt->bind_param('iiss', $orderedA, $orderedB, $user1Name, $user2Name);
+            // Insert conversation with product_id if provided
+            if ($productId > 0) {
+                $stmt = $conn->prepare('INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname, product_id) VALUES (?, ?, ?, ?, ?)');
+                $stmt->bind_param('iissi', $orderedA, $orderedB, $user1Name, $user2Name, $productId);
+            } else {
+                $stmt = $conn->prepare('INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname, product_id) VALUES (?, ?, ?, ?, NULL)');
+                $stmt->bind_param('iiss', $orderedA, $orderedB, $user1Name, $user2Name);
+            }
             $stmt->execute();
             $stmt->close();
 
@@ -140,6 +161,7 @@ try {
                 'user2_id' => $orderedB,
                 'user1_fname' => $user1Name,
                 'user2_fname' => $user2Name,
+                'product_id' => $productId > 0 ? $productId : null,
             ];
 
             // Ensure conversation participants rows exist for both users

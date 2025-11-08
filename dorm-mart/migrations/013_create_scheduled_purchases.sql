@@ -1,5 +1,5 @@
 -- 013_create_scheduled_purchases.sql
--- Creates scheduled_purchase_requests to coordinate meetups between sellers and buyers
+-- Creates scheduled_purchase_requests table to coordinate meetups between sellers and buyers
 
 CREATE TABLE IF NOT EXISTS scheduled_purchase_requests (
     request_id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -43,6 +43,4 @@ CREATE TABLE IF NOT EXISTS scheduled_purchase_requests (
         ON DELETE SET NULL
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
 

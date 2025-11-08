@@ -46,9 +46,7 @@ $sql = "
     c.user1_fname,
     c.user2_fname,
     c.product_id,
-    inv.title AS product_title,
-    inv.photos AS product_photos,
-    inv.seller_id AS product_seller_id
+    inv.title AS product_title
   FROM conversations c
   LEFT JOIN INVENTORY inv ON inv.product_id = c.product_id
   WHERE (c.user1_id = ? AND c.user1_deleted = 0)
@@ -68,29 +66,5 @@ $stmt->execute();
 
 $res = $stmt->get_result();          // requires mysqlnd (present in XAMPP)
 $rows = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
-
-// Process rows to extract first image from photos JSON
-$publicBase = (getenv('PUBLIC_URL') ?: '');
-$publicBase = rtrim($publicBase, '/');
-
-foreach ($rows as &$row) {
-    $productImageUrl = null;
-    if (!empty($row['product_photos'])) {
-        $decoded = json_decode((string)$row['product_photos'], true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && !empty($decoded)) {
-            $firstImage = $decoded[0];
-            if (is_string($firstImage)) {
-                if (strpos($firstImage, 'http') !== 0) {
-                    if ($firstImage !== '' && $firstImage[0] !== '/') {
-                        $firstImage = '/' . $firstImage;
-                    }
-                    $firstImage = $publicBase . $firstImage;
-                }
-                $productImageUrl = $firstImage;
-            }
-        }
-    }
-    $row['product_image_url'] = $productImageUrl;
-}
 
 echo json_encode(['success' => true, 'conversations' => $rows]);
