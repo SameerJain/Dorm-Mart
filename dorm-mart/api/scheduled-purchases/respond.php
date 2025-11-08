@@ -91,6 +91,28 @@ try {
         exit;
     }
 
+    // Check if buyer is trying to accept - if so, verify item doesn't already have 'Pending' status
+    $inventoryProductId = (int)$row['inventory_product_id'];
+    if ($action === 'accept' && $inventoryProductId > 0) {
+        // Check current item status
+        $itemStatusCheckStmt = $conn->prepare('SELECT item_status FROM INVENTORY WHERE product_id = ? LIMIT 1');
+        if (!$itemStatusCheckStmt) {
+            throw new RuntimeException('Failed to prepare item status check');
+        }
+        $itemStatusCheckStmt->bind_param('i', $inventoryProductId);
+        $itemStatusCheckStmt->execute();
+        $itemStatusRes = $itemStatusCheckStmt->get_result();
+        $itemStatusRow = $itemStatusRes ? $itemStatusRes->fetch_assoc() : null;
+        $itemStatusCheckStmt->close();
+        
+        // If item already has 'Pending' status, reject this acceptance
+        if ($itemStatusRow && isset($itemStatusRow['item_status']) && $itemStatusRow['item_status'] === 'Pending') {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'error' => 'This item has already been accepted by another buyer']);
+            exit;
+        }
+    }
+
     $nextStatus = $action === 'accept' ? 'accepted' : 'declined';
 
     $updateStmt = $conn->prepare('UPDATE scheduled_purchase_requests SET status = ?, buyer_response_at = NOW() WHERE request_id = ? LIMIT 1');
@@ -102,7 +124,6 @@ try {
     $updateStmt->close();
     
     // Update item status based on scheduled purchase status
-    $inventoryProductId = (int)$row['inventory_product_id'];
     if ($inventoryProductId > 0) {
         if ($nextStatus === 'accepted') {
             // When accepted, set item status to "Pending" (only if not already Sold)

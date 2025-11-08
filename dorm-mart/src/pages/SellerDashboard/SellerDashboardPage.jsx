@@ -176,10 +176,17 @@ function SellerDashboardPage() {
                         image: proxied,
                         seller_user_id: item.seller_user_id,
                         buyer_user_id: item.buyer_user_id,
-                        categories: Array.isArray(item.categories) ? item.categories : []
+                        categories: Array.isArray(item.categories) ? item.categories : [],
+                        has_accepted_scheduled_purchase: item.has_accepted_scheduled_purchase === true || item.has_accepted_scheduled_purchase === 1
                     };
                 });
                 setListings(transformedListings);
+
+                // Debug: Log items with accepted scheduled purchases
+                const itemsWithAccepted = transformedListings.filter(l => l.has_accepted_scheduled_purchase);
+                if (itemsWithAccepted.length > 0) {
+                    console.log('Items with accepted scheduled purchases:', itemsWithAccepted);
+                }
 
                 // Calculate and set summary metrics
                 const metrics = calculateSummaryMetrics(transformedListings);
@@ -378,19 +385,37 @@ function SellerDashboardPage() {
                                         })()}
                                         <button
                                             onClick={() => { setPendingStatusId(listing.id); setPendingStatusValue(listing.status || 'Active'); setStatusOpen(true); }}
-                                            className="text-gray-700 hover:text-gray-900 font-medium text-sm sm:text-base"
+                                            disabled={listing.has_accepted_scheduled_purchase === true}
+                                            className={`font-medium text-sm sm:text-base ${
+                                                listing.has_accepted_scheduled_purchase === true
+                                                    ? 'text-gray-400 cursor-not-allowed'
+                                                    : 'text-gray-700 hover:text-gray-900'
+                                            }`}
+                                            title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
                                         >
                                             Set Status
                                         </button>
                                         <button
                                             onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
-                                            className="text-blue-600 hover:text-blue-800 font-medium text-sm sm:text-base"
+                                            disabled={listing.has_accepted_scheduled_purchase === true}
+                                            className={`font-medium text-sm sm:text-base ${
+                                                listing.has_accepted_scheduled_purchase === true
+                                                    ? 'text-gray-400 cursor-not-allowed'
+                                                    : 'text-blue-600 hover:text-blue-800'
+                                            }`}
+                                            title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
                                         >
                                             Edit
                                         </button>
                                         <button
                                             onClick={() => openDeleteConfirm(listing.id)}
-                                            className="text-red-600 hover:text-red-800 font-medium text-sm sm:text-base"
+                                            disabled={listing.has_accepted_scheduled_purchase === true}
+                                            className={`font-medium text-sm sm:text-base ${
+                                                listing.has_accepted_scheduled_purchase === true
+                                                    ? 'text-gray-400 cursor-not-allowed'
+                                                    : 'text-red-600 hover:text-red-800'
+                                            }`}
+                                            title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
                                         >
                                             Delete
                                         </button>

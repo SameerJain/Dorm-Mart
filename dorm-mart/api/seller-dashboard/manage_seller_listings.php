@@ -34,20 +34,29 @@ try {
     $conn->set_charset('utf8mb4');
 
     // Fetch seller listings from INVENTORY for current user
+    // Include check for accepted scheduled purchases
     $sql = "SELECT 
-                product_id,
-                title,
-                listing_price,
-                item_status,
-                categories,
-                sold,
-                sold_to,
-                date_listed,
-                photos,
-                seller_id
-            FROM INVENTORY
-            WHERE seller_id = ?
-            ORDER BY product_id DESC";
+                i.product_id,
+                i.title,
+                i.listing_price,
+                i.item_status,
+                i.categories,
+                i.sold,
+                i.sold_to,
+                i.date_listed,
+                i.photos,
+                i.seller_id,
+                CASE 
+                    WHEN EXISTS (
+                        SELECT 1 FROM scheduled_purchase_requests spr 
+                        WHERE spr.inventory_product_id = i.product_id 
+                        AND spr.status = 'accepted'
+                    ) THEN 1 
+                    ELSE 0 
+                END AS has_accepted_scheduled_purchase
+            FROM INVENTORY i
+            WHERE i.seller_id = ?
+            ORDER BY i.product_id DESC";
 
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
@@ -84,6 +93,8 @@ try {
             }
         }
 
+        $hasAcceptedScheduledPurchase = isset($row['has_accepted_scheduled_purchase']) && (int)$row['has_accepted_scheduled_purchase'] === 1;
+
         $data[] = [
             'id' => (int)$row['product_id'],
             'title' => escapeHtml((string)$row['title']),
@@ -93,7 +104,8 @@ try {
             'seller_user_id' => (int)$row['seller_id'],
             'created_at' => $row['date_listed'],
             'image_url' => $firstImage,
-            'categories' => $catsArr
+            'categories' => $catsArr,
+            'has_accepted_scheduled_purchase' => $hasAcceptedScheduledPurchase
         ];
     }
 
