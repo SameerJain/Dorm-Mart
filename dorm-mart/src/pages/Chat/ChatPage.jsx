@@ -299,7 +299,7 @@ export default function ChatPage() {
             {c.productImageUrl && (
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
                 <img 
-                  src={c.productImageUrl.startsWith('http') ? `${API_BASE}/image.php?url=${encodeURIComponent(c.productImageUrl)}` : c.productImageUrl}
+                  src={c.productImageUrl.startsWith('http') || c.productImageUrl.startsWith('/data/images/') || c.productImageUrl.startsWith('/images/') ? `${API_BASE}/image.php?url=${encodeURIComponent(c.productImageUrl)}` : c.productImageUrl}
                   alt={c.productTitle || 'Product'}
                   className="w-full h-full object-cover"
                 />
@@ -377,12 +377,12 @@ export default function ChatPage() {
                     
                     if (isSellerConversation) {
                       messagesToBuyers.push(c);
-                    } else {
+                        } else {
                       messagesToSellers.push(c);
-                    }
+                      }
                   });
-                  
-                  return (
+
+                    return (
                     <>
                       {/* Messages To Sellers Section */}
                       {messagesToSellers.length > 0 && (
@@ -394,7 +394,7 @@ export default function ChatPage() {
                           </li>
                           {messagesToSellers.map((c) => renderConversationItem(c, 'sellers'))}
                         </>
-                      )}
+                            )}
                       
                       {/* Messages to Buyers Section */}
                       {messagesToBuyers.length > 0 && (
@@ -408,7 +408,7 @@ export default function ChatPage() {
                         </>
                       )}
                     </>
-                  );
+                    );
                 })()}
             </ul>
           </aside>
@@ -427,7 +427,7 @@ export default function ChatPage() {
 
               <div className="flex items-center justify-between">
                 {/* Left: User name */}
-                <div className="flex flex-col">
+              <div className="flex flex-col">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {activeLabel}
                   </h2>
@@ -440,7 +440,7 @@ export default function ChatPage() {
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {activeConversation.productTitle || `Item #${activeConversation.productId}`}
                     </h2>
-                  </div>
+              </div>
                 )}
 
                 {/* Right: Product image, View Item button and Back button (mobile) */}
@@ -449,7 +449,7 @@ export default function ChatPage() {
                   {activeConversation?.productImageUrl && (
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
                       <img 
-                        src={activeConversation.productImageUrl.startsWith('http') ? `${API_BASE}/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
+                        src={activeConversation.productImageUrl.startsWith('http') || activeConversation.productImageUrl.startsWith('/data/images/') || activeConversation.productImageUrl.startsWith('/images/') ? `${API_BASE}/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
                         alt={activeConversation.productTitle || 'Product'}
                         className="w-full h-full object-cover"
                       />
@@ -475,16 +475,16 @@ export default function ChatPage() {
                     </button>
                   )}
                   {/* Mobile-only Back button */}
-                  <button
-                    onClick={() => {
-                      setIsMobileList(true);
-                      clearActiveConversation();
-                    }}
+              <button
+                onClick={() => {
+                  setIsMobileList(true);
+                  clearActiveConversation();
+                }}
                     className="md:hidden rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-gray-700 dark:text-gray-200"
-                    aria-label="Back to conversations"
-                  >
-                    Back
-                  </button>
+                aria-label="Back to conversations"
+              >
+                Back
+              </button>
                 </div>
               </div>
             </div>

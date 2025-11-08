@@ -212,7 +212,7 @@ export default function ViewProduct() {
       if (returnTo) {
         navigate(returnTo);
       } else {
-        navigate("/app/chat", { state: navState });
+      navigate("/app/chat", { state: navState });
       }
     } catch (err) {
       console.error("Message seller error", err);

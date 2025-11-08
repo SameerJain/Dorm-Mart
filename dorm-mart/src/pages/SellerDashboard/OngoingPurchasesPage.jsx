@@ -430,7 +430,7 @@ function OngoingPurchasesPage() {
                                                         </button>
                                                         
                                                         {/* Cancel button for sellers */}
-                                                        {canCancel && (
+                                                    {canCancel && (
                                                             <button
                                                                 type="button"
                                                                 onClick={async () => {
@@ -469,7 +469,7 @@ function OngoingPurchasesPage() {
                                                                 {busyRequestId === req.request_id ? 'Cancelling...' : 'Cancel'}
                                                             </button>
                                                         )}
-                                                    </div>
+                                                        </div>
                                                 </div>
                                             </div>
                                         );

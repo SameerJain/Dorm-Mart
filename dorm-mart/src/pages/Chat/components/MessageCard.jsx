@@ -1,13 +1,21 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
+const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+
 function MessageCard({ message, isMine }) {
   const navigate = useNavigate();
   const metadata = message.metadata || {};
   const product = metadata.product || {};
   const previewText = message.content || "";
-  const imageUrl = product.image_url;
+  const rawImageUrl = product.image_url;
   const productId = product.product_id;
+  
+  // Route image URL through proxy if it's a relative path or /images/ path
+  const imageUrl = rawImageUrl && (rawImageUrl.startsWith('http') || rawImageUrl.startsWith('/data/images/') || rawImageUrl.startsWith('/images/'))
+    ? `${API_BASE}/image.php?url=${encodeURIComponent(rawImageUrl)}`
+    : rawImageUrl;
 
   const handleClick = () => {
     if (productId) {
