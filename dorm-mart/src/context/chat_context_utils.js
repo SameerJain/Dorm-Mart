@@ -40,12 +40,41 @@ export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, sign
   const raw = res.messages
   if (!raw.length) return [];
 
+  const myIdNum = Number(myId);
+  if (!Number.isInteger(myIdNum) || myIdNum <= 0) {
+    console.error('Invalid myId in tick_fetch_new_messages:', myId);
+    return [];
+  }
+  
   const incoming = raw.map((m) => {
+      const senderIdNum = Number(m.sender_id);
+      if (!Number.isInteger(senderIdNum) || senderIdNum <= 0) {
+          // Invalid sender_id, default to "them" for safety
+          return {
+              message_id: m.message_id,
+              sender: "them",
+              content: m.content,
+              ts: Date.parse(m.created_at),
+              metadata: null,
+          };
+      }
+      
+      const metadata = (() => {
+          if (!m.metadata) return null;
+          if (typeof m.metadata === "object") return m.metadata;
+          try {
+              return JSON.parse(m.metadata);
+          } catch {
+              return null;
+          }
+      })();
+      
       return {
           message_id: m.message_id,
-          sender: m.sender_id === myId ? "me" : "them",
+          sender: senderIdNum === myIdNum ? "me" : "them",
           content: m.content,
           ts: Date.parse(m.created_at),
+          metadata,
       }
   });
   return incoming
@@ -91,18 +120,22 @@ export async function fetch_unread_messages(signal) {
   return r.json();
 }
 
-export async function create_message({ receiverId, content, signal }) {
+export async function create_message({ receiverId, convId, content, signal }) {
+  const body = {
+    receiver_id: receiverId,
+    content
+  };
+  if (convId) {
+    body.conv_id = convId;
+  }
   const r = await fetch(`${BASE}/chat/create_message.php`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json", // tells PHP we’re sending JSON
+      "Content-Type": "application/json", // tells PHP we're sending JSON
       "Accept": "application/json"
     },
     credentials: "include",               // sends PHP session cookie if your server uses it
-    body: JSON.stringify({
-      receiver_id: receiverId,
-      content
-    }),
+    body: JSON.stringify(body),
     signal                                // lets you cancel if needed
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);

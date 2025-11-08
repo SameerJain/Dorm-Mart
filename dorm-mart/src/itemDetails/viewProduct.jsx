@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { ChatContext } from "../context/ChatContext";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -11,8 +12,12 @@ function useQuery() {
 
 export default function ViewProduct() {
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams();
   const query = useQuery();
+  
+  // Check if we came from chat page and should return there
+  const returnTo = location.state?.returnTo;
 
   const productIdFromParams = params.product_id || params.id || null;
   const productIdFromQuery = query.get("product_id") || query.get("id");
@@ -22,6 +27,48 @@ export default function ViewProduct() {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [msgLoading, setMsgLoading] = useState(false);
+  const [msgError, setMsgError] = useState(null);
+  const [myId, setMyId] = useState(null);
+
+  const chatCtx = useContext(ChatContext);
+  // Try ChatContext first, but also fetch directly as fallback
+  const chatMyId = chatCtx?.myId ?? null;
+
+  useEffect(() => {
+    setMsgLoading(false);
+    setMsgError(null);
+  }, [productId]);
+
+  // Fetch user ID directly (fallback if ChatContext not loaded)
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      // Use ChatContext ID if available
+      if (chatMyId) {
+        setMyId(chatMyId);
+        return;
+      }
+      // Otherwise fetch directly
+      try {
+        const r = await fetch(`${API_BASE}/auth/me.php`, {
+          signal: controller.signal,
+          credentials: "include",
+        });
+        if (r.ok) {
+          const json = await r.json();
+          if (json.user_id) {
+            setMyId(json.user_id);
+          }
+        }
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          // Silently fail - user might not be logged in
+        }
+      }
+    })();
+    return () => controller.abort();
+  }, [chatMyId]);
 
   useEffect(() => {
     if (!productId) return;
@@ -77,10 +124,14 @@ export default function ViewProduct() {
     }
     photos = (photos || []).filter(Boolean);
 
-    // proxy remote images through image.php if present
+    // proxy remote images and /data/images/ paths through image.php if present
     const photoUrls = photos.map((p) => {
       const raw = String(p);
       if (/^https?:\/\//i.test(raw)) {
+        return `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
+      }
+      // Route /data/images/ and /images/ paths through image.php proxy (like other components)
+      if (raw.startsWith('/data/images/') || raw.startsWith('/images/')) {
         return `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
       }
       return raw.startsWith("/") ? `${PUBLIC_BASE}${raw}` : raw;
@@ -145,14 +196,95 @@ export default function ViewProduct() {
   const hasPrev = activeIdx > 0;
   const hasNext = normalized?.photoUrls && activeIdx < normalized.photoUrls.length - 1;
 
-  // no-op
+  // Check if current user is the seller (same condition used for yellow banner and grayed out button)
+  const isSellerViewingOwnProduct = myId && normalized?.sellerId && Number(myId) === Number(normalized.sellerId);
+
+  const handleMessageSeller = async () => {
+    if (msgLoading || !normalized?.sellerId) return;
+
+    // Check if user is the seller
+    if (isSellerViewingOwnProduct) {
+      setMsgError("You are the seller of this item.");
+      return;
+    }
+
+    setMsgError(null);
+    setMsgLoading(true);
+
+    try {
+      const payload = {
+        product_id: normalized?.productId ?? (productId ? Number(productId) : undefined),
+        seller_user_id: normalized?.sellerId ?? undefined,
+      };
+
+      const res = await fetch(`${API_BASE}/chat/ensure_conversation.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.success) {
+        const message = result?.error || `Failed to start chat (${res.status})`;
+        throw new Error(message);
+      }
+
+      if (result.conversation && chatCtx?.registerConversation) {
+        chatCtx.registerConversation(result.conversation);
+      }
+
+      const convId = result.conversation?.conv_id ?? result.conv_id ?? null;
+      const navState = {
+        convId,
+        receiverId: normalized?.sellerId ?? null,
+        receiverName: normalized?.sellerName ?? null,
+        autoMessage: result.auto_message ?? null,
+      };
+
+      // If we have a returnTo path, use it; otherwise go to chat
+      if (returnTo) {
+        navigate(returnTo);
+      } else {
+      navigate("/app/chat", { state: navState });
+      }
+    } catch (err) {
+      console.error("Message seller error", err);
+      setMsgError(err?.message || "Unable to open chat.");
+    } finally {
+      setMsgLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 flex items-center justify-between">
-        <button onClick={() => navigate(-1)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back</button>
+        <button 
+          onClick={() => {
+            if (returnTo) {
+              navigate(returnTo);
+            } else {
+              navigate(-1);
+            }
+          }} 
+          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          Back
+        </button>
         <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100">Product Details</h1>
-        <div />
+        {isSellerViewingOwnProduct ? (
+          <button
+            onClick={() => navigate('/app/seller-dashboard')}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+          >
+            View Seller Dashboard
+          </button>
+        ) : (
+          <div />
+        )}
       </div>
 
       <div className="w-full px-2 md:px-4 py-4">
@@ -163,6 +295,12 @@ export default function ViewProduct() {
         ) : !normalized ? (
           <p className="text-center text-sm text-gray-400 dark:text-gray-500">No product found.</p>
         ) : (
+          <>
+            {isSellerViewingOwnProduct && (
+              <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">You are the seller of this item.</p>
+              </div>
+            )}
           <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-6 items-start">
             {/* Left: photos */}
             <section className="flex gap-3 items-start justify-center lg:sticky lg:top-20">
@@ -267,12 +405,19 @@ export default function ViewProduct() {
 
                 <div className="mt-3 space-y-2">
                   <button
-                    onClick={() => navigate(`/app/chat${normalized.sellerId ? `?to=${encodeURIComponent(normalized.sellerId)}` : ''}`)}
-                    disabled={!normalized.sellerId}
-                    className="w-full rounded-full bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2"
+                    onClick={handleMessageSeller}
+                    disabled={!normalized.sellerId || msgLoading || isSellerViewingOwnProduct}
+                    className={`w-full rounded-full font-medium py-2 ${
+                      isSellerViewingOwnProduct
+                        ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white"
+                        : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
+                    }`}
                   >
-                    Message Seller
+                    {msgLoading ? "Opening chat..." : "Message Seller"}
                   </button>
+                  {msgError ? (
+                    <p className="text-xs text-red-600 dark:text-red-400">{msgError}</p>
+                  ) : null}
                 </div>
               </div>
 
@@ -305,10 +450,22 @@ export default function ViewProduct() {
               </div>
 
               <div className="pt-1">
-                <button onClick={() => navigate(-1)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back to results</button>
+                <button 
+                  onClick={() => {
+                    if (returnTo) {
+                      navigate(returnTo);
+                    } else {
+                      navigate(-1);
+                    }
+                  }} 
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Back to results
+                </button>
               </div>
             </section>
           </div>
+          </>
         )}
       </div>
     </div>

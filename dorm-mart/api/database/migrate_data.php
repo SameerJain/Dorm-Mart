@@ -12,9 +12,27 @@ $conn->query("
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB");
 
+// Copy test images from data/test-images/ to images/ directory (idempotent)
+$dataDir = dirname(__DIR__,2) . '/data';                        // Path to the data folder
+$testImagesDir = $dataDir . '/test-images';                    // Path to test-images subdirectory
+$imagesDir = dirname(__DIR__,2) . '/images';                   // Path to images directory
+
+if (is_dir($testImagesDir) && is_dir($imagesDir)) {
+  $testImageFiles = glob($testImagesDir . '/*');                // Get all files in test-images
+  foreach ($testImageFiles as $testImagePath) {
+    if (is_file($testImagePath)) {
+      $filename = basename($testImagePath);
+      $destPath = $imagesDir . '/' . $filename;
+      if (!copy($testImagePath, $destPath)) {
+        // Log warning but don't fail the migration
+        error_log("Warning: Failed to copy test image: $filename");
+      }
+    }
+  }
+}
+
 // Collect all .sql files from ../data and sort them naturally (e.g., 1,2,10)
-$dir = dirname(__DIR__,2) . '/data';                              // Path to the data folder
-$files = glob($dir . '/*.sql');                                 // List all .sql files
+$files = glob($dataDir . '/*.sql');                             // List all .sql files
 natsort($files);                                                // Sort numerically by names like 001, 010, etc.
 
 $ran = [];                                                      // Keep track of executed filenames
