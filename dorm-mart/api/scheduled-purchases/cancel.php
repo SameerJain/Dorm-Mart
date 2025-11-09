@@ -98,12 +98,12 @@ try {
         exit;
     }
 
-    $updateStmt = $conn->prepare('UPDATE scheduled_purchase_requests SET status = ? WHERE request_id = ? LIMIT 1');
+    $updateStmt = $conn->prepare('UPDATE scheduled_purchase_requests SET status = ?, canceled_by_user_id = ? WHERE request_id = ? LIMIT 1');
     if (!$updateStmt) {
         throw new RuntimeException('Failed to prepare update');
     }
     $status = 'cancelled';
-    $updateStmt->bind_param('si', $status, $requestId);
+    $updateStmt->bind_param('sii', $status, $userId, $requestId);
     $updateStmt->execute();
     $updateStmt->close();
     
