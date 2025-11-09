@@ -224,9 +224,14 @@ function OngoingPurchasesPage() {
             );
         } else if (req.item?.listing_price !== null && req.item?.listing_price !== undefined) {
             return (
-                <div className={`text-sm my-2 ${isInactive ? 'text-red-200 dark:text-red-300' : 'text-gray-600 dark:text-gray-400'}`}>
-                    <span className="font-medium">Listed Price: </span>
-                    <span className={isInactive ? 'text-red-100 dark:text-red-200' : 'text-gray-700 dark:text-gray-300'}>${Number(req.item.listing_price).toFixed(2)}</span>
+                <div className={`${isInactive ? 'bg-red-500 dark:bg-red-600' : 'bg-blue-600 dark:bg-blue-700'} border-4 ${isInactive ? 'border-red-400' : 'border-blue-500'} rounded-lg p-5 my-3 shadow-lg`}>
+                    <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-base font-bold uppercase tracking-wide text-white">Listed Price</span>
+                    </div>
+                    <p className="text-4xl font-bold text-white">${Number(req.item.listing_price).toFixed(2)}</p>
                 </div>
             );
         }
