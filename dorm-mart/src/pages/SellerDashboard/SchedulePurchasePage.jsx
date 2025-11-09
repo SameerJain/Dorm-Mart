@@ -665,6 +665,19 @@ function SchedulePurchasePage() {
                                         </label>
                                     )}
                                 </div>
+                                {/* Warning message if negotiated price is higher than listed price */}
+                                {negotiatedPrice.trim() && selectedListing?.price && (() => {
+                                    const negotiatedPriceValue = parseFloat(negotiatedPrice);
+                                    const listedPriceValue = parseFloat(selectedListing.price);
+                                    if (!isNaN(negotiatedPriceValue) && !isNaN(listedPriceValue) && negotiatedPriceValue > listedPriceValue) {
+                                        return (
+                                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                                                This is higher than the listed price
+                                            </p>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                             </div>
                         )}
 
