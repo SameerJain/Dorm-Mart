@@ -17,8 +17,10 @@ WHERE email = 'testuserscheduleyellow@buffalo.edu'
 LIMIT 1;
 
 -- Delete related records in dependency order before deleting user accounts
--- Only delete if user IDs exist (handle NULL case)
--- 1. Delete messages where these users are sender or receiver
+-- Must delete in order: messages -> scheduled_purchases -> conversations -> users
+-- Handle NULL user IDs gracefully - only delete if users exist
+
+-- 1. Delete messages where these users are sender or receiver (must be first due to FK constraints)
 DELETE FROM messages
 WHERE (@existing_seller_id IS NOT NULL AND (sender_id = @existing_seller_id OR receiver_id = @existing_seller_id))
    OR (@existing_buyer_id IS NOT NULL AND (sender_id = @existing_buyer_id OR receiver_id = @existing_buyer_id));
@@ -181,7 +183,7 @@ INSERT INTO INVENTORY (
   sold
 ) VALUES (
   'Scrub Daddy',
-  JSON_ARRAY('Kitchen', 'Cleaning'),
+  JSON_ARRAY('Kitchen', 'Utility'),
   'North Campus',
   'Like New',
   'A fun and effective cleaning sponge that changes texture based on water temperature. Perfect for scrubbing dishes, countertops, and more. Great condition, barely used.',
@@ -212,7 +214,7 @@ INSERT INTO INVENTORY (
   sold
 ) VALUES (
   'Air Fryer',
-  JSON_ARRAY('Kitchen', 'Appliances'),
+  JSON_ARRAY('Kitchen', 'Utility'),
   'North Campus',
   'Good',
   'Compact air fryer perfect for dorm cooking. Makes crispy fries, chicken, and more with less oil. Works great, some minor wear on the exterior but fully functional.',
@@ -243,7 +245,7 @@ INSERT INTO INVENTORY (
   sold
 ) VALUES (
   'Pim Plushie',
-  JSON_ARRAY('Toys', 'Collectibles'),
+  JSON_ARRAY('Decor', 'Games'),
   'North Campus',
   'Like New',
   'Adorable Pim plushie from Smiling Friends. Soft, cuddly, and in excellent condition. Perfect for decoration or as a gift.',
