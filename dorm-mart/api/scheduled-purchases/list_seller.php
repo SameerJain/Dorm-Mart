@@ -43,13 +43,21 @@ try {
             spr.buyer_response_at,
             spr.created_at,
             spr.updated_at,
+            spr.negotiated_price,
+            spr.is_trade,
+            spr.trade_item_description,
+            spr.canceled_by_user_id,
             inv.title AS item_title,
             inv.photos AS item_photos,
+            inv.listing_price AS item_listing_price,
             ua.first_name AS buyer_first_name,
-            ua.last_name AS buyer_last_name
+            ua.last_name AS buyer_last_name,
+            canceler.first_name AS canceled_by_first_name,
+            canceler.last_name AS canceled_by_last_name
         FROM scheduled_purchase_requests spr
         INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
         INNER JOIN user_accounts ua ON ua.user_id = spr.buyer_user_id
+        LEFT JOIN user_accounts canceler ON canceler.user_id = spr.canceled_by_user_id
         WHERE spr.seller_user_id = ?
         ORDER BY spr.created_at DESC
     SQL;
@@ -88,6 +96,24 @@ try {
             }
         }
 
+        $negotiatedPrice = isset($row['negotiated_price']) && $row['negotiated_price'] !== null 
+            ? (float)$row['negotiated_price'] : null;
+        $isTrade = isset($row['is_trade']) && ($row['is_trade'] === 1 || $row['is_trade'] === true || $row['is_trade'] === '1');
+        $tradeItemDescription = isset($row['trade_item_description']) && $row['trade_item_description'] !== null 
+            ? (string)$row['trade_item_description'] : null;
+        
+        $canceledBy = null;
+        if (isset($row['canceled_by_user_id']) && $row['canceled_by_user_id'] !== null) {
+            $canceledByUserId = (int)$row['canceled_by_user_id'];
+            $canceledByFirstName = isset($row['canceled_by_first_name']) ? (string)$row['canceled_by_first_name'] : '';
+            $canceledByLastName = isset($row['canceled_by_last_name']) ? (string)$row['canceled_by_last_name'] : '';
+            $canceledBy = [
+                'user_id' => $canceledByUserId,
+                'first_name' => $canceledByFirstName,
+                'last_name' => $canceledByLastName,
+            ];
+        }
+
         $records[] = [
             'request_id' => (int)$row['request_id'],
             'inventory_product_id' => (int)$row['inventory_product_id'],
@@ -102,9 +128,14 @@ try {
             'buyer_response_at' => $responseAtIso,
             'created_at' => $row['created_at'],
             'updated_at' => $row['updated_at'],
+            'negotiated_price' => $negotiatedPrice,
+            'is_trade' => $isTrade,
+            'trade_item_description' => $tradeItemDescription,
+            'canceled_by' => $canceledBy,
             'item' => [
                 'title' => (string)$row['item_title'],
                 'photos' => $photos,
+                'listing_price' => isset($row['item_listing_price']) ? (float)$row['item_listing_price'] : null,
             ],
             'buyer' => [
                 'first_name' => (string)$row['buyer_first_name'],

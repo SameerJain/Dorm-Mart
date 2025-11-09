@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
@@ -157,18 +157,344 @@ function OngoingPurchasesPage() {
         }
     }
 
+    // Helper function to determine if a purchase is active or past
+    const isActivePurchase = (req) => {
+        const now = new Date();
+        const meetingDate = req.meeting_at ? new Date(req.meeting_at) : null;
+        const isPastDate = meetingDate && meetingDate < now;
+        const isTerminalStatus = ['declined', 'cancelled'].includes(req.status);
+        return !isPastDate && !isTerminalStatus;
+    };
+
+    // Separate active and past purchases
+    const { activeBuyerRequests, pastBuyerRequests } = useMemo(() => {
+        const active = buyerRequests.filter(isActivePurchase);
+        const past = buyerRequests.filter(req => !isActivePurchase(req));
+        return { activeBuyerRequests: active, pastBuyerRequests: past };
+    }, [buyerRequests]);
+
+    const { activeSellerRequests, pastSellerRequests } = useMemo(() => {
+        const active = sellerRequests.filter(isActivePurchase);
+        const past = sellerRequests.filter(req => !isActivePurchase(req));
+        return { activeSellerRequests: active, pastSellerRequests: past };
+    }, [sellerRequests]);
+
+    // Helper function to get status badge styling
+    const getStatusBadge = (status) => {
+        const baseClasses = 'px-2 py-1 text-xs font-semibold rounded';
+        switch (status) {
+            case 'pending':
+                return `${baseClasses} bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300`;
+            case 'accepted':
+                return `${baseClasses} bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300`;
+            case 'declined':
+                return `${baseClasses} bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300`;
+            case 'cancelled':
+                return `${baseClasses} bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 line-through`;
+            default:
+                return `${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300`;
+        }
+    };
+
+    // Helper function to render cost/trade information
+    const renderCostTradeInfo = (req, isInactive) => {
+        if (req.is_trade && req.trade_item_description) {
+            return (
+                <div className={`${isInactive ? 'bg-red-100 dark:bg-red-900/50 border-red-500' : 'bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-700'} border-4 rounded-lg p-4 my-3 shadow-lg`}>
+                    <div className="flex items-center gap-2 mb-1">
+                        <svg className={`w-5 h-5 ${isInactive ? 'text-red-700 dark:text-red-200' : 'text-amber-600 dark:text-amber-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        <span className={`text-sm font-bold uppercase tracking-wide ${isInactive ? 'text-red-700 dark:text-red-200' : 'text-amber-700 dark:text-amber-200'}`}>TRADE</span>
+                    </div>
+                    <p className={`text-base font-semibold ${isInactive ? 'text-red-800 dark:text-red-100' : 'text-amber-800 dark:text-amber-100'}`}>{req.trade_item_description}</p>
+                </div>
+            );
+        } else if (req.negotiated_price !== null && req.negotiated_price !== undefined) {
+            return (
+                <div className={`${isInactive ? 'bg-red-500 dark:bg-red-600' : 'bg-emerald-600 dark:bg-emerald-700'} border-4 ${isInactive ? 'border-red-400' : 'border-emerald-500'} rounded-lg p-5 my-3 shadow-lg`}>
+                    <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-base font-bold uppercase tracking-wide text-white">Negotiated Price</span>
+                    </div>
+                    <p className="text-4xl font-bold text-white">${Number(req.negotiated_price).toFixed(2)}</p>
+                </div>
+            );
+        } else if (req.item?.listing_price !== null && req.item?.listing_price !== undefined) {
+            return (
+                <div className={`text-sm my-2 ${isInactive ? 'text-red-200 dark:text-red-300' : 'text-gray-600 dark:text-gray-400'}`}>
+                    <span className="font-medium">Listed Price: </span>
+                    <span className={isInactive ? 'text-red-100 dark:text-red-200' : 'text-gray-700 dark:text-gray-300'}>${Number(req.item.listing_price).toFixed(2)}</span>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    // Helper function to render cancellation info
+    const renderCancellationInfo = (req) => {
+        if (req.status === 'cancelled') {
+            let canceledByName = 'Unknown';
+            if (req.canceled_by) {
+                const firstName = req.canceled_by.first_name || '';
+                const lastName = req.canceled_by.last_name || '';
+                const fullName = `${firstName} ${lastName}`.trim();
+                canceledByName = fullName || `User ${req.canceled_by.user_id}`;
+            }
+            return (
+                <div className="bg-red-50 dark:bg-red-900/30 border-2 border-red-400 dark:border-red-700 rounded-lg p-3 mb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <svg className="w-5 h-5 text-red-600 dark:text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span className="text-sm font-bold text-red-700 dark:text-red-200">CANCELLED</span>
+                        <span className="text-sm text-red-600 dark:text-red-300">by {canceledByName}</span>
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    // Component to render a purchase card
+    const PurchaseCard = ({ req, perspective }) => {
+        const isBuyer = perspective === 'buyer';
+        const meetingDate = req.meeting_at ? new Date(req.meeting_at).toLocaleString() : 'Not provided';
+        const code = req.verification_code || '----';
+        const canRespond = req.status === 'pending' && isBuyer;
+        const isCancelled = req.status === 'cancelled';
+        const isDeclined = req.status === 'declined';
+        const isInactive = isCancelled || isDeclined;
+        const isAccepted = req.status === 'accepted';
+        const canCancel = (req.status === 'pending' || req.status === 'accepted') && !isInactive;
+        const canUseActionButtons = isAccepted; // Only enabled for accepted status
+
+        // Color scheme based on perspective - override with red if cancelled or declined
+        const cardBorderColor = isInactive 
+            ? 'border-red-500 dark:border-red-600' 
+            : (isBuyer ? 'border-green-500 dark:border-green-600' : 'border-blue-500 dark:border-blue-600');
+        const cardBgColor = isInactive 
+            ? 'bg-red-50 dark:bg-red-900/20' 
+            : (isBuyer ? 'bg-green-50 dark:bg-green-900/20' : 'bg-blue-50 dark:bg-blue-900/20');
+        const badgeColor = isInactive 
+            ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' 
+            : (isBuyer ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300');
+        
+        // Location and meeting time color schemes - use solid colors with white text
+        // For inactive (cancelled/declined), use duller/muted red colors
+        const locationBg = isInactive 
+            ? 'bg-red-400 dark:bg-red-500' 
+            : (isBuyer ? 'bg-blue-600 dark:bg-blue-700' : 'bg-indigo-600 dark:bg-indigo-700');
+        const locationText = 'text-white';
+        const locationTextBold = 'text-white';
+        
+        const meetingBg = isInactive 
+            ? 'bg-red-400 dark:bg-red-500' 
+            : (isBuyer ? 'bg-teal-600 dark:bg-teal-700' : 'bg-purple-600 dark:bg-purple-700');
+        const meetingText = 'text-white';
+        const meetingTextBold = 'text-white';
+
+        return (
+            <div className={`${cardBgColor} border-2 ${cardBorderColor} rounded-lg p-5 shadow-sm ${isInactive ? 'opacity-75' : ''}`}>
+                <div className="flex flex-col gap-3">
+                    {/* Header with perspective badge and status */}
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded ${badgeColor}`}>
+                                You are the {isBuyer ? 'Buyer' : 'Seller'}
+                            </span>
+                            <span className={getStatusBadge(req.status)}>
+                                {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                            </span>
+                        </div>
+                        <div className={`text-sm ${isInactive ? 'text-red-600 dark:text-red-300' : 'text-gray-500 dark:text-gray-400'}`}>
+                            {isBuyer ? 'Requested' : 'Created'} {req.created_at ? new Date(req.created_at).toLocaleString() : ''}
+                            {req.buyer_response_at && (
+                                <div>{isBuyer ? 'You responded' : 'Buyer responded'} {new Date(req.buyer_response_at).toLocaleString()}</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Cancellation/Declined info */}
+                    {renderCancellationInfo(req)}
+                    {isDeclined && !isCancelled && (
+                        <div className="bg-red-50 dark:bg-red-900/30 border-2 border-red-400 dark:border-red-700 rounded-lg p-3 mb-3">
+                            <div className="flex items-center gap-2">
+                                <svg className="w-5 h-5 text-red-600 dark:text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                <span className="text-sm font-bold text-red-700 dark:text-red-200">DECLINED</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Item title and other party */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                            <h3 className={`text-lg font-semibold ${isInactive ? 'text-red-900 dark:text-red-100' : 'text-gray-900 dark:text-gray-100'}`}>{req.item?.title || 'Listing'}</h3>
+                            <p className={`text-sm ${isInactive ? 'text-red-700 dark:text-red-200' : 'text-gray-600 dark:text-gray-300'}`}>
+                                {isBuyer ? 'Seller' : 'Buyer'}: {isBuyer 
+                                    ? `${req.seller?.first_name || ''} ${req.seller?.last_name || ''}`.trim() 
+                                    : `${req.buyer?.first_name || ''} ${req.buyer?.last_name || ''}`.trim()}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Cost/Trade Information */}
+                    {renderCostTradeInfo(req, isInactive)}
+
+                    {/* Location and Meeting Time */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+                        <div className={`${locationBg} rounded-lg p-4 shadow-md`}>
+                            <div className="flex items-center gap-2 mb-2">
+                                <svg className={`w-5 h-5 ${locationText}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span className={`text-xs font-semibold uppercase tracking-wide ${locationText}`}>Location</span>
+                            </div>
+                            <p className={`text-lg font-bold ${locationTextBold}`}>{req.meet_location || 'Not provided'}</p>
+                        </div>
+                        <div className={`${meetingBg} rounded-lg p-4 shadow-md`}>
+                            <div className="flex items-center gap-2 mb-2">
+                                <svg className={`w-5 h-5 ${meetingText}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span className={`text-xs font-semibold uppercase tracking-wide ${meetingText}`}>Meeting Time</span>
+                            </div>
+                            <p className={`text-lg font-bold ${meetingTextBold}`}>{meetingDate}</p>
+                        </div>
+                    </div>
+
+                    {/* Description */}
+                    {req.description && (
+                        <div className={`text-sm ${isInactive ? 'text-red-700 dark:text-red-200' : 'text-gray-700 dark:text-gray-200'}`}>
+                            <span className="font-semibold">Description:</span> {req.description}
+                        </div>
+                    )}
+
+                    {/* Verification Code */}
+                    <div className={`text-sm ${isInactive ? 'text-red-700 dark:text-red-200' : 'text-gray-700 dark:text-gray-200'}`}>
+                        <span className="font-semibold">Verification Code:</span>{' '}
+                        <span className={`font-mono text-base ${isInactive ? 'text-red-600 dark:text-red-300' : (req.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400')}`}>{code}</span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-2 justify-end pt-2">
+                        {canRespond && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => handleAction(req.request_id, 'decline')}
+                                    disabled={busyRequestId === req.request_id}
+                                    className="px-4 py-2 text-sm font-medium rounded-lg border border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60"
+                                >
+                                    {busyRequestId === req.request_id && actionError ? 'Retry Decline' : 'Decline'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleAction(req.request_id, 'accept')}
+                                    disabled={busyRequestId === req.request_id}
+                                    className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                                >
+                                    {busyRequestId === req.request_id && !actionError ? 'Processing...' : 'Accept'}
+                                </button>
+                            </>
+                        )}
+                        
+                        {/* Always visible action buttons - disabled if not accepted */}
+                        <button
+                            type="button"
+                            onClick={() => navigate(`/app/scheduled-purchases/mark-completed/${req.request_id}`)}
+                            disabled={!canUseActionButtons}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 ${!canUseActionButtons ? 'opacity-30 cursor-not-allowed' : ''}`}
+                        >
+                            Begin Complete Purchase Form
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => navigate(`/app/scheduled-purchases/report-issue/${req.request_id}`)}
+                            disabled={!canUseActionButtons}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg border border-yellow-500 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 ${!canUseActionButtons ? 'opacity-30 cursor-not-allowed' : ''}`}
+                        >
+                            Report an Issue
+                        </button>
+                        
+                        {/* Cancel button */}
+                        {canCancel && (
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    setBusyRequestId(req.request_id);
+                                    setActionError('');
+                                    try {
+                                        const res = await fetch(`${API_BASE}/scheduled-purchases/cancel.php`, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'Accept': 'application/json',
+                                            },
+                                            credentials: 'include',
+                                            body: JSON.stringify({
+                                                request_id: req.request_id,
+                                            }),
+                                        });
+                                        if (!res.ok) {
+                                            throw new Error('Failed to cancel request');
+                                        }
+                                        const payload = await res.json();
+                                        if (!payload.success) {
+                                            throw new Error(payload.error || 'Failed to cancel');
+                                        }
+                                        await refresh();
+                                        setActionMessage('Purchase request cancelled successfully.');
+                                    } catch (e) {
+                                        setActionError(e.message || 'Something went wrong.');
+                                    } finally {
+                                        setBusyRequestId(0);
+                                    }
+                                }}
+                                disabled={busyRequestId === req.request_id}
+                                className="px-4 py-2 text-sm font-medium rounded-lg border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                {busyRequestId === req.request_id ? 'Cancelling...' : 'Cancel'}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Render section for requests
+    const renderRequestsSection = (title, requests, perspective) => {
+        if (requests.length === 0) return null;
+        return (
+            <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{title}</h3>
+                <div className="space-y-4">
+                    {requests.map((req) => (
+                        <PurchaseCard key={`${perspective}-${req.request_id}`} req={req} perspective={perspective} />
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Ongoing Purchases</h1>
                     <p className="mt-2 text-gray-600 dark:text-gray-300">
-                        Review scheduled meetup requests from sellers. Accept to confirm the plan or decline if it does not work for you.
+                        Review scheduled meetup requests. Accept to confirm the plan or decline if it does not work for you.
                     </p>
                 </div>
 
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Pending &amp; Confirmed Requests</h2>
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Active Scheduled Purchases</h2>
                     <button
                         type="button"
                         onClick={refresh}
@@ -188,292 +514,21 @@ function OngoingPurchasesPage() {
 
                 {loading ? (
                     <div className="text-gray-600 dark:text-gray-300">Loading scheduled purchases...</div>
-                ) : buyerRequests.length === 0 && sellerRequests.length === 0 ? (
+                ) : activeBuyerRequests.length === 0 && activeSellerRequests.length === 0 && pastBuyerRequests.length === 0 && pastSellerRequests.length === 0 ? (
                     <div className="text-gray-600 dark:text-gray-400">You have no scheduled purchases yet.</div>
                 ) : (
                     <div className="space-y-6">
-                        {/* Buyer Requests Section */}
-                        {buyerRequests.length > 0 && (
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">As Buyer</h3>
-                                <div className="space-y-4">
-                                    {buyerRequests.map((req) => {
-                                        const meetingDate = req.meeting_at ? new Date(req.meeting_at).toLocaleString() : 'Not provided';
-                                        const code = req.verification_code || '----';
-                                        const canRespond = req.status === 'pending';
+                        {/* Active Purchases */}
+                        {renderRequestsSection('As Buyer', activeBuyerRequests, 'buyer')}
+                        {renderRequestsSection('As Seller', activeSellerRequests, 'seller')}
 
-                                        return (
-                                            <div key={`buyer-${req.request_id}`} className="bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-600 rounded-lg p-5 shadow-sm">
-                                                <div className="flex flex-col gap-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="px-2 py-1 text-xs font-semibold rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">You are the Buyer</span>
-                                                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                                                            Requested {req.created_at ? new Date(req.created_at).toLocaleString() : ''}
-                                                            {req.buyer_response_at && (
-                                                                <div>You responded {new Date(req.buyer_response_at).toLocaleString()}</div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                                        <div>
-                                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{req.item?.title || 'Listing'}</h3>
-                                                            <p className="text-sm text-gray-600 dark:text-gray-300">Seller: {req.seller?.first_name} {req.seller?.last_name}</p>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Emphasized Location and Meeting Time */}
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
-                                                        <div className="bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-400 dark:border-blue-700 rounded-lg p-4">
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                </svg>
-                                                                <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">Location</span>
-                                                            </div>
-                                                            <p className="text-lg font-bold text-blue-700 dark:text-blue-200">{req.meet_location || 'Not provided'}</p>
-                                                        </div>
-                                                        <div className="bg-green-50 dark:bg-green-900/30 border-2 border-green-400 dark:border-green-700 rounded-lg p-4">
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                <svg className="w-5 h-5 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                                </svg>
-                                                                <span className="text-xs font-semibold uppercase tracking-wide text-green-600 dark:text-green-300">Meeting Time</span>
-                                                            </div>
-                                                            <p className="text-lg font-bold text-green-700 dark:text-green-200">{meetingDate}</p>
-                                                        </div>
-                                                    </div>
-                                                    {req.description && (
-                                                        <div className="text-sm text-gray-700 dark:text-gray-200">
-                                                            <span className="font-semibold">Description:</span> {req.description}
-                                                        </div>
-                                                    )}
-                                                    <div className="text-sm text-gray-700 dark:text-gray-200">
-                                                        <span className="font-semibold">Verification Code:</span>{' '}
-                                                        <span className={`font-mono text-base ${req.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>{code}</span>
-                                                    </div>
-
-                                                    <div className="flex flex-wrap gap-2 justify-end pt-2">
-                                                        {canRespond ? (
-                                                            <>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleAction(req.request_id, 'decline')}
-                                                                    disabled={busyRequestId === req.request_id}
-                                                                    className="px-4 py-2 text-sm font-medium rounded-lg border border-red-500 text-red-600 hover:bg-red-50 disabled:opacity-60"
-                                                                >
-                                                                    {busyRequestId === req.request_id && actionError ? 'Retry Decline' : 'Decline'}
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleAction(req.request_id, 'accept')}
-                                                                    disabled={busyRequestId === req.request_id}
-                                                                    className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
-                                                                >
-                                                                    {busyRequestId === req.request_id && !actionError ? 'Processing...' : 'Accept'}
-                                                                </button>
-                                                            </>
-                                                        ) : null}
-                                                        
-                                                        {/* Always visible action buttons */}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => navigate(`/app/scheduled-purchases/mark-completed/${req.request_id}`)}
-                                                            className="px-4 py-2 text-sm font-medium rounded-lg border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
-                                                        >
-                                                            Begin Complete Purchase Form
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => navigate(`/app/scheduled-purchases/report-issue/${req.request_id}`)}
-                                                            className="px-4 py-2 text-sm font-medium rounded-lg border border-yellow-500 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
-                                                        >
-                                                            Report an Issue
-                                                        </button>
-                                                        
-                                                        {/* Cancel button for buyers */}
-                                                        {(req.status === 'pending' || req.status === 'accepted') && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={async () => {
-                                                                    setBusyRequestId(req.request_id);
-                                                                    setActionError('');
-                                                                    try {
-                                                                        const res = await fetch(`${API_BASE}/scheduled-purchases/cancel.php`, {
-                                                                            method: 'POST',
-                                                                            headers: {
-                                                                                'Content-Type': 'application/json',
-                                                                                'Accept': 'application/json',
-                                                                            },
-                                                                            credentials: 'include',
-                                                                            body: JSON.stringify({
-                                                                                request_id: req.request_id,
-                                                                            }),
-                                                                        });
-                                                                        if (!res.ok) {
-                                                                            throw new Error('Failed to cancel request');
-                                                                        }
-                                                                        const payload = await res.json();
-                                                                        if (!payload.success) {
-                                                                            throw new Error(payload.error || 'Failed to cancel');
-                                                                        }
-                                                                        await refresh();
-                                                                        setActionMessage('Purchase request cancelled successfully.');
-                                                                    } catch (e) {
-                                                                        setActionError(e.message || 'Something went wrong.');
-                                                                    } finally {
-                                                                        setBusyRequestId(0);
-                                                                    }
-                                                                }}
-                                                                disabled={busyRequestId === req.request_id}
-                                                                className="px-4 py-2 text-sm font-medium rounded-lg border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 disabled:opacity-60 disabled:cursor-not-allowed"
-                                                            >
-                                                                {busyRequestId === req.request_id ? 'Cancelling...' : 'Cancel'}
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Seller Requests Section */}
-                        {sellerRequests.length > 0 && (
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">As Seller</h3>
-                                <div className="space-y-4">
-                                    {sellerRequests.map((req) => {
-                                        const meetingDate = req.meeting_at ? new Date(req.meeting_at).toLocaleString() : 'Not provided';
-                                        const code = req.verification_code || '----';
-                                        const canCancel = req.status === 'pending' || req.status === 'accepted';
-
-                                        return (
-                                            <div key={`seller-${req.request_id}`} className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500 dark:border-blue-600 rounded-lg p-5 shadow-sm">
-                                                <div className="flex flex-col gap-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="px-2 py-1 text-xs font-semibold rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">You are the Seller</span>
-                                                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                                                            Created {req.created_at ? new Date(req.created_at).toLocaleString() : ''}
-                                                            {req.buyer_response_at && (
-                                                                <div>Buyer responded {new Date(req.buyer_response_at).toLocaleString()}</div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                                        <div>
-                                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{req.item?.title || 'Listing'}</h3>
-                                                            <p className="text-sm text-gray-600 dark:text-gray-300">Buyer: {req.buyer?.first_name} {req.buyer?.last_name}</p>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Emphasized Location and Meeting Time */}
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
-                                                        <div className="bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-400 dark:border-blue-700 rounded-lg p-4">
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                </svg>
-                                                                <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">Location</span>
-                                                            </div>
-                                                            <p className="text-lg font-bold text-blue-700 dark:text-blue-200">{req.meet_location || 'Not provided'}</p>
-                                                        </div>
-                                                        <div className="bg-green-50 dark:bg-green-900/30 border-2 border-green-400 dark:border-green-700 rounded-lg p-4">
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                <svg className="w-5 h-5 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                                </svg>
-                                                                <span className="text-xs font-semibold uppercase tracking-wide text-green-600 dark:text-green-300">Meeting Time</span>
-                                                            </div>
-                                                            <p className="text-lg font-bold text-green-700 dark:text-green-200">{meetingDate}</p>
-                                                        </div>
-                                                    </div>
-                                                    {req.description && (
-                                                        <div className="text-sm text-gray-700 dark:text-gray-200">
-                                                            <span className="font-semibold">Description:</span> {req.description}
-                                                        </div>
-                                                    )}
-                                                    <div className="text-sm text-gray-700 dark:text-gray-200">
-                                                        <span className="font-semibold">Verification Code:</span>{' '}
-                                                        <span className={`font-mono text-base ${req.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>{code}</span>
-                                                    </div>
-                                                    <div className="text-sm text-gray-700 dark:text-gray-200">
-                                                        <span className="font-semibold">Status:</span>{' '}
-                                                        <span className={`font-medium ${
-                                                            req.status === 'accepted' ? 'text-green-600 dark:text-green-400' :
-                                                            req.status === 'declined' ? 'text-red-600 dark:text-red-400' :
-                                                            req.status === 'cancelled' ? 'text-orange-600 dark:text-orange-400' :
-                                                            'text-blue-600 dark:text-blue-400'
-                                                        }`}>
-                                                            {req.status}
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="flex flex-wrap gap-2 justify-end pt-2">
-                                                        {/* Always visible action buttons */}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => navigate(`/app/scheduled-purchases/mark-completed/${req.request_id}`)}
-                                                            className="px-4 py-2 text-sm font-medium rounded-lg border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
-                                                        >
-                                                            Begin Complete Purchase Form
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => navigate(`/app/scheduled-purchases/report-issue/${req.request_id}`)}
-                                                            className="px-4 py-2 text-sm font-medium rounded-lg border border-yellow-500 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
-                                                        >
-                                                            Report an Issue
-                                                        </button>
-                                                        
-                                                        {/* Cancel button for sellers */}
-                                                    {canCancel && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={async () => {
-                                                                    setBusyRequestId(req.request_id);
-                                                                    setActionError('');
-                                                                    try {
-                                                                        const res = await fetch(`${API_BASE}/scheduled-purchases/cancel.php`, {
-                                                                            method: 'POST',
-                                                                            headers: {
-                                                                                'Content-Type': 'application/json',
-                                                                                'Accept': 'application/json',
-                                                                            },
-                                                                            credentials: 'include',
-                                                                            body: JSON.stringify({
-                                                                                request_id: req.request_id,
-                                                                            }),
-                                                                        });
-                                                                        if (!res.ok) {
-                                                                            throw new Error('Failed to cancel request');
-                                                                        }
-                                                                        const payload = await res.json();
-                                                                        if (!payload.success) {
-                                                                            throw new Error(payload.error || 'Failed to cancel');
-                                                                        }
-                                                                        await refresh();
-                                                                        setActionMessage('Purchase request cancelled successfully.');
-                                                                    } catch (e) {
-                                                                        setActionError(e.message || 'Something went wrong.');
-                                                                    } finally {
-                                                                        setBusyRequestId(0);
-                                                                    }
-                                                                }}
-                                                                disabled={busyRequestId === req.request_id}
-                                                                className="px-4 py-2 text-sm font-medium rounded-lg border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 disabled:opacity-60 disabled:cursor-not-allowed"
-                                                            >
-                                                                {busyRequestId === req.request_id ? 'Cancelling...' : 'Cancel'}
-                                                            </button>
-                                                        )}
-                                                        </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                        {/* Past Purchases Section */}
+                        {(pastBuyerRequests.length > 0 || pastSellerRequests.length > 0) && (
+                            <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-700">
+                                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Past Scheduled Purchases</h2>
+                                <div className="space-y-6">
+                                    {renderRequestsSection('As Buyer', pastBuyerRequests, 'buyer')}
+                                    {renderRequestsSection('As Seller', pastSellerRequests, 'seller')}
                                 </div>
                             </div>
                         )}
@@ -489,5 +544,3 @@ function OngoingPurchasesPage() {
 }
 
 export default OngoingPurchasesPage;
-
-
