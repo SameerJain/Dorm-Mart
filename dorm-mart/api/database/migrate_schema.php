@@ -42,9 +42,12 @@ foreach ($files as $path) {
     exit;
   }
 
-  // flush multi_query results
-  while ($conn->more_results() && $conn->next_result()) { /* flush */
-  }
+  // flush multi_query results - properly consume all result sets including from PREPARE/EXECUTE
+  do {
+    if ($result = $conn->store_result()) {
+      $result->free();
+    }
+  } while ($conn->more_results() && $conn->next_result());
 
   $stmt = $conn->prepare("INSERT INTO schema_migrations (filename) VALUES (?)");
   $stmt->bind_param("s", $name);

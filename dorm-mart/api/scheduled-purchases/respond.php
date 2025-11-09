@@ -146,7 +146,7 @@ try {
             // If snapshot values are missing, fetch current inventory values as fallback
             // This should never happen, but provides safety
             if ($snapshotPriceNego === null || $snapshotTrades === null) {
-                $fallbackStmt = $conn->prepare('SELECT price_nego, trades, meet_location FROM INVENTORY WHERE product_id = ? LIMIT 1');
+                $fallbackStmt = $conn->prepare('SELECT price_nego, trades, item_location FROM INVENTORY WHERE product_id = ? LIMIT 1');
                 if ($fallbackStmt) {
                     $fallbackStmt->bind_param('i', $inventoryProductId);
                     $fallbackStmt->execute();
@@ -162,7 +162,7 @@ try {
                             $snapshotTrades = isset($fallbackRow['trades']) ? ((int)$fallbackRow['trades'] === 1) : false;
                         }
                         if ($snapshotMeetLocation === null) {
-                            $snapshotMeetLocation = isset($fallbackRow['meet_location']) ? trim((string)$fallbackRow['meet_location']) : null;
+                            $snapshotMeetLocation = isset($fallbackRow['item_location']) ? trim((string)$fallbackRow['item_location']) : null;
                         }
                         error_log('Warning: Using fallback inventory values for scheduled purchase ' . $requestId);
                     }
@@ -188,9 +188,9 @@ try {
             $updateParams[] = $snapshotTrades ? 1 : 0;
             $updateTypes .= 'i';
             
-            // Forcefully update meet_location to snapshot value if it exists
+            // Forcefully update item_location to snapshot value if it exists
             if ($snapshotMeetLocation !== null && $snapshotMeetLocation !== '') {
-                $updateFields[] = 'meet_location = ?';
+                $updateFields[] = 'item_location = ?';
                 $updateParams[] = $snapshotMeetLocation;
                 $updateTypes .= 's';
             }

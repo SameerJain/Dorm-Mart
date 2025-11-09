@@ -1,10 +1,8 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
 function ScheduleMessageCard({ message, isMine, onRespond }) {
-  const navigate = useNavigate();
   const metadata = message.metadata || {};
   const messageType = metadata.type;
   const requestId = metadata.request_id;
@@ -140,7 +138,18 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const description = metadata.description || null;
   const verificationCode = metadata.verification_code || null;
   const productTitle = metadata.product_title || null;
-  const productId = metadata.product_id || metadata.inventory_product_id || null;
+  const negotiatedPrice = metadata.negotiated_price !== null && metadata.negotiated_price !== undefined ? parseFloat(metadata.negotiated_price) : null;
+  const listingPrice = metadata.listing_price !== null && metadata.listing_price !== undefined ? parseFloat(metadata.listing_price) : null;
+  const isTrade = metadata.is_trade === true || metadata.is_trade === 1 || metadata.is_trade === '1';
+  
+  // Determine display price: use negotiated price if available and different from listing, otherwise use listing price
+  const displayPrice = (negotiatedPrice !== null && negotiatedPrice !== listingPrice) ? negotiatedPrice : listingPrice;
+  
+  // Format price for display
+  const formatPrice = (price) => {
+    if (price === null || price === undefined || isNaN(price)) return null;
+    return `$${price.toFixed(2)}`;
+  };
 
   return (
     <div className={`max-w-[85%] rounded-2xl border-2 ${config.borderColor} ${config.bgColor} ${config.textColor} overflow-hidden`}>
@@ -160,12 +169,25 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
           </p>
         </div>
         
-        {/* Product title for schedule_request messages */}
+        {/* Product title and price for schedule_request messages */}
         {messageType === 'schedule_request' && productTitle && (
           <div className={`px-3 py-2 rounded-lg ${config.innerBgColor} border ${config.borderColor}`}>
             <p className={`text-sm font-semibold ${config.textColor}`}>
               <span className="font-bold">Item:</span> {productTitle}
             </p>
+            {displayPrice !== null && !isTrade && (
+              <p className={`text-sm font-semibold ${config.textColor} mt-1`}>
+                <span className="font-bold">Cost:</span> {formatPrice(displayPrice)}
+                {negotiatedPrice !== null && negotiatedPrice !== listingPrice && (
+                  <span className="text-xs ml-1 opacity-75">(negotiated)</span>
+                )}
+              </p>
+            )}
+            {isTrade && metadata.trade_item_description && (
+              <p className={`text-sm font-semibold ${config.textColor} mt-1`}>
+                <span className="font-bold">Trade:</span> {metadata.trade_item_description}
+              </p>
+            )}
           </div>
         )}
         

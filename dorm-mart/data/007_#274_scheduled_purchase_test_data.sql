@@ -28,6 +28,7 @@ DELETE FROM scheduled_purchase_requests
 WHERE (@existing_seller_id IS NOT NULL AND (buyer_user_id = @existing_seller_id OR seller_user_id = @existing_seller_id))
    OR (@existing_buyer_id IS NOT NULL AND (buyer_user_id = @existing_buyer_id OR seller_user_id = @existing_buyer_id));
 
+-- Note: Conversations are NOT deleted here - they should be created naturally via "Message Seller" button in UI
 -- 3. Delete conversations where these users participate (this cascades to conversation_participants)
 DELETE FROM conversations
 WHERE (@existing_seller_id IS NOT NULL AND (user1_id = @existing_seller_id OR user2_id = @existing_seller_id))
@@ -256,115 +257,8 @@ INSERT INTO INVENTORY (
   0
 );
 
--- Capture product IDs for conversation creation
-SELECT product_id INTO @scrub_daddy_id
-FROM INVENTORY
-WHERE title = 'Scrub Daddy' AND seller_id = @seller_id
-LIMIT 1;
-
-SELECT product_id INTO @air_fryer_id
-FROM INVENTORY
-WHERE title = 'Air Fryer' AND seller_id = @seller_id
-LIMIT 1;
-
-SELECT product_id INTO @pim_plushie_id
-FROM INVENTORY
-WHERE title = 'Pim Plushie' AND seller_id = @seller_id
-LIMIT 1;
-
--- Create conversation for Scrub Daddy
-INSERT INTO conversations (
-  user1_id,
-  user2_id,
-  product_id,
-  user1_fname,
-  user2_fname,
-  user1_deleted,
-  user2_deleted
-) VALUES (
-  @buyer_id,
-  @seller_id,
-  @scrub_daddy_id,
-  'Han',
-  'Luke',
-  0,
-  0
-);
-
--- Create conversation for Air Fryer
-INSERT INTO conversations (
-  user1_id,
-  user2_id,
-  product_id,
-  user1_fname,
-  user2_fname,
-  user1_deleted,
-  user2_deleted
-) VALUES (
-  @buyer_id,
-  @seller_id,
-  @air_fryer_id,
-  'Han',
-  'Luke',
-  0,
-  0
-);
-
--- Create conversation for Pim Plushie
-INSERT INTO conversations (
-  user1_id,
-  user2_id,
-  product_id,
-  user1_fname,
-  user2_fname,
-  user1_deleted,
-  user2_deleted
-) VALUES (
-  @buyer_id,
-  @seller_id,
-  @pim_plushie_id,
-  'Han',
-  'Luke',
-  0,
-  0
-);
-
--- Capture conversation IDs
-SELECT conv_id INTO @scrub_daddy_conv_id
-FROM conversations
-WHERE product_id = @scrub_daddy_id AND user1_id = @buyer_id AND user2_id = @seller_id
-LIMIT 1;
-
-SELECT conv_id INTO @air_fryer_conv_id
-FROM conversations
-WHERE product_id = @air_fryer_id AND user1_id = @buyer_id AND user2_id = @seller_id
-LIMIT 1;
-
-SELECT conv_id INTO @pim_plushie_conv_id
-FROM conversations
-WHERE product_id = @pim_plushie_id AND user1_id = @buyer_id AND user2_id = @seller_id
-LIMIT 1;
-
--- Create conversation_participants entries for Scrub Daddy conversation
-INSERT INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
-VALUES (@scrub_daddy_conv_id, @buyer_id, NULL, 0);
-
-INSERT INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
-VALUES (@scrub_daddy_conv_id, @seller_id, NULL, 0);
-
--- Create conversation_participants entries for Air Fryer conversation
-INSERT INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
-VALUES (@air_fryer_conv_id, @buyer_id, NULL, 0);
-
-INSERT INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
-VALUES (@air_fryer_conv_id, @seller_id, NULL, 0);
-
--- Create conversation_participants entries for Pim Plushie conversation
-INSERT INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
-VALUES (@pim_plushie_conv_id, @buyer_id, NULL, 0);
-
-INSERT INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
-VALUES (@pim_plushie_conv_id, @seller_id, NULL, 0);
+-- Note: Conversations are NOT created here - they should be created naturally via "Message Seller" button in UI
+-- The test flow requires users to click "Message Seller" which will create conversations through the API
 
 COMMIT;
 

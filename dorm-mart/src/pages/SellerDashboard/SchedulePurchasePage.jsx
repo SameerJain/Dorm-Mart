@@ -5,6 +5,12 @@ import { MEET_LOCATION_OPTIONS, MEET_LOCATION_OTHER_VALUE } from '../../constant
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
+// Price limits - max matches ProductListingPage exactly, min is 0 to allow free items
+const PRICE_LIMITS = {
+    max: 999999.99,
+    min: 0,
+};
+
 function SchedulePurchasePage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -59,12 +65,6 @@ function SchedulePurchasePage() {
                     throw new Error(data.error || 'Failed to load listings');
                 }
                 const listingsData = Array.isArray(data.data) ? data.data : [];
-                // Debug: Log first listing to verify API response structure (development only)
-                if (process.env.NODE_ENV === 'development' && listingsData.length > 0) {
-                    console.log('First listing from API:', listingsData[0]);
-                    console.log('Has priceNegotiable:', 'priceNegotiable' in listingsData[0]);
-                    console.log('Has acceptTrades:', 'acceptTrades' in listingsData[0]);
-                }
                 setListings(listingsData);
             } catch (e) {
                 if (e.name !== 'AbortError') {
@@ -115,18 +115,8 @@ function SchedulePurchasePage() {
                     acceptTrades: listing.acceptTrades === true || listing.acceptTrades === 1 || listing.acceptTrades === '1',
                     meet_location: listing.meet_location || null,
                 };
-                // Debug: Log listing data to verify fields are present (development only)
-                if (process.env.NODE_ENV === 'development') {
-                    console.log('Selected listing:', fullListing);
-                    console.log('priceNegotiable:', fullListing.priceNegotiable, typeof fullListing.priceNegotiable);
-                    console.log('acceptTrades:', fullListing.acceptTrades, typeof fullListing.acceptTrades);
-                    console.log('meet_location:', fullListing.meet_location);
-                }
                 setSelectedListing(fullListing);
             } else {
-                if (process.env.NODE_ENV === 'development') {
-                    console.warn('Listing not found for ID:', finalListingId, 'Available IDs:', listings.map(l => l.id));
-                }
                 setSelectedListing(null);
             }
             // Reset trade-related fields when listing changes
@@ -199,6 +189,17 @@ function SchedulePurchasePage() {
         return `${year}-${month}-${day}`;
     };
 
+    // Get maximum date (3 months from now) in Eastern Time (YYYY-MM-DD format for max attribute)
+    const getMaxDate = () => {
+        const easternNow = getEasternTime();
+        const threeMonthsFromNow = new Date(easternNow);
+        threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+        const year = threeMonthsFromNow.getFullYear();
+        const month = String(threeMonthsFromNow.getMonth() + 1).padStart(2, '0');
+        const day = String(threeMonthsFromNow.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     // Validate date and time (using Eastern Time)
     const validateDateTime = () => {
         setDateTimeError('');
@@ -218,6 +219,8 @@ function SchedulePurchasePage() {
 
         // Parse selected date (treat as Eastern Time)
         const [year, month, day] = meetingDate.split('-').map(Number);
+        const selectedHour24 = convertTo24Hour(meetingHour, meetingAmPm);
+        const selectedMinute = parseInt(meetingMinute);
 
         // Compare dates (both in Eastern Time)
         if (year < easternYear || 
@@ -229,9 +232,6 @@ function SchedulePurchasePage() {
 
         // If date is today, check if time is in the future (Eastern Time)
         if (year === easternYear && month === easternMonth && day === easternDay) {
-            const selectedHour24 = convertTo24Hour(meetingHour, meetingAmPm);
-            const selectedMinute = parseInt(meetingMinute);
-            
             // Compare time components directly (both in Eastern Time)
             if (selectedHour24 < easternHour || 
                 (selectedHour24 === easternHour && selectedMinute <= easternMinute)) {
@@ -239,7 +239,19 @@ function SchedulePurchasePage() {
                 return false;
             }
         }
-        // If date is in the future, any time is valid
+        
+        // Check if date/time is more than 3 months in the future
+        // Create selected date/time in Eastern Time
+        const selectedDateTime = new Date(year, month - 1, day, selectedHour24, selectedMinute, 0); // month is 1-indexed in input, 0-indexed in Date
+        
+        // Calculate 3 months from now (Eastern Time)
+        const threeMonthsFromNow = new Date(easternNow);
+        threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+        
+        if (selectedDateTime > threeMonthsFromNow) {
+            setDateTimeError('Meeting date cannot be more than 3 months in advance.');
+            return false;
+        }
 
         return true;
     };
@@ -345,6 +357,12 @@ function SchedulePurchasePage() {
             return;
         }
 
+        // Validate that price cannot be entered if trade is selected
+        if (isTrade && negotiatedPrice.trim()) {
+            setFormError('Cannot enter a price for a trade. Please clear the price field or uncheck the trade option.');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const negotiatedPriceValue = negotiatedPrice.trim() ? parseFloat(negotiatedPrice) : null;
@@ -356,6 +374,11 @@ function SchedulePurchasePage() {
                 }
                 if (negotiatedPriceValue < 0) {
                     setFormError('Price cannot be negative.');
+                    setIsSubmitting(false);
+                    return;
+                }
+                if (negotiatedPriceValue > PRICE_LIMITS.max) {
+                    setFormError(`Price must be $${PRICE_LIMITS.max.toFixed(2)} or less`);
                     setIsSubmitting(false);
                     return;
                 }
@@ -487,6 +510,7 @@ function SchedulePurchasePage() {
                                         <option 
                                             key={option.value || 'unselected'} 
                                             value={option.value}
+                                            style={isItemLocation ? { backgroundColor: '#dbeafe' } : {}}
                                         >
                                             {option.label}{isItemLocation ? ' (Listed on item form)' : ''}
                                         </option>
@@ -527,6 +551,7 @@ function SchedulePurchasePage() {
                                             setDateTimeError('');
                                         }}
                                         min={getTodayDate()}
+                                        max={getMaxDate()}
                                         className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
@@ -591,12 +616,6 @@ function SchedulePurchasePage() {
                         </div>
 
                         {/* Price negotiation field - only show if item is price negotiable */}
-                        {/* Debug: Show selectedListing state */}
-                        {process.env.NODE_ENV === 'development' && selectedListing && (
-                            <div className="text-xs text-gray-500 mb-2">
-                                Debug: priceNegotiable={String(selectedListing.priceNegotiable)}, acceptTrades={String(selectedListing.acceptTrades)}
-                            </div>
-                        )}
                         {selectedListing?.priceNegotiable && (
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
@@ -607,10 +626,22 @@ function SchedulePurchasePage() {
                                         type="number"
                                         step="0.01"
                                         min="0"
+                                        max={PRICE_LIMITS.max}
                                         value={negotiatedPrice}
-                                        onChange={(e) => setNegotiatedPrice(e.target.value)}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (value === '') {
+                                                setNegotiatedPrice('');
+                                                return;
+                                            }
+                                            const numValue = parseFloat(value);
+                                            if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
+                                                setNegotiatedPrice(value);
+                                            }
+                                        }}
                                         placeholder="Enter negotiated price"
-                                        className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        disabled={isTrade}
+                                        className={`flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isTrade ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     />
                                     {selectedListing?.acceptTrades && (
                                         <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
@@ -619,7 +650,10 @@ function SchedulePurchasePage() {
                                                 checked={isTrade}
                                                 onChange={(e) => {
                                                     setIsTrade(e.target.checked);
-                                                    if (!e.target.checked) {
+                                                    if (e.target.checked) {
+                                                        // Clear price when trade is selected
+                                                        setNegotiatedPrice('');
+                                                    } else {
                                                         setTradeItemDescription('');
                                                     }
                                                 }}
@@ -637,22 +671,25 @@ function SchedulePurchasePage() {
                         {/* Trade toggle - show separately if item accepts trades but is NOT price negotiable */}
                         {selectedListing?.acceptTrades && !selectedListing?.priceNegotiable && (
                             <div>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={isTrade}
-                                        onChange={(e) => {
-                                            setIsTrade(e.target.checked);
-                                            if (!e.target.checked) {
-                                                setTradeItemDescription('');
-                                            }
-                                        }}
-                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    />
-                                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                                        This is an item trade
-                                    </span>
-                                </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={isTrade}
+                                                onChange={(e) => {
+                                                    setIsTrade(e.target.checked);
+                                                    if (e.target.checked) {
+                                                        // Clear price when trade is selected
+                                                        setNegotiatedPrice('');
+                                                    } else {
+                                                        setTradeItemDescription('');
+                                                    }
+                                                }}
+                                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                            />
+                                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                                                This is an item trade
+                                            </span>
+                                        </label>
                             </div>
                         )}
 
@@ -666,13 +703,13 @@ function SchedulePurchasePage() {
                                     value={tradeItemDescription}
                                     onChange={(e) => setTradeItemDescription(e.target.value)}
                                     rows={3}
-                                    maxLength={500}
+                                    maxLength={100}
                                     placeholder="Describe the item you are trading..."
                                     className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
                                     required={isTrade}
                                 />
                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    {tradeItemDescription.length}/500 characters
+                                    {tradeItemDescription.length}/100 characters
                                 </p>
                             </div>
                         )}

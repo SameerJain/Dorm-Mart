@@ -94,6 +94,25 @@ try {
         echo json_encode(['success' => false, 'error' => 'Invalid meeting date/time']);
         exit;
     }
+    
+    // Check if meeting is more than 3 months in the future
+    $now = new DateTime('now', new DateTimeZone('UTC'));
+    $threeMonthsFromNow = clone $now;
+    $threeMonthsFromNow->modify('+3 months');
+    
+    if ($meetingAt > $threeMonthsFromNow) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Meeting date cannot be more than 3 months in advance']);
+        exit;
+    }
+    
+    // Check if meeting is in the past
+    if ($meetingAt < $now) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Meeting date cannot be in the past']);
+        exit;
+    }
+    
     $meetingAt->setTimezone(new DateTimeZone('UTC'));
     $meetingAtDb = $meetingAt->format('Y-m-d H:i:s');
 
@@ -101,7 +120,7 @@ try {
     $conn->set_charset('utf8mb4');
 
     // Verify inventory belongs to seller and get snapshot values
-    $itemStmt = $conn->prepare('SELECT product_id, title, seller_id, price_nego, trades, meet_location FROM INVENTORY WHERE product_id = ? LIMIT 1');
+    $itemStmt = $conn->prepare('SELECT product_id, title, seller_id, price_nego, trades, item_location, listing_price FROM INVENTORY WHERE product_id = ? LIMIT 1');
     if (!$itemStmt) {
         throw new RuntimeException('Failed to prepare inventory query');
     }
@@ -120,7 +139,7 @@ try {
     // Get snapshot values at the time of creation
     $snapshotPriceNego = isset($itemRow['price_nego']) ? ((int)$itemRow['price_nego'] === 1) : false;
     $snapshotTrades = isset($itemRow['trades']) ? ((int)$itemRow['trades'] === 1) : false;
-    $snapshotMeetLocation = isset($itemRow['meet_location']) ? trim((string)$itemRow['meet_location']) : null;
+    $snapshotMeetLocation = isset($itemRow['item_location']) ? trim((string)$itemRow['item_location']) : null;
 
     // Verify conversation belongs to seller and get buyer id
     $convStmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
@@ -187,6 +206,13 @@ try {
     if ($isTrade && !$snapshotTrades) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'This item does not accept trades']);
+        exit;
+    }
+
+    // Validate that price cannot be provided if trade is selected
+    if ($isTrade && $negotiatedPrice !== null) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Cannot enter a price for a trade']);
         exit;
     }
 
@@ -302,6 +328,9 @@ try {
         $senderName = $names[$msgSenderId] ?? ('User ' . $msgSenderId);
         $receiverName = $names[$msgReceiverId] ?? ('User ' . $msgReceiverId);
         
+        // Get listing price for display
+        $listingPrice = isset($itemRow['listing_price']) ? (float)$itemRow['listing_price'] : null;
+        
         $metadata = json_encode([
             'type' => 'schedule_request',
             'request_id' => $requestId,
@@ -313,6 +342,7 @@ try {
             'verification_code' => $verificationCode,
             'description' => $description,
             'negotiated_price' => $negotiatedPrice,
+            'listing_price' => $listingPrice,
             'is_trade' => $isTrade,
             'trade_item_description' => $tradeItemDescription,
         ], JSON_UNESCAPED_SLASHES);
