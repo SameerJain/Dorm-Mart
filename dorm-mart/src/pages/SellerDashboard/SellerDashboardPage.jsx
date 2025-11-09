@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -63,10 +63,102 @@ function SellerDashboardPage() {
         return metrics;
     };
 
+    const fetchListings = useCallback(async () => {
+        setLoading(true);
+        try {
+            const BASE = (process.env.REACT_APP_API_BASE || "api");
+            // TODO: Create manage_seller_listings.php endpoint similar to fetch-transacted-items.php
+            // This will query transacted_items WHERE seller_user_id = current_user_id
+            const response = await fetch(`${BASE}/seller-dashboard/manage_seller_listings.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({}) // May need user_id or session token
+            });
+
+            if (!response.ok) {
+                // Try to parse error response
+                let errorResult;
+                try {
+                    errorResult = await response.json();
+                } catch (e) {
+                    errorResult = { error: `HTTP ${response.status}` };
+                }
+                console.error('API Error Response:', errorResult);
+                throw new Error(errorResult.error || `HTTP ${response.status}`);
+            }
+            const result = await response.json();
+
+            console.log('Seller dashboard API response:', result); // Debug log
+
+            if (result.success) {
+                // Ensure result.data is an array
+                const dataArray = Array.isArray(result.data) ? result.data : [];
+                console.log('Fetched listings count:', dataArray.length); // Debug log
+                
+                // Transform backend data to match frontend expectations
+                const transformedListings = dataArray.map(item => {
+                    const rawImg = item.image_url || item.image || null;
+                    const proxied = rawImg
+                        ? `${API_BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
+                        : null;
+                    return {
+                        id: item.id,
+                        title: item.title,
+                        price: item.price || 0,
+                        status: item.status || 'Active',
+                        createdAt: item.created_at,
+                        image: proxied,
+                        seller_user_id: item.seller_user_id,
+                        buyer_user_id: item.buyer_user_id,
+                        categories: Array.isArray(item.categories) ? item.categories : [],
+                        has_accepted_scheduled_purchase: item.has_accepted_scheduled_purchase === true || item.has_accepted_scheduled_purchase === 1
+                    };
+                });
+                setListings(transformedListings);
+
+                // Debug: Log items with accepted scheduled purchases
+                const itemsWithAccepted = transformedListings.filter(l => l.has_accepted_scheduled_purchase);
+                if (itemsWithAccepted.length > 0) {
+                    console.log('Items with accepted scheduled purchases:', itemsWithAccepted);
+                }
+
+                // Calculate and set summary metrics
+                const metrics = calculateSummaryMetrics(transformedListings);
+                setSummaryMetrics(metrics);
+            } else {
+                console.error('Unexpected API response format:', result);
+                setListings([]);
+                setSummaryMetrics({
+                    activeListings: 0,
+                    pendingSales: 0,
+                    itemsSold: 0,
+                    savedDrafts: 0,
+                    totalViews: 0
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching listings:', error);
+            setListings([]);
+            setSummaryMetrics({
+                activeListings: 0,
+                pendingSales: 0,
+                itemsSold: 0,
+                savedDrafts: 0,
+                totalViews: 0
+            });
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     // Load listings on component mount
     useEffect(() => {
         fetchListings();
-    }, []);
+    }, [fetchListings]);
 
     const handleDelete = async (id) => {
         try {
@@ -140,90 +232,6 @@ function SellerDashboardPage() {
         }
     };
 
-    // Fetch seller's listings from backend - aligns with existing transacted_items table
-    const fetchListings = async () => {
-        setLoading(true);
-        try {
-            const BASE = (process.env.REACT_APP_API_BASE || "api");
-            // TODO: Create manage_seller_listings.php endpoint similar to fetch-transacted-items.php
-            // This will query transacted_items WHERE seller_user_id = current_user_id
-            const response = await fetch(`${BASE}/seller-dashboard/manage_seller_listings.php`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify({}) // May need user_id or session token
-            });
-
-            if (!response.ok) {
-                // Try to parse error response
-                let errorResult;
-                try {
-                    errorResult = await response.json();
-                } catch (e) {
-                    errorResult = { error: `HTTP ${response.status}` };
-                }
-                console.error('API Error Response:', errorResult);
-                throw new Error(errorResult.error || `HTTP ${response.status}`);
-            }
-            const result = await response.json();
-
-            console.log('Seller dashboard API response:', result); // Debug log
-
-            if (result.success) {
-                // Ensure result.data is an array
-                const dataArray = Array.isArray(result.data) ? result.data : [];
-                console.log('Fetched listings count:', dataArray.length); // Debug log
-                
-                // Transform backend data to match frontend expectations
-                const transformedListings = dataArray.map(item => {
-                    const rawImg = item.image_url || item.image || null;
-                    const proxied = rawImg
-                        ? `${API_BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
-                        : null;
-                    return {
-                        id: item.id,
-                        title: item.title,
-                        price: item.price || 0,
-                        status: item.status || 'Active',
-                        createdAt: item.created_at, // Use correct field name
-                        image: proxied,
-                        seller_user_id: item.seller_user_id,
-                        buyer_user_id: item.buyer_user_id,
-                        categories: Array.isArray(item.categories) ? item.categories : [],
-                        has_accepted_scheduled_purchase: item.has_accepted_scheduled_purchase === true || item.has_accepted_scheduled_purchase === 1
-                    };
-                });
-                setListings(transformedListings);
-
-                // Debug: Log items with accepted scheduled purchases
-                const itemsWithAccepted = transformedListings.filter(l => l.has_accepted_scheduled_purchase);
-                if (itemsWithAccepted.length > 0) {
-                    console.log('Items with accepted scheduled purchases:', itemsWithAccepted);
-                }
-
-                // Calculate and set summary metrics
-                const metrics = calculateSummaryMetrics(transformedListings);
-                setSummaryMetrics(metrics);
-            } else {
-                throw new Error(result.error || 'Failed to fetch listings');
-            }
-        } catch (error) {
-            console.error('Error fetching listings:', error);
-            console.error('Error details:', {
-                message: error.message,
-                stack: error.stack
-            });
-            
-            setListings([]); // Set empty array on error
-            // Show error message to user
-            alert(`Failed to load listings: ${error.message}`);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

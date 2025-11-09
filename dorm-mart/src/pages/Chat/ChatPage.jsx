@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { ChatContext } from "../../context/ChatContext";
 import fmtTime from "./chat_page_utils";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
@@ -113,8 +113,8 @@ export default function ChatPage() {
     ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
     : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
 
-  // Check for active scheduled purchase when product changes
-  useEffect(() => {
+  // Function to check for active scheduled purchase (extracted for reuse)
+  const checkActiveScheduledPurchase = useCallback(async (signal) => {
     const productId = activeConversation?.productId;
     const isSellerPerspective = activeConversation?.productId && activeConversation?.productSellerId && myId && 
       Number(activeConversation.productSellerId) === Number(myId);
@@ -125,49 +125,68 @@ export default function ChatPage() {
       return;
     }
 
-    const controller = new AbortController();
-    
-    async function checkActiveScheduledPurchase() {
-      try {
-        const res = await fetch(`${API_BASE}/scheduled-purchases/check_active.php`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          credentials: 'include',
-          signal: controller.signal,
-          body: JSON.stringify({
-            product_id: productId,
-          }),
-        });
-        
-        if (!res.ok) {
-          console.error('Failed to check active scheduled purchase');
-          setHasActiveScheduledPurchase(false);
-          return;
-        }
-        
-        const result = await res.json();
-        if (result.success) {
-          setHasActiveScheduledPurchase(result.has_active === true);
-        } else {
-          setHasActiveScheduledPurchase(false);
-        }
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error('Error checking active scheduled purchase:', error);
-          setHasActiveScheduledPurchase(false);
-        }
+    try {
+      const res = await fetch(`${API_BASE}/scheduled-purchases/check_active.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+        signal: signal,
+        body: JSON.stringify({
+          product_id: productId,
+        }),
+      });
+      
+      if (!res.ok) {
+        console.error('Failed to check active scheduled purchase');
+        setHasActiveScheduledPurchase(false);
+        return;
+      }
+      
+      const result = await res.json();
+      if (result.success) {
+        setHasActiveScheduledPurchase(result.has_active === true);
+      } else {
+        setHasActiveScheduledPurchase(false);
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('Error checking active scheduled purchase:', error);
+        setHasActiveScheduledPurchase(false);
       }
     }
-    
-    checkActiveScheduledPurchase();
+  }, [activeConversation?.productId, activeConversation?.productSellerId, myId]);
+
+  // Check for active scheduled purchase when product changes
+  useEffect(() => {
+    const controller = new AbortController();
+    checkActiveScheduledPurchase(controller.signal);
     
     return () => {
       controller.abort();
     };
-  }, [activeConversation?.productId, activeConversation?.productSellerId, myId]);
+  }, [checkActiveScheduledPurchase]);
+
+  // Re-check for active scheduled purchases when messages change (e.g., after denial/acceptance)
+  useEffect(() => {
+    // Only check if we're in seller perspective and have an active conversation
+    if (!activeConversation?.productId || !isSellerPerspective) {
+      return;
+    }
+    
+    const controller = new AbortController();
+    // Small delay to ensure backend has processed the status change
+    const timeoutId = setTimeout(() => {
+      checkActiveScheduledPurchase(controller.signal);
+    }, 500);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [messages.length, activeConversation?.productId, isSellerPerspective, checkActiveScheduledPurchase]);
 
   function handleSchedulePurchase() {
     if (!activeConvId || !activeConversation?.productId || hasActiveScheduledPurchase) return;
@@ -314,16 +333,24 @@ export default function ChatPage() {
                 {unread > 99 ? "99+" : unread}
               </span>
             )}
-            <button
+            <div
               onClick={(e) => handleDeleteClick(c.conv_id, e)}
-              className="opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400"
+              className="opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 cursor-pointer"
               aria-label="Delete conversation"
               title="Delete conversation"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleDeleteClick(c.conv_id, e);
+                }
+              }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-            </button>
+            </div>
           </div>
         </button>
       </li>
@@ -540,10 +567,13 @@ export default function ChatPage() {
                         <ScheduleMessageCard
                           message={m}
                           isMine={m.sender === "me"}
-                          onRespond={() => {
+                          onRespond={async () => {
                             // Refresh conversation to get updated messages
                             if (activeConvId) {
-                              fetchConversation(activeConvId);
+                              await fetchConversation(activeConvId);
+                              // Re-check for active scheduled purchases after response
+                              const controller = new AbortController();
+                              await checkActiveScheduledPurchase(controller.signal);
                             }
                           }}
                         />

@@ -5,6 +5,12 @@ import { MEET_LOCATION_OPTIONS, MEET_LOCATION_OTHER_VALUE } from '../../constant
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
+// Price limits - max matches ProductListingPage exactly, min is 0 to allow free items
+const PRICE_LIMITS = {
+    max: 999999.99,
+    min: 0,
+};
+
 function SchedulePurchasePage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -28,6 +34,12 @@ function SchedulePurchasePage() {
     const [dateTimeError, setDateTimeError] = useState('');
     const [description, setDescription] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // New fields for price negotiation and trades
+    const [negotiatedPrice, setNegotiatedPrice] = useState('');
+    const [isTrade, setIsTrade] = useState(false);
+    const [tradeItemDescription, setTradeItemDescription] = useState('');
+    const [selectedListing, setSelectedListing] = useState(null);
 
     useEffect(() => {
         const abort = new AbortController();
@@ -52,7 +64,8 @@ function SchedulePurchasePage() {
                 if (!data.success) {
                     throw new Error(data.error || 'Failed to load listings');
                 }
-                setListings(Array.isArray(data.data) ? data.data : []);
+                const listingsData = Array.isArray(data.data) ? data.data : [];
+                setListings(listingsData);
             } catch (e) {
                 if (e.name !== 'AbortError') {
                     setError('Unable to load your listings right now.');
@@ -83,21 +96,51 @@ function SchedulePurchasePage() {
             title: l.title,
             price: l.price,
             status: l.status,
+            priceNegotiable: l.priceNegotiable || false,
+            acceptTrades: l.acceptTrades || false,
+            meet_location: l.meet_location || null,
         }));
     }, [listings]);
 
-    const resetForm = () => {
-        setSelectedListingId('');
-        setSelectedConversationId('');
-        setMeetLocationChoice('');
-        setCustomMeetLocation('');
-        setMeetingDate('');
-        setMeetingHour('');
-        setMeetingMinute('');
-        setMeetingAmPm('');
-        setDateTimeError('');
-        setDescription('');
-    };
+    // Update selectedListing when selectedListingId changes
+    useEffect(() => {
+        const finalListingId = navState?.productId ? String(navState.productId) : selectedListingId;
+        if (finalListingId && listings.length > 0) {
+            const listing = listings.find(l => String(l.id) === finalListingId);
+            if (listing) {
+                // Normalize boolean values - handle both true/false and 1/0 from API
+                const fullListing = {
+                    ...listing,
+                    priceNegotiable: listing.priceNegotiable === true || listing.priceNegotiable === 1 || listing.priceNegotiable === '1',
+                    acceptTrades: listing.acceptTrades === true || listing.acceptTrades === 1 || listing.acceptTrades === '1',
+                    meet_location: listing.meet_location || null,
+                };
+                setSelectedListing(fullListing);
+            } else {
+                setSelectedListing(null);
+            }
+            // Reset trade-related fields when listing changes
+            setIsTrade(false);
+            setTradeItemDescription('');
+            setNegotiatedPrice('');
+        } else {
+            setSelectedListing(null);
+        }
+    }, [selectedListingId, listings, navState]);
+
+    // resetForm function removed - not currently used
+    // const resetForm = () => {
+    //     setSelectedListingId('');
+    //     setSelectedConversationId('');
+    //     setMeetLocationChoice('');
+    //     setCustomMeetLocation('');
+    //     setMeetingDate('');
+    //     setMeetingHour('');
+    //     setMeetingMinute('');
+    //     setMeetingAmPm('');
+    //     setDateTimeError('');
+    //     setDescription('');
+    // };
 
     // Convert 12-hour format to 24-hour format
     const convertTo24Hour = (hour, amPm) => {
@@ -146,6 +189,17 @@ function SchedulePurchasePage() {
         return `${year}-${month}-${day}`;
     };
 
+    // Get maximum date (3 months from now) in Eastern Time (YYYY-MM-DD format for max attribute)
+    const getMaxDate = () => {
+        const easternNow = getEasternTime();
+        const threeMonthsFromNow = new Date(easternNow);
+        threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+        const year = threeMonthsFromNow.getFullYear();
+        const month = String(threeMonthsFromNow.getMonth() + 1).padStart(2, '0');
+        const day = String(threeMonthsFromNow.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     // Validate date and time (using Eastern Time)
     const validateDateTime = () => {
         setDateTimeError('');
@@ -165,6 +219,8 @@ function SchedulePurchasePage() {
 
         // Parse selected date (treat as Eastern Time)
         const [year, month, day] = meetingDate.split('-').map(Number);
+        const selectedHour24 = convertTo24Hour(meetingHour, meetingAmPm);
+        const selectedMinute = parseInt(meetingMinute);
 
         // Compare dates (both in Eastern Time)
         if (year < easternYear || 
@@ -176,9 +232,6 @@ function SchedulePurchasePage() {
 
         // If date is today, check if time is in the future (Eastern Time)
         if (year === easternYear && month === easternMonth && day === easternDay) {
-            const selectedHour24 = convertTo24Hour(meetingHour, meetingAmPm);
-            const selectedMinute = parseInt(meetingMinute);
-            
             // Compare time components directly (both in Eastern Time)
             if (selectedHour24 < easternHour || 
                 (selectedHour24 === easternHour && selectedMinute <= easternMinute)) {
@@ -186,7 +239,19 @@ function SchedulePurchasePage() {
                 return false;
             }
         }
-        // If date is in the future, any time is valid
+        
+        // Check if date/time is more than 3 months in the future
+        // Create selected date/time in Eastern Time
+        const selectedDateTime = new Date(year, month - 1, day, selectedHour24, selectedMinute, 0); // month is 1-indexed in input, 0-indexed in Date
+        
+        // Calculate 3 months from now (Eastern Time)
+        const threeMonthsFromNow = new Date(easternNow);
+        threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+        
+        if (selectedDateTime > threeMonthsFromNow) {
+            setDateTimeError('Meeting date cannot be more than 3 months in advance.');
+            return false;
+        }
 
         return true;
     };
@@ -268,14 +333,57 @@ function SchedulePurchasePage() {
             return;
         }
 
+        // Validate trade item description if trade is selected
+        if (isTrade && !tradeItemDescription.trim()) {
+            setFormError('Please describe the item you are trading for.');
+            return;
+        }
+
         const meetingDateTimeISO = combineDateTime();
         if (!meetingDateTimeISO) {
             setFormError('Please provide a valid meeting date and time.');
             return;
         }
 
+        // Validate that negotiated price is only provided if item is price negotiable
+        if (negotiatedPrice.trim() && !selectedListing?.priceNegotiable) {
+            setFormError('This item is not marked as price negotiable.');
+            return;
+        }
+
+        // Validate that trade is only selected if item accepts trades
+        if (isTrade && !selectedListing?.acceptTrades) {
+            setFormError('This item does not accept trades.');
+            return;
+        }
+
+        // Validate that price cannot be entered if trade is selected
+        if (isTrade && negotiatedPrice.trim()) {
+            setFormError('Cannot enter a price for a trade. Please clear the price field or uncheck the trade option.');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
+            const negotiatedPriceValue = negotiatedPrice.trim() ? parseFloat(negotiatedPrice) : null;
+            if (negotiatedPriceValue !== null) {
+                if (isNaN(negotiatedPriceValue) || !isFinite(negotiatedPriceValue)) {
+                    setFormError('Please enter a valid price.');
+                    setIsSubmitting(false);
+                    return;
+                }
+                if (negotiatedPriceValue < 0) {
+                    setFormError('Price cannot be negative.');
+                    setIsSubmitting(false);
+                    return;
+                }
+                if (negotiatedPriceValue > PRICE_LIMITS.max) {
+                    setFormError(`Price must be $${PRICE_LIMITS.max.toFixed(2)} or less`);
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
             const res = await fetch(`${API_BASE}/scheduled-purchases/create.php`, {
                 method: 'POST',
                 headers: {
@@ -291,6 +399,9 @@ function SchedulePurchasePage() {
                     custom_meet_location: meetLocationChoice === MEET_LOCATION_OTHER_VALUE ? trimmedCustomLocation : null,
                     meeting_at: meetingDateTimeISO,
                     description: description.trim() || null,
+                    negotiated_price: negotiatedPriceValue,
+                    is_trade: isTrade,
+                    trade_item_description: isTrade ? tradeItemDescription.trim() : null,
                 }),
             });
 
@@ -380,13 +491,31 @@ function SchedulePurchasePage() {
                                         setCustomMeetLocation('');
                                     }
                                 }}
-                                className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className={`w-full bg-white dark:bg-gray-900 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                    selectedListing?.meet_location && meetLocationChoice === selectedListing.meet_location
+                                        ? 'border-blue-500 dark:border-blue-400'
+                                        : 'border-gray-300 dark:border-gray-700'
+                                }`}
                             >
-                                {MEET_LOCATION_OPTIONS.map((option) => (
-                                    <option key={option.value || 'unselected'} value={option.value}>
-                                        {option.label}
-                                    </option>
-                                ))}
+                                {MEET_LOCATION_OPTIONS.map((option) => {
+                                    // Compare meet location - handle both predefined options and custom locations
+                                    const itemLocation = selectedListing?.meet_location;
+                                    const isItemLocation = itemLocation && 
+                                        (option.value === itemLocation || 
+                                         (option.value === MEET_LOCATION_OTHER_VALUE && 
+                                          itemLocation !== 'North Campus' && 
+                                          itemLocation !== 'South Campus' && 
+                                          itemLocation !== 'Ellicott'));
+                                    return (
+                                        <option 
+                                            key={option.value || 'unselected'} 
+                                            value={option.value}
+                                            style={isItemLocation ? { backgroundColor: '#dbeafe' } : {}}
+                                        >
+                                            {option.label}{isItemLocation ? ' (Listed on item form)' : ''}
+                                        </option>
+                                    );
+                                })}
                             </select>
                             {meetLocationChoice === MEET_LOCATION_OTHER_VALUE && (
                                 <input
@@ -397,6 +526,15 @@ function SchedulePurchasePage() {
                                     placeholder="Enter meet location"
                                     className="mt-2 w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
+                            )}
+                            {selectedListing?.meet_location && (
+                                (meetLocationChoice === selectedListing.meet_location || 
+                                 (meetLocationChoice === MEET_LOCATION_OTHER_VALUE && 
+                                  customMeetLocation.trim() === selectedListing.meet_location)) && (
+                                    <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                        ✓ This location matches the one listed on your item form
+                                    </p>
+                                )
                             )}
                         </div>
 
@@ -413,6 +551,7 @@ function SchedulePurchasePage() {
                                             setDateTimeError('');
                                         }}
                                         min={getTodayDate()}
+                                        max={getMaxDate()}
                                         className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
@@ -475,6 +614,105 @@ function SchedulePurchasePage() {
                                 <p className="mt-2 text-sm text-red-600 dark:text-red-400">{dateTimeError}</p>
                             )}
                         </div>
+
+                        {/* Price negotiation field - only show if item is price negotiable */}
+                        {selectedListing?.priceNegotiable && (
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                    Negotiated Price (Optional)
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        max={PRICE_LIMITS.max}
+                                        value={negotiatedPrice}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (value === '') {
+                                                setNegotiatedPrice('');
+                                                return;
+                                            }
+                                            const numValue = parseFloat(value);
+                                            if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
+                                                setNegotiatedPrice(value);
+                                            }
+                                        }}
+                                        placeholder="Enter negotiated price"
+                                        disabled={isTrade}
+                                        className={`flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isTrade ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    />
+                                    {selectedListing?.acceptTrades && (
+                                        <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
+                                            <input
+                                                type="checkbox"
+                                                checked={isTrade}
+                                                onChange={(e) => {
+                                                    setIsTrade(e.target.checked);
+                                                    if (e.target.checked) {
+                                                        // Clear price when trade is selected
+                                                        setNegotiatedPrice('');
+                                                    } else {
+                                                        setTradeItemDescription('');
+                                                    }
+                                                }}
+                                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                            />
+                                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                                                This is an item trade
+                                            </span>
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Trade toggle - show separately if item accepts trades but is NOT price negotiable */}
+                        {selectedListing?.acceptTrades && !selectedListing?.priceNegotiable && (
+                            <div>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={isTrade}
+                                                onChange={(e) => {
+                                                    setIsTrade(e.target.checked);
+                                                    if (e.target.checked) {
+                                                        // Clear price when trade is selected
+                                                        setNegotiatedPrice('');
+                                                    } else {
+                                                        setTradeItemDescription('');
+                                                    }
+                                                }}
+                                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                            />
+                                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                                                This is an item trade
+                                            </span>
+                                        </label>
+                            </div>
+                        )}
+
+                        {/* Trade item description - only show if item accepts trades and trade is selected */}
+                        {selectedListing?.acceptTrades && isTrade && (
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                    Item You Are Trading For <span className="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    value={tradeItemDescription}
+                                    onChange={(e) => setTradeItemDescription(e.target.value)}
+                                    rows={3}
+                                    maxLength={100}
+                                    placeholder="Describe the item you are trading..."
+                                    className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                                    required={isTrade}
+                                />
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    {tradeItemDescription.length}/100 characters
+                                </p>
+                            </div>
+                        )}
 
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Description (Optional)</label>

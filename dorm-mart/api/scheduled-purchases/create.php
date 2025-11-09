@@ -37,6 +37,13 @@ try {
     $conversationId = isset($payload['conversation_id']) ? (int)$payload['conversation_id'] : 0;
     $meetingAtRaw = isset($payload['meeting_at']) ? trim((string)$payload['meeting_at']) : '';
     $description = isset($payload['description']) ? trim((string)$payload['description']) : '';
+    
+    // New fields for price negotiation and trades
+    $negotiatedPrice = isset($payload['negotiated_price']) && $payload['negotiated_price'] !== null 
+        ? (float)$payload['negotiated_price'] : null;
+    $isTrade = isset($payload['is_trade']) ? (bool)$payload['is_trade'] : false;
+    $tradeItemDescription = isset($payload['trade_item_description']) && $payload['trade_item_description'] !== null
+        ? trim((string)$payload['trade_item_description']) : null;
 
     $meetLocationChoice = isset($payload['meet_location_choice'])
         ? trim((string)$payload['meet_location_choice'])
@@ -87,14 +94,33 @@ try {
         echo json_encode(['success' => false, 'error' => 'Invalid meeting date/time']);
         exit;
     }
+    
+    // Check if meeting is more than 3 months in the future
+    $now = new DateTime('now', new DateTimeZone('UTC'));
+    $threeMonthsFromNow = clone $now;
+    $threeMonthsFromNow->modify('+3 months');
+    
+    if ($meetingAt > $threeMonthsFromNow) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Meeting date cannot be more than 3 months in advance']);
+        exit;
+    }
+    
+    // Check if meeting is in the past
+    if ($meetingAt < $now) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Meeting date cannot be in the past']);
+        exit;
+    }
+    
     $meetingAt->setTimezone(new DateTimeZone('UTC'));
     $meetingAtDb = $meetingAt->format('Y-m-d H:i:s');
 
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Verify inventory belongs to seller
-    $itemStmt = $conn->prepare('SELECT product_id, title, seller_id FROM INVENTORY WHERE product_id = ? LIMIT 1');
+    // Verify inventory belongs to seller and get snapshot values
+    $itemStmt = $conn->prepare('SELECT product_id, title, seller_id, price_nego, trades, item_location, listing_price FROM INVENTORY WHERE product_id = ? LIMIT 1');
     if (!$itemStmt) {
         throw new RuntimeException('Failed to prepare inventory query');
     }
@@ -109,6 +135,11 @@ try {
         echo json_encode(['success' => false, 'error' => 'You can only schedule for your own listings']);
         exit;
     }
+
+    // Get snapshot values at the time of creation
+    $snapshotPriceNego = isset($itemRow['price_nego']) ? ((int)$itemRow['price_nego'] === 1) : false;
+    $snapshotTrades = isset($itemRow['trades']) ? ((int)$itemRow['trades'] === 1) : false;
+    $snapshotMeetLocation = isset($itemRow['item_location']) ? trim((string)$itemRow['item_location']) : null;
 
     // Verify conversation belongs to seller and get buyer id
     $convStmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
@@ -164,26 +195,97 @@ try {
     // Generate unique 4-character code
     $verificationCode = generateUniqueCode($conn);
 
-    $insertStmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-    if (!$insertStmt) {
+    // Validate that negotiated price is only provided if item is price negotiable
+    if ($negotiatedPrice !== null && !$snapshotPriceNego) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'This item is not marked as price negotiable']);
+        exit;
+    }
+
+    // Validate that trade can only be selected if item accepts trades
+    if ($isTrade && !$snapshotTrades) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'This item does not accept trades']);
+        exit;
+    }
+
+    // Validate that price cannot be provided if trade is selected
+    if ($isTrade && $negotiatedPrice !== null) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Cannot enter a price for a trade']);
+        exit;
+    }
+
+    // Validate trade item description if trade is selected
+    if ($isTrade && ($tradeItemDescription === null || $tradeItemDescription === '')) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Trade item description is required when trade is selected']);
+        exit;
+    }
+
+    // Validate negotiated price if provided
+    if ($negotiatedPrice !== null) {
+        if ($negotiatedPrice < 0 || !is_finite($negotiatedPrice)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Invalid negotiated price']);
+            exit;
+        }
+        // Allow 0 as a valid price (free item)
+        // But convert empty/whitespace to null for consistency
+    }
+
+    $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    if (!$stmt) {
         throw new RuntimeException('Failed to prepare insert');
     }
-    $conversationIdParam = $conversationId > 0 ? $conversationId : null;
-    $descriptionParam = $description !== '' ? $description : null;
-    $insertStmt->bind_param(
-        'iiiissss',
+    
+    // Prepare variables for binding - ensure proper NULL handling
+    // For nullable integers, use null if value is invalid
+    $convId = $conversationId > 0 ? $conversationId : null;
+    
+    // For nullable strings, convert empty strings to null
+    $desc = ($description !== null && $description !== '') ? $description : null;
+    $tradeDesc = ($tradeItemDescription !== null && $tradeItemDescription !== '') ? $tradeItemDescription : null;
+    $snapLoc = ($snapshotMeetLocation !== null && $snapshotMeetLocation !== '') ? $snapshotMeetLocation : null;
+    
+    // For nullable decimal, ensure null is passed correctly
+    // Allow 0 as a valid price (free item), but convert null/negative to null
+    $price = ($negotiatedPrice !== null && $negotiatedPrice >= 0 && is_finite($negotiatedPrice)) ? $negotiatedPrice : null;
+    
+    // Boolean fields as integers
+    $isTradeInt = $isTrade ? 1 : 0;
+    $snapshotPriceNegoInt = $snapshotPriceNego ? 1 : 0;
+    $snapshotTradesInt = $snapshotTrades ? 1 : 0;
+    
+    // mysqli bind_param handles NULL correctly, but we need to ensure variables are actually NULL
+    // For nullable integer (conversation_id), we pass null directly
+    // For nullable strings, mysqli will handle NULL correctly
+    // For nullable decimal, mysqli will handle NULL correctly
+    $stmt->bind_param('iiiissssdisiis',
         $inventoryId,
         $sellerId,
         $buyerId,
-        $conversationIdParam,
+        $convId,
         $meetLocation,
         $meetingAtDb,
         $verificationCode,
-        $descriptionParam
+        $desc,
+        $price,
+        $isTradeInt,
+        $tradeDesc,
+        $snapshotPriceNegoInt,
+        $snapshotTradesInt,
+        $snapLoc
     );
-    $insertStmt->execute();
-    $requestId = $insertStmt->insert_id;
-    $insertStmt->close();
+    
+    if (!$stmt->execute()) {
+        $error = $stmt->error;
+        $stmt->close();
+        error_log('Failed to execute scheduled purchase insert: ' . $error);
+        throw new RuntimeException('Failed to create scheduled purchase: ' . $error);
+    }
+    $requestId = $stmt->insert_id;
+    $stmt->close();
     
     // Create special message in chat
     if ($conversationId > 0) {
@@ -226,6 +328,9 @@ try {
         $senderName = $names[$msgSenderId] ?? ('User ' . $msgSenderId);
         $receiverName = $names[$msgReceiverId] ?? ('User ' . $msgReceiverId);
         
+        // Get listing price for display
+        $listingPrice = isset($itemRow['listing_price']) ? (float)$itemRow['listing_price'] : null;
+        
         $metadata = json_encode([
             'type' => 'schedule_request',
             'request_id' => $requestId,
@@ -236,6 +341,10 @@ try {
             'meet_location' => $meetLocation,
             'verification_code' => $verificationCode,
             'description' => $description,
+            'negotiated_price' => $negotiatedPrice,
+            'listing_price' => $listingPrice,
+            'is_trade' => $isTrade,
+            'trade_item_description' => $tradeItemDescription,
         ], JSON_UNESCAPED_SLASHES);
         
         $msgStmt = $conn->prepare('INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)');
