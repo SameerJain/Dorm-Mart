@@ -44,7 +44,8 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Check if there's an active scheduled purchase (pending or accepted) for this product
+    // Check if product has any active scheduled purchases (pending or accepted status)
+    // Used by frontend to determine if item can be scheduled again
     $checkStmt = $conn->prepare('
         SELECT COUNT(*) as cnt 
         FROM scheduled_purchase_requests 

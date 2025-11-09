@@ -97,7 +97,8 @@ try {
         exit;
     }
 
-    // Check if buyer is trying to accept - if so, verify item doesn't already have 'Pending' status
+    // Prevent double-booking: Check if item is already pending before accepting
+    // This prevents multiple buyers from accepting scheduled purchases for the same item
     $inventoryProductId = (int)$row['inventory_product_id'];
     if ($action === 'accept' && $inventoryProductId > 0) {
         // Check current item status
@@ -132,8 +133,10 @@ try {
     // Update item status based on scheduled purchase status
     if ($inventoryProductId > 0) {
         if ($nextStatus === 'accepted') {
-            // When accepted, forcefully update inventory to match snapshot values
-            // This handles the edge case where seller changes item settings after scheduling
+            // When accepted, restore inventory to snapshot values captured at scheduling time
+            // This ensures buyer gets the item as it was when scheduled, even if seller changed settings
+            // Example: If item was price negotiable when scheduled but seller removed that later,
+            // the accepted purchase still honors the negotiated price
             
             // Get snapshot values with fallback to current inventory values if snapshots are missing
             // (shouldn't happen, but provides safety)
@@ -209,6 +212,7 @@ try {
             $updateParams[] = 'Sold';
             $updateTypes .= 'is';
             
+            // Only update if item is not already 'Sold' (prevents overwriting completed transactions)
             $updateSql = 'UPDATE INVENTORY SET ' . implode(', ', $updateFields) . ' WHERE product_id = ? AND item_status != ?';
             $itemStatusStmt = $conn->prepare($updateSql);
             if ($itemStatusStmt) {
@@ -223,8 +227,8 @@ try {
                 error_log('Failed to prepare inventory update statement for scheduled purchase ' . $requestId);
             }
         } elseif ($nextStatus === 'declined') {
-            // When denied, set item status back to "Active" (only if currently Pending from this scheduled purchase)
-            // Check if there are other accepted scheduled purchases for this item
+            // When declined, revert item status to "Active" only if no other accepted purchases exist
+            // This prevents making item available again if another buyer already accepted a different scheduled purchase
             $checkOtherAcceptedStmt = $conn->prepare('SELECT COUNT(*) as cnt FROM scheduled_purchase_requests WHERE inventory_product_id = ? AND status = ? AND request_id != ?');
             $acceptedStatus = 'accepted';
             $checkOtherAcceptedStmt->bind_param('isi', $inventoryProductId, $acceptedStatus, $requestId);
