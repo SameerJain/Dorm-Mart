@@ -51,6 +51,9 @@ try {
                     i.date_listed,
                     i.photos,
                     i.seller_id,
+                    i.price_nego,
+                    i.trades,
+                    i.item_location AS meet_location,
                     CASE 
                         WHEN EXISTS (
                             SELECT 1 FROM scheduled_purchase_requests spr 
@@ -75,6 +78,9 @@ try {
                     i.date_listed,
                     i.photos,
                     i.seller_id,
+                    i.price_nego,
+                    i.trades,
+                    i.item_location AS meet_location,
                     0 AS has_accepted_scheduled_purchase
                 FROM INVENTORY i
                 WHERE i.seller_id = ?
@@ -122,6 +128,10 @@ try {
 
         $hasAcceptedScheduledPurchase = isset($row['has_accepted_scheduled_purchase']) && (int)$row['has_accepted_scheduled_purchase'] === 1;
 
+        $priceNegotiable = isset($row['price_nego']) ? ((int)$row['price_nego'] === 1) : false;
+        $acceptTrades = isset($row['trades']) ? ((int)$row['trades'] === 1) : false;
+        $itemMeetLocation = isset($row['meet_location']) ? trim((string)$row['meet_location']) : null;
+
         $data[] = [
             'id' => (int)$row['product_id'],
             'title' => escapeHtml((string)$row['title']),
@@ -132,7 +142,10 @@ try {
             'created_at' => $row['date_listed'],
             'image_url' => $firstImage,
             'categories' => $catsArr,
-            'has_accepted_scheduled_purchase' => $hasAcceptedScheduledPurchase
+            'has_accepted_scheduled_purchase' => $hasAcceptedScheduledPurchase,
+            'priceNegotiable' => $priceNegotiable,
+            'acceptTrades' => $acceptTrades,
+            'meet_location' => $itemMeetLocation
         ];
     }
 

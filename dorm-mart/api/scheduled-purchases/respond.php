@@ -56,6 +56,12 @@ try {
             spr.conversation_id,
             spr.meet_location,
             spr.meeting_at,
+            spr.negotiated_price,
+            spr.is_trade,
+            spr.trade_item_description,
+            spr.snapshot_price_nego,
+            spr.snapshot_trades,
+            spr.snapshot_meet_location,
             inv.title AS item_title
         FROM scheduled_purchase_requests spr
         INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
@@ -126,14 +132,95 @@ try {
     // Update item status based on scheduled purchase status
     if ($inventoryProductId > 0) {
         if ($nextStatus === 'accepted') {
-            // When accepted, set item status to "Pending" (only if not already Sold)
-            $itemStatusStmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND item_status != ?');
+            // When accepted, forcefully update inventory to match snapshot values
+            // This handles the edge case where seller changes item settings after scheduling
+            
+            // Get snapshot values with fallback to current inventory values if snapshots are missing
+            // (shouldn't happen, but provides safety)
+            $snapshotPriceNego = isset($row['snapshot_price_nego']) ? ((int)$row['snapshot_price_nego'] === 1) : null;
+            $snapshotTrades = isset($row['snapshot_trades']) ? ((int)$row['snapshot_trades'] === 1) : null;
+            $snapshotMeetLocation = isset($row['snapshot_meet_location']) ? trim((string)$row['snapshot_meet_location']) : null;
+            $negotiatedPrice = isset($row['negotiated_price']) && $row['negotiated_price'] !== null 
+                ? (float)$row['negotiated_price'] : null;
+            
+            // If snapshot values are missing, fetch current inventory values as fallback
+            // This should never happen, but provides safety
+            if ($snapshotPriceNego === null || $snapshotTrades === null) {
+                $fallbackStmt = $conn->prepare('SELECT price_nego, trades, meet_location FROM INVENTORY WHERE product_id = ? LIMIT 1');
+                if ($fallbackStmt) {
+                    $fallbackStmt->bind_param('i', $inventoryProductId);
+                    $fallbackStmt->execute();
+                    $fallbackRes = $fallbackStmt->get_result();
+                    $fallbackRow = $fallbackRes ? $fallbackRes->fetch_assoc() : null;
+                    $fallbackStmt->close();
+                    
+                    if ($fallbackRow) {
+                        if ($snapshotPriceNego === null) {
+                            $snapshotPriceNego = isset($fallbackRow['price_nego']) ? ((int)$fallbackRow['price_nego'] === 1) : false;
+                        }
+                        if ($snapshotTrades === null) {
+                            $snapshotTrades = isset($fallbackRow['trades']) ? ((int)$fallbackRow['trades'] === 1) : false;
+                        }
+                        if ($snapshotMeetLocation === null) {
+                            $snapshotMeetLocation = isset($fallbackRow['meet_location']) ? trim((string)$fallbackRow['meet_location']) : null;
+                        }
+                        error_log('Warning: Using fallback inventory values for scheduled purchase ' . $requestId);
+                    }
+                }
+            }
+            
+            // Ensure we have boolean values (default to false if still null)
+            $snapshotPriceNego = $snapshotPriceNego !== null ? $snapshotPriceNego : false;
+            $snapshotTrades = $snapshotTrades !== null ? $snapshotTrades : false;
+            
+            // Build update query to forcefully set snapshot values
+            $updateFields = ['item_status = ?'];
+            $updateParams = ['Pending'];
+            $updateTypes = 's';
+            
+            // Forcefully update price_nego to snapshot value
+            $updateFields[] = 'price_nego = ?';
+            $updateParams[] = $snapshotPriceNego ? 1 : 0;
+            $updateTypes .= 'i';
+            
+            // Forcefully update trades to snapshot value
+            $updateFields[] = 'trades = ?';
+            $updateParams[] = $snapshotTrades ? 1 : 0;
+            $updateTypes .= 'i';
+            
+            // Forcefully update meet_location to snapshot value if it exists
+            if ($snapshotMeetLocation !== null && $snapshotMeetLocation !== '') {
+                $updateFields[] = 'meet_location = ?';
+                $updateParams[] = $snapshotMeetLocation;
+                $updateTypes .= 's';
+            }
+            
+            // Update listing_price if negotiated_price is provided AND item was price negotiable when scheduled
+            // This ensures we only update price for items that were negotiable at the time of scheduling
+            // Allow 0 as a valid price (free item)
+            if ($negotiatedPrice !== null && $negotiatedPrice >= 0 && $snapshotPriceNego) {
+                $updateFields[] = 'listing_price = ?';
+                $updateParams[] = $negotiatedPrice;
+                $updateTypes .= 'd';
+            }
+            
+            // Build WHERE clause parameters
+            $updateParams[] = $inventoryProductId;
+            $updateParams[] = 'Sold';
+            $updateTypes .= 'is';
+            
+            $updateSql = 'UPDATE INVENTORY SET ' . implode(', ', $updateFields) . ' WHERE product_id = ? AND item_status != ?';
+            $itemStatusStmt = $conn->prepare($updateSql);
             if ($itemStatusStmt) {
-                $pendingStatus = 'Pending';
-                $soldStatus = 'Sold';
-                $itemStatusStmt->bind_param('sis', $pendingStatus, $inventoryProductId, $soldStatus);
-                $itemStatusStmt->execute();
+                $itemStatusStmt->bind_param($updateTypes, ...$updateParams);
+                if (!$itemStatusStmt->execute()) {
+                    $error = $itemStatusStmt->error;
+                    error_log('Failed to update inventory for scheduled purchase ' . $requestId . ': ' . $error);
+                    // Don't fail the acceptance, but log the error
+                }
                 $itemStatusStmt->close();
+            } else {
+                error_log('Failed to prepare inventory update statement for scheduled purchase ' . $requestId);
             }
         } elseif ($nextStatus === 'declined') {
             // When denied, set item status back to "Active" (only if currently Pending from this scheduled purchase)
