@@ -9,10 +9,18 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const [isResponding, setIsResponding] = useState(false);
 
   // Track local response status to update UI immediately after Accept/Deny
-  // Initialize from messageType if already responded, otherwise null
+  // Initialize from messageType if already responded, or from metadata status/buyer_response_at
   const [localResponseStatus, setLocalResponseStatus] = useState(() => {
     if (messageType === 'schedule_accepted') return 'accepted';
     if (messageType === 'schedule_denied') return 'declined';
+    // Check if buyer has already responded (from enriched metadata)
+    if (messageType === 'schedule_request') {
+      const scheduledStatus = metadata.scheduled_purchase_status;
+      const buyerResponseAt = metadata.buyer_response_at;
+      if (scheduledStatus === 'accepted' || scheduledStatus === 'declined' || buyerResponseAt) {
+        return scheduledStatus === 'accepted' ? 'accepted' : 'declined';
+      }
+    }
     return null;
   });
 
@@ -81,13 +89,21 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const getMessageConfig = () => {
     // schedule_request card always stays blue, regardless of localResponseStatus
     if (messageType === 'schedule_request') {
+      // Check if buyer has already responded (from metadata or local state)
+      const scheduledStatus = metadata.scheduled_purchase_status;
+      const buyerResponseAt = metadata.buyer_response_at;
+      const hasResponded = localResponseStatus !== null || 
+                          scheduledStatus === 'accepted' || 
+                          scheduledStatus === 'declined' || 
+                          buyerResponseAt !== null && buyerResponseAt !== undefined;
+      
       return {
         bgColor: 'bg-blue-50 dark:bg-blue-900/30',
         borderColor: 'border-blue-400 dark:border-blue-700',
         textColor: 'text-blue-600 dark:text-blue-300',
         iconColor: 'text-blue-600 dark:text-blue-300',
         innerBgColor: 'bg-blue-100/50 dark:bg-blue-800/30',
-        showActions: localResponseStatus === null && !isMine, // Buyer sees actions only if not responded
+        showActions: !hasResponded && !isMine, // Buyer sees actions only if not responded
       };
     }
     
