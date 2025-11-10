@@ -95,7 +95,6 @@ $allowed = [
     'image/jpeg' => 'jpg',
     'image/png'  => 'png',
     'image/webp' => 'webp',
-    // Add 'image/gif' => 'gif' if you want to allow gifs
 ];
 if (!isset($allowed[$mime])) {
     http_response_code(400);
