@@ -4,6 +4,7 @@ import fmtTime from "./chat_page_utils";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import MessageCard from "./components/MessageCard";
 import ScheduleMessageCard from "./components/ScheduleMessageCard";
+import ImageModal from "./components/ImageModal";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -23,27 +24,65 @@ export default function ChatPage() {
     // actions
     fetchConversation,
     createMessage,
+    createImageMessage,
     clearActiveConversation
   } = ctx;
 
   const [searchParams, setSearchParams] = useSearchParams();
-
   const MAX_LEN = 500;
-
   const scrollRef = useRef(null);
-
   const [draft, setDraft] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pendingDeleteConvId, setPendingDeleteConvId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
-
-  // MOBILE: controls which pane is visible on small screens (list first)
-  const [isMobileList, setIsMobileList] = useState(true);
-  
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [attachedImage, setAttachedImage] = useState(null); // holds the chosen File
   // Track if there's an active scheduled purchase for the current product
   const [hasActiveScheduledPurchase, setHasActiveScheduledPurchase] = useState(false);
+  
+  /* VIEW UTILITIES */
+  const taRef = useRef(null); // holds the <textarea> DOM node
 
+  const autoGrow = useCallback(() => {
+      const el = taRef.current;
+      if (!el) return;
+      el.style.height = "auto";                  // reset so scrollHeight is accurate
+      el.style.height = `${el.scrollHeight}px`;  // grow to fit content
+      // allow scroll only after hitting the max height (set via class)
+      el.style.overflowY = el.scrollHeight > el.clientHeight ? "auto" : "hidden";
+  }, []);
+
+  useEffect(() => {
+    autoGrow(); // keeps height in sync as user types/deletes
+  }, [draft, autoGrow]);
+
+  const navigate = useNavigate();         // router: for navigation
+  const location = useLocation();         // router: to inspect history state
+  const navigationState = location.state && typeof location.state === "object" ? location.state : null;
+
+  // Header label
+  const activeLabel = useMemo(() => {
+    const c = conversations.find((c) => c.conv_id === activeConvId);
+    if (c) return c.receiverName;
+    if (navigationState?.receiverName) return navigationState.receiverName;
+    if (navigationState?.receiverId) return `User ${navigationState.receiverId}`;
+    return "Select a chat";
+  }, [conversations, activeConvId, navigationState]);
+
+  function goBackOrHome() {
+    // If there is prior history in this tab, go back; otherwise go to landing
+    if (location.key !== "default") {
+      navigate(-1);
+    } else {
+      navigate("/app");                   // your landing/home route
+    }
+  }
+
+  /* MOBILES */
+  const [isMobileList, setIsMobileList] = useState(true);
+
+  /* CHAT UTILITIES */
   // Handle conv query parameter to auto-open conversation
   useEffect(() => {
     const convParam = searchParams.get('conv');
@@ -69,38 +108,81 @@ export default function ChatPage() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [activeConvId, messages.length]);
 
-
+  // Send Message
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      createMessage(draft);
+      if (attachedImage) {
+        createImageMessage(draft, attachedImage);   // send as image message
+      } else {
+        createMessage(draft);                       // send as normal text message
+      }
       setDraft("");
+      setAttachedImage(null);
+    }
+  }
+  function handleDeleteClick(convId, e) {
+    e.stopPropagation(); // Prevent conversation selection
+    setPendingDeleteConvId(convId);
+    setDeleteConfirmOpen(true);
+    setDeleteError('');
+  }
+
+  async function handleDeleteConfirm() {
+    if (!pendingDeleteConvId || isDeleting) return;
+    setIsDeleting(true);
+    setDeleteError('');
+
+    try {
+      const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+      const res = await fetch(`${API_BASE}/chat/delete_conversation.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          conv_id: pendingDeleteConvId,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete conversation');
+      }
+
+      const result = await res.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete conversation');
+      }
+
+      // Close modal and refresh conversations
+      setDeleteConfirmOpen(false);
+      setPendingDeleteConvId(null);
+      
+      // If deleted conversation was active, clear it
+      if (pendingDeleteConvId === activeConvId) {
+        clearActiveConversation();
+      }
+
+      // Refresh conversation list by reloading the page
+      // This ensures ChatContext reloads conversations properly
+      window.location.reload();
+    } catch (error) {
+      setDeleteError(error.message || 'Failed to delete conversation. Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   }
 
-  const navigate = useNavigate();         // router: for navigation
-  const location = useLocation();         // router: to inspect history state
-  const navigationState = location.state && typeof location.state === "object" ? location.state : null;
-
-  // Header label: show the other user id for now
-  const activeLabel = useMemo(() => {
-    const c = conversations.find((c) => c.conv_id === activeConvId);
-    if (c) return c.receiverName;
-    if (navigationState?.receiverName) return navigationState.receiverName;
-    if (navigationState?.receiverId) return `User ${navigationState.receiverId}`;
-    return "Select a chat";
-  }, [conversations, activeConvId, navigationState]);
-
-  function goBackOrHome() {
-    // If there is prior history in this tab, go back; otherwise go to landing
-    if (location.key !== "default") {
-      navigate(-1);
-    } else {
-      navigate("/app");                   // your landing/home route
-    }
+  function handleDeleteCancel() {
+    setDeleteConfirmOpen(false);
+    setPendingDeleteConvId(null);
+    setDeleteError('');
   }
 
-  // Get product info from active conversation (item-specific)
+  /* SCHEDULES AND ITEMS UTILITIES */
   const activeConversation = conversations.find(c => c.conv_id === activeConvId);
   const hasListingIntro = messages.some(m => m.metadata?.type === "listing_intro");
   const listingIntroMsg = messages.find(m => m.metadata?.type === "listing_intro");
@@ -196,67 +278,6 @@ export default function ChatPage() {
         productId: activeConversation.productId,
       }
     });
-  }
-
-  function handleDeleteClick(convId, e) {
-    e.stopPropagation(); // Prevent conversation selection
-    setPendingDeleteConvId(convId);
-    setDeleteConfirmOpen(true);
-    setDeleteError('');
-  }
-
-  async function handleDeleteConfirm() {
-    if (!pendingDeleteConvId || isDeleting) return;
-    setIsDeleting(true);
-    setDeleteError('');
-
-    try {
-      const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
-      const res = await fetch(`${API_BASE}/chat/delete_conversation.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          conv_id: pendingDeleteConvId,
-        }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to delete conversation');
-      }
-
-      const result = await res.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to delete conversation');
-      }
-
-      // Close modal and refresh conversations
-      setDeleteConfirmOpen(false);
-      setPendingDeleteConvId(null);
-      
-      // If deleted conversation was active, clear it
-      if (pendingDeleteConvId === activeConvId) {
-        clearActiveConversation();
-      }
-
-      // Refresh conversation list by reloading the page
-      // This ensures ChatContext reloads conversations properly
-      window.location.reload();
-    } catch (error) {
-      setDeleteError(error.message || 'Failed to delete conversation. Please try again.');
-    } finally {
-      setIsDeleting(false);
-    }
-  }
-
-  function handleDeleteCancel() {
-    setDeleteConfirmOpen(false);
-    setPendingDeleteConvId(null);
-    setDeleteError('');
   }
 
   // Helper function to render a conversation item
@@ -578,24 +599,82 @@ export default function ChatPage() {
                           }}
                         />
                       ) : (
-                        <div
-                          className={
-                            "max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " +
-                            (m.sender === "me"
-                              ? "bg-indigo-600 text-white"
-                              : "bg-gray-100 text-gray-900")
-                          }
-                        >
-                          <p className="whitespace-pre-wrap break-words">{m.content}</p>
-                          <div
-                            className={
-                              "mt-1 text-[10px] " +
-                              (m.sender === "me" ? "text-indigo-100" : "text-gray-500")
-                            }
-                          >
-                            {fmtTime(m.ts)}
-                          </div>
-                        </div>
+                          // ⬇️ image vs. text bubble
+                          m.image_url ? (
+                            <div
+                              className={
+                                "max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow " +
+                                (m.sender === "me" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900")
+                              }
+                            >
+                              {(() => {
+                                // use gated endpoint so only participants can view
+                                const imgSrc = `${API_BASE}/chat/serve_chat_image.php?message_id=${m.message_id}`;
+                                const dlSrc  = `${imgSrc}&download=1`; // forces download via Content-Disposition
+                                return (
+                                  <>
+                                    <a
+                                      href={imgSrc}
+                                      target="_blank"
+                                      rel="noopener noreferrer"   // security: stops new tab from accessing this window
+                                      className="block"
+                                    >
+                                      <img
+                                        src={imgSrc}
+                                        alt="Image attachment"     // accessible description
+                                        className={
+                                          "max-h-72 w-full object-contain rounded-lg " +
+                                          (m.sender === "me" ? "bg-white/10" : "bg-black/5")
+                                        }
+                                      />
+                                    </a>
+
+                                    {/* Optional caption if present */}
+                                    {m.content && (
+                                      <p className="mt-2 whitespace-pre-wrap break-words">{m.content}</p>
+                                    )}
+
+                                    {/* Footer: time + download */}
+                                    <div
+                                      className={
+                                        "mt-1 flex items-center justify-between text-[10px] " +
+                                        (m.sender === "me" ? "text-indigo-100" : "text-gray-500")
+                                      }
+                                    >
+                                      <span>{fmtTime(m.ts)}</span>
+                                      <a
+                                        href={dlSrc}
+                                        className={
+                                          "ml-3 underline hover:no-underline " +
+                                          (m.sender === "me" ? "text-indigo-100" : "text-gray-600")
+                                        }
+                                      >
+                                        Download
+                                      </a>
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          ) : (
+                            // Text-only bubble (unchanged)
+                            <div
+                              className={
+                                "max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " +
+                                (m.sender === "me" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900")
+                              }
+                            >
+                              <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                              <div
+                                className={
+                                  "mt-1 text-[10px] " +
+                                  (m.sender === "me" ? "text-indigo-100" : "text-gray-500")
+                                }
+                              >
+                                {fmtTime(m.ts)}
+                              </div>
+                            </div>
+                          )
                       )}
                     </div>
                   );
@@ -621,56 +700,114 @@ export default function ChatPage() {
                   </button>
                 </div>
               )}
-              
-              <div className="flex items-end gap-2">
-                <div className="relative w-full">
+
+              {attachedImage && (
+                  <div className="mb-1 flex items-center justify-between rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-1.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {/* small image logo */}
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="3" y="4" width="18" height="16" rx="2" />
+                        <circle cx="8.5" cy="10" r="1.6" />
+                        <path d="M21 16l-5.5-5.5L9 17l-3-3-3 3" />
+                      </svg>
+                      <span className="truncate text-xs text-gray-700 dark:text-gray-200">
+                        {attachedImage.name}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAttachedImage(null)}
+                      className="rounded-md p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      aria-label="Remove attached image"
+                      title="Remove"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
+              <div className="flex items-center gap-2">
+                {/* Attachment button */}
+                <button
+                  type="button"
+                  onClick={() => setAttachOpen(true)}
+                  aria-label="Attach a file"
+                  aria-haspopup="dialog"
+                  aria-expanded={attachOpen}
+                  className="
+                    inline-flex items-center justify-center
+                    h-[44px] w-[44px]
+                    rounded-xl border-2 border-gray-300 dark:border-gray-600
+                    text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700
+                    hover:bg-gray-50 dark:hover:bg-gray-600
+                    focus:outline-none focus:ring-2 focus:ring-indigo-500
+                    shrink-0
+                  "
+                  title="Attach"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-5 w-5"
+                    aria-hidden="true"
+                  >
+                    <rect x="3" y="4" width="18" height="16" rx="2" />
+                    <circle cx="8.5" cy="10" r="1.6" />
+                    <path d="M21 16l-5.5-5.5L9 17l-3-3-3 3" />
+                  </svg>
+                </button>
+
+                {/* Textarea + counter */}
+                <div className="relative w-full"> {/* removed the stray ] from pb-px] */}
                   <textarea
+                    ref={taRef}                           // used by your autoGrow()
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
+                    onInput={autoGrow}                    // grows with content
                     onKeyDown={handleKeyDown}
                     placeholder="Type a message…"
-                    rows={2}
+                    rows={1}
                     maxLength={MAX_LEN}
                     aria-describedby="message-char-remaining"
-                    // Ensures lines wrap visually without inserting CRLF into the value
                     wrap="soft"
                     className="
-                      min-h-[44px] w-full resize-y rounded-2xl
-                      border border-gray-300 dark:border-gray-600
-                      px-3 py-2 pr-12 pb-6 text-sm outline-none
+                      w-full h-auto
+                      resize-none
+                      rounded-xl border-2 border-gray-300 dark:border-gray-600
+                      px-3 py-2.5 pr-12 text-sm leading-5
+                      /* leading-5 ≈ 20px; py-2.5 ≈ 10+10 = 20; border-2 = 2+2 = 4
+                        20 + 20 + 4 = 44px total to match the button */
+                      min-h-[44px]                        /* guarantees baseline height = 44px */
                       focus:ring-2 focus:ring-indigo-500
                       bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                      whitespace-pre-wrap    /* allow wrapping + preserve user newlines */
-                      break-words            /* break long unbroken strings to avoid overflow */
+                      whitespace-pre-wrap break-words
+                      overflow-y-hidden
+                      max-h-[28vh]
                     "
                     aria-label="Message input"
                   />
                   <span
                     id="message-char-remaining"
-                    className="pointer-events-none absolute bottom-2 right-3 text-xs text-gray-500 dark:text-gray-400"
+                    className="pointer-events-none absolute right-3 bottom-2 text-xs text-gray-500 dark:text-gray-400"
                   >
                     {MAX_LEN - draft.length}
                   </span>
                 </div>
-
-                {/* Hide on mobile; show on md+ */}
-                <button
-                  onClick={() => {
-                    createMessage(draft);
-                    setDraft("");
-                  }}
-                  className="hidden md:inline-flex items-center justify-center text-center h-[44px] shrink-0 rounded-2xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  aria-label="Send message"
-                >
-                  Send
-                </button>
-
               </div>
-
-              {/* Hide the desktop-only hint on mobile too */}
-              <p className="mt-2 text-xs text-gray-500 hidden md:block">
-                Press Enter to send • Shift+Enter for a new line
-              </p>
+              <ImageModal
+                open={attachOpen}
+                onClose={() => setAttachOpen(false)}
+                onSelect={(file) => {
+                  setAttachedImage(file);
+                  setAttachOpen(false);
+                }}
+              />
             </div>
 
           </section>

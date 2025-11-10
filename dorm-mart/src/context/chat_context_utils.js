@@ -54,6 +54,7 @@ export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, sign
               message_id: m.message_id,
               sender: "them",
               content: m.content,
+              image_url: m.image_url,
               ts: Date.parse(m.created_at),
               metadata: null,
           };
@@ -141,6 +142,25 @@ export async function create_message({ receiverId, convId, content, signal }) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();                        // expect JSON back from PHP
 }
+
+// Image-message endpoint (multipart/form-data)
+export async function create_image_message({ receiverId, convId, content, image, signal }) {
+  const form = new FormData();                       // browser handles multipart boundary
+  form.append("receiver_id", String(receiverId));    // PHP: $_POST['receiver_id']
+  if (convId) form.append("conv_id", String(convId));
+  form.append("content", content ?? "");             // optional caption
+  form.append("image", image, image.name);           // PHP: $_FILES['image']
+
+  const r = await fetch(`${BASE}/chat/create_image_message.php`, {
+    method: "POST",
+    body: form,                                      // DO NOT set Content-Type manually
+    credentials: "include",
+    signal,
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();                                    // expects { success, message: { ... , image_url } }
+}
+
 
 export function envBool(value, fallback = false) {
   if (value == null) return fallback;

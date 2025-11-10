@@ -28,19 +28,16 @@ $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
 $tsSec  = isset($_GET['ts']) ? (int)$_GET['ts'] : 0;
 
 $stmt = $conn->prepare(
-    'SELECT
-         message_id, conv_id, sender_id, receiver_id, content, metadata,
-         /* Keep only ISO fields so JS can parse reliably */
-         DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at,
-         DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at
-       FROM messages
-      WHERE conv_id = ?
-        /* CHANGED: compare TIMESTAMP to epoch seconds */
-        AND created_at > FROM_UNIXTIME(?)
-      ORDER BY message_id ASC'
+  'SELECT
+       message_id, conv_id, sender_id, receiver_id, content, image_url, metadata,
+       DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at,
+       DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at
+     FROM messages
+    WHERE conv_id = ?
+      AND created_at > FROM_UNIXTIME(?)
+    ORDER BY message_id ASC'
 );
-// 'is' = integer (conv_id), string (ts as DATETIME in UTC)
-$stmt->bind_param('is', $convId, $tsSec);
+$stmt->bind_param('ii', $convId, $tsSec); // both ints
 $stmt->execute();
 
 $res = $stmt->get_result(); // requires mysqlnd; otherwise switch to bind_result loop

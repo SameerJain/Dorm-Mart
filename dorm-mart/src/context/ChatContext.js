@@ -11,6 +11,7 @@ import {
     fetch_conversations,
     fetch_conversation,
     create_message,
+    create_image_message,
     tick_fetch_new_messages,
     tick_fetch_unread_messages,
     envBool 
@@ -102,10 +103,6 @@ export function ChatProvider({ children }) {
     const [chatByConvError, setChatByConvError] = useState({});
     const [sendMsgError, setSendMsgError] = useState(false);
 
-    function selectConversation(id) {           // used when opening a chat
-        setActiveConvId(id);
-        fetchConversation(id);
-    }
 
     function clearActiveConversation() {
         setActiveConvId(null); // stops new-message polling because the effect below bails when no activeConvId
@@ -264,6 +261,7 @@ export function ChatProvider({ children }) {
                         message_id: m.message_id,
                         sender: "them",
                         content: m.content,
+                        image_url: m.image_url,
                         ts: Date.parse(m.created_at),
                         metadata,
                     };
@@ -272,6 +270,7 @@ export function ChatProvider({ children }) {
                     message_id: m.message_id,
                     sender: senderIdNum === myIdNum ? "me" : "them",
                     content: m.content,
+                    image_url: m.image_url,
                     ts: Date.parse(m.created_at),
                     metadata,
                 }
@@ -296,11 +295,12 @@ export function ChatProvider({ children }) {
         }
     }
 
+    // allow a second arg with an image File
     async function createMessage(draft) {
         setSendMsgError(false);
-        const content = draft.trim();
-        const trimmed = (content ?? "").trim();
-        if (!trimmed || !activeConvId || !myIdRef.current) return;
+
+        const content = (draft ?? "").trim();
+        if (!content || !activeConvId || !myIdRef.current) return;
 
         const convo = conversations.find((c) => c.conv_id === activeConvId);
         if (!convo) return;
@@ -310,7 +310,7 @@ export function ChatProvider({ children }) {
                 senderId: myIdRef.current,
                 receiverId: convo.receiverId,
                 convId: activeConvId,
-                content: trimmed,
+                content,                 // text only
                 signal: undefined,
             });
 
@@ -324,13 +324,51 @@ export function ChatProvider({ children }) {
 
             setMessagesByConv((prev) => {
                 const list = prev[activeConvId] ? [...prev[activeConvId], newMsg] : [newMsg];
-                return {...prev, [activeConvId]: list};
+                return { ...prev, [activeConvId]: list };
             });
-
         } catch (err) {
             setSendMsgError(true);
         }
     }
+
+
+    async function createImageMessage(draft, file) {
+        setSendMsgError(false);
+
+        if (!file || !activeConvId || !myIdRef.current) return;
+
+        const caption = (draft ?? "").trim();  // optional; backend can allow empty caption
+
+        const convo = conversations.find((c) => c.conv_id === activeConvId);
+        if (!convo) return;
+
+        try {
+            const res = await create_image_message({
+                receiverId: convo.receiverId,
+                convId: activeConvId,
+                content: caption,                   // caption (can be empty string)
+                image: file,                        // native File object
+                signal: undefined,
+            });
+
+            const saved = res.message;
+            const newMsg = {
+                message_id: saved.message_id,
+                sender: "me",
+                content: saved.content ?? "",       // caption if any
+                ts: Date.parse(saved.created_at),
+                image_url: saved.image_url,         // backend should return this
+            };
+
+            setMessagesByConv((prev) => {
+                const list = prev[activeConvId] ? [...prev[activeConvId], newMsg] : [newMsg];
+                return { ...prev, [activeConvId]: list };
+            });
+        } catch (err) {
+            setSendMsgError(true);
+        }
+    }
+
     
     // tick for fetching new messages
     useEffect(() => {
@@ -489,6 +527,7 @@ export function ChatProvider({ children }) {
         // actions
         fetchConversation,
         createMessage,
+        createImageMessage,
         clearActiveConversation,
         registerConversation: upsertConversationRow,
         // config (optional: useful for tests or dynamic tuning)
