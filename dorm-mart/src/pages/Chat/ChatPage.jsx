@@ -4,6 +4,7 @@ import fmtTime from "./chat_page_utils";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import MessageCard from "./components/MessageCard";
 import ScheduleMessageCard from "./components/ScheduleMessageCard";
+import ConfirmMessageCard from "./components/ConfirmMessageCard";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -43,6 +44,7 @@ export default function ChatPage() {
   
   // Track if there's an active scheduled purchase for the current product
   const [hasActiveScheduledPurchase, setHasActiveScheduledPurchase] = useState(false);
+  const [confirmStatus, setConfirmStatus] = useState(null);
 
   // Handle conv query parameter to auto-open conversation
   useEffect(() => {
@@ -112,6 +114,11 @@ export default function ChatPage() {
   const headerBgColor = isSellerPerspective 
     ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
     : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
+  const confirmState = isSellerPerspective
+    ? (confirmStatus ?? { can_confirm: false, message: 'Checking Confirm Purchase status…' })
+    : null;
+  const confirmButtonDisabled = confirmState ? !confirmState.can_confirm : true;
+  const confirmButtonTitle = confirmState?.message || '';
 
   // Function to check for active scheduled purchase (extracted for reuse)
   const checkActiveScheduledPurchase = useCallback(async (signal) => {
@@ -159,6 +166,66 @@ export default function ChatPage() {
     }
   }, [activeConversation?.productId, activeConversation?.productSellerId, myId]);
 
+  const checkConfirmStatus = useCallback(async (signal) => {
+    if (!activeConvId || !activeConversation?.productId || !isSellerPerspective) {
+      setConfirmStatus(null);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/confirm-purchases/status.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+        signal,
+        body: JSON.stringify({
+          conversation_id: activeConvId,
+          product_id: activeConversation.productId,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to load confirm status');
+      }
+
+      const result = await res.json();
+      if (result.success) {
+        const data = result.data || {};
+        if (typeof data.can_confirm !== 'boolean') {
+          data.can_confirm = false;
+        }
+        if (!data.can_confirm && !data.message) {
+          if (data.reason_code === 'pending_request') {
+            data.message = 'Waiting for the buyer to respond to your confirmation.';
+          } else if (data.reason_code === 'missing_schedule') {
+            data.message = 'Create and get a Schedule Purchase accepted before confirming.';
+          } else if (data.reason_code === 'already_confirmed') {
+            data.message = 'This purchase has already been confirmed.';
+          } else {
+            data.message = 'Confirm Purchase is not available right now.';
+          }
+        }
+        setConfirmStatus(data);
+      } else {
+        setConfirmStatus({
+          can_confirm: false,
+          message: result.error || 'Unable to check Confirm Purchase status.',
+        });
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return;
+      }
+      setConfirmStatus({
+        can_confirm: false,
+        message: 'Unable to check Confirm Purchase status.',
+      });
+    }
+  }, [activeConvId, activeConversation?.productId, isSellerPerspective]);
+
   // Check for active scheduled purchase when product changes
   useEffect(() => {
     const controller = new AbortController();
@@ -168,6 +235,14 @@ export default function ChatPage() {
       controller.abort();
     };
   }, [checkActiveScheduledPurchase]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    checkConfirmStatus(controller.signal);
+    return () => {
+      controller.abort();
+    };
+  }, [checkConfirmStatus]);
 
   // Re-check for active scheduled purchases when messages change (e.g., after denial/acceptance)
   useEffect(() => {
@@ -180,17 +255,28 @@ export default function ChatPage() {
     // Small delay to ensure backend has processed the status change
     const timeoutId = setTimeout(() => {
       checkActiveScheduledPurchase(controller.signal);
+      checkConfirmStatus(controller.signal);
     }, 500);
     
     return () => {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [messages.length, activeConversation?.productId, isSellerPerspective, checkActiveScheduledPurchase]);
+  }, [messages.length, activeConversation?.productId, isSellerPerspective, checkActiveScheduledPurchase, checkConfirmStatus]);
 
   function handleSchedulePurchase() {
     if (!activeConvId || !activeConversation?.productId || hasActiveScheduledPurchase) return;
     navigate("/app/seller-dashboard/schedule-purchase", {
+      state: {
+        convId: activeConvId,
+        productId: activeConversation.productId,
+      }
+    });
+  }
+
+  function handleConfirmPurchase() {
+    if (!activeConvId || !activeConversation?.productId) return;
+    navigate("/app/seller-dashboard/confirm-purchase", {
       state: {
         convId: activeConvId,
         productId: activeConversation.productId,
@@ -552,6 +638,10 @@ export default function ChatPage() {
                                            messageType === 'schedule_accepted' || 
                                            messageType === 'schedule_denied' || 
                                            messageType === 'schedule_cancelled';
+                  const isConfirmMessage = messageType === 'confirm_request' ||
+                                           messageType === 'confirm_accepted' ||
+                                           messageType === 'confirm_denied' ||
+                                           messageType === 'confirm_auto_accepted';
                   
                   return (
                     <div
@@ -574,6 +664,19 @@ export default function ChatPage() {
                               // Re-check for active scheduled purchases after response
                               const controller = new AbortController();
                               await checkActiveScheduledPurchase(controller.signal);
+                              await checkConfirmStatus(controller.signal);
+                            }
+                          }}
+                        />
+                      ) : isConfirmMessage ? (
+                        <ConfirmMessageCard
+                          message={m}
+                          isMine={m.sender === "me"}
+                          onRespond={async () => {
+                            if (activeConvId) {
+                              await fetchConversation(activeConvId);
+                              const controller = new AbortController();
+                              await checkConfirmStatus(controller.signal);
                             }
                           }}
                         />
@@ -619,6 +722,25 @@ export default function ChatPage() {
                   >
                     Schedule Purchase
                   </button>
+                </div>
+              )}
+              {isSellerPerspective && activeConversation?.productId && (
+                <div className="mb-2">
+                  <button
+                    onClick={handleConfirmPurchase}
+                    disabled={confirmButtonDisabled}
+                    className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
+                      confirmButtonDisabled
+                        ? 'bg-gray-400 cursor-not-allowed text-white'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    }`}
+                    title={confirmButtonTitle}
+                  >
+                    Confirm Purchase
+                  </button>
+                  {confirmState && confirmState.message && !confirmState.can_confirm && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{confirmState.message}</p>
+                  )}
                 </div>
               )}
               

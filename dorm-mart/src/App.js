@@ -20,6 +20,7 @@ import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
 import SchedulePurchasePage from "./pages/SellerDashboard/SchedulePurchasePage.jsx";
+import ConfirmPurchasePage from "./pages/SellerDashboard/ConfirmPurchasePage.jsx";
 import OngoingPurchasesPage from "./pages/SellerDashboard/OngoingPurchasesPage.jsx";
 import MarkCompletedPage from "./pages/SellerDashboard/MarkCompletedPage.jsx";
 import ReportIssuePage from "./pages/SellerDashboard/ReportIssuePage.jsx";
@@ -90,6 +91,10 @@ export const router = createHashRouter([
       {
         path: "seller-dashboard/schedule-purchase",
         element: <SchedulePurchasePage />,
+      },
+      {
+        path: "seller-dashboard/confirm-purchase",
+        element: <ConfirmPurchasePage />,
       },
       {
         path: "seller-dashboard/ongoing-purchases",
