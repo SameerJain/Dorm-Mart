@@ -37,7 +37,7 @@ if ($convId <= 0) {
 // --- fetch all messages for this conversation (oldest first) ---
 $stmt = $conn->prepare(
     'SELECT
-         message_id, conv_id, sender_id, receiver_id, content, metadata,
+         message_id, conv_id, sender_id, receiver_id, content, image_url, metadata,
          DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at,  -- ISO UTC
          DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at    -- ISO UTC (NULL stays NULL)
        FROM messages

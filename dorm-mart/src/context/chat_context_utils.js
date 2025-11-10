@@ -37,7 +37,7 @@ export async function fetch_conversation(convId, signal) {
 
 export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, signal) {
   const res = await fetch_new_messages(activeConvId, sinceSec, signal);
-  const raw = res.messages
+  const raw = res?.messages ?? [];
   if (!raw.length) return [];
 
   const myIdNum = Number(myId);
@@ -45,40 +45,36 @@ export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, sign
     console.error('Invalid myId in tick_fetch_new_messages:', myId);
     return [];
   }
-  
-  const incoming = raw.map((m) => {
-      const senderIdNum = Number(m.sender_id);
-      if (!Number.isInteger(senderIdNum) || senderIdNum <= 0) {
-          // Invalid sender_id, default to "them" for safety
-          return {
-              message_id: m.message_id,
-              sender: "them",
-              content: m.content,
-              ts: Date.parse(m.created_at),
-              metadata: null,
-          };
-      }
-      
-      const metadata = (() => {
-          if (!m.metadata) return null;
-          if (typeof m.metadata === "object") return m.metadata;
-          try {
-              return JSON.parse(m.metadata);
-          } catch {
-              return null;
-          }
-      })();
-      
-      return {
-          message_id: m.message_id,
-          sender: senderIdNum === myIdNum ? "me" : "them",
-          content: m.content,
-          ts: Date.parse(m.created_at),
-          metadata,
-      }
+
+  return raw.map((m) => {
+    const senderIdNum = Number(m.sender_id);
+    const metadata = (() => {
+      if (!m.metadata) return null;
+      if (typeof m.metadata === "object") return m.metadata;
+      try { return JSON.parse(m.metadata); } catch { return null; }
+    })();
+
+    // be lenient about key names coming from backend
+    const imageUrl = m.image_url ?? m.imagePath ?? m.image_path ?? null;
+
+    // base shape
+    const base = {
+      message_id: m.message_id,
+      sender: Number.isInteger(senderIdNum) && senderIdNum > 0
+        ? (senderIdNum === myIdNum ? "me" : "them")
+        : "them",
+      content: m.content ?? "",
+      ts: Date.parse(m.created_at),
+      metadata,
+    };
+
+    // only add the flag/field if present
+    if (imageUrl) base.image_url = imageUrl;
+
+    return base;
   });
-  return incoming
 }
+
 
 export async function fetch_new_messages(activeConvId, ts, signal) {
   const r = await fetch(`${BASE}/chat/fetch_new_messages.php?conv_id=${activeConvId}&ts=${ts}`, {
@@ -141,6 +137,25 @@ export async function create_message({ receiverId, convId, content, signal }) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();                        // expect JSON back from PHP
 }
+
+// Image-message endpoint (multipart/form-data)
+export async function create_image_message({ receiverId, convId, content, image, signal }) {
+  const form = new FormData();                       // browser handles multipart boundary
+  form.append("receiver_id", String(receiverId));    // PHP: $_POST['receiver_id']
+  if (convId) form.append("conv_id", String(convId));
+  form.append("content", content ?? "");             // optional caption
+  form.append("image", image, image.name);           // PHP: $_FILES['image']
+
+  const r = await fetch(`${BASE}/chat/create_image_message.php`, {
+    method: "POST",
+    body: form,                                      // DO NOT set Content-Type manually
+    credentials: "include",
+    signal,
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();                                    // expects { success, message: { ... , image_url } }
+}
+
 
 export function envBool(value, fallback = false) {
   if (value == null) return fallback;
