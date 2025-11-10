@@ -136,7 +136,9 @@ try {
         exit;
     }
 
-    // Get snapshot values at the time of creation
+    // Snapshot mechanism: Capture item settings at scheduling time
+    // This ensures that if seller changes item settings (price negotiable, trades, location) 
+    // after scheduling, the scheduled purchase still uses the original settings when accepted
     $snapshotPriceNego = isset($itemRow['price_nego']) ? ((int)$itemRow['price_nego'] === 1) : false;
     $snapshotTrades = isset($itemRow['trades']) ? ((int)$itemRow['trades'] === 1) : false;
     $snapshotMeetLocation = isset($itemRow['item_location']) ? trim((string)$itemRow['item_location']) : null;
@@ -192,24 +194,24 @@ try {
         exit;
     }
 
-    // Generate unique 4-character code
+    // Generate unique 4-character verification code for buyer-seller meetup confirmation
     $verificationCode = generateUniqueCode($conn);
 
-    // Validate that negotiated price is only provided if item is price negotiable
+    // Validation: Ensure negotiated price is only allowed for price-negotiable items
     if ($negotiatedPrice !== null && !$snapshotPriceNego) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'This item is not marked as price negotiable']);
         exit;
     }
 
-    // Validate that trade can only be selected if item accepts trades
+    // Validation: Ensure trade option is only allowed for items that accept trades
     if ($isTrade && !$snapshotTrades) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'This item does not accept trades']);
         exit;
     }
 
-    // Validate that price cannot be provided if trade is selected
+    // Validation: Price and trade are mutually exclusive
     if ($isTrade && $negotiatedPrice !== null) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Cannot enter a price for a trade']);

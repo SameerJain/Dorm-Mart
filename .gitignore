@@ -46,3 +46,5 @@ deploy.bat
 
 # Cookie files (contains sensitive session data)
 cookies.txt
+cookies.buyer.txt
+cookies.seller.txt

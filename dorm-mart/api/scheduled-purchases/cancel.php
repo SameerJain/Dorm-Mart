@@ -85,6 +85,7 @@ try {
         exit;
     }
 
+    // Prevent invalid cancellation states
     $currentStatus = (string)$row['status'];
     if ($currentStatus === 'cancelled') {
         http_response_code(409);
@@ -92,6 +93,7 @@ try {
         exit;
     }
 
+    // Cannot cancel a declined request (buyer already rejected it)
     if ($currentStatus === 'declined') {
         http_response_code(409);
         echo json_encode(['success' => false, 'error' => 'Cannot cancel a declined request']);
@@ -107,7 +109,8 @@ try {
     $updateStmt->execute();
     $updateStmt->close();
     
-    // Update item status back to "Active" when cancelled (only if currently Pending from this scheduled purchase)
+    // Revert item status to "Active" when cancelled, but only if no other accepted purchases exist
+    // This ensures item becomes available again only when truly free of all accepted scheduled purchases
     $inventoryProductId = (int)$row['inventory_product_id'];
     if ($inventoryProductId > 0) {
         // Check if there are other accepted scheduled purchases for this item
