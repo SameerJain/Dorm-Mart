@@ -73,6 +73,10 @@ function MainNav() {
         navigate("/app/seller-dashboard/ongoing-purchases");
     };
 
+    const handleWishlist = () => {
+        navigate("/app/wishlist");
+    };
+
     // Search state + handlers
     const [searchText, setSearchText] = useState("");
     const inputRef = useRef(null);
@@ -193,6 +197,12 @@ function MainNav() {
                                     Seller Dashboard
                                 </button>
                                 <button
+                                    onClick={() => { handleWishlist(); setShowDropdown(false); }}
+                                    className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                    My Wishlist
+                                </button>
+                                <button
                                     onClick={() => { handleOngoingPurchases(); setShowDropdown(false); }}
                                     className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                 >
@@ -273,6 +283,16 @@ function MainNav() {
                             >
                                 <img src={userIcon} alt="" className="h-6 w-6" />
                                 <span>Seller Dashboard</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handleWishlist();
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <img src={userIcon} alt="" className="h-6 w-6" />
+                                <span>My Wishlist</span>
                             </button>
                             <button
                                 onClick={() => {
