@@ -123,7 +123,24 @@ try {
   $imageBaseUrl = rtrim($envBase !== false && $envBase !== '' ? $envBase : '/images', '/');
   if (!is_dir($imageDirFs)) { @mkdir($imageDirFs, 0775, true); }
 
-  $imageUrls = [];
+  // Handle existing photos for edit mode
+  $existingPhotos = [];
+  if ($mode === 'update' && $itemId > 0) {
+    // Accept existingPhotos[] from POST (can be array or single value)
+    $existingPhotosRaw = $_POST['existingPhotos'] ?? [];
+    if (is_array($existingPhotosRaw)) {
+      $existingPhotos = array_values(array_filter(array_map('trim', $existingPhotosRaw), fn($v) => $v !== ''));
+    } elseif (is_string($existingPhotosRaw) && $existingPhotosRaw !== '') {
+      $existingPhotos = [trim($existingPhotosRaw)];
+    }
+    // Limit existing photos to max 6 total
+    if (count($existingPhotos) > 6) {
+      $existingPhotos = array_slice($existingPhotos, 0, 6);
+    }
+  }
+
+  // Process new image uploads
+  $newImageUrls = [];
   if (!empty($_FILES['images']) && is_array($_FILES['images']['tmp_name'])) {
     $maxFiles   = 6;
     $maxSizeB   = 5 * 1024 * 1024; // 5MB
@@ -144,10 +161,16 @@ try {
 
       $fname = uniqid('img_', true) . '.' . $ext;
       if (move_uploaded_file($tmpPath, $imageDirFs . $fname)) {
-        $imageUrls[] = $imageBaseUrl . '/' . $fname;
+        $newImageUrls[] = $imageBaseUrl . '/' . $fname;
         $cnt++;
       }
     }
+  }
+
+  // Merge existing photos with new uploads (limit total to 6)
+  $imageUrls = array_merge($existingPhotos, $newImageUrls);
+  if (count($imageUrls) > 6) {
+    $imageUrls = array_slice($imageUrls, 0, 6);
   }
 
   // --- JSON columns ---
