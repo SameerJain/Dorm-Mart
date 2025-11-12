@@ -243,7 +243,7 @@ function ProductListingPage() {
         setImages(imageObjects);
 
         setSelectedCategory("");
-        setErrors({});
+        setErrors({}); // This already clears all errors including images
       } catch (e) {
         if (!ignore) {
           console.error("Error loading existing listing:", e);
@@ -396,9 +396,24 @@ function ProductListingPage() {
       newErrors.condition = "Select an item condition";
     }
 
+    if (!images || images.length === 0) {
+      newErrors.images = "At least one image is required";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  // Clear image error when images are added
+  useEffect(() => {
+    if (images.length > 0 && errors.images) {
+      setErrors((prev) => {
+        const ne = { ...prev };
+        delete ne.images;
+        return ne;
+      });
+    }
+  }, [images.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ============================================
   // IMAGE UPLOAD + 1:1 ENFORCEMENT
@@ -423,6 +438,14 @@ function ProductListingPage() {
               url: ev.target.result,
             },
           ]);
+          // Clear image error when image is added
+          if (errors.images) {
+            setErrors((prev) => {
+              const ne = { ...prev };
+              delete ne.images;
+              return ne;
+            });
+          }
         } else {
           // open cropper
           setCropImageSrc(ev.target.result);
@@ -568,6 +591,15 @@ function ProductListingPage() {
         const finalUrl = URL.createObjectURL(blob);
 
         setImages((prev) => [...prev, { file: finalFile, url: finalUrl }]);
+
+        // Clear image error when cropped image is added
+        if (errors.images) {
+          setErrors((prev) => {
+            const ne = { ...prev };
+            delete ne.images;
+            return ne;
+          });
+        }
 
         setShowCropper(false);
         setCropImageSrc(null);
@@ -1035,9 +1067,13 @@ function ProductListingPage() {
             </div>
 
             {/* Photos */}
-            <div className="bg-white dark:bg-gray-950/30 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 mt-6">
+            <div className={`bg-white dark:bg-gray-950/30 rounded-2xl shadow-sm border p-6 mt-6 ${
+              errors.images
+                ? "border-red-500 dark:border-red-600"
+                : "border-gray-200 dark:border-gray-800"
+            }`}>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-6">
-                Photos &amp; Media (1:1 enforced)
+                Photos &amp; Media (1:1 enforced) <span className="text-red-500">*</span>
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
@@ -1080,13 +1116,22 @@ function ProductListingPage() {
               />
               <button
                 onClick={() => fileInputRef.current.click()}
-                className="w-full py-4 px-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-200 hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
+                className={`w-full py-4 px-6 border-2 border-dashed rounded-lg font-medium transition-colors ${
+                  errors.images
+                    ? "border-red-500 dark:border-red-600 text-red-600 dark:text-red-400 hover:border-red-600 dark:hover:border-red-500"
+                    : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-200 hover:border-blue-500 hover:text-blue-600"
+                }`}
               >
                 + Add Photos (we will force 1:1)
               </button>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
                 We enforce a square (1:1) ratio so listings look consistent.
               </p>
+              {errors.images && (
+                <p className="text-red-600 dark:text-red-400 text-sm mt-2 text-center">
+                  {errors.images}
+                </p>
+              )}
             </div>
 
             {/* Safety Tips */}
