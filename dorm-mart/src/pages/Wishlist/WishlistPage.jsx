@@ -151,15 +151,6 @@ export default function WishlistPage() {
                 ))}
               </div>
             </div>
-
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800 p-4">
-              <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
-                Tips
-              </p>
-              <p className="text-sm text-blue-500 dark:text-blue-400">
-                Use filters to quickly find items in your wishlist by category.
-              </p>
-            </div>
           </aside>
 
           {/* CENTER - Wishlist Items */}
@@ -245,6 +236,7 @@ export default function WishlistPage() {
                     image={item.img}
                     status={item.status}
                     seller={item.seller}
+                    isWishlisted={true}
                   />
                 ))}
               </div>

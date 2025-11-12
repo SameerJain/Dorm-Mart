@@ -10,6 +10,7 @@ export default function ItemCardNew({
   image,
   status,
   seller,
+  isWishlisted = false,
 }) {
   const navigate = useNavigate();
   const isNew =
@@ -52,6 +53,26 @@ export default function ItemCardNew({
         {isNew && (
           <div className="absolute top-2 right-2 z-20 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow">
             NEW
+          </div>
+        )}
+
+        {/* Wishlisted badge - underneath NEW if present, top-right if not */}
+        {isWishlisted && (
+          <div className={`absolute z-20 bg-purple-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow flex items-center gap-1 ${
+            isNew ? "top-8 right-2" : "top-2 right-2"
+          }`}>
+            <span>Wishlisted</span>
+            <svg
+              className="w-3 h-3 fill-current"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                clipRule="evenodd"
+              />
+            </svg>
           </div>
         )}
 

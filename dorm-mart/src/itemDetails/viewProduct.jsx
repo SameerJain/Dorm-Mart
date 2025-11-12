@@ -333,31 +333,74 @@ export default function ViewProduct() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 flex items-center justify-between">
-        <button 
-          onClick={() => {
-            if (returnTo) {
-              navigate(returnTo);
-            } else {
-              navigate(-1);
-            }
-          }} 
-          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          Back
-        </button>
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100">Product Details</h1>
-        {isSellerViewingOwnProduct ? (
-          <button
-            onClick={() => navigate('/app/seller-dashboard')}
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+      <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 grid grid-cols-3 items-center relative">
+        <div className="flex justify-start">
+          <button 
+            onClick={() => {
+              if (returnTo) {
+                navigate(returnTo);
+              } else {
+                navigate(-1);
+              }
+            }} 
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
-            View Seller Dashboard
+            Back
           </button>
-        ) : (
-          <div />
-        )}
+        </div>
+        <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 text-center">Product Details</h1>
+        <div className="flex items-center gap-2 justify-end">
+          {!isSellerViewingOwnProduct && normalized && (
+            <button
+              onClick={handleWishlistToggle}
+              disabled={wishlistLoading || !myId}
+              className={`rounded-full font-medium px-3 py-1.5 flex items-center gap-1.5 text-sm whitespace-nowrap ${
+                isInWishlist
+                  ? "bg-purple-600 dark:bg-purple-700 hover:bg-purple-700 dark:hover:bg-purple-600 text-white"
+                  : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"
+              } disabled:opacity-50 transition-colors`}
+              title={wishlistLoading ? "Loading..." : isInWishlist ? "Saved to Wishlist" : "Add to Wishlist"}
+            >
+              <svg
+                className={`w-4 h-4 ${isInWishlist ? "fill-current" : ""}`}
+                fill={isInWishlist ? "currentColor" : "none"}
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                />
+              </svg>
+              {wishlistLoading ? (
+                <span className="hidden sm:inline">Loading...</span>
+              ) : isInWishlist ? (
+                <span className="hidden sm:inline">Saved to Wishlist</span>
+              ) : (
+                <span className="hidden sm:inline">Add to Wishlist</span>
+              )}
+            </button>
+          )}
+          {isSellerViewingOwnProduct ? (
+            <button
+              onClick={() => navigate('/app/seller-dashboard')}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium whitespace-nowrap"
+            >
+              View Seller Dashboard
+            </button>
+          ) : (
+            <div className="w-0" />
+          )}
+        </div>
       </div>
+      {wishlistError && normalized && (
+        <div className="w-full px-2 md:px-4 py-1">
+          <p className="text-xs text-red-600 dark:text-red-400">{wishlistError}</p>
+        </div>
+      )}
 
       <div className="w-full px-2 md:px-4 py-4">
         {loading ? (
@@ -476,40 +519,6 @@ export default function ViewProduct() {
                 <p className="text-xs text-gray-500 dark:text-gray-400">Pickup: {normalized.itemLocation || 'On campus'}</p>
 
                 <div className="mt-3 space-y-2">
-                  {!isSellerViewingOwnProduct && (
-                    <button
-                      onClick={handleWishlistToggle}
-                      disabled={wishlistLoading || !myId}
-                      className={`w-full rounded-full font-medium py-2 flex items-center justify-center gap-2 ${
-                        isInWishlist
-                          ? "bg-red-600 dark:bg-red-700 hover:bg-red-700 dark:hover:bg-red-600 text-white"
-                          : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"
-                      } disabled:opacity-50`}
-                    >
-                      <svg
-                        className={`w-5 h-5 ${isInWishlist ? "fill-current" : ""}`}
-                        fill={isInWishlist ? "currentColor" : "none"}
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                        />
-                      </svg>
-                      {wishlistLoading
-                        ? "Loading..."
-                        : isInWishlist
-                        ? "Remove from Wishlist"
-                        : "Add to Wishlist"}
-                    </button>
-                  )}
-                  {wishlistError && (
-                    <p className="text-xs text-red-600 dark:text-red-400">{wishlistError}</p>
-                  )}
                   <button
                     onClick={handleMessageSeller}
                     disabled={!normalized.sellerId || msgLoading || isSellerViewingOwnProduct}
