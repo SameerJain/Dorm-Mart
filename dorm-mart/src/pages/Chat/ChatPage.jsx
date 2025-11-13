@@ -10,7 +10,9 @@ import ConfirmMessageCard from "./components/ConfirmMessageCard";
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 
+/** Root Chat page: wires context, sidebar, messages, and composer together */
 export default function ChatPage() {
+  /** Chat global state and actions from context */
   const ctx = useContext(ChatContext);
   const {
     conversations,
@@ -42,6 +44,7 @@ export default function ChatPage() {
   const taRef = useRef(null);
   const [confirmStatus, setConfirmStatus] = useState(null);
 
+  /** Auto-resize the textarea height based on its content */
   const autoGrow = useCallback(() => {
     const el = taRef.current;
     if (!el) return;
@@ -50,6 +53,7 @@ export default function ChatPage() {
     el.style.overflowY = el.scrollHeight > el.clientHeight ? "auto" : "hidden";
   }, []);
 
+  /** Re-run autoGrow when draft changes */
   useEffect(() => {
     autoGrow();
   }, [draft, autoGrow]);
@@ -58,6 +62,7 @@ export default function ChatPage() {
   const location = useLocation();
   const navigationState = location.state && typeof location.state === "object" ? location.state : null;
 
+  /** Compute header label for the active chat */
   const activeLabel = useMemo(() => {
     const c = conversations.find((c) => c.conv_id === activeConvId);
     if (c) return c.receiverName;
@@ -66,6 +71,7 @@ export default function ChatPage() {
     return "Select a chat";
   }, [conversations, activeConvId, navigationState]);
 
+  /** Mobile back button handler: go back or to /app as fallback */
   function goBackOrHome() {
     if (location.key !== "default") {
       navigate(-1);
@@ -74,8 +80,10 @@ export default function ChatPage() {
     }
   }
 
+  /** Controls which pane is visible on mobile (list vs messages) */
   const [isMobileList, setIsMobileList] = useState(true);
 
+  /** Handle deep-link via ?conv=ID in URL and auto-open that conversation */
   useEffect(() => {
     const convParam = searchParams.get('conv');
     if (convParam) {
@@ -88,15 +96,18 @@ export default function ChatPage() {
     }
   }, [searchParams, activeConvId, fetchConversation, setSearchParams]);
 
+  /** When an active conversation exists, show the message pane on mobile */
   useEffect(() => {
     if (activeConvId) setIsMobileList(false);
   }, [activeConvId]);
 
+  /** Auto-scroll to bottom when active conversation or messages change */
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [activeConvId, messages.length]);
 
+  /** Keydown handler for textarea: submit on Enter (without Shift) */
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -110,6 +121,7 @@ export default function ChatPage() {
     }
   }
 
+  /** Open delete confirmation modal for a given conversation */
   function handleDeleteClick(convId, e) {
     e.stopPropagation();
     setPendingDeleteConvId(convId);
@@ -117,6 +129,7 @@ export default function ChatPage() {
     setDeleteError('');
   }
 
+  /** Confirm deletion: call API, clear active if needed, then reload page */
   async function handleDeleteConfirm() {
     if (!pendingDeleteConvId || isDeleting) return;
     setIsDeleting(true);
@@ -146,28 +159,41 @@ export default function ChatPage() {
     }
   }
 
+  /** Cancel deletion: close modal and clear state */
   function handleDeleteCancel() {
     setDeleteConfirmOpen(false);
     setPendingDeleteConvId(null);
     setDeleteError('');
   }
 
+  /** Lookup for active conversation object */
   const activeConversation = conversations.find(c => c.conv_id === activeConvId);
+
+  /** Detect listing intro message and whether current user is seller */
   const hasListingIntro = messages.some(m => m.metadata?.type === "listing_intro");
   const listingIntroMsg = messages.find(m => m.metadata?.type === "listing_intro");
   const isSeller = hasListingIntro && listingIntroMsg && listingIntroMsg.sender === "them";
 
+  /** Determine if current user is the seller (seller perspective) */
   const isSellerPerspective = activeConversation?.productId && activeConversation?.productSellerId && myId &&
     Number(activeConversation.productSellerId) === Number(myId);
+
+  /** Header background color based on buyer vs seller perspective */
   const headerBgColor = isSellerPerspective
     ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
     : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
+
+  /** Seller-only confirm state (null if not seller perspective) */
   const confirmState = isSellerPerspective
     ? (confirmStatus ?? { can_confirm: false, message: 'Checking Confirm Purchase status…' })
     : null;
+
+  /** Disable Confirm Purchase button if cannot confirm */
   const confirmButtonDisabled = confirmState ? !confirmState.can_confirm : true;
+  /** Tooltip/title text for Confirm Purchase button */
   const confirmButtonTitle = confirmState?.message || '';
 
+  /** Check if there is an active scheduled purchase for the item (seller view only) */
   const checkActiveScheduledPurchase = useCallback(async (signal) => {
     const productId = activeConversation?.productId;
     const sellerView = activeConversation?.productId && activeConversation?.productSellerId && myId &&
@@ -199,6 +225,7 @@ export default function ChatPage() {
     }
   }, [activeConversation?.productId, activeConversation?.productSellerId, myId]);
 
+  /** Check Confirm Purchase status for current conversation and product (seller only) */
   const checkConfirmStatus = useCallback(async (signal) => {
     if (!activeConvId || !activeConversation?.productId || !isSellerPerspective) {
       setConfirmStatus(null);
@@ -234,18 +261,21 @@ export default function ChatPage() {
     }
   }, [activeConvId, activeConversation?.productId, isSellerPerspective]);
 
+  /** Initial load: check for active scheduled purchase once */
   useEffect(() => {
     const controller = new AbortController();
     checkActiveScheduledPurchase(controller.signal);
     return () => controller.abort();
   }, [checkActiveScheduledPurchase]);
 
+  /** Initial load: check confirm status once */
   useEffect(() => {
     const controller = new AbortController();
     checkConfirmStatus(controller.signal);
     return () => controller.abort();
   }, [checkConfirmStatus]);
 
+  /** Re-check schedule + confirm status when messages change in seller view */
   useEffect(() => {
     if (!activeConversation?.productId || !isSellerPerspective) return;
     const controller = new AbortController();
@@ -259,6 +289,7 @@ export default function ChatPage() {
     };
   }, [messages.length, activeConversation?.productId, isSellerPerspective, checkActiveScheduledPurchase, checkConfirmStatus]);
 
+  /** Navigate to Schedule Purchase flow for seller */
   function handleSchedulePurchase() {
     if (!activeConvId || !activeConversation?.productId || hasActiveScheduledPurchase) return;
     navigate("/app/seller-dashboard/schedule-purchase", {
@@ -266,6 +297,7 @@ export default function ChatPage() {
     });
   }
 
+  /** Navigate to Confirm Purchase flow for seller */
   function handleConfirmPurchase() {
     if (!activeConvId || !activeConversation?.productId) return;
     navigate("/app/seller-dashboard/confirm-purchase", {
@@ -273,6 +305,7 @@ export default function ChatPage() {
     });
   }
 
+  /** Render a single conversation item in the sidebar, with grouping styles */
   function renderConversationItem(c, sectionType = 'sellers') {
     const isActive = c.conv_id === activeConvId;
     const unread = unreadByConv?.[c.conv_id] ?? 0;
@@ -389,6 +422,7 @@ export default function ChatPage() {
                   </div>
                 </li>
               ) : (() => {
+                /** Split conversations into seller and buyer sections for sidebar grouping */
                 const messagesToSellers = [];
                 const messagesToBuyers = [];
                 conversations.forEach((c) => {
@@ -507,6 +541,7 @@ export default function ChatPage() {
                 <p className="text-center text-sm text-gray-500">No messages yet.</p>
               ) : (
                 messages.map((m) => {
+                  /** Categorize message type: basic, schedule, confirm, or listing intro */
                   const messageType = m.metadata?.type;
                   const isScheduleMessage = messageType === 'schedule_request' ||
                                             messageType === 'schedule_accepted' ||

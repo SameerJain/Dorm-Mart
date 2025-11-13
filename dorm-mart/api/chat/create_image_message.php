@@ -80,7 +80,7 @@ if ($len > 500) {
 }
 
 /* --- Validate and store the uploaded image --- */
-$MAX_BYTES = 5 * 1024 * 1024; // 5MB cap
+$MAX_BYTES = 2 * 1024 * 1024; // 5MB cap
 if ((int)$_FILES['image']['size'] > $MAX_BYTES) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'image_too_large', 'max_bytes' => $MAX_BYTES]);
