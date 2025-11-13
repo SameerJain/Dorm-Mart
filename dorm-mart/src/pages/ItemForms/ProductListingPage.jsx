@@ -44,10 +44,16 @@ function ProductListingPage() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverMsg, setServerMsg] = useState(null);
+  const [loadingExisting, setLoadingExisting] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   // success modal
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdProdId, setCreatedProdId] = useState(null);
+
+  // API base URL (respects .env)
+  const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+  const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 
   // categories dropdown state
   const [availableCategories, setAvailableCategories] = useState([]);
@@ -143,12 +149,125 @@ function ProductListingPage() {
   }, []);
 
   // ============================================
-  // MODE-AWARE RESET
+  // FETCH EXISTING LISTING (EDIT MODE)
   // ============================================
   useEffect(() => {
-    if (isEdit) {
-      // fetch existing (not implemented here)
-    } else if (isNew) {
+    if (!isEdit || !id) return;
+
+    let ignore = false;
+    async function loadExistingListing() {
+      try {
+        setLoadingExisting(true);
+        setLoadError(null);
+        setServerMsg(null);
+
+        const res = await fetch(`${API_BASE}/viewProduct.php?product_id=${encodeURIComponent(id)}`, {
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to load listing: HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        if (!data || !data.product_id) {
+          throw new Error("Invalid listing data received");
+        }
+
+        if (ignore) return;
+
+        // Populate form fields
+        setTitle(data.title || "");
+        
+        // Handle categories (can be tags array or categories JSON)
+        let cats = [];
+        if (Array.isArray(data.tags)) {
+          cats = data.tags;
+        } else if (data.categories) {
+          try {
+            const parsed = typeof data.categories === 'string' 
+              ? JSON.parse(data.categories) 
+              : data.categories;
+            if (Array.isArray(parsed)) {
+              cats = parsed;
+            }
+          } catch (e) {
+            console.warn("Failed to parse categories:", e);
+          }
+        }
+        setCategories(cats);
+
+        setItemLocation(data.item_location || "");
+        setCondition(data.item_condition || "");
+        setDescription(data.description || "");
+        setPrice(data.listing_price || "");
+        setAcceptTrades(data.trades === true || data.trades === 1);
+        setPriceNegotiable(data.price_nego === true || data.price_nego === 1);
+
+        // Handle existing photos
+        let existingPhotos = [];
+        if (Array.isArray(data.photos)) {
+          existingPhotos = data.photos;
+        } else if (typeof data.photos === 'string' && data.photos) {
+          try {
+            const parsed = JSON.parse(data.photos);
+            if (Array.isArray(parsed)) {
+              existingPhotos = parsed;
+            }
+          } catch (e) {
+            // If not JSON, treat as comma-separated
+            existingPhotos = data.photos.split(',').map(s => s.trim()).filter(Boolean);
+          }
+        }
+
+        // Convert existing photo URLs to image objects for display
+        // Store original URLs separately so we can send them back
+        const imageObjects = existingPhotos.map(url => {
+          // Proxy images through image.php if needed (same logic as viewProduct)
+          const raw = String(url);
+          let proxiedUrl = url;
+          if (/^https?:\/\//i.test(raw)) {
+            proxiedUrl = `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
+          } else if (raw.startsWith('/data/images/') || raw.startsWith('/images/')) {
+            proxiedUrl = `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
+          } else if (raw.startsWith("/")) {
+            proxiedUrl = `${PUBLIC_BASE}${raw}`;
+          }
+          
+          return {
+            file: null, // No file object for existing images
+            url: proxiedUrl,
+            originalUrl: url, // Store original URL for submission
+          };
+        });
+        setImages(imageObjects);
+
+        setSelectedCategory("");
+        setErrors({}); // This already clears all errors including images
+      } catch (e) {
+        if (!ignore) {
+          console.error("Error loading existing listing:", e);
+          setLoadError(e?.message || "Failed to load listing data.");
+          setServerMsg(e?.message || "Failed to load listing data.");
+        }
+      } finally {
+        if (!ignore) {
+          setLoadingExisting(false);
+        }
+      }
+    }
+
+    loadExistingListing();
+    return () => {
+      ignore = true;
+    };
+  }, [id, isEdit, API_BASE, PUBLIC_BASE]);
+
+  // ============================================
+  // MODE-AWARE RESET (NEW MODE)
+  // ============================================
+  useEffect(() => {
+    if (isNew) {
       setTitle(defaultForm.title);
       setCategories([...defaultForm.categories]);
       setItemLocation(defaultForm.itemLocation);
@@ -161,9 +280,10 @@ function ProductListingPage() {
       setSelectedCategory("");
       setErrors({});
       setServerMsg(null);
+      setLoadError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isNew]);
+  }, [isNew]);
 
   // ============================================
   // INPUT HANDLER
@@ -276,9 +396,24 @@ function ProductListingPage() {
       newErrors.condition = "Select an item condition";
     }
 
+    if (!images || images.length === 0) {
+      newErrors.images = "At least one image is required";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  // Clear image error when images are added
+  useEffect(() => {
+    if (images.length > 0 && errors.images) {
+      setErrors((prev) => {
+        const ne = { ...prev };
+        delete ne.images;
+        return ne;
+      });
+    }
+  }, [images.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ============================================
   // IMAGE UPLOAD + 1:1 ENFORCEMENT
@@ -303,6 +438,14 @@ function ProductListingPage() {
               url: ev.target.result,
             },
           ]);
+          // Clear image error when image is added
+          if (errors.images) {
+            setErrors((prev) => {
+              const ne = { ...prev };
+              delete ne.images;
+              return ne;
+            });
+          }
         } else {
           // open cropper
           setCropImageSrc(ev.target.result);
@@ -449,6 +592,15 @@ function ProductListingPage() {
 
         setImages((prev) => [...prev, { file: finalFile, url: finalUrl }]);
 
+        // Clear image error when cropped image is added
+        if (errors.images) {
+          setErrors((prev) => {
+            const ne = { ...prev };
+            delete ne.images;
+            return ne;
+          });
+        }
+
         setShowCropper(false);
         setCropImageSrc(null);
         setCropImgEl(null);
@@ -486,19 +638,32 @@ function ProductListingPage() {
     fd.append("acceptTrades", acceptTrades ? "1" : "0");
     fd.append("priceNegotiable", priceNegotiable ? "1" : "0");
 
-    images.forEach((img, i) => {
+    // Separate existing photos (no file) from new uploads (has file)
+    const existingPhotoUrls = [];
+    images.forEach((img) => {
       if (img?.file) {
+        // New upload - add as file
         fd.append(
           "images[]",
           img.file,
-          img.file.name || `image_${i}.png` || `image_${i}.jpg`
+          img.file.name || `image_${Date.now()}.png`
         );
+      } else if (img?.originalUrl) {
+        // Existing photo - store original URL to send back
+        existingPhotoUrls.push(img.originalUrl);
       }
     });
 
+    // In edit mode, send existing photos that should be kept
+    if (isEdit && existingPhotoUrls.length > 0) {
+      existingPhotoUrls.forEach((url) => {
+        fd.append("existingPhotos[]", url);
+      });
+    }
+
     try {
       setSubmitting(true);
-      const res = await fetch("api/seller-dashboard/product_listing.php", {
+      const res = await fetch(`${API_BASE}/seller-dashboard/product_listing.php`, {
         method: "POST",
         body: fd,
         credentials: "include",
@@ -517,21 +682,28 @@ function ProductListingPage() {
       }
 
       const pid = data?.prod_id ?? data?.product_id ?? null;
-      setCreatedProdId(pid);
-      setShowSuccess(true);
+      
+      if (isEdit) {
+        // For edit mode, redirect to dashboard after successful update
+        navigate("/app/seller-dashboard");
+      } else {
+        // For new listings, show success modal
+        setCreatedProdId(pid);
+        setShowSuccess(true);
 
-      // reset
-      setTitle(defaultForm.title);
-      setCategories([]);
-      setItemLocation(defaultForm.itemLocation);
-      setCondition(defaultForm.condition);
-      setDescription(defaultForm.description);
-      setPrice(defaultForm.price);
-      setAcceptTrades(defaultForm.acceptTrades);
-      setPriceNegotiable(defaultForm.priceNegotiable);
-      setImages([]);
-      setSelectedCategory("");
-      setErrors({});
+        // reset form
+        setTitle(defaultForm.title);
+        setCategories([]);
+        setItemLocation(defaultForm.itemLocation);
+        setCondition(defaultForm.condition);
+        setDescription(defaultForm.description);
+        setPrice(defaultForm.price);
+        setAcceptTrades(defaultForm.acceptTrades);
+        setPriceNegotiable(defaultForm.priceNegotiable);
+        setImages([]);
+        setSelectedCategory("");
+        setErrors({});
+      }
     } catch (err) {
       setServerMsg(err?.message || "Network error.");
     } finally {
@@ -559,11 +731,29 @@ function ProductListingPage() {
         </div>
 
         {serverMsg && (
-          <div className="mb-4 rounded-lg border p-3 text-sm bg-white">
+          <div className={`mb-4 rounded-lg border p-3 text-sm ${
+            loadError ? "bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300" 
+            : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300"
+          }`}>
             {serverMsg}
           </div>
         )}
 
+        {loadingExisting && (
+          <div className="mb-4 rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/20 p-4">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
+              <p className="text-blue-700 dark:text-blue-300 font-medium">Loading existing listing data...</p>
+            </div>
+          </div>
+        )}
+
+        {loadingExisting ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-500 dark:text-gray-400 text-lg">Loading listing data...</p>
+          </div>
+        ) : (
         <div className="space-y-6">
           {/* Basic Information */}
           <div className="bg-white dark:bg-gray-950/50 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
@@ -877,9 +1067,13 @@ function ProductListingPage() {
             </div>
 
             {/* Photos */}
-            <div className="bg-white dark:bg-gray-950/30 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 mt-6">
+            <div className={`bg-white dark:bg-gray-950/30 rounded-2xl shadow-sm border p-6 mt-6 ${
+              errors.images
+                ? "border-red-500 dark:border-red-600"
+                : "border-gray-200 dark:border-gray-800"
+            }`}>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-6">
-                Photos &amp; Media (1:1 enforced)
+                Photos &amp; Media (1:1 enforced) <span className="text-red-500">*</span>
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
@@ -922,13 +1116,22 @@ function ProductListingPage() {
               />
               <button
                 onClick={() => fileInputRef.current.click()}
-                className="w-full py-4 px-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-200 hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
+                className={`w-full py-4 px-6 border-2 border-dashed rounded-lg font-medium transition-colors ${
+                  errors.images
+                    ? "border-red-500 dark:border-red-600 text-red-600 dark:text-red-400 hover:border-red-600 dark:hover:border-red-500"
+                    : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-200 hover:border-blue-500 hover:text-blue-600"
+                }`}
               >
                 + Add Photos (we will force 1:1)
               </button>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
                 We enforce a square (1:1) ratio so listings look consistent.
               </p>
+              {errors.images && (
+                <p className="text-red-600 dark:text-red-400 text-sm mt-2 text-center">
+                  {errors.images}
+                </p>
+              )}
             </div>
 
             {/* Safety Tips */}
@@ -968,11 +1171,13 @@ function ProductListingPage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={publishListing}
-                  disabled={submitting}
+                  disabled={submitting || loadingExisting}
                   className="flex-1 py-4 bg-blue-600 text-white rounded-lg font-bold text-lg hover:bg-blue-700 transition-colors disabled:opacity-60"
                 >
                   {submitting
                     ? "Submitting..."
+                    : loadingExisting
+                    ? "Loading..."
                     : isEdit
                     ? "Update Listing"
                     : "Publish Listing"}
@@ -1007,10 +1212,11 @@ function ProductListingPage() {
             </div>
           </div>
         </div>
+        )}
       </main>
 
-      {/* Success Modal */}
-      {showSuccess && (
+      {/* Success Modal - Only show for new listings */}
+      {showSuccess && !isEdit && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           role="dialog"
