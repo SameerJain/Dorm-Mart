@@ -95,6 +95,14 @@ try {
     $wishlistId = $conn->insert_id;
     $stmt->close();
 
+    /** increment wishlisted count for this product */
+    $updateStmt = $conn->prepare('UPDATE INVENTORY SET wishlisted = wishlisted + 1 WHERE product_id = ?');
+    if ($updateStmt) {
+        $updateStmt->bind_param('i', $productId);
+        $updateStmt->execute();
+        $updateStmt->close();
+    }
+
     echo json_encode(['success' => true, 'wishlist_id' => $wishlistId, 'product_id' => $productId]);
 } catch (Throwable $e) {
     error_log('add_to_wishlist error: ' . $e->getMessage());

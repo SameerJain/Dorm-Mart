@@ -70,6 +70,14 @@ try {
     }
     $stmt->close();
 
+    /** Decrement wishlisted count for this product (floor at 0) */
+    $updateStmt = $conn->prepare('UPDATE INVENTORY SET wishlisted = GREATEST(wishlisted - 1, 0) WHERE product_id = ?');
+    if ($updateStmt) {
+        $updateStmt->bind_param('i', $productId);
+        $updateStmt->execute();
+        $updateStmt->close();
+    }
+
     echo json_encode(['success' => true, 'product_id' => $productId]);
 } catch (Throwable $e) {
     error_log('remove_from_wishlist error: ' . $e->getMessage());
