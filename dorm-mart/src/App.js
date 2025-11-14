@@ -30,6 +30,8 @@ import WishlistPage from "./pages/Wishlist/WishlistPage.jsx";
 // Chat
 import { ChatProvider } from "./context/ChatContext.js";
 import ChatPage from "./pages/Chat/ChatPage.jsx";
+// Notification
+import NotificationPage from "./pages/Notification/NotificationPage.jsx";
 
 export const router = createHashRouter([
   // redirect default hash `#/` to `#/login`
@@ -77,6 +79,12 @@ export const router = createHashRouter([
           { index: true, element: <PurchaseHistoryPage /> },
           { path: "item-detail/:id", element: <ItemDetailPage /> },
         ],
+      },
+      {
+        path: "notification",
+        children: [
+          { index: true, element: < NotificationPage />}
+        ] 
       },
       {
         path: "chat",

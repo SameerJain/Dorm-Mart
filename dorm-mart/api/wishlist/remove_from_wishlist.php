@@ -78,6 +78,21 @@ try {
         $updateStmt->close();
     }
 
+    // Decrement unread_count for this product (floor at 0)
+    $notifStmt = $conn->prepare(
+        'UPDATE wishlist_notification
+        SET unread_count = CASE
+            WHEN unread_count > 0 THEN unread_count - 1
+            ELSE 0
+        END
+        WHERE product_id = ?'
+    );
+    if ($notifStmt) {
+        $notifStmt->bind_param('i', $productId); // bind product id as integer
+        $notifStmt->execute();
+        $notifStmt->close();
+    }
+
     echo json_encode(['success' => true, 'product_id' => $productId]);
 } catch (Throwable $e) {
     error_log('remove_from_wishlist error: ' . $e->getMessage());

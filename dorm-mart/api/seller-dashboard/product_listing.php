@@ -252,6 +252,15 @@ try {
   );
   $stmt->execute();
 
+  // Create wishlist_notification row for this new listing
+  $newProductId = (int)$conn->insert_id;
+  $firstImageUrl = !empty($imageUrls) ? $imageUrls[0] : null;  // first image or null
+  $wnSql = "INSERT INTO wishlist_notification (seller_id, product_id, title, image_url, unread_count)
+            VALUES (?, ?, ?, ?, 0)";
+  $wnStmt = $conn->prepare($wnSql);
+  $wnStmt->bind_param('iiss', $userId, $newProductId, $title, $firstImageUrl);
+  $wnStmt->execute();
+
   echo json_encode([
     'ok'         => true,
     'product_id' => $conn->insert_id,

@@ -35,6 +35,17 @@ export async function fetch_conversation(convId, signal) {
   return r.json();
 }
 
+export async function fetch_new_messages(activeConvId, ts, signal) {
+  const r = await fetch(`${BASE}/chat/fetch_new_messages.php?conv_id=${activeConvId}&ts=${ts}`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    credentials: "include", // session-based auth
+    signal,
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
 export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, signal) {
   const res = await fetch_new_messages(activeConvId, sinceSec, signal);
   const raw = res?.messages ?? [];
@@ -75,9 +86,8 @@ export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, sign
   });
 }
 
-
-export async function fetch_new_messages(activeConvId, ts, signal) {
-  const r = await fetch(`${BASE}/chat/fetch_new_messages.php?conv_id=${activeConvId}&ts=${ts}`, {
+export async function fetch_unread_messages(signal) {
+  const r = await fetch(`${BASE}/chat/fetch_unread_messages.php`, {
     method: "GET",
     headers: { Accept: "application/json" },
     credentials: "include", // session-based auth
@@ -105,8 +115,8 @@ export async function tick_fetch_unread_messages(signal) {
   return { unreads, total };
 }
 
-export async function fetch_unread_messages(signal) {
-  const r = await fetch(`${BASE}/chat/fetch_unread_messages.php`, {
+export async function fetch_unread_notifications(signal) {
+    const r = await fetch(`${BASE}/wishlist/fetch_unread_notifications.php`, {
     method: "GET",
     headers: { Accept: "application/json" },
     credentials: "include", // session-based auth
@@ -115,6 +125,30 @@ export async function fetch_unread_messages(signal) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 }
+
+export async function tick_fetch_unread_notifications(signal) {
+  const res = await fetch_unread_notifications(signal);
+  const raw = res.unreads ?? [];
+
+  // build { product_id -> { count, title } }
+  const unreads = {};
+  let total = 0;
+
+  for (const u of raw) {
+    const pid = Number(u.product_id);
+    const title = u.title ?? "";
+    const image_url = u.image_url ?? "";
+    const cnt = Number(u.unread_count) || 0;
+
+    if (pid > 0 && cnt > 0) {
+      unreads[pid] = { count: cnt, title, image_url };
+      total += cnt;
+    }
+  }
+
+  return { unreads, total };
+}
+
 
 export async function create_message({ receiverId, convId, content, signal }) {
   const body = {

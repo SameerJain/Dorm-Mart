@@ -21,7 +21,7 @@ export default function ChatPage() {
     messagesByConv,
     convError,
     chatByConvError,
-    unreadByConv,
+    unreadMsgByConv,
     myId,
     fetchConversation,
     createMessage,
@@ -308,7 +308,7 @@ export default function ChatPage() {
   /** Render a single conversation item in the sidebar, with grouping styles */
   function renderConversationItem(c, sectionType = 'sellers') {
     const isActive = c.conv_id === activeConvId;
-    const unread = unreadByConv?.[c.conv_id] ?? 0;
+    const unread = unreadMsgByConv?.[c.conv_id] ?? 0;
     const isHighlighted = isActive && !isMobileList;
 
     const activeMessages = isActive ? messages : [];

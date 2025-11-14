@@ -103,6 +103,14 @@ try {
         $updateStmt->close();
     }
 
+    // increment unread_count for this product in wishlist_notification
+    $wnStmt = $conn->prepare('UPDATE wishlist_notification SET unread_count = unread_count + 1 WHERE product_id = ?');
+    if ($wnStmt) {
+        $wnStmt->bind_param('i', $productId);
+        $wnStmt->execute();
+        $wnStmt->close();
+    }
+
     echo json_encode(['success' => true, 'wishlist_id' => $wishlistId, 'product_id' => $productId]);
 } catch (Throwable $e) {
     error_log('add_to_wishlist error: ' . $e->getMessage());

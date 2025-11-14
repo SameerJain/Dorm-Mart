@@ -14,6 +14,7 @@ import {
     create_image_message,
     tick_fetch_new_messages,
     tick_fetch_unread_messages,
+    tick_fetch_unread_notifications,
     envBool 
 } from "./chat_context_utils";
 
@@ -22,9 +23,11 @@ export const ChatContext = createContext(null);
 export function ChatProvider({ children }) {
     const NEW_MSG_POLL_MS = 1000;
     const UNREAD_MSG_POLL_MS = 5000;
+    const UNREAD_NOTIFICATION_POLL_MS = 10000;
     const newMsgPollRef = useRef(null);
     const lastTsRefByConv = useRef({}); // { [convId]: last-message-ts }
-    const unreadPollRef = useRef(null);
+    const unreadMsgPollRef = useRef(null);
+    const unreadNotifPollRef = useRef(null);
     const location = useLocation();
     const isOnChatRoute = location.pathname.startsWith("/app/chat");
 
@@ -109,8 +112,39 @@ export function ChatProvider({ children }) {
     }
 
     // notification
-    const [unreadByConv, setUnreadByConv] = useState({});  // { [conv_id]: count }
-    const [unreadTotal, setUnreadTotal] = useState(0);     // sum of counts
+    const [unreadMsgByConv, setUnreadMsgConv] = useState({});  // { conv_id -> count }
+    const [unreadMsgTotal, setUnreadMsgTotal] = useState(0);     // sum of counts
+    const [unreadNotificationsByProduct, setUnreadNotificationsByProduct] = useState({}); // { product_id -> { count, title } }
+    const [unreadNotificationTotal, setUnreadNotificationTotal] = useState(0);
+    
+    function markAllNotificationsReadLocal() {
+        // Clear all product notification entries and zero out the total
+        setUnreadNotificationsByProduct({});
+        setUnreadNotificationTotal(0);
+    }
+
+    function markNotificationReadLocal(productId) {
+        const key = String(productId);
+        setUnreadNotificationsByProduct((prev) => {
+            if (!prev || !Object.prototype.hasOwnProperty.call(prev, key)) {
+                return prev;
+            }
+
+            const info = prev[key];
+            const dec = Number(info?.count ?? 0);
+
+            const next = { ...prev };
+            delete next[key];
+
+            if (dec > 0) {
+                setUnreadNotificationTotal((total) =>
+                    Math.max(0, (Number(total) || 0) - dec)
+                );
+            }
+
+            return next;
+        });
+    }
 
     const loadConversations = async (signal, userIdOverride) => {
         try {
@@ -445,14 +479,14 @@ export function ChatProvider({ children }) {
     }, [activeConvId, isOnChatRoute, myId]);
 
     function clearUnreadMsgFor(convId) {
-    setUnreadByConv((prev) => {
+    setUnreadMsgConv((prev) => {
         const prevCnt = Number(prev[convId]) || 0;   // normalize
         if (prevCnt === 0) return prev;              // nothing to clear
 
         const next = { ...prev };
         delete next[convId];                         // drop this convo’s badge
 
-        setUnreadTotal((t) => Math.max(0, (Number(t) || 0) - prevCnt)); // keep total in sync
+        setUnreadMsgTotal((t) => Math.max(0, (Number(t) || 0) - prevCnt)); // keep total in sync
         return next;
         });
     };
@@ -461,9 +495,9 @@ export function ChatProvider({ children }) {
     useEffect(() => {
         // clear any previous unread interval
         const stopPolling = () => {
-            if (unreadPollRef.current) {
-            clearInterval(unreadPollRef.current);   // stop the repeating timer
-            unreadPollRef.current = null;           // mark “no active interval”
+            if (unreadMsgPollRef.current) {
+            clearInterval(unreadMsgPollRef.current);   // stop the repeating timer
+            unreadMsgPollRef.current = null;           // mark “no active interval”
             }
         };
         stopPolling();
@@ -479,8 +513,8 @@ export function ChatProvider({ children }) {
             const controller = new AbortController();
             try {
                 const { unreads, total } = await tick_fetch_unread_messages(controller.signal);
-                setUnreadByConv(unreads);
-                setUnreadTotal(total);
+                setUnreadMsgConv(unreads);
+                setUnreadMsgTotal(total);
 
                 const currentConvs = conversationsRef.current;
                 const convIds = new Set(currentConvs.map((c) => c.conv_id));
@@ -504,9 +538,51 @@ export function ChatProvider({ children }) {
         };
 
         tick();
-        unreadPollRef.current = setInterval(tick, UNREAD_MSG_POLL_MS);
+        unreadMsgPollRef.current = setInterval(tick, UNREAD_MSG_POLL_MS);
         return stopPolling;
     }, [UNREAD_MSG_POLL_MS, myId]);
+
+    // tick for fetching unread notifications (non-chat)
+    useEffect(() => {
+        // clear any previous notification interval
+        const stopPolling = () => {
+            if (unreadNotifPollRef.current) {
+                clearInterval(unreadNotifPollRef.current);
+                unreadNotifPollRef.current = null;
+            }
+        };
+        stopPolling();
+
+        const notificationOn = envBool(process.env.REACT_APP_CHAT_NOTIFICATION_ON, true);
+
+        if (!notificationOn) return;
+        if (!myId) return;
+
+        const shouldPollNow = () => document.visibilityState === "visible";
+
+        const tick = async () => {
+            if (!shouldPollNow()) return;
+            const controller = new AbortController(); // per-tick controller
+            try {
+                // tick_fetch_unread_notifications is expected to return { total: number }
+                const { unreads, total } = await tick_fetch_unread_notifications(controller.signal);
+                console.log(unreads);
+                setUnreadNotificationsByProduct(unreads || {});
+                setUnreadNotificationTotal(Number(total) || 0);
+            } catch (e) {
+                // on hard error, stop polling to avoid hammering the backend
+                stopPolling();
+            } finally {
+                controller.abort(); // ensure request is fully canceled after completion
+            }
+        };
+
+        tick(); // initial fetch
+        unreadNotifPollRef.current = setInterval(tick, UNREAD_NOTIFICATION_POLL_MS);
+
+        return stopPolling;
+    }, [UNREAD_NOTIFICATION_POLL_MS, myId]);
+
 
     const messages = useMemo(() => messagesByConv[activeConvId] || [], [messagesByConv, activeConvId]);
 
@@ -520,8 +596,10 @@ export function ChatProvider({ children }) {
         chatByConvError,
         sendMsgError,
         // unread state
-        unreadByConv,
-        unreadTotal,
+        unreadMsgByConv,
+        unreadMsgTotal,
+        unreadNotificationTotal,
+        unreadNotificationsByProduct,
         // user info
         myId,
         // actions
@@ -530,6 +608,8 @@ export function ChatProvider({ children }) {
         createImageMessage,
         clearActiveConversation,
         registerConversation: upsertConversationRow,
+        markAllNotificationsReadLocal,
+        markNotificationReadLocal,
         // config (optional: useful for tests or dynamic tuning)
         _config: { POLL_MS: NEW_MSG_POLL_MS, UNREAD_MSG_POLL_MS },
   };
