@@ -25,6 +25,7 @@ import OngoingPurchasesPage from "./pages/SellerDashboard/OngoingPurchasesPage.j
 import MarkCompletedPage from "./pages/SellerDashboard/MarkCompletedPage.jsx";
 import ReportIssuePage from "./pages/SellerDashboard/ReportIssuePage.jsx";
 import ViewProduct from "./itemDetails/viewProduct.jsx";
+import ViewReceipt from "./itemDetails/viewReceipt.jsx";
 import SearchResults from "./pages/search/searchResults.jsx";
 import WishlistPage from "./pages/Wishlist/WishlistPage.jsx";
 // Chat
@@ -72,6 +73,10 @@ export const router = createHashRouter([
       { path: "viewProduct/:id", element: <ViewProduct /> },
       { path: "viewproduct", element: <ViewProduct /> },
       { path: "viewproduct/:id", element: <ViewProduct /> },
+      { path: "viewReceipt", element: <ViewReceipt /> },
+      { path: "viewReceipt/:id", element: <ViewReceipt /> },
+      { path: "viewreceipt", element: <ViewReceipt /> },
+      { path: "viewreceipt/:id", element: <ViewReceipt /> },
       {
         path: "purchase-history",
         element: <PurchaseHistoryLayout />,

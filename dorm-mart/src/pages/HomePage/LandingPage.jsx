@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import ItemCardNew from "../../components/ItemCardNew";
 import keyboard from "../../assets/product-images/keyboard.jpg";
 import mouse from "../../assets/product-images/wireless-mouse.jpg";
+import { withFallbackImage } from "../../utils/imageFallback";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -168,7 +169,7 @@ export default function LandingPage() {
             id: d.id ?? i,
             title: d.title ?? "Untitled",
             price: priceNum,
-            img,
+            img: withFallbackImage(img),
             tags,
             status: status || "AVAILABLE",
             category,
