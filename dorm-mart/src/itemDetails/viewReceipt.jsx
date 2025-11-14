@@ -12,13 +12,6 @@ const FAILURE_REASON_LABELS = {
   other: "Other",
 };
 
-const STATUS_BADGE_STYLES = {
-  success: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200",
-  danger: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200",
-  warning: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-100",
-  info: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100",
-};
-
 function useQuery() {
   const { search } = useLocation();
   return useMemo(() => new URLSearchParams(search), [search]);
@@ -44,9 +37,6 @@ export default function ViewReceipt() {
   const [msgLoading, setMsgLoading] = useState(false);
   const [msgError, setMsgError] = useState(null);
   const [myId, setMyId] = useState(null);
-  const [isInWishlist, setIsInWishlist] = useState(false);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
-  const [wishlistError, setWishlistError] = useState(null);
 
   const chatCtx = useContext(ChatContext);
   const chatMyId = chatCtx?.myId ?? null;
@@ -125,32 +115,6 @@ export default function ViewReceipt() {
     })();
     return () => controller.abort();
   }, [productId]);
-
-  useEffect(() => {
-    if (!productId || !myId) {
-      setIsInWishlist(false);
-      return;
-    }
-    const controller = new AbortController();
-    (async () => {
-      try {
-        const r = await fetch(`${API_BASE}/wishlist/check_wishlist_status.php?product_id=${encodeURIComponent(productId)}`, {
-          signal: controller.signal,
-          credentials: "include",
-        });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const json = await r.json();
-        if (json.success) {
-          setIsInWishlist(json.in_wishlist || false);
-        }
-      } catch (e) {
-        if (e.name !== "AbortError") {
-          console.error("check_wishlist_status failed:", e);
-        }
-      }
-    })();
-    return () => controller.abort();
-  }, [productId, myId]);
 
   const normalized = useMemo(() => {
     if (!productData) return null;
@@ -299,16 +263,6 @@ export default function ViewReceipt() {
       src.seller_submitted_at ?? src.submitted_at ?? src.created_at ?? src.createdAt
     );
     const recordedAt = parseDateValue(src.recorded_at ?? src.updated_at ?? src.updatedAt ?? src.completed_at);
-    const statusRaw = src.status ?? src.purchase_status ?? src.confirm_status ?? src.request_status ?? null;
-    const isSuccessful = coerceBoolean(
-      src.is_successful ??
-        src.was_successful ??
-        src.successful ??
-        src.success ??
-        src.snapshot?.is_successful ??
-        null
-    );
-    const descriptor = getStatusDescriptor(statusRaw, isSuccessful);
     const failureReason = src.failure_reason ?? src.failureReason ?? src.reason ?? src.reason_code ?? null;
     const failureReasonNotes = src.failure_reason_notes ?? src.failureReasonNotes ?? src.reason_notes ?? null;
     const sellerNotes = src.seller_notes ?? src.sellerNotes ?? src.notes ?? src.description ?? null;
@@ -325,43 +279,16 @@ export default function ViewReceipt() {
     const sellerName = src.seller_name ?? src.sellerName ?? normalized?.sellerName ?? null;
     const buyerId = src.buyer_user_id ?? src.buyerUserId ?? src.buyer_id ?? src.snapshot?.buyer_id ?? null;
     const sellerId = src.seller_user_id ?? src.sellerUserId ?? src.seller_id ?? normalized?.sellerId ?? null;
-    const autoAccepted = coerceBoolean(src.auto_accepted ?? src.autoAccepted);
     const tradeItemDescription =
       src.trade_item_description ??
       src.tradeItemDescription ??
       src.snapshot?.trade_item_description ??
       null;
     const isTrade = coerceBoolean(src.is_trade ?? src.trade ?? src.snapshot?.is_trade);
-    const conversationId = src.conversation_id ?? src.conversationId ?? null;
-    const scheduledRequestId =
-      src.scheduled_request_id ??
-      src.scheduledRequestId ??
-      src.request_id ??
-      src.snapshot?.request_id ??
-      null;
     const receiptId = src.receipt_id ?? src.receiptId ?? null;
-    const confirmRequestId =
-      src.confirm_request_id ??
-      src.confirmRequestId ??
-      src.confirmation_id ??
-      src.snapshot?.confirm_request_id ??
-      null;
-    const buyerResponseInfo = autoAccepted
-      ? `Auto accepted${buyerResponseAt ? ` on ${formatDateTime(buyerResponseAt)}` : ""}`
-      : buyerResponseAt
-      ? `${descriptor.label ?? "Buyer responded"} on ${formatDateTime(buyerResponseAt)}`
-      : descriptor.label && descriptor.label.toLowerCase().includes("pending")
-      ? "Awaiting buyer response"
-      : null;
 
     return {
       receiptId,
-      confirmRequestId,
-      scheduledRequestId,
-      conversationId,
-      status: statusRaw,
-      statusDescriptor: descriptor,
-      isSuccessful,
       finalPrice,
       negotiatedPrice,
       meetLocation,
@@ -374,7 +301,6 @@ export default function ViewReceipt() {
       sellerName,
       buyerId,
       sellerId,
-      autoAccepted,
       comments: extraComments,
       sellerNotes,
       buyerNotes,
@@ -383,7 +309,6 @@ export default function ViewReceipt() {
       failureReasonNotes,
       tradeItemDescription,
       isTrade: isTrade === true,
-      buyerResponseInfo,
     };
   }, [receiptData, normalized]);
 
@@ -403,52 +328,6 @@ export default function ViewReceipt() {
       : "—";
 
   const pageHeading = "Purchase Receipt";
-  const purchaseStatusBadgeClass =
-    purchaseDetails?.statusDescriptor
-      ? STATUS_BADGE_STYLES[purchaseDetails.statusDescriptor.tone] ?? STATUS_BADGE_STYLES.info
-      : null;
-
-  const handleWishlistToggle = async () => {
-    if (wishlistLoading || !productId || !myId || isSellerViewingOwnProduct) return;
-
-    setWishlistError(null);
-    setWishlistLoading(true);
-
-    try {
-      const endpoint = isInWishlist
-        ? `${API_BASE}/wishlist/remove_from_wishlist.php`
-        : `${API_BASE}/wishlist/add_to_wishlist.php`;
-
-      const r = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          product_id: Number(productId),
-        }),
-      });
-
-      if (!r.ok) {
-        const errorData = await r.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${r.status}`);
-      }
-
-      const json = await r.json();
-      if (json.success) {
-        setIsInWishlist(!isInWishlist);
-      } else {
-        throw new Error(json.error || "Failed to update wishlist");
-      }
-    } catch (e) {
-      console.error("Wishlist toggle failed:", e);
-      setWishlistError(e?.message || "Failed to update wishlist");
-    } finally {
-      setWishlistLoading(false);
-    }
-  };
 
   const handleMessageSeller = async () => {
     if (msgLoading || !normalized?.sellerId) return;
@@ -527,40 +406,6 @@ export default function ViewReceipt() {
         </div>
         <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 text-center">{pageHeading}</h1>
         <div className="flex items-center gap-2 justify-end">
-          {!isSellerViewingOwnProduct && normalized && (
-            <button
-              onClick={handleWishlistToggle}
-              disabled={wishlistLoading || !myId}
-              className={`rounded-full font-medium px-3 py-1.5 flex items-center gap-1.5 text-sm whitespace-nowrap ${
-                isInWishlist
-                  ? "bg-purple-600 dark:bg-purple-700 hover:bg-purple-700 dark:hover:bg-purple-600 text-white"
-                  : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"
-              } disabled:opacity-50 transition-colors`}
-              title={wishlistLoading ? "Loading..." : isInWishlist ? "Saved to Wishlist" : "Add to Wishlist"}
-            >
-              <svg
-                className={`w-4 h-4 ${isInWishlist ? "fill-current" : ""}`}
-                fill={isInWishlist ? "currentColor" : "none"}
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
-              </svg>
-              {wishlistLoading ? (
-                <span className="hidden sm:inline">Loading...</span>
-              ) : isInWishlist ? (
-                <span className="hidden sm:inline">Saved to Wishlist</span>
-              ) : (
-                <span className="hidden sm:inline">Add to Wishlist</span>
-              )}
-            </button>
-          )}
           {isSellerViewingOwnProduct ? (
             <button
               onClick={() => navigate("/app/seller-dashboard")}
@@ -573,12 +418,6 @@ export default function ViewReceipt() {
           )}
         </div>
       </div>
-      {wishlistError && normalized && (
-        <div className="w-full px-2 md:px-4 py-1">
-          <p className="text-xs text-red-600 dark:text-red-400">{wishlistError}</p>
-        </div>
-      )}
-
       <div className="w-full px-2 md:px-4 py-4">
         {loading ? (
           <p className="text-center text-sm text-gray-400 dark:text-gray-500">Loading receipt…</p>
@@ -682,11 +521,6 @@ export default function ViewReceipt() {
                 <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4 w-full max-w-md">
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-semibold text-gray-900 dark:text-gray-100">{displayPriceText}</span>
-                    {purchaseStatusBadgeClass && purchaseDetails?.statusDescriptor?.label ? (
-                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${purchaseStatusBadgeClass}`}>
-                        {purchaseDetails.statusDescriptor.label}
-                      </span>
-                    ) : null}
                     {normalized.priceNego ? (
                       <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-full px-2 py-0.5">
                         Price Negotiable
@@ -724,11 +558,6 @@ export default function ViewReceipt() {
                         <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Purchase details</h3>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Snapshot from the Confirm Purchase form.</p>
                       </div>
-                      {purchaseStatusBadgeClass && purchaseDetails.statusDescriptor?.label ? (
-                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${purchaseStatusBadgeClass}`}>
-                          {purchaseDetails.statusDescriptor.label}
-                        </span>
-                      ) : null}
                     </div>
 
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -918,42 +747,6 @@ function humanizeStatus(input) {
   return raw.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function getStatusDescriptor(status, isSuccessful) {
-  const normalized = status ? String(status).toLowerCase() : "";
-  const map = {
-    pending: "Pending buyer response",
-    buyer_accepted: "Buyer accepted",
-    buyer_declined: "Buyer declined",
-    buyer_denied: "Buyer denied",
-    buyer_rejected: "Buyer rejected",
-    buyer_approved: "Buyer approved",
-    buyer_confirmed: "Buyer confirmed",
-    seller_cancelled: "Seller canceled",
-    seller_canceled: "Seller canceled",
-    auto_accepted: "Auto accepted",
-    confirm_auto_accepted: "Auto accepted",
-    completed: "Completed",
-    resolved: "Resolved",
-  };
-
-  if (!normalized) {
-    if (isSuccessful === true) return { label: "Successful", tone: "success" };
-    if (isSuccessful === false) return { label: "Unsuccessful", tone: "danger" };
-    return { label: "Receipt", tone: "info" };
-  }
-
-  const label = map[normalized] || humanizeStatus(normalized);
-  let tone = "info";
-  if (normalized.includes("declin") || normalized.includes("deni") || normalized.includes("fail") || normalized.includes("cancel")) {
-    tone = "danger";
-  } else if (normalized.includes("pending")) {
-    tone = "warning";
-  } else if (normalized.includes("accept") || normalized.includes("complete") || normalized.includes("auto") || normalized.includes("success")) {
-    tone = "success";
-  }
-  return { label, tone };
-}
-
 function buildPurchaseRows(details) {
   if (!details) return [];
   const rows = [];
@@ -969,26 +762,12 @@ function buildPurchaseRows(details) {
   };
 
   addRow("Receipt #", details.receiptId ? `#${details.receiptId}` : null, { showPlaceholder: true });
-  addRow("Confirm request #", details.confirmRequestId ? `#${details.confirmRequestId}` : null);
-  addRow("Scheduled request #", details.scheduledRequestId ? `#${details.scheduledRequestId}` : null);
-  addRow("Conversation ID", details.conversationId ? `#${details.conversationId}` : null);
   addRow("Purchase date", details.purchaseDate ? formatDateTime(details.purchaseDate) : null, { showPlaceholder: true });
-  addRow("Meeting time", details.meetingAt ? formatDateTime(details.meetingAt) : null);
   addRow("Meeting location", details.meetLocation || null, { showPlaceholder: true });
   addRow("Final price", details.finalPrice != null ? formatCurrency(details.finalPrice) : null);
   if (details.negotiatedPrice != null && details.negotiatedPrice !== details.finalPrice) {
     addRow("Negotiated price", formatCurrency(details.negotiatedPrice));
   }
-  addRow(
-    "Marked successful",
-    details.isSuccessful === null ? null : details.isSuccessful ? "Yes" : "No",
-    { showPlaceholder: true }
-  );
-  addRow("Auto accepted", details.autoAccepted === null ? null : details.autoAccepted ? "Yes" : "No");
-  addRow("Buyer response", details.buyerResponseInfo || null);
-  addRow("Seller submitted", details.sellerSubmittedAt ? formatDateTime(details.sellerSubmittedAt) : null);
-  addRow("Buyer responded", details.buyerResponseAt ? formatDateTime(details.buyerResponseAt) : null);
-  addRow("Recorded at", details.recordedAt ? formatDateTime(details.recordedAt) : null);
   addRow(
     "Buyer",
     details.buyerName || (details.buyerId ? `Buyer #${details.buyerId}` : null),
