@@ -29,6 +29,8 @@ deploy-aptitude.sh
 deploy-local.sh
 deploy-cattle.sh
 
+/media
+
 # Test file Sameer made to test login api
 body.json
 cookies.txt
