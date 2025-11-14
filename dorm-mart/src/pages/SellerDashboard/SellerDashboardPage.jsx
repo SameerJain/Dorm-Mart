@@ -11,7 +11,6 @@ function SellerDashboardPage() {
     const [selectedCategory, setSelectedCategory] = useState('All Categories');
     const [listings, setListings] = useState([]); // Will hold product listings from backend
     const [loading, setLoading] = useState(false); // Loading state for API calls
-
     // Delete confirmation modal state
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [pendingDeleteId, setPendingDeleteId] = useState(null);
@@ -114,6 +113,7 @@ function SellerDashboardPage() {
                         image: proxied,
                         seller_user_id: item.seller_user_id,
                         buyer_user_id: item.buyer_user_id,
+                        wishlisted: item.wishlisted,
                         categories: Array.isArray(item.categories) ? item.categories : [],
                         has_accepted_scheduled_purchase: item.has_accepted_scheduled_purchase === true || item.has_accepted_scheduled_purchase === 1
                     };
@@ -400,57 +400,66 @@ function SellerDashboardPage() {
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-between sm:justify-end space-x-3">
-                                        {(() => {
-                                            const st = String(listing.status || '').toLowerCase();
-                                            let cls = 'bg-gray-100 text-gray-800';
-                                            if (st === 'active') cls = 'bg-green-100 text-green-800';
-                                            else if (st === 'pending') cls = 'bg-orange-100 text-orange-800';
-                                            else if (st === 'draft') cls = 'bg-yellow-100 text-yellow-800';
-                                            else if (st === 'sold') cls = 'bg-blue-100 text-blue-800';
-                                            return (
-                                                <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${cls}`}>
-                                                    {String(listing.status)}
-                                                </span>
-                                            );
-                                        })()}
-                                        <button
-                                            onClick={() => { setPendingStatusId(listing.id); setPendingStatusValue(listing.status || 'Active'); setStatusOpen(true); }}
-                                            disabled={listing.has_accepted_scheduled_purchase === true}
-                                            className={`font-medium text-sm sm:text-base ${
-                                                listing.has_accepted_scheduled_purchase === true
-                                                    ? 'text-gray-400 cursor-not-allowed'
-                                                    : 'text-gray-700 hover:text-gray-900'
-                                            }`}
-                                            title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
-                                        >
-                                            Set Status
-                                        </button>
-                                        <button
-                                            onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
-                                            disabled={listing.has_accepted_scheduled_purchase === true}
-                                            className={`font-medium text-sm sm:text-base ${
-                                                listing.has_accepted_scheduled_purchase === true
-                                                    ? 'text-gray-400 cursor-not-allowed'
-                                                    : 'text-blue-600 hover:text-blue-800'
-                                            }`}
-                                            title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
-                                        >
-                                            Edit
-                                        </button>
-                                        <button
-                                            onClick={() => openDeleteConfirm(listing.id)}
-                                            disabled={listing.has_accepted_scheduled_purchase === true}
-                                            className={`font-medium text-sm sm:text-base ${
-                                                listing.has_accepted_scheduled_purchase === true
-                                                    ? 'text-gray-400 cursor-not-allowed'
-                                                    : 'text-red-600 hover:text-red-800'
-                                            }`}
-                                            title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
-                                        >
-                                            Delete
-                                        </button>
+                                    <div className="flex flex-col items-end space-y-1">
+                                        <div className="flex items-center justify-between sm:justify-end space-x-3">
+                                            {(() => {
+                                                const st = String(listing.status || '').toLowerCase();
+                                                let cls = 'bg-gray-100 text-gray-800';
+                                                if (st === 'active') cls = 'bg-green-100 text-green-800';
+                                                else if (st === 'pending') cls = 'bg-orange-100 text-orange-800';
+                                                else if (st === 'draft') cls = 'bg-yellow-100 text-yellow-800';
+                                                else if (st === 'sold') cls = 'bg-blue-100 text-blue-800';
+                                                return (
+                                                    <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${cls}`}>
+                                                        {String(listing.status)}
+                                                    </span>
+                                                );
+                                            })()}
+
+                                            <button
+                                                onClick={() => { setPendingStatusId(listing.id); setPendingStatusValue(listing.status || 'Active'); setStatusOpen(true); }}
+                                                disabled={listing.has_accepted_scheduled_purchase === true}
+                                                className={`font-medium text-sm sm:text-base ${
+                                                    listing.has_accepted_scheduled_purchase === true
+                                                        ? 'text-gray-400 cursor-not-allowed'
+                                                        : 'text-gray-700 hover:text-gray-900'
+                                                }`}
+                                                title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
+                                            >
+                                                Set Status
+                                            </button>
+
+                                            <button
+                                                onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
+                                                disabled={listing.has_accepted_scheduled_purchase === true}
+                                                className={`font-medium text-sm sm:text-base ${
+                                                    listing.has_accepted_scheduled_purchase === true
+                                                        ? 'text-gray-400 cursor-not-allowed'
+                                                        : 'text-blue-600 hover:text-blue-800'
+                                                }`}
+                                                title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
+                                            >
+                                                Edit
+                                            </button>
+
+                                            <button
+                                                onClick={() => openDeleteConfirm(listing.id)}
+                                                disabled={listing.has_accepted_scheduled_purchase === true}
+                                                className={`font-medium text-sm sm:text-base ${
+                                                    listing.has_accepted_scheduled_purchase === true
+                                                        ? 'text-gray-400 cursor-not-allowed'
+                                                        : 'text-red-600 hover:text-red-800'
+                                                }`}
+                                                title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                                            Wishlisted: {String(listing.wishlisted)}
+                                        </p>
                                     </div>
+
                                 </div>
                             </div>
                         ))}

@@ -53,6 +53,7 @@ try {
                     i.seller_id,
                     i.price_nego,
                     i.trades,
+                    i.wishlisted,
                     i.item_location AS meet_location,
                     CASE 
                         WHEN EXISTS (
@@ -80,8 +81,9 @@ try {
                     i.seller_id,
                     i.price_nego,
                     i.trades,
+                    i.wishlisted,
                     i.item_location AS meet_location,
-                    0 AS has_accepted_scheduled_purchase
+                    0 AS has_accepted_scheduled_purchase,
                 FROM INVENTORY i
                 WHERE i.seller_id = ?
                 ORDER BY i.product_id DESC";
@@ -145,7 +147,8 @@ try {
             'has_accepted_scheduled_purchase' => $hasAcceptedScheduledPurchase,
             'priceNegotiable' => $priceNegotiable,
             'acceptTrades' => $acceptTrades,
-            'meet_location' => $itemMeetLocation
+            'meet_location' => $itemMeetLocation,
+            'wishlisted' => $row['wishlisted']
         ];
     }
 
