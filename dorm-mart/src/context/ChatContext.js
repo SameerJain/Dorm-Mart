@@ -564,9 +564,7 @@ export function ChatProvider({ children }) {
             if (!shouldPollNow()) return;
             const controller = new AbortController(); // per-tick controller
             try {
-                // tick_fetch_unread_notifications is expected to return { total: number }
                 const { unreads, total } = await tick_fetch_unread_notifications(controller.signal);
-                console.log(unreads);
                 setUnreadNotificationsByProduct(unreads || {});
                 setUnreadNotificationTotal(Number(total) || 0);
             } catch (e) {

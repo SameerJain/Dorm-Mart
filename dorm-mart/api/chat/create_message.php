@@ -178,6 +178,17 @@ try {
     $stmt->execute();
     $stmt->close();
 
+    // 🔄 Conversation is active again: clear deleted flags for BOTH participants
+    $stmt = $conn->prepare(
+        'UPDATE conversations
+           SET user1_deleted = 0,
+               user2_deleted = 0
+         WHERE conv_id = ?'
+    );
+    $stmt->bind_param('i', $convId);
+    $stmt->execute();
+    $stmt->close();
+
     // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     // ============================================================================

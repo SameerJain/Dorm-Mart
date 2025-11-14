@@ -145,6 +145,14 @@ try {
     $deleteScheduledStmt->execute();
     $deleteScheduledStmt->close();
 
+    $cpStmt = $conn->prepare('DELETE FROM conversation_participants WHERE conv_id = ? AND user_id = ?');
+    if ($cpStmt) {
+        $cpStmt->bind_param('ii', $convId, $userId);
+        $cpStmt->execute();
+        $cpStmt->close();
+    }
+
+
     // Mark conversation as deleted for this user
     if ($isUser1) {
         $updateStmt = $conn->prepare('UPDATE conversations SET user1_deleted = 1 WHERE conv_id = ?');
@@ -158,6 +166,27 @@ try {
     $updateStmt->execute();
     $updateStmt->close();
 
+    $flagStmt = $conn->prepare('SELECT user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
+    if ($flagStmt) {
+        $flagStmt->bind_param('i', $convId);
+        $flagStmt->execute();
+        $flagRes = $flagStmt->get_result();
+        $flagRow = $flagRes ? $flagRes->fetch_assoc() : null;
+        $flagStmt->close();
+
+        // If both users have deleted this conversation, hard-delete it.
+        if ($flagRow && (int)$flagRow['user1_deleted'] === 1 && (int)$flagRow['user2_deleted'] === 1) {
+            // Thanks to ON DELETE CASCADE on fk_msg_conv and fk_cp_conv,
+            // this will also delete all messages and conversation_participants rows.
+            $delConvStmt = $conn->prepare('DELETE FROM conversations WHERE conv_id = ?');
+            if ($delConvStmt) {
+                $delConvStmt->bind_param('i', $convId);
+                $delConvStmt->execute();
+                $delConvStmt->close();
+            }
+        }
+    }
+    
     echo json_encode([
         'success' => true,
         'message' => 'Conversation deleted successfully',
