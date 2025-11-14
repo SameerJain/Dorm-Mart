@@ -1,6 +1,7 @@
 // src/components/ItemCardNew.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { withFallbackImage } from "../utils/imageFallback";
 
 export default function ItemCardNew({
   id,
@@ -18,6 +19,7 @@ export default function ItemCardNew({
 
   const primaryTag =
     Array.isArray(tags) && tags.length > 0 ? String(tags[0]) : null;
+  const imageSrc = withFallbackImage(image);
 
   const handleClick = () => {
     if (!id) return;
@@ -37,17 +39,11 @@ export default function ItemCardNew({
 
       {/* IMAGE */}
       <div className="relative w-full aspect-square bg-gray-50 dark:bg-gray-700 flex justify-center items-center overflow-hidden">
-        {image ? (
-          <img
-            src={image}
-            alt={title}
-            className="object-contain w-full h-full p-2 transition-transform duration-200 group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div className="text-gray-400 dark:text-gray-500 text-xs">
-            Image coming soon
-          </div>
-        )}
+        <img
+          src={imageSrc}
+          alt={title}
+          className="object-contain w-full h-full p-2 transition-transform duration-200 group-hover:scale-[1.03]"
+        />
 
         {/* NEW badge */}
         {isNew && (
