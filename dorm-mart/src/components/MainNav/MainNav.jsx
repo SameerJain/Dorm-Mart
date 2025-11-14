@@ -22,7 +22,7 @@ function MainNav() {
     const location = useLocation();
 
     const ctx = useContext(ChatContext);
-    const { unreadTotal } = ctx;
+    const { unreadMsgTotal, unreadNotificationTotal } = ctx;
     // no filters state in nav
 
     // Close dropdowns/menus when clicking outside
@@ -103,12 +103,6 @@ function MainNav() {
         navigate(qs ? `/app/listings?${qs}` : "/app/listings");
     };
 
-    // removed: filters moved to search page
-
-    // removed: filters moved to search page
-
-    // removed: filters moved to search page
-
     return (
         <nav className="bg-blue-600 text-slate-100 dark:bg-gray-800 dark:text-gray-100">
             <div className="mx-auto flex items-center gap-1 sm:gap-2 md:gap-4 p-2 md:p-3">
@@ -166,13 +160,9 @@ function MainNav() {
 
                 {/* Desktop navigation - hidden on mobile */}
                 <ul className="mr-1 sm:mr-2 hidden md:flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink-0">
-                    <Icon
-                        to="/app/notification"
-                        src={notificationIcon}
-                        alt="Notification"
-                    />
+                    <Icon to="/app/notification" src={notificationIcon} alt="Notification" badge={unreadNotificationTotal} />
 
-                    <Icon to="/app/chat" src={chatIcon} alt="Chat" badge={unreadTotal} />
+                    <Icon to="/app/chat" src={chatIcon} alt="Chat" badge={unreadMsgTotal} />
 
                     {/* User icon with dropdown */}
                     <li className="relative" ref={dropdownRef}>
@@ -249,30 +239,40 @@ function MainNav() {
                                 }}
                                 className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
-                                <img src={notificationIcon} alt="" className="h-6 w-6" />
+                                <span className="relative inline-block">
+                                    <img src={notificationIcon} alt="" className="h-6 w-6" />
+                                    {unreadNotificationTotal > 0 && (
+                                        <span
+                                            className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
+                                            aria-label={`${unreadNotificationTotal} unread notifications`}
+                                        >
+                                            {unreadNotificationTotal > 99 ? "99+" : unreadNotificationTotal}
+                                        </span>
+                                    )}
+                                </span>
                                 <span>Notification</span>
                             </button>
-                            <button
-                            onClick={() => {
-                                navigate("/app/chat");
-                                setShowMobileMenu(false);
-                            }}
-                            className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
-                            >
-                            {/* relative wrapper so the badge can be positioned on the icon */}
-                            <span className="relative inline-block">
-                                <img src={chatIcon} alt="" className="h-6 w-6" />
-                                {unreadTotal > 0 && (
-                                <span
-                                    className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
-                                    aria-label={`${unreadTotal} unread`}
-                                >
-                                    {unreadTotal > 99 ? "99+" : unreadTotal}
-                                </span>
-                                )}
-                            </span>
 
-                            <span>Chat</span>
+                            <button
+                                onClick={() => {
+                                    navigate("/app/chat");
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                {/* relative wrapper so the badge can be positioned on the icon */}
+                                <span className="relative inline-block">
+                                    <img src={chatIcon} alt="" className="h-6 w-6" />
+                                    {unreadMsgTotal > 0 && (
+                                    <span
+                                        className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
+                                        aria-label={`${unreadMsgTotal} unread`}
+                                    >
+                                        {unreadMsgTotal > 99 ? "99+" : unreadMsgTotal}
+                                    </span>
+                                    )}
+                                </span>
+                                <span>Chat</span>
                             </button>
                             <button
                                 onClick={() => {
