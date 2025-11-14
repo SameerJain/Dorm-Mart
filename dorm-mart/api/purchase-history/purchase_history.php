@@ -150,7 +150,7 @@ function load_purchase_history_items(mysqli $conn, int $userId, DateTimeImmutabl
             'title' => escapeHtml($title),
             'sold_by' => escapeHtml($sellerName),
             'transacted_at' => $entry['transacted_at'],
-            'image_url' => $imageUrl,
+            'image_url' => format_purchase_history_image_url($meta['image_url'] ?? ''),
         ];
     }
 
@@ -239,7 +239,7 @@ function load_legacy_purchased_items(mysqli $conn, int $userId, string $start, s
             'title' => escapeHtml($row['title'] ?? ''),
             'sold_by' => escapeHtml($row['sold_by'] ?? ''),
             'transacted_at' => $row['transacted_at'] ?? '',
-            'image_url' => $row['image_url'] ?? '',
+            'image_url' => format_purchase_history_image_url($row['image_url'] ?? ''),
         ];
     }
 
@@ -260,12 +260,88 @@ function resolve_primary_photo($photos): string
     if (is_array($photos)) {
         foreach ($photos as $photo) {
             if (is_string($photo) && trim($photo) !== '') {
-                return $photo;
+                return format_purchase_history_image_url($photo);
             }
         }
     } elseif (is_string($photos) && trim($photos) !== '') {
-        return trim($photos);
+        return format_purchase_history_image_url($photos);
     }
 
     return '';
+}
+
+function format_purchase_history_image_url($value): string
+{
+    if (!is_string($value)) {
+        return '';
+    }
+    $trimmed = trim($value);
+    if ($trimmed === '') {
+        return '';
+    }
+    if (preg_match('#^https?://#i', $trimmed) || strpos($trimmed, 'data:') === 0) {
+        return $trimmed;
+    }
+
+    if (strpos($trimmed, '/api/') === 0) {
+        return qualify_purchase_history_url(rewrite_api_relative_path($trimmed));
+    }
+
+    if (strpos($trimmed, '/data/images/') === 0 || strpos($trimmed, '/images/') === 0) {
+        return qualify_purchase_history_url(build_image_proxy_path($trimmed));
+    }
+
+    if ($trimmed[0] === '/') {
+        return qualify_purchase_history_url($trimmed);
+    }
+
+    return qualify_purchase_history_url(build_image_proxy_path('/data/images/' . ltrim($trimmed, '/')));
+}
+
+function build_image_proxy_path(string $source): string
+{
+    $apiBase = get_api_base_path();
+    return rtrim($apiBase, '/') . '/image.php?url=' . rawurlencode($source);
+}
+
+function rewrite_api_relative_path(string $path): string
+{
+    $apiBase = get_api_base_path();
+    if (strpos($path, '/api/') === 0) {
+        return rtrim($apiBase, '/') . substr($path, strlen('/api'));
+    }
+    return $path;
+}
+
+function get_api_base_path(): string
+{
+    $script = $_SERVER['SCRIPT_NAME'] ?? '';
+    if ($script === '') {
+        return '/api';
+    }
+    $first = rtrim(dirname($script), '/');
+    $second = rtrim(dirname($first), '/');
+    if ($second === '' || $second === '.') {
+        return '/api';
+    }
+    return $second;
+}
+
+function qualify_purchase_history_url(string $path): string
+{
+    if ($path === '') {
+        return '';
+    }
+    if (preg_match('#^https?://#i', $path) || strpos($path, 'data:') === 0) {
+        return $path;
+    }
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    if ($host === '') {
+        return $path;
+    }
+    if ($path[0] !== '/') {
+        $path = '/' . ltrim($path, '/');
+    }
+    return $scheme . $host . $path;
 }
