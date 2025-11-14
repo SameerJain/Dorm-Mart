@@ -28,12 +28,38 @@ export function ChatProvider({ children }) {
     const lastTsRefByConv = useRef({}); // { [convId]: last-message-ts }
     const unreadMsgPollRef = useRef(null);
     const unreadNotifPollRef = useRef(null);
+
     const location = useLocation();
     const isOnChatRoute = location.pathname.startsWith("/app/chat");
 
     const [myId, setMyId] = useState(null);
     const myIdRef = useRef(null);
     useEffect(() => { myIdRef.current = myId; }, [myId]);
+
+    function removeConversationLocal(convId) {
+        const id = Number(convId);
+        if (!id) return;
+
+        // Remove from conversation list
+        setConversations((prev) => prev.filter((c) => c.conv_id !== id));
+
+        // Remove its messages from memory
+        setMessagesByConv((prev) => {
+            if (!prev[id]) return prev;
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
+
+        // Drop last-ts tracking for this conv
+        if (lastTsRefByConv.current[id]) {
+            delete lastTsRefByConv.current[id];
+        }
+
+        // If we're currently viewing it, close the active conversation
+        setActiveConvId((current) => (current === id ? null : current));
+    }
+
 
     function projectConversationRow(row, currentUserId) {
         if (!row || !currentUserId) return null;
@@ -403,80 +429,94 @@ export function ChatProvider({ children }) {
         }
     }
 
-    
-    // tick for fetching new messages
+        // tick for fetching new messages
     useEffect(() => {
-        // clear interval when activeId changes / unmounts or error occurs
+        // helper to stop any existing interval
         const stopPolling = () => {
             if (newMsgPollRef.current) {
-            clearInterval(newMsgPollRef.current);   // stop the repeating timer
-            newMsgPollRef.current = null;           // mark “no active interval”
+            clearInterval(newMsgPollRef.current);
+            newMsgPollRef.current = null;
             }
         };
 
+        // whenever deps change, clear old interval first
         stopPolling();
 
         // if not in chat, or no active conversation, or no user ID, do nothing
-        if (!isOnChatRoute || !activeConvId || !myIdRef.current) return;
+        if (!isOnChatRoute || !activeConvId || !myIdRef.current) {
+            return;
+        }
 
         const shouldPollNow = () => document.visibilityState === "visible";
 
         // keep a handle to the current in-flight request so we can cancel it properly
         const inFlightRef = { ctrl: null }; // { ctrl: AbortController | null }
 
-        const tick = async() => {
+        const tick = async () => {
             if (!shouldPollNow()) return;
-            
-            // Ensure myId is still available
+
             const currentMyId = myIdRef.current;
             if (!currentMyId) return;
 
             // cancel any previous unfinished request before starting a new one
-            if (inFlightRef.ctrl) inFlightRef.ctrl.abort();
+            if (inFlightRef.ctrl) {
+            inFlightRef.ctrl.abort();
+            }
 
             const controller = new AbortController();
             inFlightRef.ctrl = controller;
 
-            // new AbortController per tick avoids overlapping slow requests
-
             try {
-                const sinceSec = Math.floor((lastTsRefByConv.current[activeConvId] || 0) / 1000);
-                const incoming = await tick_fetch_new_messages(activeConvId, currentMyId, sinceSec, controller.signal);
-                if (!incoming.length) return;
-    
-                setMessagesByConv((prev) => {
-                    const existing = prev[activeConvId] ?? [];
-                    const seen = new Set(existing.map((m) => m.message_id));
-                    const merged = existing.concat(incoming.filter((m) => !seen.has(m.message_id)));
-                    return {...prev, [activeConvId]: merged};
-                });
+            const sinceSec = Math.floor((lastTsRefByConv.current[activeConvId] || 0) / 1000);
+            const incoming = await tick_fetch_new_messages(
+                activeConvId,
+                currentMyId,
+                sinceSec,
+                controller.signal
+            );
 
-                clearUnreadMsgFor(activeConvId);
+            if (!incoming.length) return;
 
-                const maxTs = Math.max(...incoming.map((m) => Number(m.ts) || 0));
-                    lastTsRefByConv.current[activeConvId] = Math.max(
-                    lastTsRefByConv.current[activeConvId] || 0,
-                    maxTs
+            setMessagesByConv((prev) => {
+                const existing = prev[activeConvId] ?? [];
+                const seen = new Set(existing.map((m) => m.message_id));
+                const merged = existing.concat(
+                incoming.filter((m) => !seen.has(m.message_id))
                 );
+                return { ...prev, [activeConvId]: merged };
+            });
 
+            clearUnreadMsgFor(activeConvId);
+
+            const maxTs = Math.max(...incoming.map((m) => Number(m.ts) || 0));
+            lastTsRefByConv.current[activeConvId] = Math.max(
+                lastTsRefByConv.current[activeConvId] || 0,
+                maxTs
+            );
             } catch (e) {
-                if (e.name !== "AbortError") stopPolling();
+            if (e.name !== "AbortError") {
+                console.error("tick_fetch_new_messages error:", e);
+            }
             } finally {
-                // IMPORTANT: do NOT abort here — aborting after completion makes
-                // Chrome mark the request as (canceled) in the Network tab.
-                inFlightRef.ctrl = null; // clear handle; request is done
+            // IMPORTANT: do NOT abort here — aborting after completion
+            // makes Chrome mark the request as (canceled) in the Network tab.
+            inFlightRef.ctrl = null; // clear handle; request is done
             }
         };
 
-        tick(); // run once immediately
+        // run once immediately
+        tick();
         newMsgPollRef.current = setInterval(tick, NEW_MSG_POLL_MS);
 
         return () => {
+            // cleanup on unmount / dependency change
             stopPolling();
-            // abort any in-flight request on unmount/dep-change
-            if (inFlightRef.ctrl) inFlightRef.ctrl.abort();
+            if (inFlightRef.ctrl) {
+            inFlightRef.ctrl.abort();
+            }
         };
     }, [activeConvId, isOnChatRoute, myId]);
+
 
     function clearUnreadMsgFor(convId) {
     setUnreadMsgConv((prev) => {
@@ -608,6 +648,7 @@ export function ChatProvider({ children }) {
         registerConversation: upsertConversationRow,
         markAllNotificationsReadLocal,
         markNotificationReadLocal,
+        removeConversationLocal,
         // config (optional: useful for tests or dynamic tuning)
         _config: { POLL_MS: NEW_MSG_POLL_MS, UNREAD_MSG_POLL_MS },
   };

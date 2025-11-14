@@ -26,7 +26,8 @@ export default function ChatPage() {
     fetchConversation,
     createMessage,
     createImageMessage,
-    clearActiveConversation
+    clearActiveConversation,
+    removeConversationLocal
   } = ctx;
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -132,32 +133,54 @@ export default function ChatPage() {
   /** Confirm deletion: call API, clear active if needed, then reload page */
   async function handleDeleteConfirm() {
     if (!pendingDeleteConvId || isDeleting) return;
+
+    const convId = pendingDeleteConvId;            // keep a local copy
+    const wasActive = convId === activeConvId;     // was this the open chat?
+
+    // Immediately update local UI and stop polling for this conversation
+    removeConversationLocal(convId);
+    if (wasActive) {
+      clearActiveConversation();
+    }
+
     setIsDeleting(true);
     setDeleteError('');
+
     try {
       const API = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
       const res = await fetch(`${API}/chat/delete_conversation.php`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         credentials: 'include',
-        body: JSON.stringify({ conv_id: pendingDeleteConvId }),
+        body: JSON.stringify({ conv_id: convId }),
       });
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to delete conversation');
       }
+
       const result = await res.json();
-      if (!result.success) throw new Error(result.error || 'Failed to delete conversation');
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete conversation');
+      }
+
       setDeleteConfirmOpen(false);
       setPendingDeleteConvId(null);
-      if (pendingDeleteConvId === activeConvId) clearActiveConversation();
-      window.location.reload();
+
+      // Optional: you probably don't need this anymore, but you can keep it as a safety net.
+      // window.location.reload();
     } catch (error) {
       setDeleteError(error.message || 'Failed to delete conversation. Please try again.');
+      // If you want to "undo" the local removal on error, you could reload or refetch here.
     } finally {
       setIsDeleting(false);
     }
   }
+
 
   /** Cancel deletion: close modal and clear state */
   function handleDeleteCancel() {
