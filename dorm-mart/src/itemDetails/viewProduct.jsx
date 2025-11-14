@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChatContext } from "../context/ChatContext";
+import { FALLBACK_IMAGE_URL } from "../utils/imageFallback";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -166,6 +167,7 @@ export default function ViewProduct() {
       }
       return raw.startsWith("/") ? `${PUBLIC_BASE}${raw}` : raw;
     });
+    const normalizedPhotoUrls = photoUrls.length ? photoUrls : [FALLBACK_IMAGE_URL];
 
     // tags can be JSON array or comma-separated string
     let tags = [];
@@ -201,7 +203,7 @@ export default function ViewProduct() {
       title,
       description,
       price,
-      photoUrls,
+      photoUrls: normalizedPhotoUrls,
       tags,
       itemLocation,
       itemCondition,
