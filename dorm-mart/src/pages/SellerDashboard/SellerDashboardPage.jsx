@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { withFallbackImage } from '../../utils/imageFallback';
+import ReviewModal from '../Reviews/ReviewModal';
+import StarRating from '../Reviews/StarRating';
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -20,6 +22,12 @@ function SellerDashboardPage() {
     const [statusOpen, setStatusOpen] = useState(false);
     const [pendingStatusId, setPendingStatusId] = useState(null);
     const [pendingStatusValue, setPendingStatusValue] = useState('Active');
+
+    // Review modal state
+    const [reviewModalOpen, setReviewModalOpen] = useState(false);
+    const [selectedReview, setSelectedReview] = useState(null);
+    const [selectedReviewProduct, setSelectedReviewProduct] = useState(null);
+    const [productReviews, setProductReviews] = useState({}); // Map of productId -> review data
 
     // Summary metrics state - will be calculated from listings data
     const [summaryMetrics, setSummaryMetrics] = useState({
@@ -160,6 +168,57 @@ function SellerDashboardPage() {
     useEffect(() => {
         fetchListings();
     }, [fetchListings]);
+
+    // Fetch reviews for sold items
+    useEffect(() => {
+        const fetchReviews = async () => {
+            const soldListings = listings.filter(l => String(l.status || '').toLowerCase() === 'sold');
+            const reviewMap = {};
+
+            for (const listing of soldListings) {
+                try {
+                    const response = await fetch(
+                        `${API_BASE}/reviews/get_product_reviews.php?product_id=${listing.id}`,
+                        {
+                            method: 'GET',
+                            credentials: 'include',
+                        }
+                    );
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.reviews && result.reviews.length > 0) {
+                            // Store the first review (assuming one review per product per buyer)
+                            reviewMap[listing.id] = result.reviews[0];
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error fetching reviews for product ${listing.id}:`, error);
+                }
+            }
+
+            setProductReviews(reviewMap);
+        };
+
+        if (listings.length > 0) {
+            fetchReviews();
+        }
+    }, [listings]);
+
+    const handleViewReview = (productId, productTitle) => {
+        const review = productReviews[productId];
+        if (review) {
+            setSelectedReview(review);
+            setSelectedReviewProduct({ id: productId, title: productTitle });
+            setReviewModalOpen(true);
+        }
+    };
+
+    const handleCloseReviewModal = () => {
+        setReviewModalOpen(false);
+        setSelectedReview(null);
+        setSelectedReviewProduct(null);
+    };
 
     const handleDelete = async (id) => {
         try {
@@ -449,10 +508,30 @@ function SellerDashboardPage() {
                                             >
                                                 Delete
                                             </button>
+
+                                            {/* View Review Button - only show if review exists */}
+                                            {productReviews[listing.id] && (
+                                                <button
+                                                    onClick={() => handleViewReview(listing.id, listing.title)}
+                                                    className="font-medium text-sm sm:text-base text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+                                                >
+                                                    View Review
+                                                </button>
+                                            )}
                                         </div>
-                                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                                            Wishlisted: {String(listing.wishlisted)}
-                                        </p>
+                                        <div className="flex items-center gap-3">
+                                            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                                                Wishlisted: {String(listing.wishlisted)}
+                                            </p>
+                                            {productReviews[listing.id] && (
+                                                <div className="flex items-center gap-1">
+                                                    <StarRating rating={productReviews[listing.id].rating} readOnly={true} size={16} />
+                                                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                                                        {productReviews[listing.id].rating.toFixed(1)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                 </div>
@@ -549,6 +628,18 @@ function SellerDashboardPage() {
                     </div>
                 </div>
             </div>
+        )}
+
+        {/* Review Modal for viewing reviews */}
+        {selectedReview && selectedReviewProduct && (
+            <ReviewModal
+                isOpen={reviewModalOpen}
+                onClose={handleCloseReviewModal}
+                mode="view"
+                productId={selectedReviewProduct.id}
+                productTitle={selectedReviewProduct.title}
+                existingReview={selectedReview}
+            />
         )}
         </div>
     );
