@@ -2,20 +2,25 @@ import React from "react";
 
 /**
  * StarRating Component
- * 
+ *
  * A reusable star rating component that supports:
  * - Half-star increments (0.5)
  * - Both interactive (editable) and read-only modes
  * - Click-based rating selection
  * - Visual feedback with hover effects
  * - Synchronized numeric input
- * 
+ *
  * @param {number} rating - Current rating value (0-5)
  * @param {function} onRatingChange - Callback when rating changes
  * @param {boolean} readOnly - If true, disables interaction
  * @param {number} size - Size of stars in pixels (default: 32)
  */
-function StarRating({ rating = 0, onRatingChange = null, readOnly = false, size = 32 }) {
+function StarRating({
+  rating = 0,
+  onRatingChange = null,
+  readOnly = false,
+  size = 32,
+}) {
   const [hoveredRating, setHoveredRating] = React.useState(null);
 
   const handleStarClick = (starValue) => {
@@ -61,7 +66,10 @@ function StarRating({ rating = 0, onRatingChange = null, readOnly = false, size 
             >
               <Star
                 filled={displayRating >= halfStarValue}
-                partial={displayRating >= halfStarValue && displayRating < fullStarValue}
+                partial={
+                  displayRating >= halfStarValue &&
+                  displayRating < fullStarValue
+                }
                 size={size}
               />
             </button>
@@ -112,7 +120,13 @@ function Star({ filled, partial, size }) {
       </defs>
       <path
         d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-        fill={filled && !partial ? "#fbbf24" : partial ? `url(#half-fill-${size})` : "#e5e7eb"}
+        fill={
+          filled && !partial
+            ? "#fbbf24"
+            : partial
+            ? `url(#half-fill-${size})`
+            : "#e5e7eb"
+        }
         stroke="#fbbf24"
         strokeWidth="1"
         strokeLinecap="round"
@@ -124,11 +138,15 @@ function Star({ filled, partial, size }) {
 
 /**
  * StarRatingWithInput Component
- * 
+ *
  * Combines star rating with a numeric input field
  * Useful for forms where users can either click stars or type a value
  */
-export function StarRatingWithInput({ rating, onRatingChange, readOnly = false }) {
+export function StarRatingWithInput({
+  rating,
+  onRatingChange,
+  readOnly = false,
+}) {
   const handleInputChange = (e) => {
     if (readOnly) return;
     let value = parseFloat(e.target.value);
@@ -155,7 +173,10 @@ export function StarRatingWithInput({ rating, onRatingChange, readOnly = false }
       </div>
       {!readOnly && (
         <div className="flex items-center gap-2">
-          <label htmlFor="rating-input" className="text-sm text-gray-600 dark:text-gray-400">
+          <label
+            htmlFor="rating-input"
+            className="text-sm text-gray-600 dark:text-gray-400"
+          >
             Or enter rating:
           </label>
           <input
@@ -176,4 +197,3 @@ export function StarRatingWithInput({ rating, onRatingChange, readOnly = false }
 }
 
 export default StarRating;
-
