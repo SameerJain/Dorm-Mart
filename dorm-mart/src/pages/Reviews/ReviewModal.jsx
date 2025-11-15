@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { StarRatingWithInput } from "./StarRating";
 import StarRating from "./StarRating";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
@@ -35,8 +34,12 @@ function ReviewModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [charCount, setCharCount] = useState(0);
+  const [uploadedImages, setUploadedImages] = useState([]); // Array of {file, url, uploadedUrl}
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = React.useRef(null);
 
   const maxChars = 1000;
+  const maxImages = 3;
 
   // Reset form when modal opens in create mode
   useEffect(() => {
@@ -45,6 +48,7 @@ function ReviewModal({
       setReviewText("");
       setCharCount(0);
       setError(null);
+      setUploadedImages([]);
     }
   }, [isOpen, mode]);
 
@@ -53,8 +57,28 @@ function ReviewModal({
     if (isOpen && mode === "view" && existingReview) {
       setRating(existingReview.rating || 0);
       setReviewText(existingReview.review_text || "");
+      // Load images with proper API base path
+      if (existingReview.image1_url || existingReview.image2_url || existingReview.image3_url) {
+        const images = [];
+        if (existingReview.image1_url) images.push({ uploadedUrl: existingReview.image1_url });
+        if (existingReview.image2_url) images.push({ uploadedUrl: existingReview.image2_url });
+        if (existingReview.image3_url) images.push({ uploadedUrl: existingReview.image3_url });
+        setUploadedImages(images);
+      }
     }
   }, [isOpen, mode, existingReview]);
+
+  // Prevent background scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   const handleReviewTextChange = (e) => {
     const text = e.target.value;
@@ -62,6 +86,93 @@ function ReviewModal({
       setReviewText(text);
       setCharCount(text.length);
     }
+  };
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = () => {
+    if (mode !== "create") return false;
+    return rating > 0 || reviewText.trim().length > 0 || uploadedImages.length > 0;
+  };
+
+  // Handle close with confirmation if needed
+  const handleClose = () => {
+    if (hasUnsavedChanges()) {
+      const confirmed = window.confirm("You have unsaved changes. Are you sure you want to close?");
+      if (!confirmed) return;
+    }
+    onClose();
+  };
+
+  const handleImageSelect = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    // Check if adding these would exceed max
+    if (uploadedImages.length + files.length > maxImages) {
+      setError(`You can only upload up to ${maxImages} images`);
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setError(null);
+
+    for (const file of files) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError("Please select only image files");
+        continue;
+      }
+
+      // Validate file size (2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        setError("Each image must be less than 2MB");
+        continue;
+      }
+
+      // Upload immediately
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const response = await fetch(`${API_BASE}/reviews/upload_review_image.php`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to upload image');
+        }
+
+        // Add to uploaded images with both preview URL and server URL
+        setUploadedImages(prev => [...prev, {
+          file,
+          previewUrl: URL.createObjectURL(file),
+          uploadedUrl: result.image_url
+        }]);
+      } catch (err) {
+        console.error('Error uploading image:', err);
+        setError(err.message || 'Failed to upload image');
+      }
+    }
+
+    setIsUploadingImage(false);
+    // Clear the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveImage = (index) => {
+    setUploadedImages(prev => {
+      const newImages = [...prev];
+      // Revoke the preview URL to free memory
+      URL.revokeObjectURL(newImages[index].previewUrl);
+      newImages.splice(index, 1);
+      return newImages;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -81,6 +192,13 @@ function ReviewModal({
     setError(null);
 
     try {
+      // Prepare image URLs (up to 3)
+      const imageUrls = {
+        image1_url: uploadedImages[0]?.uploadedUrl || null,
+        image2_url: uploadedImages[1]?.uploadedUrl || null,
+        image3_url: uploadedImages[2]?.uploadedUrl || null,
+      };
+
       const response = await fetch(`${API_BASE}/reviews/submit_review.php`, {
         method: "POST",
         headers: {
@@ -92,6 +210,7 @@ function ReviewModal({
           product_id: productId,
           rating: rating,
           review_text: reviewText.trim(),
+          ...imageUrls,
         }),
       });
 
@@ -121,7 +240,6 @@ function ReviewModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
-      onClick={onClose}
     >
       <div
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
@@ -133,12 +251,12 @@ function ReviewModal({
             {mode === "create" ? "Leave a Review" : "Your Review"}
           </h2>
           <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            onClick={handleClose}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             aria-label="Close"
           >
             <svg
-              className="w-6 h-6"
+              className="w-8 h-8"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -166,13 +284,19 @@ function ReviewModal({
               {/* Rating Section */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Rating <span className="text-red-500">*</span>
+                  Rate This Product <span className="text-red-500">*</span>
                 </label>
-                <StarRatingWithInput
-                  rating={rating}
-                  onRatingChange={setRating}
-                  readOnly={false}
-                />
+                <div className="flex items-center gap-4">
+                  <StarRating
+                    rating={rating}
+                    onRatingChange={setRating}
+                    readOnly={false}
+                    size={40}
+                  />
+                  <span className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                    {rating.toFixed(1)}
+                  </span>
+                </div>
               </div>
 
               {/* Review Text Section */}
@@ -200,6 +324,64 @@ function ReviewModal({
                 </div>
               </div>
 
+              {/* Image Upload Section */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Images (Optional, max 3)
+                </label>
+                
+                {/* Upload Button */}
+                {uploadedImages.length < maxImages && (
+                  <div className="mb-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageSelect}
+                      className="hidden"
+                      disabled={isUploadingImage}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingImage}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isUploadingImage ? "Uploading..." : "Add Images"}
+                    </button>
+                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                      {uploadedImages.length} / {maxImages}
+                    </span>
+                  </div>
+                )}
+
+                {/* Image Previews */}
+                {uploadedImages.length > 0 && (
+                  <div className="grid grid-cols-3 gap-3">
+                    {uploadedImages.map((img, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={img.previewUrl}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(index)}
+                          className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="Remove image"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Error Message */}
               {error && (
                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -211,7 +393,7 @@ function ReviewModal({
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
                   disabled={isSubmitting}
                 >
@@ -232,7 +414,7 @@ function ReviewModal({
               {/* Rating Display */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Your Rating
+                  Product Rating
                 </label>
                 <div className="flex items-center gap-3">
                   <StarRating rating={rating} readOnly={true} size={32} />
@@ -254,6 +436,38 @@ function ReviewModal({
                 </div>
               </div>
 
+              {/* Review Images Display */}
+              {(existingReview?.image1_url || existingReview?.image2_url || existingReview?.image3_url) && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Images
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {existingReview.image1_url && (
+                      <img
+                        src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
+                        alt="Review image 1"
+                        className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
+                      />
+                    )}
+                    {existingReview.image2_url && (
+                      <img
+                        src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
+                        alt="Review image 2"
+                        className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
+                      />
+                    )}
+                    {existingReview.image3_url && (
+                      <img
+                        src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
+                        alt="Review image 3"
+                        className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
               {existingReview?.created_at && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                   Submitted on {new Date(existingReview.created_at).toLocaleDateString()}
@@ -263,7 +477,7 @@ function ReviewModal({
               {/* Close Button */}
               <div className="flex justify-end">
                 <button
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg font-medium"
                 >
                   Close

@@ -68,6 +68,24 @@ try {
         exit;
     }
 
+    // Validate optional image URLs (up to 3 images)
+    $image1Url = isset($payload['image1_url']) ? trim((string)$payload['image1_url']) : null;
+    $image2Url = isset($payload['image2_url']) ? trim((string)$payload['image2_url']) : null;
+    $image3Url = isset($payload['image3_url']) ? trim((string)$payload['image3_url']) : null;
+    
+    // Ensure images are from our upload directory (security check)
+    $validateImageUrl = function($url) {
+        if ($url === null || $url === '') return null;
+        if (!str_starts_with($url, '/media/review-images/')) {
+            return null; // reject invalid paths
+        }
+        return $url;
+    };
+    
+    $image1Url = $validateImageUrl($image1Url);
+    $image2Url = $validateImageUrl($image2Url);
+    $image3Url = $validateImageUrl($image3Url);
+
     // XSS protection for review text
     if (containsXSSPattern($reviewText)) {
         http_response_code(400);
@@ -170,15 +188,15 @@ try {
         exit;
     }
 
-    // Insert the review
+    // Insert the review with optional images
     $stmt = $conn->prepare(
-        'INSERT INTO product_reviews (product_id, buyer_user_id, seller_user_id, rating, review_text) 
-         VALUES (?, ?, ?, ?, ?)'
+        'INSERT INTO product_reviews (product_id, buyer_user_id, seller_user_id, rating, review_text, image1_url, image2_url, image3_url) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare review insert');
     }
-    $stmt->bind_param('iiids', $productId, $userId, $sellerId, $rating, $reviewText);
+    $stmt->bind_param('iiidssss', $productId, $userId, $sellerId, $rating, $reviewText, $image1Url, $image2Url, $image3Url);
     $success = $stmt->execute();
     $reviewId = $stmt->insert_id;
     $stmt->close();
