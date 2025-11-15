@@ -14,9 +14,10 @@ async function fetchPurchasedItems(year, signal) {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
+      credentials: "include",
       body: JSON.stringify({ year }),
-    },
-    { signal }
+      signal: signal,
+    }
   );
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return await r.json();
