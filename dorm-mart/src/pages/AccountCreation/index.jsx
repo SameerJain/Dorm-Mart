@@ -5,6 +5,8 @@ import privacyPdf from '../../assets/pdfs/privacy.pdf';
 import { fetch_me } from '../../utils/handle_auth.js';
 import PreLoginBranding from '../../components/PreLoginBranding';
 
+const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+
 function CreateAccountPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -19,6 +21,8 @@ function CreateAccountPage() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
+  const [allowAllEmails, setAllowAllEmails] = useState(false);
+  const [emailPolicyLoading, setEmailPolicyLoading] = useState(true);
 
   // Check if user is already authenticated on mount
   useEffect(() => {
@@ -166,8 +170,17 @@ function CreateAccountPage() {
       newErrors.email = "Email is required";
     } else if (email.length > 255) {
       newErrors.email = "Email must be 255 characters or fewer";
-    } else if (!email.toLowerCase().endsWith("@buffalo.edu")) {
-      newErrors.email = "Email must be a buffalo.edu address";
+    } else if (!emailPolicyLoading) {
+      // Only validate domain if policy is loaded
+      if (!allowAllEmails && !email.toLowerCase().endsWith("@buffalo.edu")) {
+        newErrors.email = "Email must be a buffalo.edu address";
+      } else if (allowAllEmails) {
+        // Basic email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          newErrors.email = "Please enter a valid email address";
+        }
+      }
     }
 
     if (!formData.terms) newErrors.terms = "You must agree to the terms";
@@ -182,7 +195,7 @@ function CreateAccountPage() {
 
     setLoading(true);
     try {
-      await fetch(`api/auth/create_account.php`, {
+      await fetch(`${API_BASE}/auth/create_account.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

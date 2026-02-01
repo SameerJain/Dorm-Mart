@@ -373,13 +373,34 @@ if (containsXSSPattern($firstNameRaw) || containsXSSPattern($lastNameRaw)) {
     exit;
 }
 
+// Load email policy configuration
+require_once __DIR__ . '/../config/email_config.php';
+
 // XSS PROTECTION: Input validation with regex patterns to prevent XSS attacks
 $firstName = validateInput($firstNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
 $lastName = validateInput($lastNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
 $gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
 $gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
-$email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
 $promos    = !empty($data['promos']);
+
+// Email validation based on ALLOW_ALL_EMAILS flag
+if (ALLOW_ALL_EMAILS) {
+    // Accept any valid email format
+    $email = validateInput($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
+    if ($email === false || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
+        exit;
+    }
+} else {
+    // Only accept @buffalo.edu
+    $email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
+    if ($email === false || !preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);
+        exit;
+    }
+}
 
 if ($firstName === false || $lastName === false || $email === false) {
     http_response_code(400);
@@ -391,12 +412,6 @@ if ($firstName === false || $lastName === false || $email === false) {
 if ($firstName === '' || $lastName === '' || $email === '') {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Missing required fields']);
-    exit;
-}
-
-if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);
     exit;
 }
 // --- Validate graduation date format ---

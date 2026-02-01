@@ -98,14 +98,7 @@ function LoginPage() {
     }
 
     if (emailTrimmed === "") {
-      setError("Please enter your UB email address");
-      setLoading(false);
-      return;
-    }
-
-    // Check if email is a UB email address
-    if (!emailTrimmed.toLowerCase().endsWith("@buffalo.edu")) {
-      setError("Only University at Buffalo email addresses are permitted (@buffalo.edu)");
+      setError("Please enter your email address");
       setLoading(false);
       return;
     }
@@ -189,10 +182,8 @@ function LoginPage() {
         let userFriendlyError = backendError;
         
         // Map backend errors to more user-friendly messages
-        if (backendError === "Invalid input format") {
-          userFriendlyError = "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
-        } else if (backendError === "Email must be @buffalo.edu") {
-          userFriendlyError = "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
+        if (backendError === "Invalid email format") {
+          userFriendlyError = "Please enter a valid email address";
         } else if (backendError === "Invalid credentials") {
           userFriendlyError = "Invalid email or password. Please try again.";
         } else if (backendError.includes("too large")) {
