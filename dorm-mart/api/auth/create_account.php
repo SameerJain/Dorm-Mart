@@ -105,8 +105,17 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = getenv('GMAIL_USERNAME');
-        $mail->Password   = getenv('GMAIL_PASSWORD');
+        $gmailUsername = getenv('GMAIL_USERNAME');
+        $gmailPassword = getenv('GMAIL_PASSWORD');
+        
+        // Debug: Log if credentials are missing (but don't expose passwords)
+        if (empty($gmailUsername) || empty($gmailPassword)) {
+            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set. Username set: " . (!empty($gmailUsername) ? 'yes' : 'no'));
+            return ['ok' => false, 'error' => 'Email configuration missing'];
+        }
+        
+        $mail->Username   = $gmailUsername;
+        $mail->Password   = $gmailPassword;
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // or STARTTLS 587
         $mail->Port       = 465;
 
@@ -188,7 +197,9 @@ TEXT;
         $mail->send();
         return ['ok' => true, 'error' => null];
     } catch (Exception $e) {
-        return ['ok' => false, 'error' => $mail->ErrorInfo];
+        $errorMsg = $mail->ErrorInfo ?? $e->getMessage();
+        error_log("PHPMailer exception in sendWelcomeGmail: " . $errorMsg);
+        return ['ok' => false, 'error' => $errorMsg];
     }
 }
 
@@ -450,7 +461,7 @@ if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > 
     exit;
 }
 
-require "../database/db_connect.php";
+require __DIR__ . '/../database/db_connect.php';
 $conn = db();
 try {
     // ============================================================================
@@ -523,8 +534,12 @@ try {
         exit;
     }
 
-    // Send welcome email (ignore result here)
-    sendWelcomeGmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
+    // Send welcome email
+    $emailResult = sendWelcomeGmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
+    if (!$emailResult['ok']) {
+        // Log email sending error but don't fail account creation
+        error_log("Failed to send welcome email to {$email}: " . ($emailResult['error'] ?? 'Unknown error'));
+    }
 
     // Promo email is no longer sent during account creation
     // Promo emails will only be sent from user preferences settings
