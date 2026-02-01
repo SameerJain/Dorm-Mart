@@ -68,17 +68,27 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
     $mail = new PHPMailer(true);
     try {
         // SMTP Configuration (EXACT same as create_account.php)
-        // Uses Gmail SMTP with SSL encryption for secure email delivery
+        // Uses Gmail SMTP with STARTTLS encryption (port 587 - Railway may block port 465)
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = getenv('GMAIL_USERNAME');
-        $mail->Password   = getenv('GMAIL_PASSWORD');
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port       = 465;
+        $gmailUsername = getenv('GMAIL_USERNAME');
+        $gmailPassword = getenv('GMAIL_PASSWORD');
+        
+        // Debug: Log if credentials are missing
+        if (empty($gmailUsername) || empty($gmailPassword)) {
+            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set in sendPasswordResetEmail");
+            return ['success' => false, 'error' => 'Email configuration missing'];
+        }
+        
+        $mail->Username   = $gmailUsername;
+        $mail->Password   = $gmailPassword;
+        // Try STARTTLS on port 587 first (Railway may block port 465)
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
 
         // Optimizations for faster email delivery
-        $mail->Timeout = 30; // Reduced timeout for faster failure detection
+        $mail->Timeout = 10; // Reduced timeout (Railway may block SMTP) // Reduced timeout for faster failure detection
         $mail->SMTPKeepAlive = false; // Close connection after sending
         $mail->SMTPOptions = [
             'ssl' => [

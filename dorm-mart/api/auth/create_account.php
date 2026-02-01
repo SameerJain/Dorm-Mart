@@ -116,11 +116,12 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
         
         $mail->Username   = $gmailUsername;
         $mail->Password   = $gmailPassword;
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // or STARTTLS 587
-        $mail->Port       = 465;
+        // Try STARTTLS on port 587 first (Railway may block port 465)
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
 
         // Optimizations for faster email delivery
-        $mail->Timeout = 30; // Reduced timeout for faster failure detection
+        $mail->Timeout = 10; // Reduced timeout for faster failure detection (Railway may block SMTP)
         $mail->SMTPKeepAlive = false; // Close connection after sending
         $mail->SMTPOptions = [
             'ssl' => [
@@ -236,10 +237,20 @@ function sendPromoWelcomeEmail(array $user): array
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = getenv('GMAIL_USERNAME');
-        $mail->Password   = getenv('GMAIL_PASSWORD');
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port       = 465;
+        $gmailUsername = getenv('GMAIL_USERNAME');
+        $gmailPassword = getenv('GMAIL_PASSWORD');
+        
+        // Debug: Log if credentials are missing
+        if (empty($gmailUsername) || empty($gmailPassword)) {
+            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set in sendPromoWelcomeEmail");
+            return ['ok' => false, 'error' => 'Email configuration missing'];
+        }
+        
+        $mail->Username   = $gmailUsername;
+        $mail->Password   = $gmailPassword;
+        // Try STARTTLS on port 587 first (Railway may block port 465)
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
 
         // Optimizations for faster email delivery
         $mail->Timeout = 30;
@@ -534,11 +545,18 @@ try {
         exit;
     }
 
-    // Send welcome email
-    $emailResult = sendWelcomeGmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
-    if (!$emailResult['ok']) {
-        // Log email sending error but don't fail account creation
-        error_log("Failed to send welcome email to {$email}: " . ($emailResult['error'] ?? 'Unknown error'));
+    // Send welcome email (non-blocking - don't wait for it to complete)
+    // Account creation succeeds even if email fails
+    try {
+        // Use a shorter timeout and don't block account creation
+        $emailResult = @sendWelcomeGmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
+        if (!$emailResult['ok']) {
+            // Log email sending error but don't fail account creation
+            error_log("Failed to send welcome email to {$email}: " . ($emailResult['error'] ?? 'Unknown error'));
+        }
+    } catch (Throwable $e) {
+        // Email sending failed but account was created successfully
+        error_log("Exception sending welcome email to {$email}: " . $e->getMessage());
     }
 
     // Promo email is no longer sent during account creation
