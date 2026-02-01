@@ -42,19 +42,23 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
 {
     global $PROJECT_ROOT;
 
-    // Load environment variables (EXACT same as create_account.php)
-    // Ensures Gmail credentials are properly loaded for email sending
-    foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-        if (is_readable($envFile)) {
-            foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                $line = trim($line);
-                if ($line === '' || str_starts_with($line, '#')) continue;
-                [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-                putenv(trim($k) . '=' . trim($v));
+    // Check if we're on Railway (or similar platform) where env vars are set directly
+    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
+    if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
+        // Not on Railway, load from .env files
+        foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
+            if (is_readable($envFile)) {
+                foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                    $line = trim($line);
+                    if ($line === '' || str_starts_with($line, '#')) continue;
+                    [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
+                    putenv(trim($k) . '=' . trim($v));
+                }
+                break;
             }
-            break;
         }
     }
+    // On Railway, environment variables are already set, no need to load from files
 
     // Ensure PHP is using UTF-8 internally (EXACT same as create_account.php)
     if (function_exists('mb_internal_encoding')) {
