@@ -79,22 +79,22 @@ if (strpos($ct, 'application/json') !== false) {
 // Note: SQL injection prevented by prepared statements
 if (containsXSSPattern($emailRaw)) {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted (@buffalo.edu)']);
+    echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
     exit;
 }
 
-$email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
+// Accept any valid email format (to support existing non-UB accounts)
+$email = validateInput($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
 $password = validateInput($passwordRaw, 64);
 
 if ($email === false || $password === false) {
     http_response_code(400);
     // Provide more specific error message
     if ($email === false) {
-        // Check if it's because email doesn't match UB format
-        if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $emailRaw)) {
-            echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted (@buffalo.edu)']);
+        if (!filter_var($emailRaw, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
         } else {
-            echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted (@buffalo.edu)']);
+            echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
         }
     } else {
         echo json_encode(['ok' => false, 'error' => 'Invalid password format. Please check your password.']);
@@ -112,9 +112,10 @@ if (strlen($email) > 255 || strlen($password) > 64) {
     echo json_encode(['ok' => false, 'error' => 'Username or password is too large']);
     exit;
 }
-if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
+// Validate email format using PHP's built-in validator
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted (@buffalo.edu)']);
+    echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
     exit;
 }
 
