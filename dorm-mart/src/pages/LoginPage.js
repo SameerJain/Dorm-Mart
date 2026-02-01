@@ -4,6 +4,8 @@ import { fetch_me } from "../utils/handle_auth.js";
 import PreLoginBranding from "../components/PreLoginBranding";
 // Client no longer inspects cookies; auth is enforced server-side on protected routes
 
+const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+
 function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -12,6 +14,8 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [allowAllEmails, setAllowAllEmails] = useState(false);
+  const [emailPolicyLoading, setEmailPolicyLoading] = useState(true);
 
   // Check if user is already authenticated on mount
   useEffect(() => {
@@ -103,6 +107,23 @@ function LoginPage() {
       return;
     }
 
+    // Email validation based on ALLOW_ALL_EMAILS flag (for UX, but backend accepts any valid email)
+    if (!emailPolicyLoading && !allowAllEmails && !emailTrimmed.toLowerCase().endsWith("@buffalo.edu")) {
+      setError("Email must be a buffalo.edu address");
+      setLoading(false);
+      return;
+    }
+
+    // Basic email format validation if allowAllEmails is true
+    if (!emailPolicyLoading && allowAllEmails) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailTrimmed)) {
+        setError("Please enter a valid email address");
+        setLoading(false);
+        return;
+      }
+    }
+
     if (password.trim() === "") {
       setError("Please enter your password");
       setLoading(false);
@@ -157,7 +178,7 @@ function LoginPage() {
           
           // Also save to localStorage for immediate access
           try {
-            const meRes = await fetch(`${process.env.REACT_APP_API_BASE}/auth/me.php`, { 
+            const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
               method: 'GET', 
               credentials: 'include' 
             });

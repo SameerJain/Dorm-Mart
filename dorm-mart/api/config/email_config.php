@@ -7,4 +7,4 @@
  * 
  * Note: Login will always accept any valid email to support existing non-UB accounts.
  */
-define('ALLOW_ALL_EMAILS', false); // Change to true to allow all emails
+define('ALLOW_ALL_EMAILS', true); // Set to false to restrict to @buffalo.edu emails only
