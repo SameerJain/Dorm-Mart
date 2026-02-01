@@ -3,11 +3,15 @@ import { useState, useEffect } from "react";
 import { fetch_me } from "../utils/handle_auth.js";
 import PreLoginBranding from "../components/PreLoginBranding";
 
+const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+
 function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [allowAllEmails, setAllowAllEmails] = useState(false);
+  const [emailPolicyLoading, setEmailPolicyLoading] = useState(true);
   const BACKDOOR_KEYWORD = "testflow"; // typing this as the email triggers the confirmation page for testing
 
   // Check if user is already authenticated on mount
@@ -36,9 +40,30 @@ function ForgotPasswordPage() {
     };
   }, [navigate]);
 
+  // Fetch email policy configuration
+  useEffect(() => {
+    const fetchEmailPolicy = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/config/email_policy.php`, {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok) {
+            setAllowAllEmails(data.allowAllEmails || false);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch email policy:', error);
+      } finally {
+        setEmailPolicyLoading(false);
+      }
+    };
+    fetchEmailPolicy();
+  }, []);
+
   async function sendForgotPasswordRequest(email, signal) {
-    const BASE = process.env.REACT_APP_API_BASE || "/api";
-    const r = await fetch(`${BASE}/auth/forgot-password.php`, {
+    const r = await fetch(`${API_BASE}/auth/forgot-password.php`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
@@ -62,7 +87,11 @@ function ForgotPasswordPage() {
 
     const valid = emailValidation(email);
     if (!valid) {
-      setError("Email must be a valid UB email address");
+      if (!emailPolicyLoading && !allowAllEmails) {
+        setError("Email must be a buffalo.edu address");
+      } else {
+        setError("Please enter a valid email address");
+      }
       return;
     }
 
@@ -93,14 +122,23 @@ function ForgotPasswordPage() {
   };
 
   function emailValidation(email) {
-    const pattern = /^[^@\s]+@buffalo\.edu$/i;
     const trimmed = email.trim();
 
     // Check length (255 characters max to match database limit)
     if (trimmed.length > 255) return false;
 
-    // Must match pattern first
-    if (!pattern.test(trimmed)) return false;
+    // Email validation based on ALLOW_ALL_EMAILS flag
+    if (!emailPolicyLoading) {
+      if (!allowAllEmails) {
+        // Only accept @buffalo.edu
+        const pattern = /^[^@\s]+@buffalo\.edu$/i;
+        if (!pattern.test(trimmed)) return false;
+      } else {
+        // Accept any valid email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmed)) return false;
+      }
+    }
 
     // Extract part before @
     const localPart = trimmed.split("@")[0];

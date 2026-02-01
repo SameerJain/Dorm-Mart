@@ -188,6 +188,9 @@ if (strpos($ct, 'application/json') !== false) {
     $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
 }
 
+// Load email policy configuration
+require_once __DIR__ . '/../config/email_config.php';
+
 // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
 // Note: SQL injection prevented by prepared statements
 if ($emailRaw !== '' && containsXSSPattern($emailRaw)) {
@@ -196,12 +199,23 @@ if ($emailRaw !== '' && containsXSSPattern($emailRaw)) {
     exit;
 }
 
-$email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
-
-if ($email === false) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid email format']);
-    exit;
+// Email validation based on ALLOW_ALL_EMAILS flag
+if (ALLOW_ALL_EMAILS) {
+    // Accept any valid email format
+    $email = validateInput($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
+    if ($email === false || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid email format']);
+        exit;
+    }
+} else {
+    // Only accept @buffalo.edu
+    $email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
+    if ($email === false || !preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Email must be @buffalo.edu']);
+        exit;
+    }
 }
 
 try {
