@@ -72,10 +72,107 @@ function generatePassword(int $length = 8): string
 // Example:
 // echo generatePassword(12);
 
+/**
+ * Send welcome email via SendGrid REST API (for Railway)
+ */
+function sendWelcomeEmailViaSendGrid(array $user, string $tempPassword, string $apiKey): array
+{
+    global $PROJECT_ROOT;
+    
+    // Load SendGrid SDK
+    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
+        require_once $PROJECT_ROOT . '/vendor/autoload.php';
+    } else {
+        error_log("SendGrid: vendor/autoload.php not found");
+        return ['ok' => false, 'error' => 'SendGrid SDK not available'];
+    }
+    
+    try {
+        $sendgrid = new \SendGrid($apiKey);
+        
+        // XSS PROTECTION: Encoding - HTML entity encoding
+        $first = escapeHtml($user['firstName'] ?: 'Student');
+        $tempPasswordEscaped = escapeHtml($tempPassword);
+        $subject = 'Welcome to Dorm Mart';
+        
+        // HTML content (same as SMTP version)
+        $html = <<<HTML
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{$subject}</title>
+  </head>
+  <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
+    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
+      <p style="color:#eee;">Dear {$first},</p>
+      <p style="color:#eee;">Welcome to <strong>Dorm Mart</strong> &mdash; the student marketplace for UB.</p>
+      <p style="color:#eee;">Here is your temporary (current) password. <strong>DO NOT</strong> share this with anyone.</p>
+      <p style="font-size:20px;color:#fff;"><strong>{$tempPasswordEscaped}</strong></p>
+      <p style="color:#eee;">If you want to change this password, go to <em>Settings &rarr; Change Password</em>.</p>
+      <p style="color:#eee;">Happy trading,<br/>The Dorm Mart Team</p>
+      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
+      <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
+      <a href="mailto:dormmartsupport@gmail.com" style="color:#9db7ff;">dormmartsupport@gmail.com</a></p>
+    </div>
+  </body>
+</html>
+HTML;
+
+        // Plain-text content
+        $firstPlain = $user['firstName'] ?: 'Student';
+        $text = <<<TEXT
+Dear {$firstPlain},
+
+Welcome to Dorm Mart - the student marketplace for UB.
+
+Here is your temporary (current) password. DO NOT share this with anyone.
+
+{$tempPassword}
+
+If you want to change this password, go to Settings -> Change Password.
+
+Happy trading,
+The Dorm Mart Team
+
+(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
+TEXT;
+
+        $email = new \SendGrid\Mail\Mail();
+        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setSubject($subject);
+        $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
+        $email->addContent("text/html", $html);
+        $email->addContent("text/plain", $text);
+        
+        $response = $sendgrid->send($email);
+        
+        if ($response->statusCode() >= 200 && $response->statusCode() < 300) {
+            return ['ok' => true, 'error' => null];
+        } else {
+            $errorBody = $response->body();
+            error_log("SendGrid error: " . $response->statusCode() . " - " . $errorBody);
+            return ['ok' => false, 'error' => 'Failed to send email via SendGrid'];
+        }
+    } catch (Exception $e) {
+        error_log("SendGrid exception in sendWelcomeEmailViaSendGrid: " . $e->getMessage());
+        return ['ok' => false, 'error' => $e->getMessage()];
+    }
+}
+
 function sendWelcomeGmail(array $user, string $tempPassword): array
 {
     global $PROJECT_ROOT;
 
+    // Check for SendGrid API key first (Railway option)
+    $sendgridApiKey = getenv('SENDGRID_API_KEY');
+    if (!empty($sendgridApiKey)) {
+        // Use SendGrid REST API for Railway
+        return sendWelcomeEmailViaSendGrid($user, $tempPassword, $sendgridApiKey);
+    }
+
+    // Otherwise, use existing SMTP code (cattle/aptitude/local)
     // Check if we're on Railway (or similar platform) where env vars are set directly
     // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
     if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
@@ -204,10 +301,133 @@ TEXT;
     }
 }
 
+/**
+ * Send promo welcome email via SendGrid REST API (for Railway)
+ */
+function sendPromoWelcomeEmailViaSendGrid(array $user, string $apiKey): array
+{
+    global $PROJECT_ROOT;
+    
+    // Load SendGrid SDK
+    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
+        require_once $PROJECT_ROOT . '/vendor/autoload.php';
+    } else {
+        error_log("SendGrid: vendor/autoload.php not found");
+        return ['ok' => false, 'error' => 'SendGrid SDK not available'];
+    }
+    
+    try {
+        $sendgrid = new \SendGrid($apiKey);
+        
+        $first = $user['firstName'] ?: 'Student';
+        $subject = 'Welcome to Dorm Mart Promotional Updates';
+        
+        // HTML content (same as SMTP version)
+        $html = <<<HTML
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{$subject}</title>
+  </head>
+  <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
+    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:12px;padding:24px;border:1px solid #333;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#2563EB;margin:0;font-size:24px;font-weight:bold;">📧 Promotional Updates</h1>
+        <div style="width:60px;height:3px;background:linear-gradient(90deg, #2563EB, #1d4ed8);margin:8px auto;border-radius:2px;"></div>
+      </div>
+      
+      <p style="color:#eee;font-size:16px;margin:0 0 16px 0;">Dear {$first},</p>
+      
+      <p style="color:#eee;margin:0 0 20px 0;">Thank you for opting into promotional updates from <strong style="color:#2563EB;">Dorm Mart</strong>!</p>
+      
+      <div style="background:#2a2a2a;border-radius:8px;padding:20px;margin:20px 0;border-left:4px solid #2563EB;">
+        <p style="color:#eee;margin:0 0 12px 0;font-weight:bold;">You'll now receive updates about:</p>
+        <ul style="color:#ddd;margin:0;padding-left:20px;">
+          <li style="margin:6px 0;">Emails about your notifcations tab</li>
+          <li style="margin:6px 0;">New website news and updates</li>
+        </ul>
+      </div>
+      
+      <p style="color:#eee;margin:20px 0;">This is a one-time email for the first time you ever sign up for promotional updates with an account. We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.</p>
+      
+      <div style="text-align:center;margin:24px 0;">
+        <div style="display:inline-block;background:#333;padding:12px 24px;border-radius:6px;border:1px solid #2563EB;">
+          <span style="color:#2563EB;font-weight:bold;">✓ Successfully Subscribed</span>
+        </div>
+      </div>
+      
+      <p style="color:#eee;margin:20px 0 0 0;">
+        Happy trading,<br/>
+        <strong style="color:#2563EB;">The Dorm Mart Team</strong>
+      </p>
+      
+      <hr style="border:none;border-top:1px solid #333;margin:20px 0;">
+      <p style="font-size:12px;color:#aaa;margin:0;">This is an automated message; do not reply. For support:
+      <a href="mailto:dormmartsupport@gmail.com" style="color:#2563EB;">dormmartsupport@gmail.com</a></p>
+    </div>
+  </body>
+</html>
+HTML;
+
+        // Plain-text version
+        $text = <<<TEXT
+Promotional Updates - Dorm Mart
+
+Dear {$first},
+
+Thank you for opting into promotional updates from Dorm Mart!
+
+You'll now receive updates about:
+- Important updates and announcements
+- New features and improvements  
+- Campus marketplace tips
+
+We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.
+
+✓ Successfully Subscribed
+
+Happy trading,
+The Dorm Mart Team
+
+(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
+TEXT;
+
+        $email = new \SendGrid\Mail\Mail();
+        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setSubject($subject);
+        $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
+        $email->addContent("text/html", $html);
+        $email->addContent("text/plain", $text);
+        
+        $response = $sendgrid->send($email);
+        
+        if ($response->statusCode() >= 200 && $response->statusCode() < 300) {
+            return ['ok' => true, 'error' => null];
+        } else {
+            $errorBody = $response->body();
+            error_log("SendGrid error in promo email: " . $response->statusCode() . " - " . $errorBody);
+            return ['ok' => false, 'error' => 'Failed to send promo email via SendGrid'];
+        }
+    } catch (Exception $e) {
+        error_log("SendGrid exception in sendPromoWelcomeEmailViaSendGrid: " . $e->getMessage());
+        return ['ok' => false, 'error' => $e->getMessage()];
+    }
+}
+
 function sendPromoWelcomeEmail(array $user): array
 {
     global $PROJECT_ROOT;
 
+    // Check for SendGrid API key first (Railway option)
+    $sendgridApiKey = getenv('SENDGRID_API_KEY');
+    if (!empty($sendgridApiKey)) {
+        // Use SendGrid REST API for Railway
+        return sendPromoWelcomeEmailViaSendGrid($user, $sendgridApiKey);
+    }
+
+    // Otherwise, use existing SMTP code (cattle/aptitude/local)
     // Check if we're on Railway (or similar platform) where env vars are set directly
     // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
     if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
