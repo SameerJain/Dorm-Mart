@@ -41,6 +41,11 @@ Thumbs.db
 dorm-mart/env.*
 dorm-mart/.env.*
 
+# Railway and deployment configuration files (may contain sensitive data)
+*.toml
+railway.toml
+nixpacks.toml
+
 #Local deployment files
 deploy.bat
 
