@@ -37,11 +37,108 @@ foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJEC
     }
 }
 
+/**
+ * Send password reset email via SendGrid REST API (for Railway)
+ */
+function sendPasswordResetEmailViaSendGrid(array $user, string $resetLink, string $apiKey): array
+{
+    global $PROJECT_ROOT;
+    
+    // Load SendGrid SDK
+    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
+        require_once $PROJECT_ROOT . '/vendor/autoload.php';
+    } else {
+        error_log("SendGrid: vendor/autoload.php not found");
+        return ['success' => false, 'error' => 'SendGrid SDK not available'];
+    }
+    
+    try {
+        $sendgrid = new \SendGrid($apiKey);
+        
+        // XSS PROTECTION: Encoding - HTML entity encoding
+        $firstName = escapeHtml($user['first_name'] ?: 'Student');
+        $resetLinkEscaped = escapeHtml($resetLink);
+        $subject = 'Reset Your Password - Dorm Mart';
+        
+        // HTML content (same as SMTP version)
+        $html = <<<HTML
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{$subject}</title>
+  </head>
+  <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
+    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
+      <p style="color:#eee;">Dear {$firstName},</p>
+      <p style="color:#eee;">You requested to reset your password for your Dorm Mart account.</p>
+      <p style="margin:20px 0;">
+        <a href="{$resetLinkEscaped}" style="background:#007bff;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">Reset Password</a>
+      </p>
+      <p style="color:#eee;">This link will expire in 1 hour for security reasons.</p>
+      <p style="color:#eee;">Best regards,<br/>The Dorm Mart Team</p>
+      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
+      <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
+      <a href="mailto:dormmartsupport@gmail.com" style="color:#9db7ff;">dormmartsupport@gmail.com</a></p>
+    </div>
+  </body>
+</html>
+HTML;
+
+        // Plain-text version
+        $firstNamePlain = $user['first_name'] ?: 'Student';
+        $text = <<<TEXT
+Dear {$firstNamePlain},
+
+You requested to reset your password for your Dorm Mart account.
+
+Click this link to reset your password:
+{$resetLink}
+
+This link will expire in 1 hour for security reasons.
+
+Best regards,
+The Dorm Mart Team
+
+(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
+TEXT;
+
+        $email = new \SendGrid\Mail\Mail();
+        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setSubject($subject);
+        $email->addTo($user['email'], trim($user['first_name'] . ' ' . $user['last_name']));
+        $email->addContent("text/html", $html);
+        $email->addContent("text/plain", $text);
+        
+        $response = $sendgrid->send($email);
+        
+        if ($response->statusCode() >= 200 && $response->statusCode() < 300) {
+            return ['success' => true, 'message' => 'Email sent successfully'];
+        } else {
+            $errorBody = $response->body();
+            error_log("SendGrid error in password reset: " . $response->statusCode() . " - " . $errorBody);
+            return ['success' => false, 'error' => 'Failed to send email via SendGrid'];
+        }
+    } catch (Exception $e) {
+        error_log("SendGrid exception in sendPasswordResetEmailViaSendGrid: " . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
 // Use the EXACT same email sending logic as create_account.php for maximum speed
 function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel = 'Local'): array
 {
     global $PROJECT_ROOT;
 
+    // Check for SendGrid API key first (Railway option)
+    $sendgridApiKey = getenv('SENDGRID_API_KEY');
+    if (!empty($sendgridApiKey)) {
+        // Use SendGrid REST API for Railway
+        return sendPasswordResetEmailViaSendGrid($user, $resetLink, $sendgridApiKey);
+    }
+
+    // Otherwise, use existing SMTP code (cattle/aptitude/local)
     // Check if we're on Railway (or similar platform) where env vars are set directly
     // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
     if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
