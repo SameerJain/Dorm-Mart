@@ -443,6 +443,24 @@ function get_reset_password_base_url(): string
     $host   = $_SERVER['HTTP_HOST']   ?? '';
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
+    // Railway deployment - check for Railway environment or Railway domain
+    $isRailway = (
+        getenv('RAILWAY_ENVIRONMENT') !== false ||
+        getenv('RAILWAY_SERVICE_NAME') !== false ||
+        strpos($host, 'railway.app') !== false ||
+        strpos($host, 'dormmart.me') !== false ||
+        strpos($origin, 'railway.app') !== false ||
+        strpos($origin, 'dormmart.me') !== false
+    );
+
+    if ($isRailway) {
+        // Use HTTPS and the Railway domain (dormmart.me or Railway-provided domain)
+        // $host from $_SERVER['HTTP_HOST'] is just the hostname (e.g., 'dormmart.me')
+        $railwayHost = $host ?: (parse_url($origin, PHP_URL_HOST) ?: 'dormmart.me');
+        // Ensure we use HTTPS for Railway
+        return 'https://' . rtrim($railwayHost, '/');
+    }
+
     // Production server
     if (strpos($host, 'cattle.cse.buffalo.edu') !== false || strpos($origin, 'cattle.cse.buffalo.edu') !== false) {
         return 'https://cattle.cse.buffalo.edu/CSE442/2025-Fall/cse-442j';
