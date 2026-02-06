@@ -140,7 +140,7 @@ The Dorm Mart Team
 TEXT;
 
         $email = new \SendGrid\Mail\Mail();
-        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setFrom("dormmart@proton.me", "Dorm Mart");
         $email->setSubject($subject);
         $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
         $email->addContent("text/html", $html);
@@ -395,7 +395,7 @@ The Dorm Mart Team
 TEXT;
 
         $email = new \SendGrid\Mail\Mail();
-        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setFrom("dormmart@proton.me", "Dorm Mart");
         $email->setSubject($subject);
         $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
         $email->addContent("text/html", $html);

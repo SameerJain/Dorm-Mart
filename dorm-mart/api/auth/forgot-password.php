@@ -105,7 +105,7 @@ The Dorm Mart Team
 TEXT;
 
         $email = new \SendGrid\Mail\Mail();
-        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setFrom("dormmart@proton.me", "Dorm Mart");
         $email->setSubject($subject);
         $email->addTo($user['email'], trim($user['first_name'] . ' ' . $user['last_name']));
         $email->addContent("text/html", $html);
