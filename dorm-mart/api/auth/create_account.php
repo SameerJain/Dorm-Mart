@@ -147,12 +147,16 @@ TEXT;
         $email->addContent("text/plain", $text);
         
         $response = $sendgrid->send($email);
+        $statusCode = $response->statusCode();
+        $responseBody = $response->body();
         
-        if ($response->statusCode() >= 200 && $response->statusCode() < 300) {
+        error_log("SendGrid response: Status " . $statusCode . " - Body: " . $responseBody);
+        
+        if ($statusCode >= 200 && $statusCode < 300) {
+            error_log("SendGrid email sent successfully to: " . $user['email']);
             return ['ok' => true, 'error' => null];
         } else {
-            $errorBody = $response->body();
-            error_log("SendGrid error: " . $response->statusCode() . " - " . $errorBody);
+            error_log("SendGrid error: " . $statusCode . " - " . $responseBody);
             return ['ok' => false, 'error' => 'Failed to send email via SendGrid'];
         }
     } catch (Exception $e) {
