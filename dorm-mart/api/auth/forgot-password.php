@@ -133,10 +133,13 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
 
     // Check for SendGrid API key first (Railway option)
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
+    error_log("DEBUG: Checking SendGrid API key. Key exists: " . (!empty($sendgridApiKey) ? 'yes' : 'no'));
     if (!empty($sendgridApiKey)) {
         // Use SendGrid REST API for Railway
+        error_log("DEBUG: Using SendGrid for password reset email to: " . $user['email']);
         return sendPasswordResetEmailViaSendGrid($user, $resetLink, $sendgridApiKey);
     }
+    error_log("DEBUG: SendGrid API key not found, falling back to PHPMailer");
 
     // Otherwise, use existing SMTP code (cattle/aptitude/local)
     // Check if we're on Railway (or similar platform) where env vars are set directly
