@@ -167,10 +167,13 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
 
     // Check for SendGrid API key first (Railway option)
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
+    error_log("DEBUG: Checking SendGrid API key for welcome email. Key exists: " . (!empty($sendgridApiKey) ? 'yes' : 'no'));
     if (!empty($sendgridApiKey)) {
         // Use SendGrid REST API for Railway
+        error_log("DEBUG: Using SendGrid for welcome email to: " . $user['email']);
         return sendWelcomeEmailViaSendGrid($user, $tempPassword, $sendgridApiKey);
     }
+    error_log("DEBUG: SendGrid API key not found, falling back to PHPMailer");
 
     // Otherwise, use existing SMTP code (cattle/aptitude/local)
     // Check if we're on Railway (or similar platform) where env vars are set directly
