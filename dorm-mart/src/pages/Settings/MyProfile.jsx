@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
+import { withFallbackImage } from "../../utils/imageFallback";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
@@ -245,6 +246,7 @@ function MyProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [avatarPreview, setAvatarPreview] = useState("");
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
   const [bio, setBio] = useState("");
   const [instagram, setInstagram] = useState("");
   const [feedback, setFeedback] = useState({ message: "", tone: "success" });
@@ -270,6 +272,7 @@ function MyProfilePage() {
         if (!isMounted) return;
         setProfile(data);
         setAvatarPreview(data.image_url || "");
+        setAvatarLoadError(false); // Reset error state when loading new profile
         setBio((data.bio || "").slice(0, 200));
         setInstagram(data.instagram || "");
       } catch (err) {
@@ -364,6 +367,7 @@ function MyProfilePage() {
         blobUrlRef.current = null;
       }
       setAvatarPreview(finalUrl);
+      setAvatarLoadError(false); // Reset error state on successful upload
       updateProfileState({ image_url: finalUrl });
       setAvatarError(""); // Clear any errors on success
       showFeedback("Profile photo updated");
@@ -480,7 +484,7 @@ function MyProfilePage() {
         }
       `}</style>
       <div 
-        className="flex h-full w-full flex-col items-center overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-3 pb-4 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 lg:px-10 mobile-scrollbar-hide"
+        className="flex h-full w-full flex-col items-center overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-3 pt-6 pb-4 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 sm:pt-8 lg:px-10 lg:pt-10 mobile-scrollbar-hide"
       >
         {isLoading ? (
           <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-slate-500 dark:text-gray-400">Loading profile...</div>
@@ -502,12 +506,20 @@ function MyProfilePage() {
                     type="button"
                     onClick={handleAvatarClick}
                     disabled={avatarUploading}
-                    className={`relative flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full border-4 border-white bg-slate-100 shadow-lg ring-2 sm:ring-4 ring-blue-100 transition hover:brightness-105 flex-shrink-0 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
+                    className={`relative flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full border-4 border-white dark:border-gray-800 bg-slate-100 dark:bg-gray-700 shadow-lg ring-2 sm:ring-4 ring-blue-100 dark:ring-blue-900 transition hover:brightness-105 flex-shrink-0 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
                   >
-                    {avatarPreview ? (
-                      <img src={avatarPreview} alt="Profile" className="h-full w-full rounded-full object-cover" />
+                    {avatarPreview && !avatarLoadError ? (
+                      <img 
+                        src={withFallbackImage(avatarPreview)} 
+                        alt="Profile" 
+                        className="h-full w-full rounded-full object-cover"
+                        onError={() => {
+                          // If image fails to load, set error state to show placeholder
+                          setAvatarLoadError(true);
+                        }}
+                      />
                     ) : (
-                      <span className="text-sm font-semibold text-slate-500">Upload photo</span>
+                      <span className="text-sm font-semibold text-slate-500 dark:text-gray-400">Upload photo</span>
                     )}
                     <span className="absolute bottom-1.5 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-semibold text-white shadow">
                       {avatarUploading ? "Uploading..." : "Edit"}

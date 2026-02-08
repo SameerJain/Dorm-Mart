@@ -51,10 +51,16 @@ if (isset($_GET['url']) && $_GET['url'] !== '') {
     $projectRoot = dirname(__DIR__);
     $path = null;
 
-    // Handle /data/images/ paths (legacy)
-    $prefix = '/data/images/';
+    // Handle /images/ paths (profile photos and other images)
+    $prefix = '/images/';
     if (strpos($url, $prefix) === 0) {
         $file = substr($url, strlen($prefix));
+        $file = basename($file);
+        $path = $IMAGE_DIR . DIRECTORY_SEPARATOR . $file;
+    }
+    // Handle /data/images/ paths (legacy)
+    elseif (strpos($url, '/data/images/') === 0) {
+        $file = substr($url, strlen('/data/images/'));
         $file = basename($file);
         $path = $IMAGE_DIR . DIRECTORY_SEPARATOR . $file;
     }
