@@ -484,15 +484,15 @@ function MyProfilePage() {
         }
       `}</style>
       <div 
-        className="flex h-full w-full flex-col items-center overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-3 pt-6 pb-4 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 sm:pt-8 lg:px-10 lg:pt-10 mobile-scrollbar-hide"
+        className="flex h-full w-full flex-col items-center overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-3 pt-6 pb-12 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 sm:pt-8 sm:pb-16 lg:px-10 lg:pt-10 lg:pb-20 mobile-scrollbar-hide"
       >
         {isLoading ? (
           <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-slate-500 dark:text-gray-400">Loading profile...</div>
         ) : error ? (
           <div className="flex h-full w-full items-center justify-center text-center text-red-600 dark:text-red-400">{error}</div>
         ) : (
-          <div className="flex w-full max-w-[1500px] flex-1 flex-col gap-6 sm:gap-8 overflow-visible min-h-0 xl:flex-row xl:gap-10">
-            <section className="flex w-full flex-col gap-4 sm:gap-6 xl:max-w-[520px]">
+          <div className="flex w-full max-w-[1500px] flex-1 flex-col gap-8 sm:gap-10 overflow-visible min-h-0 xl:flex-row xl:gap-12">
+            <section className="flex w-full flex-col gap-6 sm:gap-8 xl:max-w-[520px]">
               <div className="rounded-none sm:rounded-xl border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/80 dark:sm:bg-gray-800 p-4 sm:p-6 shadow-none sm:shadow">
                 <input
                   ref={fileInputRef}
@@ -547,7 +547,7 @@ function MyProfilePage() {
                 )}
               </div>
 
-              <div className="flex flex-1 flex-col rounded-none sm:rounded-xl border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/80 dark:sm:bg-gray-800 p-4 sm:p-6 shadow-none sm:shadow">
+              <div className="flex flex-1 flex-col rounded-none sm:rounded-xl border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/80 dark:sm:bg-gray-800 p-4 sm:p-6 shadow-none sm:shadow mb-6 sm:mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-gray-100">Public Details</h2>
                   {profile?.username && (
@@ -567,7 +567,7 @@ function MyProfilePage() {
                     </button>
                   )}
                 </div>
-                <div className="mt-4 space-y-3 sm:space-y-4">
+                <div className="mt-4 space-y-4 sm:space-y-5">
                   <div className="rounded-none sm:rounded-lg border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/70 dark:sm:bg-gray-800/70 p-3 sm:p-4 shadow-none sm:shadow-sm">
                     <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700 dark:text-gray-200">
                       <span>Bio</span>
@@ -637,7 +637,7 @@ function MyProfilePage() {
                 </div>
                 {feedback.message && (
                   <p
-                    className={`mt-4 text-sm font-medium ${
+                    className={`mt-4 mb-2 text-sm font-medium ${
                       feedback.tone === "error" ? "text-rose-600" : "text-emerald-600"
                     }`}
                   >
