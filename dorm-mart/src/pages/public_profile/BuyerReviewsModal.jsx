@@ -6,11 +6,12 @@ const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 /**
  * BuyerReviewsModal Component
  * 
- * Modal for displaying buyer reviews (reviews that sellers gave to buyers)
+ * Modal for displaying seller ratings (ratings that sellers gave to buyers)
+ * Shows how sellers have rated a buyer
  * 
  * @param {boolean} isOpen - Controls modal visibility
  * @param {function} onClose - Callback when modal is closed
- * @param {number} buyerUserId - ID of the buyer whose reviews to display
+ * @param {number} buyerUserId - ID of the buyer whose ratings to display
  */
 function BuyerReviewsModal({
   isOpen,
@@ -21,7 +22,7 @@ function BuyerReviewsModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch buyer reviews when modal opens
+  // Fetch seller ratings when modal opens
   useEffect(() => {
     if (isOpen && buyerUserId) {
       fetchBuyerReviews();
@@ -45,18 +46,18 @@ function BuyerReviewsModal({
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch buyer reviews");
+        throw new Error("Failed to fetch seller ratings");
       }
 
       const result = await response.json();
       if (result.success) {
         setReviews(result.reviews || []);
       } else {
-        throw new Error(result.error || "Failed to fetch buyer reviews");
+        throw new Error(result.error || "Failed to fetch seller ratings");
       }
     } catch (err) {
-      console.error("Error fetching buyer reviews:", err);
-      setError(err.message || "Failed to load buyer reviews. Please try again.");
+      console.error("Error fetching seller ratings:", err);
+      setError(err.message || "Failed to load seller ratings. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -108,9 +109,14 @@ function BuyerReviewsModal({
       >
         {/* Header */}
         <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Buyer Reviews
-          </h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              How Sellers Rated This Buyer
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Ratings and feedback from sellers
+            </p>
+          </div>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -136,7 +142,7 @@ function BuyerReviewsModal({
         <div className="flex-1 min-h-0 min-w-0 overflow-y-auto px-6 py-6">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-gray-600 dark:text-gray-400">Loading reviews...</p>
+              <p className="text-gray-600 dark:text-gray-400">Loading ratings...</p>
             </div>
           ) : error ? (
             <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -144,7 +150,7 @@ function BuyerReviewsModal({
             </div>
           ) : reviews.length === 0 ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-gray-600 dark:text-gray-400">No buyer reviews yet.</p>
+              <p className="text-gray-600 dark:text-gray-400">No seller ratings yet.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-6 min-w-0">
