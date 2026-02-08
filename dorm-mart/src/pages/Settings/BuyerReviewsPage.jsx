@@ -9,8 +9,9 @@ const NAV_BLUE = "#2563EB";
 /**
  * BuyerReviewsPage Component
  * 
- * Page for displaying buyer reviews (reviews that sellers gave to buyers)
- * Only accessible to the logged-in user viewing their own reviews
+ * Page for displaying seller ratings (ratings that sellers gave to buyers)
+ * Shows how sellers have rated the logged-in user as a buyer
+ * Only accessible to the logged-in user viewing their own ratings
  */
 function BuyerReviewsPage() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ function BuyerReviewsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch buyer reviews on mount
+  // Fetch seller ratings on mount
   useEffect(() => {
     fetchBuyerReviews();
   }, []);
@@ -37,18 +38,18 @@ function BuyerReviewsPage() {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch buyer reviews");
+        throw new Error("Failed to fetch seller ratings");
       }
 
       const result = await response.json();
       if (result.success) {
         setReviews(result.reviews || []);
       } else {
-        throw new Error(result.error || "Failed to fetch buyer reviews");
+        throw new Error(result.error || "Failed to fetch seller ratings");
       }
     } catch (err) {
-      console.error("Error fetching buyer reviews:", err);
-      setError(err.message || "Failed to load buyer reviews. Please try again.");
+      console.error("Error fetching seller ratings:", err);
+      setError(err.message || "Failed to load seller ratings. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -56,14 +57,19 @@ function BuyerReviewsPage() {
 
   return (
     <SettingsLayout>
-      <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-3">
-        <h1 className="text-2xl font-serif font-semibold" style={{ color: NAV_BLUE }}>
-          Buyer Reviews
-        </h1>
+      <div className="mb-6 flex items-center justify-between border-b border-slate-200 dark:border-gray-700 pb-3">
+        <div>
+          <h1 className="text-2xl font-serif font-semibold text-slate-900 dark:text-gray-100" style={{ color: NAV_BLUE }}>
+            How Sellers Rated You
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            See ratings and feedback from sellers about your purchases
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => navigate("/app/setting/my-profile")}
-          className="rounded-lg border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-700"
+          className="rounded-lg border border-slate-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-slate-50 dark:hover:bg-gray-700"
           style={{ color: NAV_BLUE }}
           aria-label="Go back"
         >
@@ -74,7 +80,7 @@ function BuyerReviewsPage() {
       <div className="flex flex-col gap-6">
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <p className="text-gray-600 dark:text-gray-400">Loading reviews...</p>
+            <p className="text-gray-600 dark:text-gray-400">Loading ratings...</p>
           </div>
         ) : error ? (
           <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -82,7 +88,7 @@ function BuyerReviewsPage() {
           </div>
         ) : reviews.length === 0 ? (
           <div className="flex items-center justify-center py-8">
-            <p className="text-gray-600 dark:text-gray-400">No buyer reviews yet.</p>
+            <p className="text-gray-600 dark:text-gray-400">No seller ratings yet. Sellers will be able to rate you after completed purchases.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-6 min-w-0">
