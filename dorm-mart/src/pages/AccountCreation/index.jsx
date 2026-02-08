@@ -220,7 +220,7 @@ function CreateAccountPage() {
       <PreLoginBranding />
 
       {/* Right side - Create Account form (full width on mobile/tablet, 50% on desktop) */}
-      <div className="w-full md:w-1/2 flex flex-col items-center justify-start md:justify-center p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 pt-6 sm:pt-8 h-screen overflow-y-auto md:overflow-hidden pre-login-bg relative">
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-start md:justify-start p-4 sm:p-6 md:p-6 lg:p-8 xl:p-8 pt-6 sm:pt-8 md:pt-8 lg:pt-10 h-screen overflow-y-auto pre-login-bg relative">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="md:hidden mb-4 sm:mb-6 text-center w-full relative z-10">
           <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
@@ -229,7 +229,7 @@ function CreateAccountPage() {
           <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed">Wastage, who?</h2>
         </div>
         <div className="w-full max-w-sm sm:max-w-md md:max-w-sm lg:max-w-md relative z-10">
-          <div className="px-4 sm:px-6 md:px-5 lg:px-6 py-2.5 sm:py-4 md:py-3 lg:py-4 rounded-lg relative bg-blue-600">
+          <div className="px-4 sm:px-6 md:px-5 lg:px-6 py-2.5 sm:py-4 md:py-2.5 lg:py-3 rounded-lg relative bg-blue-600">
             {/* Torn paper effect */}
             <div
               className="absolute inset-0 rounded-lg bg-blue-600"
@@ -240,13 +240,13 @@ function CreateAccountPage() {
 
             <div className="relative z-10">
               {/* Header with dot */}
-              <div className="text-center mb-2.5 sm:mb-4 md:mb-2.5 lg:mb-3">
+              <div className="text-center mb-2.5 sm:mb-4 md:mb-2 lg:mb-2.5">
                 <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-3 md:h-3 bg-black rounded-full mx-auto mb-2 sm:mb-3 md:mb-1.5" />
                 <h2 className="text-2xl sm:text-3xl md:text-2xl lg:text-3xl font-serif text-white leading-tight">Create Account</h2>
               </div>
 
               {/* Form - Improved spacing and touch targets */}
-              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-2.5 lg:space-y-3">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-2.5 lg:space-y-2.5 xl:space-y-3">
                 {/* First Name */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-sm lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">First Name</label>
@@ -316,7 +316,7 @@ function CreateAccountPage() {
                 </div>
 
                 {/* Checkboxes - Improved touch targets */}
-                <div className="space-y-3 sm:space-y-4 md:space-y-2.5 lg:space-y-3">
+                <div className="space-y-3 sm:space-y-4 md:space-y-2 lg:space-y-2.5">
                   <label className="flex items-start text-gray-100 min-h-[44px] py-2">
                     <input
                       type="checkbox"
@@ -386,7 +386,7 @@ function CreateAccountPage() {
               </form>
 
               {/* Links - Improved touch targets and spacing */}
-              <div className="mt-4 sm:mt-6 md:mt-3 lg:mt-3.5 mb-2.5 sm:mb-4 md:mb-2 lg:mb-2.5 text-center">
+              <div className="mt-4 sm:mt-6 md:mt-2.5 lg:mt-3 mb-2.5 sm:mb-4 md:mb-2 lg:mb-2.5 text-center">
                 <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm sm:text-base md:text-sm lg:text-base text-white">
                   <a
                     href="#"
