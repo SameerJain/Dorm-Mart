@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import chatIcon from '../../assets/icons/icons8-chat-96.png'
 import userIcon from '../../assets/icons/icons8-user-icon-96.png'
@@ -10,7 +10,6 @@ import homeIcon from '../../assets/icons/icons8-home-96.png';
 import questionIcon from '../../assets/icons/icons8-question-mark-96.png';
 import Icon from './Icon'
 import { ChatContext } from "../../context/ChatContext";
-import { useContext } from 'react';
 
 // Main navigation bar component with search, notifications, chat, and menu dropdowns
 function MainNav() {

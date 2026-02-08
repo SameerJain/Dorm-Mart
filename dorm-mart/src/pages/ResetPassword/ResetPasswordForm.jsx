@@ -2,7 +2,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import PreLoginBranding from "../../components/PreLoginBranding";
 
-const NAV_BLUE = "#2563EB";
 const MAX_LEN = 64;
 
 const hasLower = (s) => /[a-z]/.test(s);
