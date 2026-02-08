@@ -30,11 +30,11 @@ function StarRating({ rating = 0 }) {
 function ProductCard({ product, onView }) {
   const hasProductLink = Boolean(product.product_id);
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md min-w-0 overflow-hidden">
-      <img src={product.image_url || FALLBACK_AVATAR} alt={product.title} className="h-40 w-full rounded-t-2xl object-cover" />
+    <div className="flex flex-col rounded-lg border border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md min-w-0 overflow-hidden">
+      <img src={product.image_url || FALLBACK_AVATAR} alt={product.title} className="h-40 w-full rounded-t-lg object-cover" />
       <div className="flex flex-col gap-2 p-4 min-w-0">
-        <p className="text-base font-semibold text-slate-900 truncate" title={product.title}>{product.title}</p>
-        <p className="text-sm text-slate-500">${Number(product.price || 0).toFixed(2)}</p>
+        <p className="text-base font-semibold text-slate-900 dark:text-gray-100 truncate" title={product.title}>{product.title}</p>
+        <p className="text-sm text-slate-500 dark:text-gray-400">${Number(product.price || 0).toFixed(2)}</p>
         <button
           type="button"
           onClick={hasProductLink ? onView : undefined}
@@ -52,15 +52,15 @@ function ReviewCard({ review }) {
   const attachments = [review.image_1, review.image_2, review.image_3].filter(Boolean);
 
   return (
-    <article className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md">
+    <article className="flex flex-col gap-3 rounded-lg border border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm transition hover:shadow-md">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-col min-w-0 flex-1">
-          <p className="text-base font-semibold text-slate-900 truncate" title={review.reviewer_name}>{review.reviewer_name}</p>
-          <p className="text-sm text-slate-500 truncate" title={review.product_title}>{review.product_title}</p>
+          <p className="text-base font-semibold text-slate-900 dark:text-gray-100 truncate" title={review.reviewer_name}>{review.reviewer_name}</p>
+          <p className="text-sm text-slate-500 dark:text-gray-400 truncate" title={review.product_title}>{review.product_title}</p>
         </div>
         <StarRating rating={review.rating} />
       </div>
-      <p className="text-sm leading-relaxed text-slate-700">{review.review}</p>
+      <p className="text-sm leading-relaxed text-slate-700 dark:text-gray-300">{review.review}</p>
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-3">
           {attachments.map((url, index) => (
@@ -130,10 +130,10 @@ function PublicProfilePage() {
 
   if (!usernameParam) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 text-center">
-        <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow">
-          <h1 className="text-lg font-semibold text-slate-900">Profile Lookup</h1>
-          <p className="mt-2 text-sm text-slate-600">Please provide a username to view a public profile.</p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 dark:bg-gray-900 px-4 text-center">
+        <div className="max-w-md rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 shadow">
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-gray-100">Profile Lookup</h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">Please provide a username to view a public profile.</p>
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -156,10 +156,10 @@ function PublicProfilePage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-center">
-        <div className="max-w-md rounded-2xl border border-rose-200 bg-white p-8 shadow">
-          <h1 className="text-lg font-semibold text-rose-600">Unable to load profile</h1>
-          <p className="mt-2 text-sm text-slate-600">{error}</p>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-gray-900 px-4 text-center">
+        <div className="max-w-md rounded-lg border border-rose-200 dark:border-rose-700 bg-white dark:bg-gray-800 p-8 shadow">
+          <h1 className="text-lg font-semibold text-rose-600 dark:text-rose-400">Unable to load profile</h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">{error}</p>
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -174,10 +174,10 @@ function PublicProfilePage() {
 
   if (!profileData) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-center">
-        <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow">
-          <h1 className="text-lg font-semibold text-slate-900">Profile not found</h1>
-          <p className="mt-2 text-sm text-slate-600">We couldn't find a user with that username.</p>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-gray-900 px-4 text-center">
+        <div className="max-w-md rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 shadow">
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-gray-100">Profile not found</h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">We couldn't find a user with that username.</p>
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -234,47 +234,47 @@ function PublicProfilePage() {
             </div>
           </div>
         )}
-        <header className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm overflow-hidden">
+        <header className="rounded-xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800 p-6 shadow-sm overflow-hidden">
           <div className="flex flex-col gap-6 md:flex-row md:items-center min-w-0">
             <div className="flex flex-col items-center gap-4 md:flex-row min-w-0 flex-1">
-              <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-white shadow-lg flex-shrink-0">
+              <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-white dark:border-gray-800 shadow-lg flex-shrink-0">
                 <img src={profile.imageUrl} alt={profile.name} className="h-full w-full object-cover" />
               </div>
               <div className="text-center md:text-left min-w-0 max-w-full overflow-hidden flex-1">
-                <h1 className="text-2xl font-serif font-semibold text-slate-900 truncate block">{profile.name}</h1>
-                <p className="text-sm text-slate-500 truncate" title={`@${profile.username}`}>@{profile.username}</p>
-                <p className="text-sm text-slate-500 truncate" title={profile.email}>{profile.email}</p>
+                <h1 className="text-2xl font-serif font-semibold text-slate-900 dark:text-gray-100 truncate block">{profile.name}</h1>
+                <p className="text-sm text-slate-500 dark:text-gray-400 truncate" title={`@${profile.username}`}>@{profile.username}</p>
+                <p className="text-sm text-slate-500 dark:text-gray-400 truncate" title={profile.email}>{profile.email}</p>
                 {profile.instagram && (
                   <a
                     href={profile.instagram}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     Instagram profile →
                   </a>
                 )}
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 px-6 py-4 md:ml-auto flex-shrink-0">
+            <div className="flex flex-col items-center justify-center rounded-lg border border-slate-100 dark:border-gray-700 bg-slate-50 dark:bg-gray-700 px-6 py-4 md:ml-auto flex-shrink-0">
               {profile.reviewCount === 0 ? (
-                <p className="text-sm text-slate-500">No reviews yet</p>
+                <p className="text-sm text-slate-500 dark:text-gray-400">No reviews yet</p>
               ) : (
                 <>
                   <StarRating rating={profile.avgRating} />
-                  <p className="text-xs uppercase tracking-wide text-slate-500">{profile.reviewCount} review(s)</p>
+                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">{profile.reviewCount} review(s)</p>
                 </>
               )}
             </div>
           </div>
-          {profile.bio && <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-700 break-words overflow-wrap-anywhere">{profile.bio}</p>}
+          {profile.bio && <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words overflow-wrap-anywhere">{profile.bio}</p>}
         </header>
 
-        <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+        <section className="rounded-xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800 p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Active Listings</h2>
-              <p className="text-sm text-slate-500">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-gray-100">Active Listings</h2>
+              <p className="text-sm text-slate-500 dark:text-gray-400">
                 {listings.length} item{listings.length === 1 ? "" : "s"} available
               </p>
             </div>
@@ -290,15 +290,15 @@ function PublicProfilePage() {
               ))}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-slate-500">No active listings at this time.</p>
+            <p className="mt-4 text-sm text-slate-500 dark:text-gray-400">No active listings at this time.</p>
           )}
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+        <section className="rounded-xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800 p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Reviews</h2>
-              <p className="text-sm text-slate-500">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-gray-100">Reviews</h2>
+              <p className="text-sm text-slate-500 dark:text-gray-400">
                 {reviews.length} review{reviews.length === 1 ? "" : "s"} received
               </p>
             </div>
@@ -310,7 +310,7 @@ function PublicProfilePage() {
               ))}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-slate-500">No reviews yet.</p>
+            <p className="mt-4 text-sm text-slate-500 dark:text-gray-400">No reviews yet.</p>
           )}
         </section>
       </div>
