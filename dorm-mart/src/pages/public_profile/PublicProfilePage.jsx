@@ -238,7 +238,15 @@ function PublicProfilePage() {
           <div className="flex flex-col gap-6 md:flex-row md:items-center min-w-0">
             <div className="flex flex-col items-center gap-4 md:flex-row min-w-0 flex-1">
               <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-white dark:border-gray-800 shadow-lg flex-shrink-0">
-                <img src={profile.imageUrl} alt={profile.name} className="h-full w-full object-cover" />
+                <img 
+                  src={profile.imageUrl} 
+                  alt="" 
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = FALLBACK_AVATAR;
+                  }}
+                />
               </div>
               <div className="text-center md:text-left min-w-0 max-w-full overflow-hidden flex-1">
                 <h1 className="text-2xl font-serif font-semibold text-slate-900 dark:text-gray-100 truncate block">{profile.name}</h1>

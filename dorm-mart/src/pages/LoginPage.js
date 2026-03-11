@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { fetch_me } from "../utils/handle_auth.js";
 import PreLoginBranding from "../components/PreLoginBranding";
-// Client no longer inspects cookies; auth is enforced server-side on protected routes
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
@@ -16,33 +14,6 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [allowAllEmails, setAllowAllEmails] = useState(false);
   const [emailPolicyLoading, setEmailPolicyLoading] = useState(true);
-
-  // Check if user is already authenticated on mount
-  useEffect(() => {
-    const controller = new AbortController();
-    
-    const checkAuth = async () => {
-      try {
-        await fetch_me(controller.signal);
-        // User is authenticated, redirect to app
-        navigate("/app", { replace: true });
-      } catch (error) {
-        console.error("Login error:", error);
-        // AbortError means component unmounted, don't navigate
-        if (error.name === 'AbortError') {
-          return;
-        }
-        // User is not authenticated, stay on login page
-      }
-    };
-
-    checkAuth();
-    
-    // Cleanup: abort fetch if component unmounts
-    return () => {
-      controller.abort();
-    };
-  }, [navigate]);
 
   // Handle URL parameters
   useEffect(() => {
