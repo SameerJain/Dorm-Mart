@@ -271,7 +271,6 @@ function MyProfilePage() {
         if (!isMounted) return;
         setProfile(data);
         setAvatarPreview(data.image_url || "");
-        setAvatarLoadError(false); // Reset error state when loading new profile
         setBio((data.bio || "").slice(0, 200));
         setInstagram(data.instagram || "");
       } catch (err) {
