@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { fetch_me } from "../utils/handle_auth.js";
 import PreLoginBranding from "../components/PreLoginBranding";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
@@ -13,32 +12,6 @@ function ForgotPasswordPage() {
   const [allowAllEmails, setAllowAllEmails] = useState(false);
   const [emailPolicyLoading, setEmailPolicyLoading] = useState(true);
   const BACKDOOR_KEYWORD = "testflow"; // typing this as the email triggers the confirmation page for testing
-
-  // Check if user is already authenticated on mount
-  useEffect(() => {
-    const controller = new AbortController();
-    
-    const checkAuth = async () => {
-      try {
-        await fetch_me(controller.signal);
-        // User is authenticated, redirect to app
-        navigate("/app", { replace: true });
-      } catch (error) {
-        // AbortError means component unmounted, don't navigate
-        if (error.name === 'AbortError') {
-          return;
-        }
-        // User is not authenticated, stay on forgot password page
-      }
-    };
-
-    checkAuth();
-    
-    // Cleanup: abort fetch if component unmounts
-    return () => {
-      controller.abort();
-    };
-  }, [navigate]);
 
   // Fetch email policy configuration
   useEffect(() => {

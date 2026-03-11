@@ -1,37 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
-import { fetch_me } from '../utils/handle_auth.js';
 import PreLoginBranding from '../components/PreLoginBranding';
 
 function WelcomePage() {
   const navigate = useNavigate();
-
-  // Check if user is already authenticated on mount
-  useEffect(() => {
-    const controller = new AbortController();
-    
-    const checkAuth = async () => {
-      try {
-        await fetch_me(controller.signal);
-        // User is authenticated, redirect to app
-        navigate("/app", { replace: true });
-      } catch (error) {
-        // AbortError means component unmounted, don't navigate
-        if (error.name === 'AbortError') {
-          return;
-        }
-        // User is not authenticated, stay on welcome page
-      }
-    };
-
-    checkAuth();
-    
-    // Cleanup: abort fetch if component unmounts
-    return () => {
-      controller.abort();
-    };
-  }, [navigate]);
-
   const features = [
     { icon: '🛍️', title: 'Buy & Sell', description: 'Trade with students' },
     { icon: '💰', title: 'Spend less', description: 'Great campus deals' },
