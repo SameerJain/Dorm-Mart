@@ -4,7 +4,11 @@ This repository contains the "Dorm Mart" web application, built with a React fro
 
 _Created for CSE-442: Software Engineering Concepts, The University at Buffalo._
 
-## IMPORTANT: For users without a UB account wanting to demo the site:
+## Production Release: 
+
+**https://dormmart.me/**
+
+## For users without a UB account wanting to demo the site:
 **Username:** `testuser@buffalo.edu`
 
 **Password:** `1234!`
@@ -64,9 +68,7 @@ workflow in one place!
 **Email:** PHPMailer  
 **Dev Server:** XAMPP (Apache + MySQL)
 
-## Production Release: 
 
-**https://dormmart.me/**
 
 ## Key Folders
 
