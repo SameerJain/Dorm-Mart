@@ -64,11 +64,9 @@ workflow in one place!
 **Email:** PHPMailer  
 **Dev Server:** XAMPP (Apache + MySQL)
 
-## Production Server
+## Production Release: 
 
-**Check out the latest production release on UB Wifi: https://cattle.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/#/login**
-
-_You can also view the test server on UB Wifi: https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/#/login_
+**https://dormmart.me/**
 
 ## Key Folders
 
@@ -78,14 +76,8 @@ _You can also view the test server on UB Wifi: https://aptitude.cse.buffalo.edu/
 - `dorm-mart/public/` — Static assets
 - `dorm-mart/migrations/` — Database construction files
 
-For local setup and deployment details, see `README.project_setup.md`.
-
 For detailed setup instructions, deployment guides, and production build steps, see `README.project_setup.md`.
 
-# For users without a UB account for demoing:
-**Username:** `testuser@buffalo.edu`
-
-**Password:** 1234!
 
 # Development Team
 
