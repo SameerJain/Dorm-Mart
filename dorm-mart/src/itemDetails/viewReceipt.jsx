@@ -483,39 +483,22 @@ export default function ViewReceipt() {
             
             {/* Receipt Header Badge */}
             {purchaseDetails && (
-              <div className={`mb-6 rounded-xl border-2 shadow-md p-5 ${
-                isSuccessful 
-                  ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700" 
-                  : "bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700"
-              }`}>
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider ${
-                      isSuccessful
-                        ? "bg-emerald-600 dark:bg-emerald-700 text-white"
-                        : "bg-red-600 dark:bg-red-700 text-white"
-                    }`}>
-                      Receipt
-                    </div>
-                    {purchaseDetails.receiptId && (
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-400">Receipt Number</p>
-                        <p className="text-xl font-bold text-gray-900 dark:text-gray-100">#{purchaseDetails.receiptId}</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className={`px-4 py-2 rounded-lg font-semibold text-sm ${
-                    isSuccessful
-                      ? "bg-emerald-100 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200"
-                      : "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200"
-                  }`}>
-                    {transactionStatus}
-                  </div>
-                </div>
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
+                  isSuccessful
+                    ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300"
+                    : "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300"
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isSuccessful ? "bg-green-500" : "bg-red-500"}`} />
+                  {transactionStatus}
+                </span>
+                {purchaseDetails.receiptId && (
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Receipt #{purchaseDetails.receiptId}</span>
+                )}
               </div>
             )}
             
-            <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-4 items-start">
               <section className="flex gap-3 items-start justify-center lg:sticky lg:top-20">
                 {normalized.photoUrls && normalized.photoUrls.length > 1 ? (
                   <div className="hidden md:flex md:flex-col gap-2 md:max-h-[32rem] overflow-y-auto pr-1">
@@ -578,7 +561,7 @@ export default function ViewReceipt() {
                 ) : null}
               </section>
 
-              <section className="flex flex-col gap-4 min-w-0">
+              <section className="flex flex-col gap-3 min-w-0">
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words overflow-hidden">{normalized.title}</h2>
 
                 <div className="flex flex-wrap items-center gap-2 text-sm min-w-0">
@@ -609,89 +592,60 @@ export default function ViewReceipt() {
                   ) : null}
                 </div>
 
-                {/* Purchase Details Section - Moved Higher and Enhanced */}
+                {/* Purchase Details */}
                 {purchaseDetails ? (
-                  <div className={`rounded-xl border-2 shadow-lg p-6 w-full ${
-                    isSuccessful
-                      ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700"
-                      : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700"
-                  }`}>
-                    <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                      <div>
-                        <h3 className={`text-xl font-bold ${isSuccessful ? "text-emerald-900 dark:text-emerald-100" : "text-red-900 dark:text-red-100"}`}>
-                          Transaction Details
-                        </h3>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Complete purchase information</p>
-                      </div>
-                    </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4 w-full space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Transaction Details</h3>
 
-                    {/* Key Receipt Information - Prominently Displayed */}
-                    <div className="space-y-4 mb-6">
-                      {purchaseDetails.receiptId && (
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Receipt Number</p>
-                          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">#{purchaseDetails.receiptId}</p>
-                        </div>
-                      )}
-                      
-                      {purchaseDetails.purchaseDate && (
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Purchase Date</p>
-                          <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{formatDateTime(purchaseDetails.purchaseDate)}</p>
-                        </div>
-                      )}
-                      
+                    {/* Price + key info row */}
+                    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
                       {purchaseDetails.finalPrice != null && (
-                        <div className={`rounded-lg p-5 border-2 ${
-                          isSuccessful
-                            ? "bg-emerald-100 dark:bg-emerald-800/50 border-emerald-300 dark:border-emerald-600"
-                            : "bg-red-100 dark:bg-red-800/50 border-red-300 dark:border-red-600"
-                        }`}>
-                          <p className="text-sm uppercase tracking-wide text-gray-700 dark:text-gray-300 mb-2">Amount Paid</p>
-                          <p className={`text-5xl font-bold ${isSuccessful ? "text-emerald-900 dark:text-emerald-100" : "text-red-900 dark:text-red-100"}`}>
-                            {formatCurrency(purchaseDetails.finalPrice) ?? `$${Number(purchaseDetails.finalPrice).toFixed(2)}`}
-                          </p>
-                          {purchaseDetails.negotiatedPrice != null && purchaseDetails.negotiatedPrice !== purchaseDetails.finalPrice && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                              Original: {formatCurrency(purchaseDetails.negotiatedPrice)}
-                            </p>
-                          )}
-                        </div>
+                        <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                          {formatCurrency(purchaseDetails.finalPrice) ?? `$${Number(purchaseDetails.finalPrice).toFixed(2)}`}
+                        </span>
+                      )}
+                      {purchaseDetails.negotiatedPrice != null && purchaseDetails.negotiatedPrice !== purchaseDetails.finalPrice && (
+                        <span className="text-sm text-gray-500 dark:text-gray-400 line-through">
+                          {formatCurrency(purchaseDetails.negotiatedPrice)}
+                        </span>
+                      )}
+                      {purchaseDetails.purchaseDate && (
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {formatDateTime(purchaseDetails.purchaseDate)}
+                        </span>
                       )}
                     </div>
 
-                    {/* Additional Details */}
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Detail rows */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
                       {purchaseRows.filter(row => {
-                        // Filter out already displayed fields
-                        return row.label !== "Receipt #" && 
-                               row.label !== "Purchase date" && 
+                        return row.label !== "Receipt #" &&
+                               row.label !== "Purchase date" &&
                                row.label !== "Final price" &&
                                row.label !== "Negotiated price";
                       }).map((row, idx) => (
-                        <ReceiptDetail key={`${row.label}-${idx}`} label={row.label} value={row.value} isSuccessful={isSuccessful} />
+                        <div key={`${row.label}-${idx}`} className="flex items-start gap-2">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide pt-0.5 flex-shrink-0">{row.label}</span>
+                          <span className="text-gray-800 dark:text-gray-200 font-medium truncate">{row.value ?? "—"}</span>
+                        </div>
                       ))}
                     </div>
 
-                    {purchaseDetails.failureReason ? (
-                      <div className={`mt-6 p-4 rounded-lg border-2 ${
-                        isSuccessful
-                          ? "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                          : "bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700"
-                      }`}>
-                        <p className="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-400 mb-2">Failure Reason</p>
-                        <p className="text-base font-bold text-gray-900 dark:text-gray-100">
+                    {purchaseDetails.failureReason && (
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md p-3">
+                        <p className="text-xs text-red-600 dark:text-red-400 uppercase tracking-wide mb-0.5">Failure Reason</p>
+                        <p className="text-sm font-semibold text-red-800 dark:text-red-200">
                           {purchaseDetails.failureReasonLabel || humanizeStatus(purchaseDetails.failureReason)}
                         </p>
-                        {purchaseDetails.failureReasonNotes ? (
-                          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mt-2">{purchaseDetails.failureReasonNotes}</p>
-                        ) : null}
+                        {purchaseDetails.failureReasonNotes && (
+                          <p className="text-sm text-red-700 dark:text-red-300 whitespace-pre-wrap mt-1">{purchaseDetails.failureReasonNotes}</p>
+                        )}
                       </div>
-                    ) : null}
+                    )}
 
-                    {purchaseDetails.sellerNotes ? <NoteBlock title="Seller notes" text={purchaseDetails.sellerNotes} isSuccessful={isSuccessful} /> : null}
-                    {purchaseDetails.buyerNotes ? <NoteBlock title="Buyer comments" text={purchaseDetails.buyerNotes} isSuccessful={isSuccessful} /> : null}
-                    {purchaseDetails.comments ? <NoteBlock title="Additional comments" text={purchaseDetails.comments} isSuccessful={isSuccessful} /> : null}
+                    {purchaseDetails.sellerNotes ? <NoteBlock title="Seller notes" text={purchaseDetails.sellerNotes} /> : null}
+                    {purchaseDetails.buyerNotes ? <NoteBlock title="Buyer comments" text={purchaseDetails.buyerNotes} /> : null}
+                    {purchaseDetails.comments ? <NoteBlock title="Additional comments" text={purchaseDetails.comments} /> : null}
                   </div>
                 ) : null}
 
@@ -738,30 +692,23 @@ export default function ViewReceipt() {
                   </div>
                 ) : null}
 
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Detail label="Item location" value={normalized.itemLocation || "—"} />
-                    <Detail label="Condition" value={normalized.itemCondition || "—"} />
-                    <Detail label="Price Negotiable" value={normalized.priceNego ? "Yes" : "No"} />
-                    <Detail label="Accepts trades" value={normalized.trades ? "Yes" : "No"} />
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 p-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                  <Detail label="Location" value={normalized.itemLocation || "—"} />
+                  <Detail label="Condition" value={normalized.itemCondition || "—"} />
+                  <Detail label="Negotiable" value={normalized.priceNego ? "Yes" : "No"} />
+                  <Detail label="Trades" value={normalized.trades ? "Yes" : "No"} />
+                  <Detail label="Listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : "—"} />
+                  {normalized.sold && <Detail label="Date sold" value={normalized.dateSold ? formatDate(normalized.dateSold) : "—"} />}
+                  {normalized.sellerEmail && (
                     <Detail
-                      label="Seller email"
+                      label="Email"
                       value={
-                        normalized.sellerEmail ? (
-                          <a href={`mailto:${normalized.sellerEmail}`} className="text-blue-600 dark:text-blue-400 hover:underline truncate inline-block max-w-full" title={normalized.sellerEmail}>
-                            {normalized.sellerEmail}
-                          </a>
-                        ) : (
-                          "—"
-                        )
+                        <a href={`mailto:${normalized.sellerEmail}`} className="text-blue-600 dark:text-blue-400 hover:underline truncate inline-block max-w-full" title={normalized.sellerEmail}>
+                          {normalized.sellerEmail}
+                        </a>
                       }
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Detail label="Date listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : "—"} />
-                    {normalized.sold ? <Detail label="Date sold" value={normalized.dateSold ? formatDate(normalized.dateSold) : "—"} /> : null}
-                    {normalized.sold && normalized.finalPrice != null ? <Detail label="Final price" value={`$${Number(normalized.finalPrice).toFixed(2)}`} /> : null}
-                  </div>
+                  )}
                 </div>
 
                 <div className="pt-1">
@@ -796,42 +743,21 @@ function Detail({ label, value }) {
   );
 }
 
-function ReceiptDetail({ label, value, isSuccessful }) {
-  // Special handling for buyer/seller names to make them bolder
-  const isNameField = label === "Buyer" || label === "Seller";
-  
+function ReceiptDetail({ label, value }) {
   return (
-    <div className={`p-3 rounded-lg border ${
-      isSuccessful
-        ? "bg-white dark:bg-gray-800 border-emerald-200 dark:border-emerald-700"
-        : "bg-white dark:bg-gray-800 border-red-200 dark:border-red-700"
-    }`}>
-      <p className={`text-xs uppercase tracking-wide mb-1 ${
-        isSuccessful ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"
-      }`}>
-        {label}
-      </p>
-      <p className={`${isNameField ? "text-base font-bold" : "text-sm font-semibold"} text-gray-900 dark:text-gray-100 break-words`}>
-        {value ?? "—"}
-      </p>
+    <div className="flex items-start gap-2">
+      <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide pt-0.5 flex-shrink-0">{label}</span>
+      <span className="text-sm text-gray-800 dark:text-gray-200 font-medium break-words">{value ?? "—"}</span>
     </div>
   );
 }
 
-function NoteBlock({ title, text, isSuccessful }) {
+function NoteBlock({ title, text }) {
   if (!text) return null;
   return (
-    <div className={`mt-6 p-4 rounded-lg border ${
-      isSuccessful
-        ? "bg-white dark:bg-gray-800 border-emerald-200 dark:border-emerald-700"
-        : "bg-white dark:bg-gray-800 border-red-200 dark:border-red-700"
-    }`}>
-      <p className={`text-xs uppercase tracking-wide mb-2 ${
-        isSuccessful ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"
-      }`}>
-        {title}
-      </p>
-      <p className="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words">{text}</p>
+    <div className="bg-gray-50 dark:bg-gray-700/40 rounded-md p-3">
+      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{title}</p>
+      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">{text}</p>
     </div>
   );
 }

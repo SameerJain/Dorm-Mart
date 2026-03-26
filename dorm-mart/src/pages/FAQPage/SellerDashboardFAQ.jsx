@@ -1,40 +1,29 @@
-// src/components/SellerDashboardFAQ.jsx
 import React from "react";
 
 const SELLER_DASHBOARD_SECTIONS = [
   {
-    title: "Listing Status & Availability",
+    title: "Listing Status",
     items: [
       {
-        question: "What do the different listing statuses mean?",
-        answer: `Active: Listed and visible to buyers
-Pending: Sale in progress (buyer has accepted a scheduled purchase)
-Sold: Item has been sold
-Removed: Item has been removed from public view`,
+        question: "What do the different statuses mean?",
+        answer: `Active \u2013 visible to buyers. Pending \u2013 a scheduled purchase is in progress. Sold \u2013 item has been sold. Removed \u2013 taken off the marketplace.`,
       },
       {
-        question: "How do I change a listing's status?",
-        answer: `Status changes automatically based on actions:
-- When a buyer accepts a scheduled purchase → status becomes "Pending"
-- When a purchase is confirmed → status becomes "Sold"
-- You can manually change status through the listing edit page (if editing is available)`,
+        question: "How does the status change?",
+        answer: `Status updates automatically. It becomes Pending when a buyer accepts a scheduled purchase, and Sold when the purchase is confirmed.`,
       },
       {
-        question: "Why can't I edit or delete some of my listings?",
-        answer: `- Sold items: Cannot be deleted (permanent record)
-- Items with accepted scheduled purchases: Cannot be edited or deleted while a scheduled purchase is active
-- Active/Pending items: Can be edited and deleted (unless a scheduled purchase is accepted)`,
+        question: "Why can't I edit or delete some listings?",
+        answer: `Sold items can't be deleted. Items with an active scheduled purchase can't be edited or deleted until the purchase is completed or cancelled.`,
       },
     ],
   },
   {
-    title: "Statistics & Metrics",
+    title: "Statistics",
     items: [
       {
-        question: "What do the statistics at the top mean?",
-        answer: `- Active Listings: Currently published items
-- Pending Sales: Items with sales in progress
-- Items Sold: Total sold items`,
+        question: "What do the stats at the top show?",
+        answer: `Active Listings \u2013 items currently published. Pending Sales \u2013 sales in progress. Items Sold \u2013 your total completed sales.`,
       },
     ],
   },
@@ -43,16 +32,11 @@ Removed: Item has been removed from public view`,
     items: [
       {
         question: "How do I filter my listings?",
-        answer: `Use the dropdowns at the top:
-- Status: Filter by Active, Draft, Sold, Pending, or Removed
-- Category: Filter by product category
-- Sort By: Sort by date, price, or review status`,
+        answer: `Use the dropdown menus to filter by status or category, and to sort by date, price, or review status.`,
       },
       {
         question: "What sorting options are available?",
-        answer: `- Newest First / Oldest First: By listing date
-- Price: Low to High / High to Low: By price
-- Reviewed Items On Top / Bottom: Only available when viewing "Sold" items; prioritizes items with buyer reviews`,
+        answer: `Newest/Oldest First, Price Low-to-High or High-to-Low, and Reviewed Items On Top/Bottom (only for Sold items).`,
       },
     ],
   },
@@ -60,23 +44,16 @@ Removed: Item has been removed from public view`,
     title: "Reviews & Ratings",
     items: [
       {
-        question: `What's the difference between "View Review" and "Rate Buyer"?`,
-        answer: `- View Review: See the review a buyer left for your item (seller rating and product rating)
-- Rate Buyer: Leave a rating for the buyer (only available for sold items)`,
+        question: "What is the difference between \"View Review\" and \"Rate Buyer\"?",
+        answer: `View Review shows the review a buyer left for your item. Rate Buyer lets you rate the buyer based on your experience.`,
       },
       {
         question: "When can I rate a buyer?",
-        answer: `Only after an item is marked as "Sold" and you have the buyer's information.`,
+        answer: `Only after the item is marked Sold.`,
       },
       {
-        question: "What do the seller and product ratings mean?",
-        answer: `- Seller Rating: How the buyer rated you as a seller
-- Product Rating: How the buyer rated the item itself
-- Both appear as star ratings on sold items that have been reviewed.`,
-      },
-      {
-        question: "Can I see reviews before an item is sold?",
-        answer: `No. Reviews are only available after an item is marked as "Sold" and the buyer has submitted a review.`,
+        question: "What are seller and product ratings?",
+        answer: `The seller rating reflects how the buyer rated you personally. The product rating reflects how they rated the item itself. Both appear as stars on sold items with reviews.`,
       },
     ],
   },
@@ -85,20 +62,15 @@ Removed: Item has been removed from public view`,
     items: [
       {
         question: "How do I create a new listing?",
-        answer: `Click the "Create New Listing" button in the Statistics section at the top of the dashboard.`,
+        answer: `Click \"Create New Listing\" at the top of the dashboard.`,
       },
       {
-        question: "How do I edit a listing?",
-        answer: `Click the "Edit" button next to any listing (if available). Editing is disabled for items with accepted scheduled purchases.`,
+        question: "How do I edit or delete a listing?",
+        answer: `Use the Edit or Delete buttons next to a listing. Editing and deleting are disabled while a scheduled purchase is active. Sold items cannot be deleted.`,
       },
       {
-        question: "How do I delete a listing?",
-        answer: `Click the "Delete" button next to any listing (if available). You'll be asked to confirm.
-Note: Sold items and items with accepted scheduled purchases cannot be deleted.`,
-      },
-      {
-        question: "What happens when I delete a listing?",
-        answer: `The listing is permanently removed from the marketplace. This action cannot be undone.`,
+        question: "Is deleting a listing permanent?",
+        answer: `Yes. Deleted listings are permanently removed and cannot be recovered.`,
       },
     ],
   },
@@ -106,12 +78,8 @@ Note: Sold items and items with accepted scheduled purchases cannot be deleted.`
     title: "Scheduled Purchases",
     items: [
       {
-        question: `What does "has accepted scheduled purchase" mean?`,
-        answer: `A buyer has accepted a scheduled purchase request for that item. While active, you cannot edit or delete the listing.`,
-      },
-      {
-        question: "Why can't I edit an item with an accepted scheduled purchase?",
-        answer: `To prevent changes that could affect the scheduled transaction. Once the purchase is completed or cancelled, editing becomes available again.`,
+        question: "What does \"has accepted scheduled purchase\" mean?",
+        answer: `A buyer accepted your schedule request. While the purchase is active you cannot edit or delete the listing.`,
       },
     ],
   },
@@ -119,12 +87,8 @@ Note: Sold items and items with accepted scheduled purchases cannot be deleted.`
     title: "Wishlists",
     items: [
       {
-        question: `What does "Number of Wishlists" mean?`,
-        answer: `How many users have added your item to their wishlist. This shows interest but doesn't guarantee a sale.`,
-      },
-      {
-        question: "Why does the wishlist count show 0 for sold items?",
-        answer: `Wishlists are hidden for sold items since they're no longer available.`,
+        question: "What does the wishlist count mean?",
+        answer: `It shows how many users saved your item to their wishlist. The count is hidden for sold items.`,
       },
     ],
   },
@@ -132,59 +96,37 @@ Note: Sold items and items with accepted scheduled purchases cannot be deleted.`
     title: "General",
     items: [
       {
-        question: "How do I view a listing as buyers see it?",
-        answer: `Click on the listing title or image to open the public product page.`,
+        question: "How do I see my listing the way buyers see it?",
+        answer: `Click the listing title or image to open the public product page.`,
       },
       {
-        question: "Can I see who bought my items?",
-        answer: `For sold items, you can see buyer information and rate them, but full buyer details are only available through the chat/conversation feature.`,
-      },
-      {
-        question: "What should I do if a listing isn't showing up?",
-        answer: `- Check your Status filter (it might be filtered out)
-- Check your Category filter
-- Refresh the page
-- Ensure you're logged in with the correct account`,
-      },
-      {
-        question: "How often do my statistics update?",
-        answer: `Statistics update automatically when you load the dashboard or when listing statuses change.`,
+        question: "A listing isn't showing up. What should I do?",
+        answer: `Check your status and category filters, refresh the page, and make sure you're logged into the correct account.`,
       },
     ],
   },
 ];
 
 function SellerDashboardFAQ() {
-  // global counter so numbering continues across sections
-  let questionIndex = 1;
-
   return (
-    <div className="space-y-6 text-sm text-gray-700 dark:text-gray-300">
+    <div className="space-y-5 text-sm text-gray-700 dark:text-gray-300">
       {SELLER_DASHBOARD_SECTIONS.map((section) => (
-        <section key={section.title} className="space-y-3">
-          {/* Section title: visually distinct badge-style heading */}
-          <h2
-            className="inline-block pl-2 pr-3 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-base md:text-lg font-semibold tracking-wide uppercase text-gray-900 dark:text-gray-100"
-          >
+        <section key={section.title} className="space-y-2.5">
+          <h2 className="inline-block pl-2 pr-3 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-sm font-semibold tracking-wide uppercase text-gray-900 dark:text-gray-100">
             {section.title}
           </h2>
 
-          {section.items.map((item) => {
-            const currentIndex = questionIndex++;
-            return (
-              <div
-                key={item.question}
-                className="pb-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
-              >
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                  {item.question}
-                </h3>
-                <p className="mt-1 whitespace-pre-line">
-                  {item.answer}
-                </p>
-              </div>
-            );
-          })}
+          {section.items.map((item) => (
+            <div
+              key={item.question}
+              className="pb-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+            >
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                {item.question}
+              </h3>
+              <p className="mt-0.5 whitespace-pre-line">{item.answer}</p>
+            </div>
+          ))}
         </section>
       ))}
     </div>

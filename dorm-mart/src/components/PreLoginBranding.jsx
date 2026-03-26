@@ -4,7 +4,7 @@ function PreLoginBranding({ animate = false, animateText = false }) {
   return (
     <>
       {/* Left side - Background image with branding (hidden on mobile, 50% on desktop) */}
-      <div className="hidden md:block md:w-1/2 relative h-[calc(100vh-2rem)] rounded-[3rem] md:rounded-[4rem] lg:rounded-[5rem] overflow-hidden border-4 border-white/40 shadow-2xl my-4 mx-2 md:mx-4">
+      <div className="hidden lg:block lg:w-1/2 relative h-[calc(100vh-2rem)] rounded-[3rem] lg:rounded-[4rem] xl:rounded-[5rem] overflow-hidden border-4 border-white/40 shadow-2xl my-4 mx-2 lg:mx-4">
         {/* Background image */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"

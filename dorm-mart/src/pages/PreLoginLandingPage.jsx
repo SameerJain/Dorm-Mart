@@ -5,9 +5,9 @@ function WelcomePage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-gray-50">
       {/* Left side - Background image with branding (hidden on mobile, 50% on desktop) */}
-      <div className="hidden md:block md:w-1/2 relative min-h-screen">
+      <div className="hidden lg:block lg:w-1/2 relative min-h-screen">
         {/* Background image */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -39,7 +39,7 @@ function WelcomePage() {
 
       {/* Right side - Action buttons (full width on mobile, 50% on desktop) */}
       <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 min-h-screen relative overflow-hidden"
+        className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 md:pt-16 md:pb-8 min-h-screen relative overflow-hidden"
         style={{ backgroundColor: "#364156" }}
       >
         {/* Animated background elements */}
@@ -50,24 +50,24 @@ function WelcomePage() {
         </div>
 
         {/* Mobile branding header (visible only on mobile) */}
-        <div className="md:hidden mb-8 text-center relative z-10">
-          <h1 className="text-5xl font-serif text-white mb-2 animate-fade-in">Dorm Mart</h1>
-          <h2 className="text-xl font-light text-white opacity-90 mb-4 animate-fade-in-delay">
+        <div className="lg:hidden mb-8 text-center relative z-10">
+          <h1 className="text-5xl md:text-8xl font-serif text-white mb-2 animate-fade-in">Dorm Mart</h1>
+          <h2 className="text-xl md:text-4xl font-light text-white opacity-90 mb-4 animate-fade-in-delay">
             Wastage, who?
           </h2>
-          <p className="text-base text-white opacity-80 max-w-sm mx-auto animate-fade-in-delay-2">
+          <p className="text-base md:text-xl text-white opacity-80 max-w-sm md:max-w-lg mx-auto animate-fade-in-delay-2">
             Your campus marketplace for buying and selling.
           </p>
         </div>
 
         {/* Action buttons container */}
-        <div className="w-full max-w-md space-y-4 relative z-10 animate-slide-up">
+        <div className="w-full max-w-md md:max-w-xl space-y-4 md:space-y-6 relative z-10 animate-slide-up">
           {/* Welcome message */}
           <div className="text-center mb-8">
-            <h2 className="text-3xl sm:text-4xl font-serif text-white mb-3">
+            <h2 className="text-3xl sm:text-4xl md:text-6xl font-serif text-white mb-3">
               Welcome!
             </h2>
-            <p className="text-lg text-gray-300">
+            <p className="text-lg md:text-2xl text-gray-300">
               Get started with Dorm Mart
             </p>
           </div>
@@ -75,7 +75,7 @@ function WelcomePage() {
           {/* Login Button */}
           <button
             onClick={() => navigate('/login')}
-            className="w-full py-4 px-6 rounded-lg text-lg font-semibold text-white transition-all duration-300 transform hover:scale-105 hover:shadow-2xl active:scale-95"
+            className="w-full py-4 md:py-6 px-6 rounded-lg text-lg md:text-2xl font-semibold text-white transition-all duration-300 transform hover:scale-105 hover:shadow-2xl active:scale-95"
             style={{ 
               backgroundColor: "#3d3eb5",
               boxShadow: "0 4px 15px rgba(61, 62, 181, 0.4)"
@@ -87,7 +87,7 @@ function WelcomePage() {
           {/* Create Account Button */}
           <button
             onClick={() => navigate('/create-account')}
-            className="w-full py-4 px-6 rounded-lg text-lg font-semibold text-white transition-all duration-300 transform hover:scale-105 hover:shadow-2xl active:scale-95"
+            className="w-full py-4 md:py-6 px-6 rounded-lg text-lg md:text-2xl font-semibold text-white transition-all duration-300 transform hover:scale-105 hover:shadow-2xl active:scale-95"
             style={{ 
               backgroundColor: "#2563eb",
               boxShadow: "0 4px 15px rgba(37, 99, 235, 0.4)"
@@ -97,7 +97,7 @@ function WelcomePage() {
           </button>
 
           {/* Additional info */}
-          <p className="text-sm text-gray-400 text-center mt-6">
+          <p className="text-sm md:text-lg text-gray-400 text-center mt-6">
             Join the community and start trading today!
           </p>
         </div>

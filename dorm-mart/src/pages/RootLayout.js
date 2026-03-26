@@ -35,11 +35,10 @@ function RootLayout() {
 
     const checkAuth = async () => {
       try {
-        await fetch_me(controller.signal);
+        const user = await fetch_me(controller.signal);
         setIsAuthenticated(true);
         setIsChecking(false);
-        // Load user theme after authentication is confirmed
-        loadUserTheme();
+        loadUserTheme(user?.user_id);
       } catch (error) {
         // AbortError means component unmounted, don't update state or navigate
         if (error.name === "AbortError") {

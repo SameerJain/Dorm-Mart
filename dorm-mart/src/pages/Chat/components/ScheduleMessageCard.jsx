@@ -17,7 +17,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     if (messageType === 'schedule_request') {
       const scheduledStatus = metadata.scheduled_purchase_status;
       const buyerResponseAt = metadata.buyer_response_at;
-      if (scheduledStatus === 'accepted' || scheduledStatus === 'declined' || buyerResponseAt) {
+      if (scheduledStatus === 'accepted' || scheduledStatus === 'declined' || scheduledStatus === 'cancelled' || scheduledStatus === 'expired' || buyerResponseAt) {
         return scheduledStatus === 'accepted' ? 'accepted' : 'declined';
       }
     }
@@ -94,7 +94,9 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
       const buyerResponseAt = metadata.buyer_response_at;
       const hasResponded = localResponseStatus !== null || 
                           scheduledStatus === 'accepted' || 
-                          scheduledStatus === 'declined' || 
+                          scheduledStatus === 'declined' ||
+                          scheduledStatus === 'cancelled' ||
+                          scheduledStatus === 'expired' ||
                           buyerResponseAt !== null && buyerResponseAt !== undefined;
       
       return {
@@ -134,6 +136,15 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
           textColor: 'text-red-600 dark:text-red-300',
           iconColor: 'text-red-600 dark:text-red-300',
           innerBgColor: 'bg-red-100/50 dark:bg-red-800/30',
+          showActions: false,
+        };
+      case 'schedule_expired':
+        return {
+          bgColor: 'bg-amber-50 dark:bg-amber-900/30',
+          borderColor: 'border-amber-400 dark:border-amber-700',
+          textColor: 'text-amber-600 dark:text-amber-300',
+          iconColor: 'text-amber-600 dark:text-amber-300',
+          innerBgColor: 'bg-amber-100/50 dark:bg-amber-800/30',
           showActions: false,
         };
       default:
@@ -195,7 +206,11 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     <div className={`max-w-[85%] rounded-2xl border-2 ${config.borderColor} ${config.bgColor} ${config.textColor} overflow-hidden`}>
       <div className="p-4 space-y-3">
         <div className="flex items-center gap-2 min-w-0">
-          {(messageType === 'schedule_cancelled' || localResponseStatus === 'declined') ? (
+          {messageType === 'schedule_expired' ? (
+            <svg className={`w-5 h-5 ${config.iconColor} flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ) : (messageType === 'schedule_cancelled' || localResponseStatus === 'declined') ? (
             <svg className={`w-5 h-5 ${config.iconColor} flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>

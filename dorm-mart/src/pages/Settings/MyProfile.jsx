@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
+import { withFallbackImage, FALLBACK_IMAGE_URL } from "../../utils/imageFallback";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
-const NAV_BLUE = "#2563EB";
 
 // File type restrictions (same as product listing and chat)
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
-const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+const MAX_BYTES = 10 * 1024 * 1024; // 10 MB - reasonable limit for profile photos
 
 function isAllowedType(f) {
   // Prefer MIME, but fall back to extension if needed
@@ -145,7 +145,7 @@ function StarRating({ rating = 0, size = 28, label }) {
       <div className="flex items-center gap-0.5 sm:gap-1" aria-label={label || `Rating: ${normalized} out of 5`}>
         {stars}
       </div>
-      <span className="text-xs sm:text-sm font-semibold text-gray-600">{normalized.toFixed(1)}</span>
+      <span className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300">{normalized.toFixed(1)}</span>
     </div>
   );
 }
@@ -155,26 +155,26 @@ function ReviewRow({ review }) {
   const imageClass = "h-20 w-24 sm:h-28 sm:w-32 rounded-xl object-cover shadow flex-shrink-0";
 
   return (
-    <article className="flex flex-col gap-3 sm:gap-4 rounded-none sm:rounded-2xl border-0 sm:border border-slate-200 bg-transparent sm:bg-white/80 p-3 sm:p-4 shadow-none sm:shadow-sm transition sm:hover:border-blue-200 sm:hover:shadow">
+    <article className="flex flex-col gap-3 sm:gap-4 rounded-none sm:rounded-lg border-0 sm:border border-slate-200 dark:border-gray-700 bg-transparent sm:bg-white/80 dark:sm:bg-gray-800 p-3 sm:p-4 shadow-none sm:shadow-sm transition sm:hover:border-blue-200 dark:sm:hover:border-blue-600 sm:hover:shadow">
       <div className="space-y-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="space-y-0.5 min-w-0 flex-1">
-            <p className="text-sm sm:text-base font-semibold text-slate-900 break-words">{review.reviewer_name || "Anonymous"}</p>
+            <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-gray-100 break-words">{review.reviewer_name || "Anonymous"}</p>
             {review.reviewer_email ? (
-              <p className="text-xs sm:text-sm text-slate-500 truncate" title={review.reviewer_email}>{review.reviewer_email}</p>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-gray-400 truncate" title={review.reviewer_email}>{review.reviewer_email}</p>
             ) : (
-              <p className="text-xs sm:text-sm text-slate-400">No email provided</p>
+              <p className="text-xs sm:text-sm text-slate-400 dark:text-gray-500">No email provided</p>
             )}
           </div>
           <div className="flex-shrink-0">
             <StarRating rating={review.rating} size={16} label={`${review.reviewer_name || "Reviewer"} rating`} />
           </div>
         </div>
-        <p className="text-xs sm:text-sm font-semibold text-blue-700 break-words">{review.product_title}</p>
-        <p className="text-xs sm:text-sm leading-relaxed text-slate-700 break-words whitespace-pre-wrap">{review.review}</p>
+        <p className="text-xs sm:text-sm font-semibold text-blue-700 dark:text-blue-400 break-words">{review.product_title}</p>
+        <p className="text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words whitespace-pre-wrap">{review.review}</p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3 border-t border-slate-100 pt-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 border-t border-slate-100 dark:border-gray-700 pt-3">
         {attachments.length > 0 ? (
           attachments.map((image, index) => (
             <img
@@ -194,8 +194,8 @@ function ReviewRow({ review }) {
 
 function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear, disabled = false }) {
   return (
-    <div className="space-y-2 rounded-none sm:rounded-2xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/60 p-3 sm:p-4 shadow-none sm:shadow-sm">
-      <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700">
+    <div className="space-y-2 rounded-none sm:rounded-lg border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/60 dark:sm:bg-gray-800 p-3 sm:p-4 shadow-none sm:shadow-sm">
+      <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700 dark:text-gray-200">
         <span>{label}</span>
         <button
           type="button"
@@ -206,7 +206,7 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
             onClear();
           }}
           disabled={disabled}
-          className={`text-xs font-medium text-rose-500 hover:text-rose-600 touch-manipulation py-1 px-2 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          className={`text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           Delete
         </button>
@@ -216,7 +216,7 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+        className="w-full rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-xs sm:text-sm text-slate-700 dark:text-gray-100 focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800"
       />
       <div className="flex justify-end">
         <button
@@ -331,7 +331,7 @@ function MyProfilePage() {
 
     // Validate file size
     if (file.size > MAX_BYTES) {
-      const errorMsg = "Image is too large. Maximum file size is 2 MB.";
+      const errorMsg = "Image is too large. Maximum file size is 10 MB.";
       setAvatarError(errorMsg);
       showFeedback(errorMsg, "error");
       event.target.value = null; // Clear the input
@@ -481,16 +481,16 @@ function MyProfilePage() {
         }
       `}</style>
       <div 
-        className="flex h-full w-full flex-col items-center overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-3 pb-4 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 lg:px-10 mobile-scrollbar-hide"
+        className="flex h-full w-full flex-col items-center overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-3 pt-6 pb-12 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 sm:pt-8 sm:pb-16 lg:px-10 lg:pt-10 lg:pb-20 mobile-scrollbar-hide"
       >
         {isLoading ? (
-          <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-slate-500">Loading profile...</div>
+          <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-slate-500 dark:text-gray-400">Loading profile...</div>
         ) : error ? (
-          <div className="flex h-full w-full items-center justify-center text-center text-red-600">{error}</div>
+          <div className="flex h-full w-full items-center justify-center text-center text-red-600 dark:text-red-400">{error}</div>
         ) : (
-          <div className="flex w-full max-w-[1500px] flex-1 flex-col gap-6 sm:gap-8 overflow-visible min-h-0 xl:flex-row xl:gap-10">
-            <section className="flex w-full flex-col gap-4 sm:gap-6 xl:max-w-[520px]">
-              <div className="rounded-none sm:rounded-3xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/80 p-4 sm:p-6 shadow-none sm:shadow">
+          <div className="flex w-full max-w-[1500px] flex-1 flex-col gap-8 sm:gap-10 overflow-visible min-h-0 xl:flex-row xl:gap-12">
+            <section className="flex w-full flex-col gap-6 sm:gap-8 xl:max-w-[520px]">
+              <div className="rounded-none sm:rounded-xl border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/80 dark:sm:bg-gray-800 p-4 sm:p-6 shadow-none sm:shadow">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -503,21 +503,25 @@ function MyProfilePage() {
                     type="button"
                     onClick={handleAvatarClick}
                     disabled={avatarUploading}
-                    className={`relative flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full border-4 border-white bg-slate-100 shadow-lg ring-2 sm:ring-4 ring-blue-100 transition hover:brightness-105 flex-shrink-0 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
+                    className={`relative flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full border-4 border-white dark:border-gray-800 bg-slate-100 dark:bg-gray-700 shadow-lg ring-2 sm:ring-4 ring-blue-100 dark:ring-blue-900 transition hover:brightness-105 flex-shrink-0 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
                   >
-                    {avatarPreview ? (
-                      <img src={avatarPreview} alt="Profile" className="h-full w-full rounded-full object-cover" />
-                    ) : (
-                      <span className="text-sm font-semibold text-slate-500">Upload photo</span>
-                    )}
+                    <img 
+                      src={avatarPreview ? withFallbackImage(avatarPreview) : FALLBACK_IMAGE_URL} 
+                      alt="" 
+                      className="h-full w-full rounded-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = FALLBACK_IMAGE_URL;
+                      }}
+                    />
                     <span className="absolute bottom-1.5 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-semibold text-white shadow">
                       {avatarUploading ? "Uploading..." : "Edit"}
                     </span>
                   </button>
-                  <div className="space-y-1 text-center sm:text-left text-slate-900 min-w-0 max-w-full overflow-hidden flex-1">
+                  <div className="space-y-1 text-center sm:text-left text-slate-900 dark:text-gray-100 min-w-0 max-w-full overflow-hidden flex-1">
                     <p className="text-xl sm:text-2xl font-serif font-semibold truncate block">{profile?.name}</p>
-                    <p className="text-xs sm:text-sm break-all">@{profile?.username}</p>
-                    <p className="text-xs sm:text-sm truncate" title={profile?.email}>{profile?.email}</p>
+                    <p className="text-xs sm:text-sm break-all dark:text-gray-300">@{profile?.username}</p>
+                    <p className="text-xs sm:text-sm truncate dark:text-gray-300" title={profile?.email}>{profile?.email}</p>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-col items-center gap-1 text-center text-xs sm:text-sm text-slate-500 sm:items-start sm:text-left">
@@ -536,9 +540,9 @@ function MyProfilePage() {
                 )}
               </div>
 
-              <div className="flex flex-1 flex-col rounded-none sm:rounded-3xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/80 p-4 sm:p-6 shadow-none sm:shadow">
+              <div className="flex flex-1 flex-col rounded-none sm:rounded-xl border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/80 dark:sm:bg-gray-800 p-4 sm:p-6 shadow-none sm:shadow mb-6 sm:mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                  <h2 className="text-base sm:text-lg font-semibold text-slate-900">Public Details</h2>
+                  <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-gray-100">Public Details</h2>
                   {profile?.username && (
                     <button
                       type="button"
@@ -556,9 +560,9 @@ function MyProfilePage() {
                     </button>
                   )}
                 </div>
-                <div className="mt-4 space-y-3 sm:space-y-4">
-                  <div className="rounded-none sm:rounded-2xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/70 p-3 sm:p-4 shadow-none sm:shadow-sm">
-                    <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700">
+                <div className="mt-4 space-y-4 sm:space-y-5">
+                  <div className="rounded-none sm:rounded-lg border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/70 dark:sm:bg-gray-800/70 p-3 sm:p-4 shadow-none sm:shadow-sm">
+                    <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700 dark:text-gray-200">
                       <span>Bio</span>
                       <button
                         type="button"
@@ -626,7 +630,7 @@ function MyProfilePage() {
                 </div>
                 {feedback.message && (
                   <p
-                    className={`mt-4 text-sm font-medium ${
+                    className={`mt-4 mb-2 text-sm font-medium ${
                       feedback.tone === "error" ? "text-rose-600" : "text-emerald-600"
                     }`}
                   >
@@ -636,11 +640,11 @@ function MyProfilePage() {
               </div>
             </section>
 
-            <section className="flex flex-1 flex-col overflow-visible xl:overflow-hidden rounded-none sm:rounded-3xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/90 p-4 sm:p-6 shadow-none sm:shadow xl:min-h-0">
+            <section className="flex flex-1 flex-col overflow-visible xl:overflow-hidden rounded-none sm:rounded-xl border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/90 dark:sm:bg-gray-800 p-4 sm:p-6 shadow-none sm:shadow xl:min-h-0">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Reviews</h2>
-                  <p className="text-xs sm:text-sm text-slate-500">{reviewList.length} recorded review{reviewList.length === 1 ? "" : "s"}</p>
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-gray-100">Reviews</h2>
+                  <p className="text-xs sm:text-sm text-slate-500 dark:text-gray-400">{reviewList.length} recorded review{reviewList.length === 1 ? "" : "s"}</p>
                 </div>
                 <button
                   type="button"

@@ -1,9 +1,32 @@
-// src/components/QnAModal.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import HomeFAQ from "./HomeFAQ";
 import ChatFAQ from "./ChatFAQ";
 import SellerDashboardFAQ from "./SellerDashboardFAQ";
+import PurchasesFAQ from "./PurchasesFAQ";
+import ReviewsFAQ from "./ReviewsFAQ";
+import SettingsFAQ from "./SettingsFAQ";
+import BrowsingFAQ from "./BrowsingFAQ";
+
+const TABS = [
+  { id: "home", label: "Home" },
+  { id: "browsing", label: "Browsing" },
+  { id: "chat", label: "Chat" },
+  { id: "purchases", label: "Purchases" },
+  { id: "reviews", label: "Reviews" },
+  { id: "seller", label: "Seller Dashboard" },
+  { id: "settings", label: "Settings" },
+];
+
+const TAB_CONTENT = {
+  home: <HomeFAQ />,
+  browsing: <BrowsingFAQ />,
+  chat: <ChatFAQ />,
+  purchases: <PurchasesFAQ />,
+  reviews: <ReviewsFAQ />,
+  seller: <SellerDashboardFAQ />,
+  settings: <SettingsFAQ />,
+};
 
 function FAQModal({ isOpen, onClose }) {
   const [activeView, setActiveView] = useState("home");
@@ -11,15 +34,6 @@ function FAQModal({ isOpen, onClose }) {
 
   if (!isOpen) {
     return null;
-  }
-
-  let content;
-  if (activeView === "home") {
-    content = <HomeFAQ />;
-  } else if (activeView === "chat") {
-    content = <ChatFAQ />;
-  } else if (activeView === "seller") {
-    content = <SellerDashboardFAQ />;
   }
 
   const handleOpenFaqsPage = () => {
@@ -47,14 +61,10 @@ function FAQModal({ isOpen, onClose }) {
         "
         onClick={(e) => e.stopPropagation()}
       >
-        {/* FAQ typography overrides */}
         <style>
           {`
             .faq-content {
-              font-size: 1.1rem;
-            }
-            .faq-content h3 {
-              font-size: 1.35rem;
+              font-size: 0.95rem;
             }
           `}
         </style>
@@ -74,71 +84,43 @@ function FAQModal({ isOpen, onClose }) {
               text-2xl leading-none
             "
           >
-            ×
+            &times;
           </button>
         </div>
 
         {/* body */}
         <div className="flex gap-6 flex-1 min-h-0">
-          {/* left sidebar */}
+          {/* sidebar */}
           <div
             className="
-              flex flex-col gap-3
-              w-48
+              flex flex-col gap-2
+              w-44
               border-r border-gray-200 dark:border-gray-700
               pr-4
               flex-none
             "
           >
-            <button
-              type="button"
-              onClick={() => setActiveView("home")}
-              className={`
-                w-full text-left px-4 py-2 text-base rounded-md border
-                ${
-                  activeView === "home"
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600"
-                }
-              `}
-            >
-              Home Page
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveView("chat")}
-              className={`
-                w-full text-left px-4 py-2 text-base rounded-md border
-                ${
-                  activeView === "chat"
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600"
-                }
-              `}
-            >
-              Chat Page
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveView("seller")}
-              className={`
-                w-full text-left px-4 py-2 text-base rounded-md border
-                ${
-                  activeView === "seller"
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600"
-                }
-              `}
-            >
-              Seller Dashboard
-            </button>
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveView(tab.id)}
+                className={`
+                  w-full text-left px-4 py-2 text-base rounded-md border
+                  ${
+                    activeView === tab.id
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                  }
+                `}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* right content */}
+          {/* content */}
           <div className="flex-1 min-h-0 flex flex-col">
-            {/* fixed button row */}
             <div className="flex justify-end mb-3 flex-none">
               <button
                 type="button"
@@ -156,19 +138,18 @@ function FAQModal({ isOpen, onClose }) {
               </button>
             </div>
 
-            {/* scrollable FAQ content with internal padding */}
             <div
               className="
                 faq-content
                 flex-1
                 h-full
                 overflow-y-auto
-                px-4    /* horizontal padding from border/edge */
-                pt-4    /* top padding so first text isn't too close */
+                px-4
+                pt-4
                 pb-2
               "
             >
-              {content}
+              {TAB_CONTENT[activeView]}
             </div>
           </div>
         </div>

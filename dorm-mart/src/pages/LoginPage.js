@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { fetch_me } from "../utils/handle_auth.js";
 import PreLoginBranding from "../components/PreLoginBranding";
-// Client no longer inspects cookies; auth is enforced server-side on protected routes
+
+const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -12,33 +12,8 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // Check if user is already authenticated on mount
-  useEffect(() => {
-    const controller = new AbortController();
-    
-    const checkAuth = async () => {
-      try {
-        await fetch_me(controller.signal);
-        // User is authenticated, redirect to app
-        navigate("/app", { replace: true });
-      } catch (error) {
-        console.error("Login error:", error);
-        // AbortError means component unmounted, don't navigate
-        if (error.name === 'AbortError') {
-          return;
-        }
-        // User is not authenticated, stay on login page
-      }
-    };
-
-    checkAuth();
-    
-    // Cleanup: abort fetch if component unmounts
-    return () => {
-      controller.abort();
-    };
-  }, [navigate]);
+  const [allowAllEmails, setAllowAllEmails] = useState(false);
+  const [emailPolicyLoading, setEmailPolicyLoading] = useState(true);
 
   // Handle URL parameters
   useEffect(() => {
@@ -98,16 +73,26 @@ function LoginPage() {
     }
 
     if (emailTrimmed === "") {
-      setError("Please enter your UB email address");
+      setError("Please enter your email address");
       setLoading(false);
       return;
     }
 
-    // Check if email is a UB email address
-    if (!emailTrimmed.toLowerCase().endsWith("@buffalo.edu")) {
-      setError("Only University at Buffalo email addresses are permitted (@buffalo.edu)");
+    // Email validation based on ALLOW_ALL_EMAILS flag (for UX, but backend accepts any valid email)
+    if (!emailPolicyLoading && !allowAllEmails && !emailTrimmed.toLowerCase().endsWith("@buffalo.edu")) {
+      setError("Email must be a buffalo.edu address");
       setLoading(false);
       return;
+    }
+
+    // Basic email format validation if allowAllEmails is true
+    if (!emailPolicyLoading && allowAllEmails) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailTrimmed)) {
+        setError("Please enter a valid email address");
+        setLoading(false);
+        return;
+      }
     }
 
     if (password.trim() === "") {
@@ -164,7 +149,7 @@ function LoginPage() {
           
           // Also save to localStorage for immediate access
           try {
-            const meRes = await fetch(`${process.env.REACT_APP_API_BASE}/auth/me.php`, { 
+            const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
               method: 'GET', 
               credentials: 'include' 
             });
@@ -189,10 +174,8 @@ function LoginPage() {
         let userFriendlyError = backendError;
         
         // Map backend errors to more user-friendly messages
-        if (backendError === "Invalid input format") {
-          userFriendlyError = "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
-        } else if (backendError === "Email must be @buffalo.edu") {
-          userFriendlyError = "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
+        if (backendError === "Invalid email format") {
+          userFriendlyError = "Please enter a valid email address";
         } else if (backendError === "Invalid credentials") {
           userFriendlyError = "Invalid email or password. Please try again.";
         } else if (backendError.includes("too large")) {
@@ -211,24 +194,24 @@ function LoginPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col md:flex-row pre-login-bg overflow-hidden">
+    <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
       {/* Right side - Login form (full width on mobile, 50% on desktop) */}
       <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-start md:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:py-8 pb-8 sm:pb-12 md:pb-8 h-screen pre-login-bg relative overflow-y-auto md:overflow-hidden"
+        className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden"
       >
         {/* Mobile branding header (visible only on mobile/tablet) */}
-        <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
-          <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">Dorm Mart</h1>
-          <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed">
+        <div className="lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
+          <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">Dorm Mart</h1>
+          <h2 className="text-xl sm:text-2xl md:text-4xl font-light text-gray-600 opacity-90 leading-relaxed">
             Wastage, who?
           </h2>
         </div>
 
-        <div className="w-full max-w-md relative z-10">
+        <div className="w-full max-w-md md:max-w-xl relative z-10">
           <div
-            className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600"
+            className="p-4 sm:p-6 md:p-10 rounded-lg relative bg-blue-600"
           >
             {/* Torn paper effect */}
             <div
@@ -243,7 +226,7 @@ function LoginPage() {
               {/* Header with dot */}
               <div className="text-center mb-4 sm:mb-6 md:mb-8">
                 <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-3 sm:mb-4"></div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-white leading-tight">
+                <h2 className="text-2xl sm:text-3xl md:text-5xl font-serif text-white leading-tight">
                   Log In
                 </h2>
               </div>
@@ -263,10 +246,10 @@ function LoginPage() {
               )}
 
               {/* Login form - Improved spacing for mobile */}
-              <form onSubmit={handleLogin} noValidate className="space-y-3 sm:space-y-4 md:space-y-5">
+              <form onSubmit={handleLogin} noValidate className="space-y-3 sm:space-y-4 md:space-y-6">
                 {/* Email input */}
                 <div>
-                  <label className="block text-sm sm:text-base font-semibold text-gray-300 mb-2 sm:mb-2.5">
+                  <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     University Email Address
                   </label>
                   <input
@@ -295,13 +278,13 @@ function LoginPage() {
                       setEmail(trimmedText);
                     }}
                     maxLength={255}
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
                   />
                 </div>
 
                 {/* Password input */}
                 <div>
-                  <label className="block text-sm sm:text-base font-semibold text-gray-300 mb-2 sm:mb-2.5">
+                  <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     Password
                   </label>
                   <input
@@ -309,7 +292,7 @@ function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     maxLength={64}
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
                   />
                 </div>
 
@@ -317,7 +300,7 @@ function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full min-h-[44px] bg-sky-500 hover:bg-sky-600 disabled:bg-sky-300 disabled:cursor-not-allowed text-white py-3 sm:py-3.5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium disabled:hover:scale-100 text-base sm:text-lg active:scale-95"
+                  className="w-full min-h-[44px] bg-sky-500 hover:bg-sky-600 disabled:bg-sky-300 disabled:cursor-not-allowed text-white py-3 sm:py-3.5 md:py-5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium disabled:hover:scale-100 text-base sm:text-lg md:text-xl active:scale-95"
                 >
                   <span>{loading ? "Logging in..." : "Login"}</span>
                   {!loading && (
@@ -338,7 +321,7 @@ function LoginPage() {
 
               {/* Links - Improved touch targets and spacing */}
               <div className="mt-6 sm:mt-8 text-center">
-                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm sm:text-base text-white">
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm sm:text-base md:text-lg text-white">
                   <a
                     href="#"
                     onClick={(e) => {
@@ -366,7 +349,7 @@ function LoginPage() {
           </div>
           
           {/* Tagline - Mobile only, outside login card */}
-          <p className="md:hidden mt-6 sm:mt-8 text-base sm:text-lg text-gray-600 opacity-80 max-w-sm mx-auto leading-relaxed text-center px-4">
+          <p className="lg:hidden mt-6 sm:mt-8 md:mt-10 text-base sm:text-lg md:text-2xl text-gray-600 opacity-80 max-w-sm md:max-w-lg mx-auto leading-relaxed text-center px-4">
             Your campus marketplace for buying and selling. Connect with fellow students and save money.
           </p>
         </div>

@@ -516,16 +516,18 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 mt-1">
               <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full p-1 w-fit">
                 <button
-                  onClick={() => setActiveTab("forYou")}
+                  onClick={() => interests.length && setActiveTab("forYou")}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
-                    activeTab === "forYou"
+                    !interests.length
+                      ? "text-gray-400 dark:text-gray-500 opacity-50 cursor-not-allowed"
+                      : activeTab === "forYou"
                       ? "bg-blue-600 text-white shadow"
-                      : "text-gray-700 dark:text-gray-200"
+                      : "text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white"
                   }`}
                   title={
                     interests.length
                       ? undefined
-                      : "You need to set your interested categories to access a for you page"
+                      : "Set your interested categories in Settings → User Preferences to unlock this tab"
                   }
                   disabled={!interests.length}
                 >

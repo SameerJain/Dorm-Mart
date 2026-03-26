@@ -69,7 +69,7 @@ function SettingsLayout({ children }) {
       </div>
 
       {/* Full-width grid that also stretches to full height */}
-      <div className="grid flex-1 w-full grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 px-6 py-6 min-h-0">
+      <div className="grid flex-1 w-full grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 px-6 pt-6 pb-8 min-h-0">
         {/* Desktop Sidebar (hidden on mobile) */}
         <aside
           className="hidden lg:block h-full rounded-xl p-0 text-white shadow"
@@ -174,7 +174,7 @@ function SettingsLayout({ children }) {
         </div>
 
         {/* Content (stretch to bottom) */}
-        <main className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 shadow overflow-auto min-h-0">
+        <main className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 pb-10 sm:pb-12 shadow overflow-auto min-h-0">
           {children}
         </main>
       </div>

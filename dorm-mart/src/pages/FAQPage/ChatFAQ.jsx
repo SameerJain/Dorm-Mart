@@ -1,74 +1,67 @@
-// src/components/ChatFAQ.jsx
 import React from "react";
 
-// Static list of FAQ entries for the Chat page
-const CHAT_FAQ_ITEMS = [
+const CHAT_SECTIONS = [
   {
-    question: "How do I start a conversation with someone?",
-    answer: `Only buyers can send the first message to start a conversation. When buyers find an item in which they are interested in, they will start a conversation via "Message Seller" button on a item's detail page.`,
+    title: "Getting Started",
+    items: [
+      {
+        question: "How do I start a conversation?",
+        answer: "Click \"Message Seller\" on any item's detail page. Only buyers can initiate conversations.",
+      },
+      {
+        question: "Can I send images in chat?",
+        answer: "Yes. Use the attachment icon next to the message input.",
+      },
+    ],
   },
   {
-    question: "How do we use the chat for?",
-    answer: `The chat is used for sellers and buyers to communicate to make a trade happen. They can chat to inquire or share more details of an item, negotiate on the final price, and schedule the location and time to trade an item.
-    `
+    title: "Scheduling & Confirming",
+    items: [
+      {
+        question: "What is a Scheduled Purchase?",
+        answer: "After agreeing on a deal, the seller sends a request with the meeting time, location, and final price. The buyer accepts to lock it in.",
+      },
+      {
+        question: "What is Confirm Purchase?",
+        answer: "After meeting in person, the seller sends a confirmation request. The buyer accepts after receiving the item and paying. Auto-confirms after 24 hours if ignored.",
+      },
+      {
+        question: "What if I can't make it to a meeting?",
+        answer: "Cancel from the Ongoing Purchases page and message the other person so they know.",
+      },
+    ],
   },
   {
-    question: "What is Schedule Purchase?",
-    answer: `Only sellers can see the “Schedule Purchase” button on their chat view with buyers. When a 
-buyer and seller agree on a transaction for an item, the seller will send a “Schedule Purchase” 
-request to the buyer to schedule a meeting for the trade, including the time, location, final price, 
-and the item being traded. The buyer should accept the request only when they agree on the details 
-of the scheduled meeting, since “Schedule Purchase” serves as a contractual agreement between sellers 
-and buyers. Once the buyer accepts the request, both the seller and buyer will be able to view the 
-schedule on the Ongoing Purchases page, to which you can navigate from the Market Icon on the 
-platform’s main navigation bar.`,
-  },
-  {
-    question: "What is Confirm Purchase?",
-    answer: `When a transaction has succeeded, meaning sellers and buyers have met and made the agreed 
-trade, the seller will send a “Confirm Purchase” request to the buyer to close the scheduled meeting 
-and confirm the trade of the item and payment. The buyer should accept the request only after 
-acquiring the item and paying the price to the seller. Once the buyer accepts the request, both the 
-seller and buyer will be able to review each other based on their experience with the transaction. 
-You will receive a message from the chat to help you redirect to review pages. If the buyer doesn’t 
-accept the request within 24 hours of receiving the request, the system will automatically mark the 
-transaction as complete. Since this automatic confirmation can cause issues (e.g., sellers send a 
-confirm purchase request without making a transaction), the developer team plans to implement a 
-moderator to address those issues.`,
-  },
-  {
-    question: "I can’t make it to a scheduled meeting. What do I do?",
-    answer: `You can cancel the meeting at any time if you can’t make it there. Currently, there is no 
-penalty for this. However, the development team is currently planning to implement a moderator that 
-allows you to mark your presence when you show up for a scheduled meeting. Along with the moderator 
-system, if you cancel a meeting or don’t show up, it will enforce a penalty since we are supposed to 
-treat every schedule as a contractual agreement. In the absence of such a system, make sure to 
-communicate with the other user to help them avoid showing up for the scheduled meeting, only to 
-realize you won’t be there.`,
-  },
-  {
-    question: "What does deleting a chat do?",
-    answer: `If you have agreed to a schedule, deleting the chat for that item will automatically cancel 
-it. Deleting a chat on your side won’t delete the chat on the other person’s side. An entire chat log 
-is deleted only when both users delete the chat on their end.`,
+    title: "Managing Chats",
+    items: [
+      {
+        question: "What happens if I delete a chat?",
+        answer: "It's removed on your side only. If there's an active scheduled purchase for that item, it gets automatically cancelled.",
+      },
+    ],
   },
 ];
 
 function ChatFAQ() {
   return (
-    <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-      {CHAT_FAQ_ITEMS.map((item, index) => (
-        <div
-          key={index} // React key for each FAQ block
-          className="pb-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
-        >
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-            {item.question}
-          </h3>
-          <p className="mt-1">
-            {item.answer}
-          </p>
-        </div>
+    <div className="space-y-5 text-sm text-gray-700 dark:text-gray-300">
+      {CHAT_SECTIONS.map((section) => (
+        <section key={section.title} className="space-y-2.5">
+          <h2 className="inline-block pl-2 pr-3 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-sm font-semibold tracking-wide uppercase text-gray-900 dark:text-gray-100">
+            {section.title}
+          </h2>
+          {section.items.map((item) => (
+            <div
+              key={item.question}
+              className="pb-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+            >
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                {item.question}
+              </h3>
+              <p className="mt-0.5">{item.answer}</p>
+            </div>
+          ))}
+        </section>
       ))}
     </div>
   );

@@ -72,22 +72,131 @@ function generatePassword(int $length = 8): string
 // Example:
 // echo generatePassword(12);
 
+/**
+ * Send welcome email via SendGrid REST API (for Railway)
+ */
+function sendWelcomeEmailViaSendGrid(array $user, string $tempPassword, string $apiKey): array
+{
+    global $PROJECT_ROOT;
+    
+    // Load SendGrid SDK
+    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
+        require_once $PROJECT_ROOT . '/vendor/autoload.php';
+    } else {
+        error_log("SendGrid: vendor/autoload.php not found");
+        return ['ok' => false, 'error' => 'SendGrid SDK not available'];
+    }
+    
+    try {
+        $sendgrid = new \SendGrid($apiKey);
+        
+        // XSS PROTECTION: Encoding - HTML entity encoding
+        $first = escapeHtml($user['firstName'] ?: 'Student');
+        $tempPasswordEscaped = escapeHtml($tempPassword);
+        $subject = 'Welcome to Dorm Mart';
+        
+        // HTML content (same as SMTP version)
+        $html = <<<HTML
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{$subject}</title>
+  </head>
+  <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
+    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
+      <p style="color:#eee;">Dear {$first},</p>
+      <p style="color:#eee;">Welcome to <strong>Dorm Mart</strong> &mdash; the student marketplace for UB.</p>
+      <p style="color:#eee;">Here is your temporary (current) password. <strong>DO NOT</strong> share this with anyone.</p>
+      <p style="font-size:20px;color:#fff;"><strong>{$tempPasswordEscaped}</strong></p>
+      <p style="color:#eee;">If you want to change this password, go to <em>Settings &rarr; Change Password</em>.</p>
+      <p style="color:#eee;">Happy trading,<br/>The Dorm Mart Team</p>
+      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
+      <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
+      <a href="mailto:dormmartsupport@gmail.com" style="color:#9db7ff;">dormmartsupport@gmail.com</a></p>
+    </div>
+  </body>
+</html>
+HTML;
+
+        // Plain-text content
+        $firstPlain = $user['firstName'] ?: 'Student';
+        $text = <<<TEXT
+Dear {$firstPlain},
+
+Welcome to Dorm Mart - the student marketplace for UB.
+
+Here is your temporary (current) password. DO NOT share this with anyone.
+
+{$tempPassword}
+
+If you want to change this password, go to Settings -> Change Password.
+
+Happy trading,
+The Dorm Mart Team
+
+(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
+TEXT;
+
+        $email = new \SendGrid\Mail\Mail();
+        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setSubject($subject);
+        $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
+        $email->addContent("text/html", $html);
+        $email->addContent("text/plain", $text);
+        
+        $response = $sendgrid->send($email);
+        $statusCode = $response->statusCode();
+        $responseBody = $response->body();
+        
+        error_log("SendGrid response: Status " . $statusCode . " - Body: " . $responseBody);
+        
+        if ($statusCode >= 200 && $statusCode < 300) {
+            error_log("SendGrid email sent successfully to: " . $user['email']);
+            return ['ok' => true, 'error' => null];
+        } else {
+            error_log("SendGrid error: " . $statusCode . " - " . $responseBody);
+            return ['ok' => false, 'error' => 'Failed to send email via SendGrid'];
+        }
+    } catch (Exception $e) {
+        error_log("SendGrid exception in sendWelcomeEmailViaSendGrid: " . $e->getMessage());
+        return ['ok' => false, 'error' => $e->getMessage()];
+    }
+}
+
 function sendWelcomeGmail(array $user, string $tempPassword): array
 {
     global $PROJECT_ROOT;
 
-    // pick an env file (cleaned)
-    foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-        if (is_readable($envFile)) {
-            foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                $line = trim($line);
-                if ($line === '' || str_starts_with($line, '#')) continue;
-                [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-                putenv(trim($k) . '=' . trim($v));
+    // Check for SendGrid API key first (Railway option)
+    $sendgridApiKey = getenv('SENDGRID_API_KEY');
+    error_log("DEBUG: Checking SendGrid API key for welcome email. Key exists: " . (!empty($sendgridApiKey) ? 'yes' : 'no'));
+    if (!empty($sendgridApiKey)) {
+        // Use SendGrid REST API for Railway
+        error_log("DEBUG: Using SendGrid for welcome email to: " . $user['email']);
+        return sendWelcomeEmailViaSendGrid($user, $tempPassword, $sendgridApiKey);
+    }
+    error_log("DEBUG: SendGrid API key not found, falling back to PHPMailer");
+
+    // Otherwise, use existing SMTP code (cattle/aptitude/local)
+    // Check if we're on Railway (or similar platform) where env vars are set directly
+    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
+    if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
+        // Not on Railway, load from .env files
+        foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
+            if (is_readable($envFile)) {
+                foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                    $line = trim($line);
+                    if ($line === '' || str_starts_with($line, '#')) continue;
+                    [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
+                    putenv(trim($k) . '=' . trim($v));
+                }
+                break;
             }
-            break;
         }
     }
+    // On Railway, environment variables are already set, no need to load from files
 
     // Ensure PHP is using UTF-8 internally
     if (function_exists('mb_internal_encoding')) {
@@ -100,13 +209,23 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = getenv('GMAIL_USERNAME');
-        $mail->Password   = getenv('GMAIL_PASSWORD');
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // or STARTTLS 587
-        $mail->Port       = 465;
+        $gmailUsername = getenv('GMAIL_USERNAME');
+        $gmailPassword = getenv('GMAIL_PASSWORD');
+        
+        // Debug: Log if credentials are missing (but don't expose passwords)
+        if (empty($gmailUsername) || empty($gmailPassword)) {
+            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set. Username set: " . (!empty($gmailUsername) ? 'yes' : 'no'));
+            return ['ok' => false, 'error' => 'Email configuration missing'];
+        }
+        
+        $mail->Username   = $gmailUsername;
+        $mail->Password   = $gmailPassword;
+        // Try STARTTLS on port 587 first (Railway may block port 465)
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
 
         // Optimizations for faster email delivery
-        $mail->Timeout = 30; // Reduced timeout for faster failure detection
+        $mail->Timeout = 10; // Reduced timeout for faster failure detection (Railway may block SMTP)
         $mail->SMTPKeepAlive = false; // Close connection after sending
         $mail->SMTPOptions = [
             'ssl' => [
@@ -183,7 +302,124 @@ TEXT;
         $mail->send();
         return ['ok' => true, 'error' => null];
     } catch (Exception $e) {
-        return ['ok' => false, 'error' => $mail->ErrorInfo];
+        $errorMsg = $mail->ErrorInfo ?? $e->getMessage();
+        error_log("PHPMailer exception in sendWelcomeGmail: " . $errorMsg);
+        return ['ok' => false, 'error' => $errorMsg];
+    }
+}
+
+/**
+ * Send promo welcome email via SendGrid REST API (for Railway)
+ */
+function sendPromoWelcomeEmailViaSendGrid(array $user, string $apiKey): array
+{
+    global $PROJECT_ROOT;
+    
+    // Load SendGrid SDK
+    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
+        require_once $PROJECT_ROOT . '/vendor/autoload.php';
+    } else {
+        error_log("SendGrid: vendor/autoload.php not found");
+        return ['ok' => false, 'error' => 'SendGrid SDK not available'];
+    }
+    
+    try {
+        $sendgrid = new \SendGrid($apiKey);
+        
+        $first = $user['firstName'] ?: 'Student';
+        $subject = 'Welcome to Dorm Mart Promotional Updates';
+        
+        // HTML content (same as SMTP version)
+        $html = <<<HTML
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{$subject}</title>
+  </head>
+  <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
+    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:12px;padding:24px;border:1px solid #333;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#2563EB;margin:0;font-size:24px;font-weight:bold;">📧 Promotional Updates</h1>
+        <div style="width:60px;height:3px;background:linear-gradient(90deg, #2563EB, #1d4ed8);margin:8px auto;border-radius:2px;"></div>
+      </div>
+      
+      <p style="color:#eee;font-size:16px;margin:0 0 16px 0;">Dear {$first},</p>
+      
+      <p style="color:#eee;margin:0 0 20px 0;">Thank you for opting into promotional updates from <strong style="color:#2563EB;">Dorm Mart</strong>!</p>
+      
+      <div style="background:#2a2a2a;border-radius:8px;padding:20px;margin:20px 0;border-left:4px solid #2563EB;">
+        <p style="color:#eee;margin:0 0 12px 0;font-weight:bold;">You'll now receive updates about:</p>
+        <ul style="color:#ddd;margin:0;padding-left:20px;">
+          <li style="margin:6px 0;">Emails about your notifcations tab</li>
+          <li style="margin:6px 0;">New website news and updates</li>
+        </ul>
+      </div>
+      
+      <p style="color:#eee;margin:20px 0;">This is a one-time email for the first time you ever sign up for promotional updates with an account. We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.</p>
+      
+      <div style="text-align:center;margin:24px 0;">
+        <div style="display:inline-block;background:#333;padding:12px 24px;border-radius:6px;border:1px solid #2563EB;">
+          <span style="color:#2563EB;font-weight:bold;">✓ Successfully Subscribed</span>
+        </div>
+      </div>
+      
+      <p style="color:#eee;margin:20px 0 0 0;">
+        Happy trading,<br/>
+        <strong style="color:#2563EB;">The Dorm Mart Team</strong>
+      </p>
+      
+      <hr style="border:none;border-top:1px solid #333;margin:20px 0;">
+      <p style="font-size:12px;color:#aaa;margin:0;">This is an automated message; do not reply. For support:
+      <a href="mailto:dormmartsupport@gmail.com" style="color:#2563EB;">dormmartsupport@gmail.com</a></p>
+    </div>
+  </body>
+</html>
+HTML;
+
+        // Plain-text version
+        $text = <<<TEXT
+Promotional Updates - Dorm Mart
+
+Dear {$first},
+
+Thank you for opting into promotional updates from Dorm Mart!
+
+You'll now receive updates about:
+- Important updates and announcements
+- New features and improvements  
+- Campus marketplace tips
+
+We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.
+
+✓ Successfully Subscribed
+
+Happy trading,
+The Dorm Mart Team
+
+(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
+TEXT;
+
+        $email = new \SendGrid\Mail\Mail();
+        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setSubject($subject);
+        $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
+        $email->addContent("text/html", $html);
+        $email->addContent("text/plain", $text);
+        
+        $response = $sendgrid->send($email);
+        
+        if ($response->statusCode() >= 200 && $response->statusCode() < 300) {
+            return ['ok' => true, 'error' => null];
+        } else {
+            $errorBody = $response->body();
+            error_log("SendGrid error in promo email: " . $response->statusCode() . " - " . $errorBody);
+            return ['ok' => false, 'error' => 'Failed to send promo email via SendGrid'];
+        }
+    } catch (Exception $e) {
+        error_log("SendGrid exception in sendPromoWelcomeEmailViaSendGrid: " . $e->getMessage());
+        return ['ok' => false, 'error' => $e->getMessage()];
     }
 }
 
@@ -191,18 +427,31 @@ function sendPromoWelcomeEmail(array $user): array
 {
     global $PROJECT_ROOT;
 
-    // Load environment variables
-    foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-        if (is_readable($envFile)) {
-            foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                $line = trim($line);
-                if ($line === '' || str_starts_with($line, '#')) continue;
-                [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-                putenv(trim($k) . '=' . trim($v));
+    // Check for SendGrid API key first (Railway option)
+    $sendgridApiKey = getenv('SENDGRID_API_KEY');
+    if (!empty($sendgridApiKey)) {
+        // Use SendGrid REST API for Railway
+        return sendPromoWelcomeEmailViaSendGrid($user, $sendgridApiKey);
+    }
+
+    // Otherwise, use existing SMTP code (cattle/aptitude/local)
+    // Check if we're on Railway (or similar platform) where env vars are set directly
+    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
+    if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
+        // Not on Railway, load from .env files
+        foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
+            if (is_readable($envFile)) {
+                foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                    $line = trim($line);
+                    if ($line === '' || str_starts_with($line, '#')) continue;
+                    [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
+                    putenv(trim($k) . '=' . trim($v));
+                }
+                break;
             }
-            break;
         }
     }
+    // On Railway, environment variables are already set, no need to load from files
 
     // Ensure PHP is using UTF-8 internally
     if (function_exists('mb_internal_encoding')) {
@@ -215,10 +464,20 @@ function sendPromoWelcomeEmail(array $user): array
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = getenv('GMAIL_USERNAME');
-        $mail->Password   = getenv('GMAIL_PASSWORD');
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port       = 465;
+        $gmailUsername = getenv('GMAIL_USERNAME');
+        $gmailPassword = getenv('GMAIL_PASSWORD');
+        
+        // Debug: Log if credentials are missing
+        if (empty($gmailUsername) || empty($gmailPassword)) {
+            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set in sendPromoWelcomeEmail");
+            return ['ok' => false, 'error' => 'Email configuration missing'];
+        }
+        
+        $mail->Username   = $gmailUsername;
+        $mail->Password   = $gmailPassword;
+        // Try STARTTLS on port 587 first (Railway may block port 465)
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
 
         // Optimizations for faster email delivery
         $mail->Timeout = 30;
@@ -373,13 +632,34 @@ if (containsXSSPattern($firstNameRaw) || containsXSSPattern($lastNameRaw)) {
     exit;
 }
 
+// Load email policy configuration
+require_once __DIR__ . '/../config/email_config.php';
+
 // XSS PROTECTION: Input validation with regex patterns to prevent XSS attacks
 $firstName = validateInput($firstNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
 $lastName = validateInput($lastNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
 $gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
 $gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
-$email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
 $promos    = !empty($data['promos']);
+
+// Email validation based on ALLOW_ALL_EMAILS flag
+if (ALLOW_ALL_EMAILS) {
+    // Accept any valid email format
+    $email = validateInput($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
+    if ($email === false || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
+        exit;
+    }
+} else {
+    // Only accept @buffalo.edu
+    $email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
+    if ($email === false || !preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);
+        exit;
+    }
+}
 
 if ($firstName === false || $lastName === false || $email === false) {
     http_response_code(400);
@@ -391,12 +671,6 @@ if ($firstName === false || $lastName === false || $email === false) {
 if ($firstName === '' || $lastName === '' || $email === '') {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Missing required fields']);
-    exit;
-}
-
-if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);
     exit;
 }
 // --- Validate graduation date format ---
@@ -425,7 +699,7 @@ if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > 
     exit;
 }
 
-require "../database/db_connect.php";
+require __DIR__ . '/../database/db_connect.php';
 $conn = db();
 try {
     // ============================================================================
@@ -498,8 +772,19 @@ try {
         exit;
     }
 
-    // Send welcome email (ignore result here)
-    sendWelcomeGmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
+    // Send welcome email (non-blocking - don't wait for it to complete)
+    // Account creation succeeds even if email fails
+    try {
+        // Use a shorter timeout and don't block account creation
+        $emailResult = @sendWelcomeGmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
+        if (!$emailResult['ok']) {
+            // Log email sending error but don't fail account creation
+            error_log("Failed to send welcome email to {$email}: " . ($emailResult['error'] ?? 'Unknown error'));
+        }
+    } catch (Throwable $e) {
+        // Email sending failed but account was created successfully
+        error_log("Exception sending welcome email to {$email}: " . $e->getMessage());
+    }
 
     // Promo email is no longer sent during account creation
     // Promo emails will only be sent from user preferences settings

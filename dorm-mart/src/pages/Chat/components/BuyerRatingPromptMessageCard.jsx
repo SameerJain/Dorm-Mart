@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
@@ -8,38 +8,41 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
   const [hasRating, setHasRating] = useState(false);
   const [isLoadingRating, setIsLoadingRating] = useState(true);
 
-  // Fetch buyer rating status on mount
+  const fetchRatingStatus = useCallback(async () => {
+    if (!productId) return;
+    try {
+      const response = await fetch(
+        `${API_BASE}/reviews/get_buyer_rating.php?product_id=${productId}`,
+        { method: "GET", credentials: "include" }
+      );
+      if (response.ok) {
+        const result = await response.json();
+        setHasRating(!!(result.success && result.has_rating));
+      }
+    } catch (error) {
+      console.error("Error fetching buyer rating status:", error);
+    } finally {
+      setIsLoadingRating(false);
+    }
+  }, [productId]);
+
   useEffect(() => {
     if (!productId) {
       setIsLoadingRating(false);
       return;
     }
+    fetchRatingStatus();
+  }, [productId, fetchRatingStatus]);
 
-    const fetchRatingStatus = async () => {
-      try {
-        const response = await fetch(
-          `${API_BASE}/reviews/get_buyer_rating.php?product_id=${productId}`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.has_rating) {
-            setHasRating(true);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching buyer rating status:", error);
-      } finally {
-        setIsLoadingRating(false);
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && productId) {
+        fetchRatingStatus();
       }
     };
-
-    fetchRatingStatus();
-  }, [productId]);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [productId, fetchRatingStatus]);
 
   const handleRatingClick = () => {
     if (productId && buyerId) {

@@ -37,24 +37,132 @@ foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJEC
     }
 }
 
+/**
+ * Send password reset email via SendGrid REST API (for Railway)
+ */
+function sendPasswordResetEmailViaSendGrid(array $user, string $resetLink, string $apiKey): array
+{
+    global $PROJECT_ROOT;
+    
+    // Load SendGrid SDK
+    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
+        require_once $PROJECT_ROOT . '/vendor/autoload.php';
+    } else {
+        error_log("SendGrid: vendor/autoload.php not found");
+        return ['success' => false, 'error' => 'SendGrid SDK not available'];
+    }
+    
+    try {
+        $sendgrid = new \SendGrid($apiKey);
+        
+        // XSS PROTECTION: Encoding - HTML entity encoding
+        $firstName = escapeHtml($user['first_name'] ?: 'Student');
+        $resetLinkEscaped = escapeHtml($resetLink);
+        $subject = 'Reset Your Password - Dorm Mart';
+        
+        // HTML content (same as SMTP version)
+        $html = <<<HTML
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{$subject}</title>
+  </head>
+  <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
+    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
+      <p style="color:#eee;">Dear {$firstName},</p>
+      <p style="color:#eee;">You requested to reset your password for your Dorm Mart account.</p>
+      <p style="margin:20px 0;">
+        <a href="{$resetLinkEscaped}" style="background:#007bff;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">Reset Password</a>
+      </p>
+      <p style="color:#eee;">This link will expire in 1 hour for security reasons.</p>
+      <p style="color:#eee;">Best regards,<br/>The Dorm Mart Team</p>
+      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
+      <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
+      <a href="mailto:dormmartsupport@gmail.com" style="color:#9db7ff;">dormmartsupport@gmail.com</a></p>
+    </div>
+  </body>
+</html>
+HTML;
+
+        // Plain-text version
+        $firstNamePlain = $user['first_name'] ?: 'Student';
+        $text = <<<TEXT
+Dear {$firstNamePlain},
+
+You requested to reset your password for your Dorm Mart account.
+
+Click this link to reset your password:
+{$resetLink}
+
+This link will expire in 1 hour for security reasons.
+
+Best regards,
+The Dorm Mart Team
+
+(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
+TEXT;
+
+        $email = new \SendGrid\Mail\Mail();
+        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setSubject($subject);
+        $email->addTo($user['email'], trim($user['first_name'] . ' ' . $user['last_name']));
+        $email->addContent("text/html", $html);
+        $email->addContent("text/plain", $text);
+        
+        $response = $sendgrid->send($email);
+        $statusCode = $response->statusCode();
+        $responseBody = $response->body();
+        
+        error_log("SendGrid response: Status " . $statusCode . " - Body: " . $responseBody);
+        
+        if ($statusCode >= 200 && $statusCode < 300) {
+            error_log("SendGrid password reset email sent successfully to: " . $user['email']);
+            return ['success' => true, 'message' => 'Email sent successfully'];
+        } else {
+            error_log("SendGrid error in password reset: " . $statusCode . " - " . $responseBody);
+            return ['success' => false, 'error' => 'Failed to send email via SendGrid'];
+        }
+    } catch (Exception $e) {
+        error_log("SendGrid exception in sendPasswordResetEmailViaSendGrid: " . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
 // Use the EXACT same email sending logic as create_account.php for maximum speed
 function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel = 'Local'): array
 {
     global $PROJECT_ROOT;
 
-    // Load environment variables (EXACT same as create_account.php)
-    // Ensures Gmail credentials are properly loaded for email sending
-    foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-        if (is_readable($envFile)) {
-            foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                $line = trim($line);
-                if ($line === '' || str_starts_with($line, '#')) continue;
-                [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-                putenv(trim($k) . '=' . trim($v));
+    // Check for SendGrid API key first (Railway option)
+    $sendgridApiKey = getenv('SENDGRID_API_KEY');
+    error_log("DEBUG: Checking SendGrid API key. Key exists: " . (!empty($sendgridApiKey) ? 'yes' : 'no'));
+    if (!empty($sendgridApiKey)) {
+        // Use SendGrid REST API for Railway
+        error_log("DEBUG: Using SendGrid for password reset email to: " . $user['email']);
+        return sendPasswordResetEmailViaSendGrid($user, $resetLink, $sendgridApiKey);
+    }
+    error_log("DEBUG: SendGrid API key not found, falling back to PHPMailer");
+
+    // Otherwise, use existing SMTP code (cattle/aptitude/local)
+    // Check if we're on Railway (or similar platform) where env vars are set directly
+    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
+    if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
+        // Not on Railway, load from .env files
+        foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
+            if (is_readable($envFile)) {
+                foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                    $line = trim($line);
+                    if ($line === '' || str_starts_with($line, '#')) continue;
+                    [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
+                    putenv(trim($k) . '=' . trim($v));
+                }
+                break;
             }
-            break;
         }
     }
+    // On Railway, environment variables are already set, no need to load from files
 
     // Ensure PHP is using UTF-8 internally (EXACT same as create_account.php)
     if (function_exists('mb_internal_encoding')) {
@@ -64,17 +172,27 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
     $mail = new PHPMailer(true);
     try {
         // SMTP Configuration (EXACT same as create_account.php)
-        // Uses Gmail SMTP with SSL encryption for secure email delivery
+        // Uses Gmail SMTP with STARTTLS encryption (port 587 - Railway may block port 465)
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = getenv('GMAIL_USERNAME');
-        $mail->Password   = getenv('GMAIL_PASSWORD');
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port       = 465;
+        $gmailUsername = getenv('GMAIL_USERNAME');
+        $gmailPassword = getenv('GMAIL_PASSWORD');
+        
+        // Debug: Log if credentials are missing
+        if (empty($gmailUsername) || empty($gmailPassword)) {
+            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set in sendPasswordResetEmail");
+            return ['success' => false, 'error' => 'Email configuration missing'];
+        }
+        
+        $mail->Username   = $gmailUsername;
+        $mail->Password   = $gmailPassword;
+        // Try STARTTLS on port 587 first (Railway may block port 465)
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
 
         // Optimizations for faster email delivery
-        $mail->Timeout = 30; // Reduced timeout for faster failure detection
+        $mail->Timeout = 10; // Reduced timeout (Railway may block SMTP) // Reduced timeout for faster failure detection
         $mail->SMTPKeepAlive = false; // Close connection after sending
         $mail->SMTPOptions = [
             'ssl' => [
@@ -188,6 +306,9 @@ if (strpos($ct, 'application/json') !== false) {
     $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
 }
 
+// Load email policy configuration
+require_once __DIR__ . '/../config/email_config.php';
+
 // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
 // Note: SQL injection prevented by prepared statements
 if ($emailRaw !== '' && containsXSSPattern($emailRaw)) {
@@ -196,12 +317,23 @@ if ($emailRaw !== '' && containsXSSPattern($emailRaw)) {
     exit;
 }
 
-$email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
-
-if ($email === false) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid email format']);
-    exit;
+// Email validation based on ALLOW_ALL_EMAILS flag
+if (ALLOW_ALL_EMAILS) {
+    // Accept any valid email format
+    $email = validateInput($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
+    if ($email === false || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid email format']);
+        exit;
+    }
+} else {
+    // Only accept @buffalo.edu
+    $email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
+    if ($email === false || !preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Email must be @buffalo.edu']);
+        exit;
+    }
 }
 
 try {
@@ -310,6 +442,24 @@ function get_reset_password_base_url(): string
     // Prefer explicit origin/host detection
     $host   = $_SERVER['HTTP_HOST']   ?? '';
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+    // Railway deployment - check for Railway environment or Railway domain
+    $isRailway = (
+        getenv('RAILWAY_ENVIRONMENT') !== false ||
+        getenv('RAILWAY_SERVICE_NAME') !== false ||
+        strpos($host, 'railway.app') !== false ||
+        strpos($host, 'dormmart.me') !== false ||
+        strpos($origin, 'railway.app') !== false ||
+        strpos($origin, 'dormmart.me') !== false
+    );
+
+    if ($isRailway) {
+        // Use HTTPS and the Railway domain (dormmart.me or Railway-provided domain)
+        // $host from $_SERVER['HTTP_HOST'] is just the hostname (e.g., 'dormmart.me')
+        $railwayHost = $host ?: (parse_url($origin, PHP_URL_HOST) ?: 'dormmart.me');
+        // Ensure we use HTTPS for Railway
+        return 'https://' . rtrim($railwayHost, '/');
+    }
 
     // Production server
     if (strpos($host, 'cattle.cse.buffalo.edu') !== false || strpos($origin, 'cattle.cse.buffalo.edu') !== false) {
