@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/expire_stale.php';
 
 setSecurityHeaders();
 setSecureCORS();
@@ -27,6 +28,8 @@ try {
 
     $conn = db();
     $conn->set_charset('utf8mb4');
+
+    expireStaleRequests($conn);
 
     $sql = <<<SQL
         SELECT
@@ -63,7 +66,16 @@ try {
                     AND cpr.is_successful = 1
                 ) THEN 1 
                 ELSE 0 
-            END AS has_completed_confirm
+            END AS has_completed_confirm,
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 
+                    FROM product_reviews pr 
+                    WHERE pr.product_id = spr.inventory_product_id 
+                    AND pr.buyer_user_id = spr.buyer_user_id
+                ) THEN 1 
+                ELSE 0 
+            END AS has_review
         FROM scheduled_purchase_requests spr
         INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
         INNER JOIN user_accounts seller ON seller.user_id = spr.seller_user_id
@@ -136,6 +148,7 @@ try {
         }
 
         $hasCompletedConfirm = isset($row['has_completed_confirm']) && ($row['has_completed_confirm'] === 1 || $row['has_completed_confirm'] === '1');
+        $hasReview = isset($row['has_review']) && ($row['has_review'] === 1 || $row['has_review'] === '1');
 
         // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $records[] = [
@@ -157,6 +170,7 @@ try {
             'trade_item_description' => $tradeItemDescription,
             'canceled_by' => $canceledBy,
             'has_completed_confirm' => $hasCompletedConfirm,
+            'has_review' => $hasReview,
             'item' => [
                 'title' => $row['item_title'] ?? 'Untitled',
                 'photos' => $photos,
