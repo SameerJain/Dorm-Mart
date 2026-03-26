@@ -1,44 +1,42 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { fetch_me } from "../utils/handle_auth.js";
 import PreLoginBranding from "../components/PreLoginBranding";
+
+const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [allowAllEmails, setAllowAllEmails] = useState(false);
+  const [emailPolicyLoading, setEmailPolicyLoading] = useState(true);
   const BACKDOOR_KEYWORD = "testflow"; // typing this as the email triggers the confirmation page for testing
 
-  // Check if user is already authenticated on mount
+  // Fetch email policy configuration
   useEffect(() => {
-    const controller = new AbortController();
-    
-    const checkAuth = async () => {
+    const fetchEmailPolicy = async () => {
       try {
-        await fetch_me(controller.signal);
-        // User is authenticated, redirect to app
-        navigate("/app", { replace: true });
-      } catch (error) {
-        // AbortError means component unmounted, don't navigate
-        if (error.name === 'AbortError') {
-          return;
+        const response = await fetch(`${API_BASE}/config/email_policy.php`, {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok) {
+            setAllowAllEmails(data.allowAllEmails || false);
+          }
         }
-        // User is not authenticated, stay on forgot password page
+      } catch (error) {
+        console.error('Failed to fetch email policy:', error);
+      } finally {
+        setEmailPolicyLoading(false);
       }
     };
-
-    checkAuth();
-    
-    // Cleanup: abort fetch if component unmounts
-    return () => {
-      controller.abort();
-    };
-  }, [navigate]);
+    fetchEmailPolicy();
+  }, []);
 
   async function sendForgotPasswordRequest(email, signal) {
-    const BASE = process.env.REACT_APP_API_BASE || "/api";
-    const r = await fetch(`${BASE}/auth/forgot-password.php`, {
+    const r = await fetch(`${API_BASE}/auth/forgot-password.php`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
@@ -62,7 +60,11 @@ function ForgotPasswordPage() {
 
     const valid = emailValidation(email);
     if (!valid) {
-      setError("Email must be a valid UB email address");
+      if (!emailPolicyLoading && !allowAllEmails) {
+        setError("Email must be a buffalo.edu address");
+      } else {
+        setError("Please enter a valid email address");
+      }
       return;
     }
 
@@ -93,14 +95,23 @@ function ForgotPasswordPage() {
   };
 
   function emailValidation(email) {
-    const pattern = /^[^@\s]+@buffalo\.edu$/i;
     const trimmed = email.trim();
 
     // Check length (255 characters max to match database limit)
     if (trimmed.length > 255) return false;
 
-    // Must match pattern first
-    if (!pattern.test(trimmed)) return false;
+    // Email validation based on ALLOW_ALL_EMAILS flag
+    if (!emailPolicyLoading) {
+      if (!allowAllEmails) {
+        // Only accept @buffalo.edu
+        const pattern = /^[^@\s]+@buffalo\.edu$/i;
+        if (!pattern.test(trimmed)) return false;
+      } else {
+        // Accept any valid email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmed)) return false;
+      }
+    }
 
     // Extract part before @
     const localPart = trimmed.split("@")[0];
@@ -112,25 +123,25 @@ function ForgotPasswordPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col md:flex-row pre-login-bg overflow-hidden">
+    <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
       {/* Right side - forgot password form (full width on mobile, 50% on desktop) */}
       <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 py-8 sm:py-12 md:py-8 h-screen pre-login-bg relative overflow-y-auto md:overflow-hidden"
+        className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 py-8 sm:py-12 md:pt-16 md:pb-8 lg:py-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden"
       >
         {/* Mobile branding header (visible only on mobile/tablet) */}
-        <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
-          <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
+        <div className="lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
+          <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
           </h1>
-          <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed">
+          <h2 className="text-xl sm:text-2xl md:text-4xl font-light text-gray-600 opacity-90 leading-relaxed">
             Wastage, who?
           </h2>
         </div>
-        <div className="w-full max-w-md px-2 sm:px-0 relative z-10">
+        <div className="w-full max-w-md md:max-w-xl px-2 sm:px-0 relative z-10">
           <div
-            className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600"
+            className="p-4 sm:p-6 md:p-10 rounded-lg relative bg-blue-600"
           >
             {/* Torn paper effect */}
             <div
@@ -146,7 +157,7 @@ function ForgotPasswordPage() {
               <div className="text-center mb-6 sm:mb-8 md:mb-10">
                 <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-4 sm:mb-5"></div>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif text-white leading-tight">
-                  Forgot Password?{" "}
+                  Forgot Password?
                 </h2>
               </div>
 
@@ -158,7 +169,7 @@ function ForgotPasswordPage() {
               >
                 {/* email input input */}
                 <div>
-                  <label className="block text-sm sm:text-base font-semibold text-gray-300 mb-2 sm:mb-2.5">
+                  <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     University Email Address
                   </label>
                   <input
@@ -166,7 +177,7 @@ function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     maxLength={255}
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 text-base sm:text-lg bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 text-base sm:text-lg md:text-xl bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                   />
                 </div>
                 {error && (
@@ -179,7 +190,7 @@ function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full min-h-[44px] bg-sky-500 hover:bg-sky-600 text-white py-3 sm:py-3.5 px-5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium text-base sm:text-lg active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="w-full min-h-[44px] bg-sky-500 hover:bg-sky-600 text-white py-3 sm:py-3.5 md:py-5 px-5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium text-base sm:text-lg md:text-xl active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   {isLoading ? (
                     <svg
@@ -225,7 +236,7 @@ function ForgotPasswordPage() {
 
               {/* Links - Improved touch targets and spacing */}
               <div className="mt-6 sm:mt-8 text-center px-2">
-                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm sm:text-base text-white">
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm sm:text-base md:text-lg text-white">
                   <button
                     onClick={(e) => {
                       e.preventDefault();

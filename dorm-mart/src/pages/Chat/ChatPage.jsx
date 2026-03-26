@@ -1044,7 +1044,7 @@ export default function ChatPage() {
         >
           <div className="flex flex-col min-w-0 flex-1">
             {(c.productTitle || c.productId) && (
-              <span className="truncate font-semibold text-sm">
+              <span className="truncate font-semibold text-sm lg:text-base xl:text-lg">
                 {c.productTitle || `Item #${c.productId}`}
               </span>
             )}
@@ -1202,7 +1202,7 @@ export default function ChatPage() {
 
                 {(activeConversation?.productTitle || activeConversation?.productId) && (
                   <div className="flex-1 flex flex-col items-center text-center min-w-0 px-2">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate block w-full">
+                    <h2 className="text-lg lg:text-xl xl:text-2xl font-semibold text-gray-900 dark:text-gray-100 truncate block w-full">
                       {activeConversation.productTitle || `Item #${activeConversation.productId}`}
                     </h2>
                   </div>
@@ -1284,7 +1284,8 @@ export default function ChatPage() {
                   const isScheduleMessage = messageType === 'schedule_request' ||
                                             messageType === 'schedule_accepted' ||
                                             messageType === 'schedule_denied' ||
-                                            messageType === 'schedule_cancelled';
+                                            messageType === 'schedule_cancelled' ||
+                                            messageType === 'schedule_expired';
                   // Check if this is a confirm message type
                   const isConfirmMessageType = messageType === 'confirm_request' ||
                                               messageType === 'confirm_accepted' ||

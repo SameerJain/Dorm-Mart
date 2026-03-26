@@ -1210,10 +1210,7 @@ function ProductListingPage() {
                   placeholder="Describe your item in detail. Include any relevant information about its condition, usage, or history."
                   maxLength={LIMITS.description}
                 />
-                <div className="flex justify-between items-center mt-2">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Provide detailed information about your item.
-                  </p>
+                <div className="flex justify-end items-center mt-2">
                   <p className="text-sm text-gray-400 dark:text-gray-500">
                     {description.length}/{LIMITS.description}
                   </p>

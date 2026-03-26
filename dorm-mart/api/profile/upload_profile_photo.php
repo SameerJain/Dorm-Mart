@@ -30,9 +30,32 @@ try {
         exit;
     }
 
-    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+    $uploadError = $file['error'] ?? UPLOAD_ERR_NO_FILE;
+    if ($uploadError !== UPLOAD_ERR_OK) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Failed to upload profile photo']);
+        $errorMsg = 'Failed to upload profile photo';
+        switch ($uploadError) {
+            case UPLOAD_ERR_INI_SIZE:
+            case UPLOAD_ERR_FORM_SIZE:
+                $errorMsg = 'File is too large. Maximum file size is 10 MB.';
+                break;
+            case UPLOAD_ERR_PARTIAL:
+                $errorMsg = 'File was only partially uploaded. Please try again.';
+                break;
+            case UPLOAD_ERR_NO_FILE:
+                $errorMsg = 'No file was uploaded.';
+                break;
+            case UPLOAD_ERR_NO_TMP_DIR:
+                $errorMsg = 'Server error: Missing temporary directory.';
+                break;
+            case UPLOAD_ERR_CANT_WRITE:
+                $errorMsg = 'Server error: Failed to write file to disk.';
+                break;
+            case UPLOAD_ERR_EXTENSION:
+                $errorMsg = 'File upload was stopped by a PHP extension.';
+                break;
+        }
+        echo json_encode(['success' => false, 'error' => $errorMsg]);
         exit;
     }
 
@@ -43,10 +66,15 @@ try {
     }
 
     $sizeBytes = filesize($file['tmp_name']);
-    $maxBytes  = 4 * 1024 * 1024; // 4 MB
-    if ($sizeBytes !== false && $sizeBytes > $maxBytes) {
+    $maxBytes  = 10 * 1024 * 1024; // 10 MB - reasonable limit for profile photos
+    if ($sizeBytes === false) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Profile photo must be 4 MB or smaller']);
+        echo json_encode(['success' => false, 'error' => 'Unable to determine file size']);
+        exit;
+    }
+    if ($sizeBytes > $maxBytes) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Profile photo must be 10 MB or smaller']);
         exit;
     }
 
@@ -60,7 +88,7 @@ try {
         'image/jpeg' => 'jpg',
         'image/png'  => 'png',
         'image/webp' => 'webp',
-        'image/gif'  => 'gif',
+        // Note: GIF removed to match frontend restrictions - profile photos don't need animation
     ];
     if (!isset($allowed[$mime ?? ''])) {
         http_response_code(400);
@@ -83,10 +111,15 @@ try {
     $destPath   = $imageDirFs . $filename;
     $publicPath = $imageBaseUrl . '/' . $filename;
 
-    if (!@move_uploaded_file($file['tmp_name'], $destPath)) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Could not save uploaded photo']);
-        exit;
+    // Process and compress image if GD is available
+    $processed = processProfileImage($file['tmp_name'], $mime, $destPath);
+    if (!$processed) {
+        // Fallback: if processing fails, just move the file
+        if (!@move_uploaded_file($file['tmp_name'], $destPath)) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Could not save uploaded photo']);
+            exit;
+        }
     }
 
     echo json_encode([
@@ -114,4 +147,99 @@ function extract_upload(): ?array
         }
     }
     return null;
+}
+
+/**
+ * Process and compress profile image to reduce file size
+ * Resizes to max 800x800px and compresses JPEG/PNG/WebP
+ * Returns true if processing succeeded, false otherwise
+ */
+function processProfileImage(string $sourcePath, ?string $mime, string $destPath): bool
+{
+    // Check if GD extension is available
+    if (!extension_loaded('gd')) {
+        return false;
+    }
+
+    $maxWidth = 800;
+    $maxHeight = 800;
+    $quality = 85; // JPEG/WebP quality (0-100)
+
+    // Load source image
+    $sourceImage = null;
+    switch ($mime) {
+        case 'image/jpeg':
+            $sourceImage = @imagecreatefromjpeg($sourcePath);
+            break;
+        case 'image/png':
+            $sourceImage = @imagecreatefrompng($sourcePath);
+            break;
+        case 'image/webp':
+            $sourceImage = @imagecreatefromwebp($sourcePath);
+            break;
+        default:
+            return false;
+    }
+
+    if ($sourceImage === false) {
+        return false;
+    }
+
+    // Get original dimensions
+    $origWidth = imagesx($sourceImage);
+    $origHeight = imagesy($sourceImage);
+
+    // Calculate new dimensions (maintain aspect ratio)
+    $ratio = min($maxWidth / $origWidth, $maxHeight / $origHeight);
+    $newWidth = (int)($origWidth * $ratio);
+    $newHeight = (int)($origHeight * $ratio);
+
+    // Only resize if image is larger than max dimensions
+    if ($origWidth <= $maxWidth && $origHeight <= $maxHeight) {
+        $newWidth = $origWidth;
+        $newHeight = $origHeight;
+    }
+
+    // Create new image
+    $newImage = imagecreatetruecolor($newWidth, $newHeight);
+    if ($newImage === false) {
+        imagedestroy($sourceImage);
+        return false;
+    }
+
+    // Preserve transparency for PNG
+    if ($mime === 'image/png') {
+        imagealphablending($newImage, false);
+        imagesavealpha($newImage, true);
+        $transparent = imagecolorallocatealpha($newImage, 255, 255, 255, 127);
+        imagefilledrectangle($newImage, 0, 0, $newWidth, $newHeight, $transparent);
+    }
+
+    // Resize image
+    if (!imagecopyresampled($newImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $origWidth, $origHeight)) {
+        imagedestroy($sourceImage);
+        imagedestroy($newImage);
+        return false;
+    }
+
+    // Save processed image
+    $saved = false;
+    switch ($mime) {
+        case 'image/jpeg':
+            $saved = @imagejpeg($newImage, $destPath, $quality);
+            break;
+        case 'image/png':
+            // PNG compression level 6 (0-9, where 9 is highest compression)
+            $saved = @imagepng($newImage, $destPath, 6);
+            break;
+        case 'image/webp':
+            $saved = @imagewebp($newImage, $destPath, $quality);
+            break;
+    }
+
+    // Clean up
+    imagedestroy($sourceImage);
+    imagedestroy($newImage);
+
+    return $saved !== false;
 }

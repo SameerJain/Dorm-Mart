@@ -194,7 +194,7 @@ function OngoingPurchasesPage() {
         const now = new Date();
         const meetingDate = req.meeting_at ? new Date(req.meeting_at) : null;
         const isPastDate = meetingDate && meetingDate < now;
-        const isTerminalStatus = ['declined', 'cancelled'].includes(req.status);
+        const isTerminalStatus = ['declined', 'cancelled', 'expired'].includes(req.status);
         const isCompleted = req.has_completed_confirm === true;
         return !isPastDate && !isTerminalStatus && !isCompleted;
     };
@@ -253,14 +253,16 @@ function OngoingPurchasesPage() {
                 return `${baseClasses} bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300`;
             case 'cancelled':
                 return `${baseClasses} bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 line-through`;
+            case 'expired':
+                return `${baseClasses} bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300`;
             default:
                 return `${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300`;
         }
     };
 
     // Helper function to render cost/trade information
-    const renderCostTradeInfo = (req, isCancelled, isDeclined, isCompleted) => {
-        const isTerminal = isCancelled || isDeclined;
+    const renderCostTradeInfo = (req, isCancelled, isDeclined, isCompleted, isExpired) => {
+        const isTerminal = isCancelled || isDeclined || isExpired;
         
         if (req.is_trade && req.trade_item_description) {
             return (
@@ -324,6 +326,19 @@ function OngoingPurchasesPage() {
                 </div>
             );
         }
+        if (req.status === 'expired') {
+            return (
+                <div className="bg-amber-50 dark:bg-amber-900/30 border-2 border-amber-400 dark:border-amber-700 rounded-lg p-1.5 mb-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <svg className="w-4 h-4 text-amber-600 dark:text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm font-bold text-amber-700 dark:text-amber-200">EXPIRED</span>
+                        <span className="text-sm text-amber-600 dark:text-amber-300">No response received in time</span>
+                    </div>
+                </div>
+            );
+        }
         return null;
     };
 
@@ -375,42 +390,39 @@ function OngoingPurchasesPage() {
         const canRespond = req.status === 'pending' && isBuyer;
         const isCancelled = req.status === 'cancelled';
         const isDeclined = req.status === 'declined';
+        const isExpired = req.status === 'expired';
         const isCompleted = req.has_completed_confirm === true;
-        const isInactive = isCancelled || isDeclined || isCompleted;
+        const isInactive = isCancelled || isDeclined || isExpired || isCompleted;
         const isAccepted = req.status === 'accepted';
         const canCancel = (req.status === 'pending' || req.status === 'accepted') && !isInactive;
-        // const canUseActionButtons = isAccepted && !isCompleted; // Only enabled for accepted status and not completed - Commented out: Report an Issue feature not fully implemented yet
+        const isNegativeTerminal = isCancelled || isDeclined || isExpired;
 
-        // Color scheme based on perspective - override with red if cancelled/declined, gray if completed
-        const cardBorderColor = isCancelled || isDeclined
-            ? 'border-red-500 dark:border-red-600' 
+        const cardBorderColor = isNegativeTerminal
+            ? (isExpired ? 'border-amber-500 dark:border-amber-600' : 'border-red-500 dark:border-red-600')
             : isCompleted
             ? 'border-gray-400 dark:border-gray-600'
             : (isBuyer ? 'border-green-500 dark:border-green-600' : 'border-blue-500 dark:border-blue-600');
-        const cardBgColor = isCancelled || isDeclined
-            ? 'bg-red-50 dark:bg-red-900/20' 
+        const cardBgColor = isNegativeTerminal
+            ? (isExpired ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-red-50 dark:bg-red-900/20')
             : isCompleted
             ? 'bg-gray-50 dark:bg-gray-800/50'
             : (isBuyer ? 'bg-green-50 dark:bg-green-900/20' : 'bg-blue-50 dark:bg-blue-900/20');
-        const badgeColor = isCancelled || isDeclined
-            ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' 
+        const badgeColor = isNegativeTerminal
+            ? (isExpired ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300')
             : isCompleted
             ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
             : (isBuyer ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300');
         
-        // Location and meeting time color schemes - use solid colors with white text
-        // For inactive (cancelled/declined), use duller/muted red colors
-        // For completed, use muted gray colors
-        const locationBg = isCancelled || isDeclined
-            ? 'bg-red-400 dark:bg-red-500' 
+        const locationBg = isNegativeTerminal
+            ? (isExpired ? 'bg-amber-400 dark:bg-amber-500' : 'bg-red-400 dark:bg-red-500')
             : isCompleted
             ? 'bg-gray-400 dark:bg-gray-600'
             : (isBuyer ? 'bg-blue-600 dark:bg-blue-700' : 'bg-indigo-600 dark:bg-indigo-700');
         const locationText = 'text-white';
         const locationTextBold = 'text-white';
         
-        const meetingBg = isCancelled || isDeclined
-            ? 'bg-red-400 dark:bg-red-500' 
+        const meetingBg = isNegativeTerminal
+            ? (isExpired ? 'bg-amber-400 dark:bg-amber-500' : 'bg-red-400 dark:bg-red-500')
             : isCompleted
             ? 'bg-gray-400 dark:bg-gray-600'
             : (isBuyer ? 'bg-teal-600 dark:bg-teal-700' : 'bg-purple-600 dark:bg-purple-700');
@@ -430,7 +442,7 @@ function OngoingPurchasesPage() {
                                 {isCompleted ? 'Completed' : req.status.charAt(0).toUpperCase() + req.status.slice(1)}
                             </span>
                         </div>
-                        <div className={`text-sm ${isCancelled || isDeclined ? 'text-red-600 dark:text-red-300' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                        <div className={`text-sm ${isNegativeTerminal ? (isExpired ? 'text-amber-600 dark:text-amber-300' : 'text-red-600 dark:text-red-300') : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>
                             {isBuyer ? 'Requested' : 'Created'} {req.created_at ? new Date(req.created_at).toLocaleString() : ''}
                             {req.buyer_response_at && (
                                 <div>{isBuyer ? 'You responded' : 'Buyer responded'} {new Date(req.buyer_response_at).toLocaleString()}</div>
@@ -459,7 +471,7 @@ function OngoingPurchasesPage() {
 
                     {/* Other party */}
                     <div className="min-w-0">
-                        <p className={`text-sm truncate min-w-0 ${isCancelled || isDeclined ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-600 dark:text-gray-300'}`} title={isBuyer ? `${req.seller?.first_name || ''} ${req.seller?.last_name || ''}`.trim() : `${req.buyer?.first_name || ''} ${req.buyer?.last_name || ''}`.trim()}>
+                        <p className={`text-sm truncate min-w-0 ${isNegativeTerminal ? (isExpired ? 'text-amber-700 dark:text-amber-200' : 'text-red-700 dark:text-red-200') : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-600 dark:text-gray-300'}`} title={isBuyer ? `${req.seller?.first_name || ''} ${req.seller?.last_name || ''}`.trim() : `${req.buyer?.first_name || ''} ${req.buyer?.last_name || ''}`.trim()}>
                             {isBuyer ? 'Seller' : 'Buyer'}: {isBuyer 
                                 ? `${req.seller?.first_name || ''} ${req.seller?.last_name || ''}`.trim() 
                                 : `${req.buyer?.first_name || ''} ${req.buyer?.last_name || ''}`.trim()}
@@ -467,7 +479,7 @@ function OngoingPurchasesPage() {
                     </div>
 
                     {/* Cost/Trade Information */}
-                    {renderCostTradeInfo(req, isCancelled, isDeclined, isCompleted)}
+                    {renderCostTradeInfo(req, isCancelled, isDeclined, isCompleted, isExpired)}
 
                     {/* Location and Meeting Time */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 my-1.5">
@@ -494,15 +506,15 @@ function OngoingPurchasesPage() {
 
                     {/* Description */}
                     {req.description && (
-                        <div className={`text-sm break-words ${isCancelled || isDeclined ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                        <div className={`text-sm break-words ${isNegativeTerminal ? (isExpired ? 'text-amber-700 dark:text-amber-200' : 'text-red-700 dark:text-red-200') : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
                             <span className="font-semibold">Description:</span> {req.description}
                         </div>
                     )}
 
                     {/* Verification Code */}
-                    <div className={`text-sm ${isCancelled || isDeclined ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                    <div className={`text-sm ${isNegativeTerminal ? (isExpired ? 'text-amber-700 dark:text-amber-200' : 'text-red-700 dark:text-red-200') : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
                         <span className="font-semibold">Verification Code:</span>{' '}
-                        <span className={`font-mono text-base ${isCancelled || isDeclined ? 'text-red-600 dark:text-red-300' : isCompleted ? 'text-gray-500 dark:text-gray-500' : (req.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400')}`}>{code}</span>
+                        <span className={`font-mono text-base ${isNegativeTerminal ? (isExpired ? 'text-amber-600 dark:text-amber-300' : 'text-red-600 dark:text-red-300') : isCompleted ? 'text-gray-500 dark:text-gray-500' : (req.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400')}`}>{code}</span>
                     </div>
 
                     {/* Action Buttons */}
@@ -513,7 +525,7 @@ function OngoingPurchasesPage() {
                                     type="button"
                                     onClick={() => handleAction(req.request_id, 'decline')}
                                     disabled={busyRequestId === req.request_id}
-                                    className="px-3 py-1.5 text-sm font-medium rounded-lg border border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60"
+                                    className="px-3 py-1.5 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 disabled:opacity-60"
                                 >
                                     {busyRequestId === req.request_id && actionError ? 'Retry Decline' : 'Decline'}
                                 </button>
@@ -540,8 +552,8 @@ function OngoingPurchasesPage() {
                         </button>
                         */}
                         
-                        {/* Cancel button */}
-                        {canCancel && (
+                        {/* Cancel button - hidden when buyer has Decline/Accept */}
+                        {canCancel && !canRespond && (
                             <button
                                 type="button"
                                 onClick={() => {
@@ -558,15 +570,27 @@ function OngoingPurchasesPage() {
 
                         {/* Review button for completed purchases (buyer only) */}
                         {isBuyer && isCompleted && req.inventory_product_id && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    navigate(`/app/purchase-history?review=${encodeURIComponent(req.inventory_product_id)}`);
-                                }}
-                                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600"
-                            >
-                                Leave a Review
-                            </button>
+                            req.has_review ? (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        navigate(`/app/purchase-history?review=${encodeURIComponent(req.inventory_product_id)}`);
+                                    }}
+                                    className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-500 text-white hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500"
+                                >
+                                    View Review
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        navigate(`/app/purchase-history?review=${encodeURIComponent(req.inventory_product_id)}`);
+                                    }}
+                                    className="px-3 py-1.5 text-sm font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600"
+                                >
+                                    Leave a Review
+                                </button>
+                            )
                         )}
                     </div>
                 </div>
@@ -574,15 +598,36 @@ function OngoingPurchasesPage() {
         );
     };
 
+    const resolvePhotoUrl = (raw) => {
+        if (!raw) return null;
+        const s = String(raw);
+        if (/^https?:\/\//i.test(s)) return `${API_BASE}/image.php?url=${encodeURIComponent(s)}`;
+        if (s.startsWith('/data/images/') || s.startsWith('/images/')) return `${API_BASE}/image.php?url=${encodeURIComponent(s)}`;
+        return s.startsWith('/') ? s : null;
+    };
+
     // Render item group with all its scheduled purchases
     const renderItemGroup = (itemGroup) => {
         if (!itemGroup || itemGroup.purchases.length === 0) return null;
-        
+
+        const photos = Array.isArray(itemGroup.item?.photos) ? itemGroup.item.photos : [];
+        const thumbUrl = photos.length > 0 ? resolvePhotoUrl(photos[0]) : null;
+
         return (
             <div key={itemGroup.productId} className="mb-6 min-w-0">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 break-words overflow-wrap-anywhere">
-                    {itemGroup.item.title || 'Unknown Item'}
-                </h3>
+                <div className="flex items-center gap-3 mb-3">
+                    {thumbUrl && (
+                        <img
+                            src={thumbUrl}
+                            alt={itemGroup.item.title || 'Item'}
+                            className="w-8 h-8 rounded object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                            onError={(e) => { e.target.remove(); }}
+                        />
+                    )}
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 break-words overflow-wrap-anywhere">
+                        {itemGroup.item.title || 'Unknown Item'}
+                    </h3>
+                </div>
                 <div className="space-y-3">
                     {itemGroup.purchases.map((req) => (
                         <PurchaseCard 

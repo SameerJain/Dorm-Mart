@@ -7,14 +7,15 @@ const NAV_BLUE = "#2563EB";
 
 function UserPreferences() {
   const navigate = useNavigate();
-  const { theme, updateTheme } = useTheme();
+  const { theme, updateTheme, isLoading: themeIsLoading } = useTheme();
   const [promotionalEmails, setPromotionalEmails] = useState(false);
   const [revealContact, setRevealContact] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedInterests, setSelectedInterests] = useState(["Electronics", "Books", "Clothing"]);
+  const [selectedInterests, setSelectedInterests] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
   const [availableCategories, setAvailableCategories] = useState([]);
@@ -113,12 +114,10 @@ function UserPreferences() {
         setPromotionalEmails(!!promoEmails);
         setRevealContact(!!revealContact);
         if (Array.isArray(interests)) setSelectedInterests(interests);
-        // Don't call updateTheme() here - just sync the theme state
-        // The useTheme hook will handle theme state, and auto-save will persist it
-        // This prevents race condition where updateTheme() triggers saveTheme() which conflicts with auto-save
+        setPreferencesLoaded(true);
       } catch (e) {
-        // ignore errors, keep defaults
         console.warn('UserPreferences: GET failed', e);
+        if (!cancelled) setPreferencesLoaded(true);
       }
     })();
     return () => { cancelled = true; };
@@ -127,6 +126,9 @@ function UserPreferences() {
 
   // Save to backend whenever relevant values change (debounced)
   useEffect(() => {
+    if (!preferencesLoaded) return;
+    if (themeIsLoading) return;
+
     const controller = new AbortController();
     const t = setTimeout(async () => {
       try {
@@ -151,7 +153,7 @@ function UserPreferences() {
       }
     }, 400);
     return () => { controller.abort(); clearTimeout(t); };
-  }, [promotionalEmails, revealContact, selectedInterests, theme, API_BASE]);
+  }, [promotionalEmails, revealContact, selectedInterests, theme, API_BASE, themeIsLoading, preferencesLoaded]);
 
   return (
     <SettingsLayout>
