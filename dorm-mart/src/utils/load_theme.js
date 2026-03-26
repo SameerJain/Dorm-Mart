@@ -1,63 +1,63 @@
-// Load user theme from backend and localStorage
-export const loadUserTheme = async () => {
-  // First clear any existing theme to prevent cross-user contamination
-  document.documentElement.classList.remove('dark');
-  
-  // Get user ID for user-specific localStorage
-  let userId = null;
-  try {
-    const API_BASE = process.env.REACT_APP_API_BASE || "/api";
-    const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
-      method: 'GET', 
-      credentials: 'include' 
-    });
-    if (meRes.ok) {
-      const meJson = await meRes.json();
-      userId = meJson.user_id;
-    }
-  } catch (e) {
-    // User not authenticated
-  }
+const CACHE_KEY = 'dm_last_theme';
+const PENDING_KEY = 'dm_theme_pending';
 
-  // Try localStorage first for immediate application
-  if (userId) {
-    const userThemeKey = `userTheme_${userId}`;
-    const localTheme = localStorage.getItem(userThemeKey);
-    if (localTheme) {
-      if (localTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
+function applyToDOM(theme) {
+  if (theme === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+  try { localStorage.setItem(CACHE_KEY, theme); } catch (_) {}
+}
+
+/**
+ * Apply the user's theme on app boot.
+ * Called by RootLayout after authentication, with the userId already known.
+ */
+export const loadUserTheme = async (userId) => {
+  const API_BASE = (process.env.REACT_APP_API_BASE || '/api').replace(/\/$/, '');
+
+  // 1. If a recent toggle marker exists, honour it and stop.
+  try {
+    const pendingRaw = localStorage.getItem(PENDING_KEY);
+    if (pendingRaw) {
+      const pending = JSON.parse(pendingRaw);
+      if (
+        (pending?.theme === 'dark' || pending?.theme === 'light') &&
+        typeof pending?.ts === 'number' &&
+        Date.now() - pending.ts < 5000
+      ) {
+        applyToDOM(pending.theme);
+        localStorage.removeItem(PENDING_KEY);
+        return;
       }
     }
+  } catch (_) {}
+
+  // 2. Apply the instant cache so the page renders in the right theme
+  //    while we wait for the backend. No flash.
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached === 'dark' || cached === 'light') {
+    applyToDOM(cached);
   }
 
-  // Then get from backend and override localStorage
+  // 3. Fetch authoritative theme from backend and reconcile.
   try {
-    const API_BASE = process.env.REACT_APP_API_BASE || "/api";
-    const res = await fetch(`${API_BASE}/userPreferences.php`, { 
-      method: 'GET', 
-      credentials: 'include' 
+    const res = await fetch(`${API_BASE}/userPreferences.php`, {
+      method: 'GET',
+      credentials: 'include',
     });
     if (res.ok) {
       const json = await res.json();
-      if (json?.ok && json?.data?.theme) {
-        // Apply theme from backend
-        if (json.data.theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-        // Update localStorage with backend value
+      const backendTheme = json?.ok && json?.data?.theme ? json.data.theme : null;
+      if (backendTheme === 'dark' || backendTheme === 'light') {
+        applyToDOM(backendTheme);
         if (userId) {
-          const userThemeKey = `userTheme_${userId}`;
-          localStorage.setItem(userThemeKey, json.data.theme);
+          try { localStorage.setItem(`userTheme_${userId}`, backendTheme); } catch (_) {}
         }
       }
     }
-  } catch (e) {
-    // User not authenticated or error - default to light theme
-    document.documentElement.classList.remove('dark');
+  } catch (_) {
+    // Network error — the cached theme is already applied, so nothing to do.
   }
 };
-
