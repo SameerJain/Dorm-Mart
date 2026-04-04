@@ -67,6 +67,8 @@ export default function LandingPage() {
   const [errorUser, setErrorUser] = useState(false);
   const [errorItems, setErrorItems] = useState(false);
   const [activeTab, setActiveTab] = useState("forYou");
+  /** Touch: disabled For You only had title= tooltip; tap toggles this copy */
+  const [forYouBlockedHintOpen, setForYouBlockedHintOpen] = useState(false);
   const MIN_EXPLORE_ITEMS = 30;
   const computeExploreLimit = () => {
     if (typeof window === "undefined") return MIN_EXPLORE_ITEMS;
@@ -120,6 +122,10 @@ export default function LandingPage() {
     if (!interests.length) {
       setActiveTab("explore");
     }
+  }, [interests.length]);
+
+  useEffect(() => {
+    if (interests.length > 0) setForYouBlockedHintOpen(false);
   }, [interests.length]);
 
   // fetch user
@@ -421,7 +427,7 @@ export default function LandingPage() {
         {/* Mobile Filter Button */}
         <button
           onClick={() => navigate('/app/listings')}
-          className="lg:hidden flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          className="lg:hidden -ml-2 flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           aria-label="Open filters"
         >
           <svg
@@ -507,44 +513,68 @@ export default function LandingPage() {
               <div className="hidden sm:flex items-start">
                 <button
                   onClick={() => navigate("/app/product-listing/new")}
-                  className="px-4 py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition whitespace-nowrap"
+                  className="px-4 py-2 rounded-lg bg-blue-600 dark:bg-blue-800 text-white text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-900 transition whitespace-nowrap"
                 >
                   List an item
                 </button>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 mt-1">
-              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full p-1 w-fit">
-                <button
-                  onClick={() => interests.length && setActiveTab("forYou")}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
-                    !interests.length
-                      ? "text-gray-400 dark:text-gray-500 opacity-50 cursor-not-allowed"
-                      : activeTab === "forYou"
-                      ? "bg-blue-600 text-white shadow"
-                      : "text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white"
-                  }`}
-                  title={
-                    interests.length
-                      ? undefined
-                      : "Set your interested categories in Settings → User Preferences to unlock this tab"
-                  }
-                  disabled={!interests.length}
-                >
-                  For You
-                </button>
-                <button
-                  onClick={() => setActiveTab("explore")}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
-                    activeTab === "explore"
-                      ? "bg-blue-600 text-white shadow"
-                      : "text-gray-700 dark:text-gray-200"
-                  }`}
-                >
-                  Explore More
-                </button>
+              <div className="flex min-w-0 flex-col gap-1.5 sm:w-auto">
+                <div className="flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-600 dark:bg-gray-700/60">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!interests.length) {
+                        setForYouBlockedHintOpen((o) => !o);
+                        return;
+                      }
+                      setForYouBlockedHintOpen(false);
+                      setActiveTab("forYou");
+                    }}
+                    aria-disabled={!interests.length}
+                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                      !interests.length
+                        ? "cursor-pointer text-gray-400 opacity-60 dark:text-gray-500"
+                        : activeTab === "forYou"
+                          ? "bg-blue-600 text-white shadow dark:bg-blue-800"
+                          : "text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
+                    }`}
+                    title={
+                      interests.length
+                        ? undefined
+                        : "Set your interested categories in Settings → User Preferences to unlock this tab"
+                    }
+                  >
+                    For You
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForYouBlockedHintOpen(false);
+                      setActiveTab("explore");
+                    }}
+                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                      activeTab === "explore"
+                        ? "bg-blue-600 text-white shadow dark:bg-blue-800"
+                        : "text-gray-700 dark:text-gray-200"
+                    }`}
+                  >
+                    Explore More
+                  </button>
+                </div>
+                {!interests.length && forYouBlockedHintOpen ? (
+                  <p
+                    role="status"
+                    className="max-w-md rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/25 dark:text-amber-100 sm:text-sm"
+                  >
+                    Set your interested categories in{" "}
+                    <span className="font-semibold">Settings</span> →{" "}
+                    <span className="font-semibold">User Preferences</span> to unlock For You.
+                  </p>
+                ) : null}
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-300 text-left">
+              <p className="text-left text-sm text-gray-600 dark:text-gray-300">
                 Switch views: personalized feed or a fresh randomized mix.
               </p>
             </div>

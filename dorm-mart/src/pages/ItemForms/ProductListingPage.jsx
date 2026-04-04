@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, useMatch, useNavigate, useLocation } from "react-router-dom";
 import { MEET_LOCATION_OPTIONS } from "../../constants/meetLocations";
+import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
 
 // Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
 function containsMemePrice(priceString) {
@@ -64,6 +65,10 @@ function ProductListingPage() {
   const [loadError, setLoadError] = useState(null);
   const [isSold, setIsSold] = useState(false);
 
+  // active listing cap
+  const [atListingCap, setAtListingCap] = useState(false);
+  const [activeListingCount, setActiveListingCount] = useState(0);
+
   // success modal
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -85,6 +90,7 @@ function ProductListingPage() {
     price: 9999.99,
     priceMin: 0.01,
     images: 6,
+    maxActiveListings: 50,
   };
 
   // File type restrictions (same as chat)
@@ -178,6 +184,33 @@ function ProductListingPage() {
 
   const cropCanvasRef = useRef(null);
   const cropContainerRef = useRef(null);
+
+  // ============================================
+  // CHECK ACTIVE LISTING CAP (new listings only)
+  // ============================================
+  useEffect(() => {
+    if (!isNew) return;
+    let ignore = false;
+    async function checkActiveListingCap() {
+      try {
+        const res = await fetch(`${API_BASE}/seller-dashboard/manage_seller_listings.php`, {
+          method: "POST",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (ignore) return;
+        if (data?.success && Array.isArray(data.data)) {
+          const count = data.data.filter((item) => item.status === "Active").length;
+          setActiveListingCount(count);
+          setAtListingCap(count >= LIMITS.maxActiveListings);
+        }
+      } catch {
+        // Non-critical; server-side check is authoritative
+      }
+    }
+    checkActiveListingCap();
+    return () => { ignore = true; };
+  }, [isNew, API_BASE]);
 
   // ============================================
   // FETCH CATEGORIES
@@ -946,6 +979,25 @@ function ProductListingPage() {
           </div>
         )}
 
+        {isNew && atListingCap && (
+          <div className="mb-4 rounded-lg border-2 border-amber-500 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/20 p-4">
+            <div className="flex items-start gap-3">
+              <svg className="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <h3 className="text-lg font-semibold text-amber-900 dark:text-amber-200">
+                  Active listing limit reached
+                </h3>
+                <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">
+                  You currently have {activeListingCount} of {LIMITS.maxActiveListings} active listings.
+                  Please deactivate or remove an existing listing before creating a new one.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {loadingExisting && (
           <div className="mb-4 rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/20 p-4">
             <div className="flex items-center gap-3">
@@ -1207,7 +1259,7 @@ function ProductListingPage() {
                       ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
                       : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                   }`}
-                  placeholder="Describe your item in detail. Include any relevant information about its condition, usage, or history."
+                  placeholder="Describe the item — condition, usage, and history."
                   maxLength={LIMITS.description}
                 />
                 <div className="flex justify-end items-center mt-2">
@@ -1279,7 +1331,9 @@ function ProductListingPage() {
                   </span>
                   <input
                     type="text"
+                    inputMode="decimal"
                     value={price}
+                    onKeyDown={decimalNumericKeyDownHandler}
                     onChange={(e) => {
                       const value = e.target.value;
                       // Store raw string value to preserve exact user input
@@ -1458,10 +1512,12 @@ function ProductListingPage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={publishListing}
-                  disabled={submitting || loadingExisting}
+                  disabled={submitting || loadingExisting || (isNew && atListingCap)}
                   className="flex-1 py-4 bg-blue-600 text-white rounded-lg font-bold text-lg hover:bg-blue-700 transition-colors disabled:opacity-60"
                 >
-                  {submitting
+                  {isNew && atListingCap
+                    ? "Listing Limit Reached"
+                    : submitting
                     ? "Submitting..."
                     : loadingExisting
                     ? "Loading..."

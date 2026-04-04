@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SettingsLayout from "./SettingsLayout";
 
-const NAV_BLUE = "#2563EB";
 const MAX_LEN = 64;
 
 const hasLower = (s) => /[a-z]/.test(s);
@@ -31,8 +30,7 @@ function Field({ id, label, type = "password", value, onChange, placeholder }) {
         value={value}
         placeholder={placeholder}
         onChange={onChange}
-        className="h-11 w-full rounded-xl border border-slate-300 bg-slate-100 px-4 text-slate-900 outline-none focus:bg-white focus:ring-2"
-        style={{ focusRingColor: NAV_BLUE }}
+        className="h-11 w-full rounded-xl border border-slate-300 bg-slate-100 px-4 text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:focus:bg-gray-800"
       />
     </div>
   );
@@ -197,15 +195,14 @@ function ChangePasswordPage() {
 
   return (
     <SettingsLayout>
-      <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-3">
-        <h1 className="text-2xl font-serif font-semibold" style={{ color: NAV_BLUE }}>
+      <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-3 dark:border-gray-700">
+        <h1 className="text-2xl font-serif font-semibold text-blue-600">
           Change Password
         </h1>
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="rounded-lg border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
-          style={{ color: NAV_BLUE }}
+          className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-blue-600 hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-700"
           aria-label="Go back"
         >
           ← Back
@@ -239,15 +236,14 @@ function ChangePasswordPage() {
           <button
             type="button"
             onClick={handleSubmit}
-            className="mt-2 h-11 w-44 rounded-xl text-white shadow"
-            style={{ backgroundColor: NAV_BLUE }}
+            className="mt-2 h-11 w-44 rounded-xl bg-blue-600 text-white shadow hover:bg-blue-700 dark:hover:bg-blue-900"
           >
             Confirm
           </button>
         </section>
 
         <section className="rounded-lg border border-slate-200 p-4">
-          <h2 className="mb-3 text-lg font-serif font-semibold" style={{ color: NAV_BLUE }}>
+          <h2 className="mb-3 text-lg font-serif font-semibold text-blue-600">
             Password must contain:
           </h2>
           <div className="flex flex-col gap-2">

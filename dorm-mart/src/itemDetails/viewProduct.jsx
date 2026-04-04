@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChatContext } from "../context/ChatContext";
-import { FALLBACK_IMAGE_URL } from "../utils/imageFallback";
+import { FALLBACK_IMAGE_URL, onProductImageError } from "../utils/imageFallback";
 import ProfileLink from "../components/ProfileLink";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
@@ -400,7 +400,7 @@ export default function ViewProduct() {
                       onClick={() => setActiveIdx(idx)}
                       className={`h-16 w-16 rounded-md overflow-hidden border bg-white dark:bg-gray-800 ${idx === activeIdx ? "border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-700" : "border-gray-200 dark:border-gray-700"}`}
                     >
-                      <img src={u} alt={`thumb-${idx}`} className="h-full w-full object-cover" />
+                      <img src={u} alt={`thumb-${idx}`} onError={onProductImageError} className="h-full w-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -412,6 +412,7 @@ export default function ViewProduct() {
                   <img
                     alt={normalized.title}
                     src={normalized.photoUrls[activeIdx]}
+                    onError={onProductImageError}
                     className="h-full w-full object-contain"
                   />
                 ) : (
@@ -448,7 +449,7 @@ export default function ViewProduct() {
                       onClick={() => setActiveIdx(idx)}
                       className={`h-12 w-12 rounded-md overflow-hidden border bg-white dark:bg-gray-800 ${idx === activeIdx ? "border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-700" : "border-gray-200 dark:border-gray-700"}`}
                     >
-                      <img src={u} alt={`thumb-${idx}`} className="h-full w-full object-cover" />
+                      <img src={u} alt={`thumb-${idx}`} onError={onProductImageError} className="h-full w-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -559,7 +560,7 @@ export default function ViewProduct() {
                       <button
                         onClick={handleMessageSeller}
                         disabled={!normalized.sellerId || msgLoading}
-                        className="w-full max-w-xs rounded-full font-medium py-2 px-3 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
+                        className="w-full max-w-xs rounded-full font-medium py-2 px-3 bg-blue-600 dark:bg-blue-800 hover:bg-blue-700 dark:hover:bg-blue-900 disabled:opacity-50 text-white"
                       >
                         {msgLoading ? "Opening chat..." : "Message Seller"}
                       </button>

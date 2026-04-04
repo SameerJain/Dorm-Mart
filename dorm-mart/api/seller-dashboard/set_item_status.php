@@ -49,6 +49,27 @@ try {
         exit;
     }
 
+    // Enforce cap of 50 active listings per seller when activating
+    if ($status === 'Active') {
+        $capStmt = $conn->prepare(
+            'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ? AND product_id != ?'
+        );
+        $activeLabel = 'Active';
+        $capStmt->bind_param('isi', $userId, $activeLabel, $id);
+        $capStmt->execute();
+        $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
+        $capStmt->close();
+
+        if ($activeCount >= 50) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => 'You have reached the maximum of 50 active listings. Please deactivate or remove an existing listing before activating this one.'
+            ]);
+            exit;
+        }
+    }
+
     // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     // ============================================================================

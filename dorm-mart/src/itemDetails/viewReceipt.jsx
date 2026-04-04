@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChatContext } from "../context/ChatContext";
-import { FALLBACK_IMAGE_URL } from "../utils/imageFallback";
+import { FALLBACK_IMAGE_URL, onProductImageError } from "../utils/imageFallback";
 import ProfileLink from "../components/ProfileLink";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
@@ -510,7 +510,7 @@ export default function ViewReceipt() {
                           idx === activeIdx ? "border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-700" : "border-gray-200 dark:border-gray-700"
                         }`}
                       >
-                        <img src={u} alt={`thumb-${idx}`} className="h-full w-full object-cover" />
+                        <img src={u} alt={`thumb-${idx}`} onError={onProductImageError} className="h-full w-full object-cover" />
                       </button>
                     ))}
                   </div>
@@ -518,7 +518,7 @@ export default function ViewReceipt() {
 
                 <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm w-full max-w-[28rem] md:max-w-[32rem] aspect-square mx-auto overflow-hidden relative">
                   {normalized.photoUrls && normalized.photoUrls.length ? (
-                    <img alt={normalized.title} src={normalized.photoUrls[activeIdx]} className="h-full w-full object-contain" />
+                    <img alt={normalized.title} src={normalized.photoUrls[activeIdx]} onError={onProductImageError} className="h-full w-full object-contain" />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center text-gray-400 dark:text-gray-500">No image</div>
                   )}
@@ -554,7 +554,7 @@ export default function ViewReceipt() {
                           idx === activeIdx ? "border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-700" : "border-gray-200 dark:border-gray-700"
                         }`}
                       >
-                        <img src={u} alt={`thumb-${idx}`} className="h-full w-full object-cover" />
+                        <img src={u} alt={`thumb-${idx}`} onError={onProductImageError} className="h-full w-full object-cover" />
                       </button>
                     ))}
                   </div>
@@ -675,7 +675,7 @@ export default function ViewReceipt() {
                         className={`w-full rounded-full font-medium py-2 px-3 ${
                           isSellerViewingOwnProduct
                             ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white"
-                            : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
+                            : "bg-blue-600 dark:bg-blue-800 hover:bg-blue-700 dark:hover:bg-blue-900 disabled:opacity-50 text-white"
                         }`}
                       >
                         {msgLoading ? "Opening chat..." : "Message Seller"}
@@ -709,21 +709,6 @@ export default function ViewReceipt() {
                       }
                     />
                   )}
-                </div>
-
-                <div className="pt-1">
-                  <button
-                    onClick={() => {
-                      if (returnTo) {
-                        navigate(returnTo);
-                      } else {
-                        navigate(-1);
-                      }
-                    }}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    Back to results
-                  </button>
                 </div>
               </section>
             </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { withFallbackImage, onProductImageError } from '../../utils/imageFallback';
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
@@ -290,7 +291,7 @@ function OngoingPurchasesPage() {
             );
         } else if (req.item?.listing_price !== null && req.item?.listing_price !== undefined) {
             return (
-                <div className={`${isTerminal ? 'bg-red-500 dark:bg-red-600' : isCompleted ? 'bg-gray-500 dark:bg-gray-600' : 'bg-blue-600 dark:bg-blue-700'} border-4 ${isTerminal ? 'border-red-400' : isCompleted ? 'border-gray-400 dark:border-gray-500' : 'border-blue-500'} rounded-lg p-2 my-1.5 shadow-lg`}>
+                <div className={`${isTerminal ? 'bg-red-500 dark:bg-red-600' : isCompleted ? 'bg-gray-500 dark:bg-gray-600' : 'bg-blue-600 dark:bg-blue-800'} border-4 ${isTerminal ? 'border-red-400' : isCompleted ? 'border-gray-400 dark:border-gray-500' : 'border-blue-500'} rounded-lg p-2 my-1.5 shadow-lg`}>
                     <div className="flex items-center gap-1.5 mb-1">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -417,7 +418,7 @@ function OngoingPurchasesPage() {
             ? (isExpired ? 'bg-amber-400 dark:bg-amber-500' : 'bg-red-400 dark:bg-red-500')
             : isCompleted
             ? 'bg-gray-400 dark:bg-gray-600'
-            : (isBuyer ? 'bg-blue-600 dark:bg-blue-700' : 'bg-indigo-600 dark:bg-indigo-700');
+            : (isBuyer ? 'bg-blue-600 dark:bg-blue-800' : 'bg-indigo-600 dark:bg-indigo-700');
         const locationText = 'text-white';
         const locationTextBold = 'text-white';
         
@@ -612,18 +613,17 @@ function OngoingPurchasesPage() {
 
         const photos = Array.isArray(itemGroup.item?.photos) ? itemGroup.item.photos : [];
         const thumbUrl = photos.length > 0 ? resolvePhotoUrl(photos[0]) : null;
+        const thumbSrc = withFallbackImage(thumbUrl);
 
         return (
             <div key={itemGroup.productId} className="mb-6 min-w-0">
                 <div className="flex items-center gap-3 mb-3">
-                    {thumbUrl && (
-                        <img
-                            src={thumbUrl}
-                            alt={itemGroup.item.title || 'Item'}
-                            className="w-8 h-8 rounded object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
-                            onError={(e) => { e.target.remove(); }}
-                        />
-                    )}
+                    <img
+                        src={thumbSrc}
+                        alt={itemGroup.item.title || 'Item'}
+                        onError={onProductImageError}
+                        className="w-8 h-8 rounded object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                    />
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 break-words overflow-wrap-anywhere">
                         {itemGroup.item.title || 'Unknown Item'}
                     </h3>

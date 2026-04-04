@@ -10,7 +10,16 @@ require_once __DIR__ . '/security/security.php';
 setSecurityHeaders();
 setSecureCORS();
 
-$IMAGE_DIR = realpath(__DIR__ . '/../images');
+// Must match upload_profile_photo.php / product_listing.php: uploads honor DATA_IMAGES_DIR.
+$projectRoot = dirname(__DIR__);
+$envDir = getenv('DATA_IMAGES_DIR');
+$imagesCandidate = rtrim(
+    $envDir !== false && $envDir !== ''
+        ? $envDir
+        : ($projectRoot . DIRECTORY_SEPARATOR . 'images'),
+    '/\\'
+);
+$IMAGE_DIR = realpath($imagesCandidate);
 if ($IMAGE_DIR === false) {
     http_response_code(500);
     exit('Image directory not found');
@@ -48,7 +57,6 @@ if (isset($_GET['url']) && $_GET['url'] !== '') {
         $url = substr($url, 0, $qpos);
     }
 
-    $projectRoot = dirname(__DIR__);
     $path = null;
 
     // Handle /images/ paths (profile photos and other images)

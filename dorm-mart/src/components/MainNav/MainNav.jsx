@@ -94,7 +94,7 @@ function MainNav() {
     };
 
     return (
-        <nav className="bg-blue-600 text-slate-100 dark:bg-gray-800 dark:text-gray-100">
+        <nav className="bg-blue-600 text-slate-100 dark:bg-slate-900 dark:text-gray-100 dark:shadow-sm dark:shadow-black/20">
             <div className="mx-auto flex items-center gap-1 sm:gap-2 md:gap-4 p-2 md:p-3">
                 {/* Dorm Mart logo - visible on desktop only */}
                 <button
@@ -107,7 +107,7 @@ function MainNav() {
                     <div className="flex h-10 sm:h-11 md:h-15 items-center overflow-hidden rounded-full bg-white shadow-inner">
                         <input
                             type="text"
-                            placeholder="Search by item name, category, or description.."
+                            placeholder="Search by item name, category, or description."
                             value={searchText}
                             ref={inputRef}
                             maxLength={50}
@@ -168,7 +168,7 @@ function MainNav() {
                             aria-label="Menu"
                         >
                             <svg
-                                className="w-9 h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 text-white"
+                                className="w-9 h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 text-white dark:text-gray-100"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -230,19 +230,19 @@ function MainNav() {
                         className="flex flex-col justify-center items-center w-8 h-8 gap-1.5"
                         aria-label="Menu"
                     >
-                        <span className="w-6 h-0.5 bg-white"></span>
-                        <span className="w-6 h-0.5 bg-white"></span>
-                        <span className="w-6 h-0.5 bg-white"></span>
+                        <span className="w-6 h-0.5 bg-white dark:bg-gray-200"></span>
+                        <span className="w-6 h-0.5 bg-white dark:bg-gray-200"></span>
+                        <span className="w-6 h-0.5 bg-white dark:bg-gray-200"></span>
                     </button>
 
                     {showMobileMenu && (
-                        <div className="absolute right-0 mt-2 w-56 bg-blue-600 rounded-lg shadow-lg py-2 z-50 border-2 border-blue-400">
+                        <div className="absolute right-0 mt-2 w-56 rounded-lg border-2 border-blue-400 bg-blue-600 py-2 shadow-lg z-50 dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/40">
                             <button
                                 onClick={() => {
                                     navigate("/app");
                                     closeMobileMenuAndMarket();
                                 }}
-                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
                             >
                                 <img src={homeIcon} alt="" className="h-6 w-6" />
                                 <span>Home</span>
@@ -252,7 +252,7 @@ function MainNav() {
                                     navigate("/app/notification");
                                     closeMobileMenuAndMarket();
                                 }}
-                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
                             >
                                 <span className="relative inline-block">
                                     <img src={notificationIcon} alt="" className="h-6 w-6" />
@@ -273,7 +273,7 @@ function MainNav() {
                                     navigate("/app/chat");
                                     closeMobileMenuAndMarket();
                                 }}
-                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
                             >
                                 <span className="relative inline-block">
                                     <img src={chatIcon} alt="" className="h-6 w-6" />
@@ -293,7 +293,7 @@ function MainNav() {
                             <div className="relative">
                                 <button
                                     onClick={() => setShowMobileMarketDropdown((prev) => !prev)}
-                                    className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center justify-between gap-3"
+                                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
                                 >
                                     <span className="flex items-center gap-3">
                                         <img src={marketIcon} alt="" className="h-6 w-6" />
@@ -305,13 +305,13 @@ function MainNav() {
                                 </button>
 
                                 {showMobileMarketDropdown && (
-                                    <div className="mt-1 mx-2 bg-blue-500 rounded-md shadow-inner">
+                                    <div className="mx-2 mt-1 rounded-md bg-blue-500 shadow-inner dark:bg-slate-950 dark:shadow-none dark:ring-1 dark:ring-slate-700/80">
                                         <button
                                             onClick={() => {
                                                 handleSellerDashboard();
                                                 closeMobileMenuAndMarket();
                                             }}
-                                            className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors rounded-t-md"
+                                            className="w-full rounded-t-md px-4 py-2 text-left text-white transition-colors hover:bg-blue-700 dark:hover:bg-slate-800"
                                         >
                                             Seller Dashboard
                                         </button>
@@ -320,7 +320,7 @@ function MainNav() {
                                                 handleWishlist();
                                                 closeMobileMenuAndMarket();
                                             }}
-                                            className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors"
+                                            className="w-full px-4 py-2 text-left text-white transition-colors hover:bg-blue-700 dark:hover:bg-slate-800"
                                         >
                                             My Wishlist
                                         </button>
@@ -329,7 +329,7 @@ function MainNav() {
                                                 handleOngoingPurchases();
                                                 closeMobileMenuAndMarket();
                                             }}
-                                            className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors"
+                                            className="w-full px-4 py-2 text-left text-white transition-colors hover:bg-blue-700 dark:hover:bg-slate-800"
                                         >
                                             Ongoing Purchases
                                         </button>
@@ -338,7 +338,7 @@ function MainNav() {
                                                 handlePurchaseHistory();
                                                 closeMobileMenuAndMarket();
                                             }}
-                                            className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors rounded-b-md"
+                                            className="w-full rounded-b-md px-4 py-2 text-left text-white transition-colors hover:bg-blue-700 dark:hover:bg-slate-800"
                                         >
                                             Purchase History
                                         </button>
@@ -351,7 +351,7 @@ function MainNav() {
                                     navigate("/app/setting");
                                     closeMobileMenuAndMarket();
                                 }}
-                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
                             >
                                 <img src={settingIcon} alt="" className="h-6 w-6" />
                                 <span>Settings</span>
@@ -362,7 +362,7 @@ function MainNav() {
                                 navigate("/app/faq");
                                 closeMobileMenuAndMarket();
                                 }}
-                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
                             >
                                 <img src={questionIcon} alt="" className="h-6 w-6" />
                                 <span>FAQ</span>

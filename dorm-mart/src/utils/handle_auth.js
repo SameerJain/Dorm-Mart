@@ -1,3 +1,5 @@
+import { applyThemeToDOM, THEME_CACHE_KEY, THEME_PENDING_KEY } from "./load_theme.js";
+
 const BASE = process.env.REACT_APP_API_BASE || "http://localhost/api";
 
 // Logout function - calls backend to clear auth token
@@ -21,14 +23,20 @@ export async function logout() {
       },
     });
 
-    // Clear theme from DOM and localStorage on logout
-    document.documentElement.classList.remove('dark');
-    
-    // Clear user-specific theme from localStorage
+    // Reset to light theme (class, theme-color, color-scheme, cache) and clear pending toggle
+    applyThemeToDOM("light");
+    try {
+      localStorage.removeItem(THEME_PENDING_KEY);
+    } catch (_) {}
     if (userId) {
       const userThemeKey = `userTheme_${userId}`;
-      localStorage.removeItem(userThemeKey);
+      try {
+        localStorage.removeItem(userThemeKey);
+      } catch (_) {}
     }
+    try {
+      localStorage.removeItem(THEME_CACHE_KEY);
+    } catch (_) {}
 
     return response.ok;
   } catch (error) {

@@ -192,7 +192,17 @@ function ReviewRow({ review }) {
   );
 }
 
-function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear, disabled = false }) {
+function EditableLinkRow({
+  label,
+  placeholder,
+  value,
+  onChange,
+  onSave,
+  onClear,
+  disabled = false,
+  saveLabel = "Save",
+  savingLabel = "Saving...",
+}) {
   return (
     <div className="space-y-2 rounded-none sm:rounded-lg border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/60 dark:sm:bg-gray-800 p-3 sm:p-4 shadow-none sm:shadow-sm">
       <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700 dark:text-gray-200">
@@ -208,7 +218,7 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
           disabled={disabled}
           className={`text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
-          Delete
+          Clear
         </button>
       </div>
       <input
@@ -233,7 +243,7 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
           onMouseUp={(e) => e.stopPropagation()}
           className={`rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
-          {disabled ? "Saving..." : "Save"}
+          {disabled ? savingLabel : saveLabel}
         </button>
       </div>
     </div>
@@ -248,7 +258,7 @@ function MyProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState("");
   const [bio, setBio] = useState("");
   const [instagram, setInstagram] = useState("");
-  const [feedback, setFeedback] = useState({ message: "", tone: "success" });
+  const [feedback, setFeedback] = useState({ message: "", tone: "success", placement: null });
   const [avatarError, setAvatarError] = useState("");
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [isSavingInstagram, setIsSavingInstagram] = useState(false);
@@ -294,21 +304,15 @@ function MyProfilePage() {
     };
   }, []);
 
-  const showFeedback = (message, tone = "success") => {
-    setFeedback({ message, tone });
+  const showFeedback = (message, tone = "success", placement = null) => {
+    setFeedback({ message, tone, placement });
     if (feedbackTimerRef.current) {
       clearTimeout(feedbackTimerRef.current);
     }
-    feedbackTimerRef.current = setTimeout(() => setFeedback({ message: "", tone: "success" }), 2400);
-  };
-
-  const handleFieldSave = (label) => {
-    showFeedback(`${label} saved locally`);
-  };
-
-  const handleFieldClear = (label, setter) => {
-    setter("");
-    showFeedback(`${label} cleared`);
+    feedbackTimerRef.current = setTimeout(
+      () => setFeedback({ message: "", tone: "success", placement: null }),
+      2400
+    );
   };
 
   const ratingValue = useMemo(() => {
@@ -333,7 +337,6 @@ function MyProfilePage() {
     if (file.size > MAX_BYTES) {
       const errorMsg = "Image is too large. Maximum file size is 10 MB.";
       setAvatarError(errorMsg);
-      showFeedback(errorMsg, "error");
       event.target.value = null; // Clear the input
       return;
     }
@@ -342,7 +345,6 @@ function MyProfilePage() {
     if (!isAllowedType(file)) {
       const errorMsg = "Only JPG/JPEG, PNG, and WEBP images are allowed.";
       setAvatarError(errorMsg);
-      showFeedback(errorMsg, "error");
       event.target.value = null; // Clear the input
       return;
     }
@@ -367,7 +369,7 @@ function MyProfilePage() {
       setAvatarPreview(finalUrl);
       updateProfileState({ image_url: finalUrl });
       setAvatarError(""); // Clear any errors on success
-      showFeedback("Profile photo updated");
+      showFeedback("Profile photo updated", "success", "avatar");
     } catch (err) {
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
@@ -376,7 +378,6 @@ function MyProfilePage() {
       setAvatarPreview(fallback);
       const message = err instanceof Error ? err.message : "Unable to update profile photo.";
       setAvatarError(message);
-      showFeedback(message, "error");
     } finally {
       setAvatarUploading(false);
     }
@@ -396,11 +397,11 @@ function MyProfilePage() {
       const sanitized = (updated.bio ?? value ?? "").slice(0, 200);
       setBio(sanitized);
       updateProfileState({ bio: sanitized });
-      showFeedback(successMessage);
+      showFeedback(successMessage, "success", "bio");
     } catch (err) {
       setBio(previousBio);
       const message = err instanceof Error ? err.message : "Unable to update bio.";
-      showFeedback(message, "error");
+      showFeedback(message, "error", "bio");
     } finally {
       setIsSavingBio(false);
     }
@@ -424,11 +425,11 @@ function MyProfilePage() {
     const previous = instagram;
     const trimmed = value.trim();
     if (trimmed.length > 150) {
-      showFeedback("Instagram link must be 150 characters or fewer.", "error");
+      showFeedback("Instagram link must be 150 characters or fewer.", "error", "instagram");
       return;
     }
     if (!isValidInstagramUrl(trimmed)) {
-      showFeedback("Please enter a valid Instagram profile link.", "error");
+      showFeedback("Please enter a valid Instagram profile link.", "error", "instagram");
       return;
     }
     setInstagram(trimmed);
@@ -438,32 +439,41 @@ function MyProfilePage() {
       const sanitized = updated.instagram ?? trimmed ?? "";
       setInstagram(sanitized);
       updateProfileState({ instagram: sanitized });
-      showFeedback(successMessage);
+      showFeedback(successMessage, "success", "instagram");
     } catch (err) {
       setInstagram(previous);
       const message = err instanceof Error ? err.message : "Unable to update Instagram link.";
-      showFeedback(message, "error");
+      showFeedback(message, "error", "instagram");
     } finally {
       setIsSavingInstagram(false);
     }
   };
 
-  const handleBioSave = () => persistBio(bio, "Bio saved");
-  const handleBioClear = () => persistBio("", "Bio cleared");
-  const handleInstagramSave = () => persistInstagram(instagram, "Instagram saved");
-  const handleInstagramClear = () => persistInstagram("", "Instagram deleted");
+  const handleBioSave = () =>
+    persistBio(bio, bio.trim() === "" ? "Bio cleared" : "Bio saved");
+  /** Local-only: avoids save/loading UI on unrelated blue buttons until user clicks Save Bio */
+  const handleBioClear = () => setBio("");
+
+  const handleInstagramSave = () =>
+    persistInstagram(
+      instagram,
+      instagram.trim() === "" ? "Instagram cleared" : "Instagram saved"
+    );
+  const handleInstagramClear = () => setInstagram("");
 
   const reviewList = profile?.reviews ?? [];
   const bioRemaining = 200 - bio.length;
   const socialFields = [
     {
       label: "Instagram",
+      feedbackPlacement: "instagram",
       value: instagram,
       setter: (next) => setInstagram(next.slice(0, 150)),
       placeholder: "https://instagram.com/yourhandle",
       onSave: handleInstagramSave,
       onClear: handleInstagramClear,
       disabled: isSavingInstagram,
+      saveLabel: "Save Instagram",
     },
   ];
 
@@ -538,6 +548,15 @@ function MyProfilePage() {
                     </div>
                   </div>
                 )}
+                {feedback.placement === "avatar" && feedback.message && (
+                  <p
+                    className={`mt-3 text-sm font-medium ${
+                      feedback.tone === "error" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                    }`}
+                  >
+                    {feedback.message}
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-1 flex-col rounded-none sm:rounded-xl border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/80 dark:sm:bg-gray-800 p-4 sm:p-6 shadow-none sm:shadow mb-6 sm:mb-8">
@@ -611,32 +630,48 @@ function MyProfilePage() {
                         {isSavingBio ? "Saving..." : "Save Bio"}
                       </button>
                     </div>
+                    {feedback.placement === "bio" && feedback.message && (
+                      <p
+                        className={`mt-3 text-sm font-medium ${
+                          feedback.tone === "error" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                        }`}
+                      >
+                        {feedback.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-3">
                     {socialFields.map((field) => (
-                      <EditableLinkRow
-                        key={field.label}
-                        label={field.label}
-                        placeholder={field.placeholder}
-                        value={field.value}
-                        onChange={(event) => field.setter(event.target.value)}
-                        onSave={field.onSave ?? (() => handleFieldSave(field.label))}
-                        onClear={field.onClear ?? (() => handleFieldClear(field.label, field.setter))}
-                        disabled={Boolean(field.disabled)}
-                      />
+                      <div key={field.label}>
+                        <EditableLinkRow
+                          label={field.label}
+                          placeholder={field.placeholder}
+                          value={field.value}
+                          onChange={(event) => field.setter(event.target.value)}
+                          onSave={field.onSave}
+                          onClear={field.onClear}
+                          disabled={Boolean(field.disabled)}
+                          saveLabel={field.saveLabel}
+                          savingLabel={field.savingLabel}
+                        />
+                        {field.feedbackPlacement &&
+                          feedback.placement === field.feedbackPlacement &&
+                          feedback.message && (
+                            <p
+                              className={`mt-2 text-sm font-medium ${
+                                feedback.tone === "error"
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-emerald-600 dark:text-emerald-400"
+                              }`}
+                            >
+                              {feedback.message}
+                            </p>
+                          )}
+                      </div>
                     ))}
                   </div>
                 </div>
-                {feedback.message && (
-                  <p
-                    className={`mt-4 mb-2 text-sm font-medium ${
-                      feedback.tone === "error" ? "text-rose-600" : "text-emerald-600"
-                    }`}
-                  >
-                    {feedback.message}
-                  </p>
-                )}
               </div>
             </section>
 

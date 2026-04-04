@@ -3,11 +3,9 @@ import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import { useTheme } from "../../hooks/useTheme";
 
-const NAV_BLUE = "#2563EB";
-
 function UserPreferences() {
   const navigate = useNavigate();
-  const { theme, updateTheme, isLoading: themeIsLoading } = useTheme();
+  const { theme, updateTheme, syncFromServerIfNoPending, isLoading: themeIsLoading } = useTheme();
   const [promotionalEmails, setPromotionalEmails] = useState(false);
   const [revealContact, setRevealContact] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -109,11 +107,14 @@ function UserPreferences() {
         if (!res.ok) return;
         const json = await res.json();
         if (!json || json.ok !== true || !json.data) return;
-        const { promoEmails, revealContact, interests, theme } = json.data;
+        const { promoEmails, revealContact, interests, theme: serverTheme } = json.data;
         if (cancelled) return;
         setPromotionalEmails(!!promoEmails);
         setRevealContact(!!revealContact);
         if (Array.isArray(interests)) setSelectedInterests(interests);
+        if (serverTheme === 'dark' || serverTheme === 'light') {
+          syncFromServerIfNoPending(serverTheme);
+        }
         setPreferencesLoaded(true);
       } catch (e) {
         console.warn('UserPreferences: GET failed', e);
@@ -157,15 +158,14 @@ function UserPreferences() {
 
   return (
     <SettingsLayout>
-      <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-3">
-        <h1 className="text-2xl font-serif font-semibold" style={{ color: NAV_BLUE }}>
+      <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-3 dark:border-gray-700">
+        <h1 className="text-2xl font-serif font-semibold text-blue-600">
           User Preferences
         </h1>
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="rounded-lg border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
-          style={{ color: NAV_BLUE }}
+          className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-blue-600 hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-700"
           aria-label="Go back"
         >
           ← Back
@@ -345,32 +345,36 @@ function UserPreferences() {
         </div> */}
 
         {/* Theme */}
-        <div className="rounded-lg border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Theme</h2>
+        <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">Theme</h2>
 
           {/* Theme Toggle */}
           <div className="flex items-center space-x-4 mb-4">
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-gray-700/80">
               <button
+                type="button"
                 onClick={() => updateTheme("light")}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${theme === "light"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
-                  }`}
+                className={`flex items-center space-x-2 rounded-md px-3 py-2 transition-colors ${
+                  theme === "light"
+                    ? "bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-gray-100 dark:shadow-md dark:ring-1 dark:ring-gray-500"
+                    : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                }`}
               >
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
                   <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
                 </svg>
                 <span className="text-sm font-medium">Light</span>
               </button>
               <button
+                type="button"
                 onClick={() => updateTheme("dark")}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${theme === "dark"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
-                  }`}
+                className={`flex items-center space-x-2 rounded-md px-3 py-2 transition-colors ${
+                  theme === "dark"
+                    ? "bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-gray-100 dark:shadow-md dark:ring-1 dark:ring-gray-500"
+                    : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                }`}
               >
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
                   <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
                 </svg>
                 <span className="text-sm font-medium">Dark</span>

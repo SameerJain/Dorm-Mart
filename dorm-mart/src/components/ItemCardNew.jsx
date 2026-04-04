@@ -1,7 +1,7 @@
 // src/components/ItemCardNew.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { withFallbackImage } from "../utils/imageFallback";
+import { withFallbackImage, onProductImageError } from "../utils/imageFallback";
 
 export default function ItemCardNew({
   id,
@@ -44,24 +44,27 @@ export default function ItemCardNew({
       onClick={handleClick}
       className={`group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200/90 dark:border-gray-700/70 overflow-hidden
                  ${fixedWidth ? 'w-[240px]' : 'w-full'} h-[350px] cursor-pointer transition-all duration-200
-                 hover:shadow-xl hover:-translate-y-1`}
+                 lg:hover:shadow-xl lg:hover:-translate-y-1
+                 dark:lg:hover:border-blue-500/45 dark:lg:hover:shadow-[0_12px_40px_-10px_rgba(0,0,0,0.85),0_0_0_1px_rgba(59,130,246,0.25)]
+                 dark:lg:hover:ring-1 dark:lg:hover:ring-blue-400/30 dark:lg:hover:-translate-y-0.5`}
     >
       {/* subtle top accent */}
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400 opacity-0 transition-opacity duration-200 lg:group-hover:opacity-100 dark:from-sky-400 dark:via-blue-400 dark:to-indigo-400 dark:lg:group-hover:opacity-100"></div>
 
       {/* IMAGE */}
       <div className="relative w-full aspect-square bg-gray-50 dark:bg-gray-700 flex justify-center items-center overflow-hidden">
         <img
           src={imageSrc}
           alt={title}
-          className="object-contain w-full h-full p-2 transition-transform duration-200 group-hover:scale-[1.03]"
+          onError={onProductImageError}
+          className="object-contain w-full h-full p-2 transition-[transform,filter] duration-200 lg:group-hover:scale-[1.03] dark:lg:group-hover:scale-[1.02] dark:lg:group-hover:brightness-110"
         />
 
         {/* Remove button - only shown on wishlist page, top-right corner */}
         {showRemoveButton && (
           <button
             onClick={handleRemoveClick}
-            className="absolute top-2 right-2 z-30 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-lg transition-colors"
+            className="absolute top-2 right-2 z-30 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-lg transition-colors lg:hover:bg-red-600 active:bg-red-700"
             aria-label="Remove from wishlist"
             title="Remove from wishlist"
           >
@@ -118,8 +121,8 @@ export default function ItemCardNew({
           </div>
         )}
 
-        {/* dim overlay on hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"></div>
+        {/* Hover overlay: light = soft highlight; dark = vignette (no white wash) */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent opacity-0 transition-opacity duration-200 lg:group-hover:opacity-100 dark:from-black/70 dark:via-black/30 dark:to-transparent dark:lg:group-hover:opacity-100"></div>
       </div>
 
       {/* BODY */}
@@ -146,7 +149,7 @@ export default function ItemCardNew({
       </div>
 
       {/* bottom gradient accent */}
-      <div className="absolute inset-x-0 bottom-0 h-9 bg-gradient-to-r from-blue-50 via-transparent to-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"></div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-9 bg-gradient-to-r from-blue-50 via-transparent to-indigo-50 opacity-0 transition-opacity duration-200 lg:group-hover:opacity-100 dark:from-blue-600/20 dark:via-indigo-500/12 dark:to-violet-600/18 dark:lg:group-hover:opacity-100"></div>
     </div>
   );
 }

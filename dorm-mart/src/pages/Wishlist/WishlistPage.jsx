@@ -223,7 +223,7 @@ export default function WishlistPage() {
                     onClick={() => setSelectedCategory(null)}
                     className={`px-4 py-1.5 rounded-full text-sm border ${
                       selectedCategory === null
-                        ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700"
+                        ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
                         : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                     }`}
                   >
@@ -235,7 +235,7 @@ export default function WishlistPage() {
                       onClick={() => setSelectedCategory(cat)}
                       className={`px-4 py-1.5 rounded-full text-sm border ${
                         selectedCategory === cat
-                          ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700"
+                          ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
                           : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                       }`}
                     >
@@ -353,7 +353,7 @@ export default function WishlistPage() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+                <div className="flex min-w-0 flex-wrap gap-4 sm:gap-6">
                   {items.map((item) => (
                     <ItemCardNew
                       key={item.id}
@@ -368,6 +368,7 @@ export default function WishlistPage() {
                       sellerEmail={item.sellerEmail}
                       isWishlisted={true}
                       showRemoveButton={true}
+                      fixedWidth={true}
                       onRemoveFromWishlist={handleRemoveFromWishlist}
                     />
                   ))}
@@ -421,7 +422,7 @@ export default function WishlistPage() {
                   }}
                   className={`px-4 py-2 rounded-full text-sm border ${
                     selectedCategory === null
-                      ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700"
+                      ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
                       : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                   }`}
                 >
@@ -436,7 +437,7 @@ export default function WishlistPage() {
                     }}
                     className={`px-4 py-2 rounded-full text-sm border ${
                       selectedCategory === cat
-                        ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700"
+                        ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
                         : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                     }`}
                   >

@@ -577,7 +577,7 @@ function ReviewModal({
                     handleSubmit(e);
                   }}
                   disabled={!isFormValid || isSubmitting}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? "Submitting..." : "Complete"}
                 </button>
@@ -764,7 +764,7 @@ function ReviewModal({
               <div className="flex justify-end">
                 <button
                   onClick={handleClose}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg font-medium"
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white rounded-lg font-medium"
                 >
                   Close
                 </button>
@@ -833,7 +833,7 @@ function ReviewModal({
                     setPendingSubmit(false);
                   }
                 }}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900"
               >
                 Confirm
               </button>

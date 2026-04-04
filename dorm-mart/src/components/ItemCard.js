@@ -1,6 +1,6 @@
 // src/components/ItemCardNew.jsx
 import React from "react";
-import { withFallbackImage } from "../utils/imageFallback";
+import { withFallbackImage, onProductImageError } from "../utils/imageFallback";
 
 export default function ItemCardNew({
   title,
@@ -36,6 +36,7 @@ export default function ItemCardNew({
         <img
           src={imageSrc}
           alt={title}
+          onError={onProductImageError}
           className="object-cover w-full h-full"
         />
       </div>

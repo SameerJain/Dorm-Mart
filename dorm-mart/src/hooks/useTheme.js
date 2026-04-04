@@ -1,17 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import {
+  applyThemeToDOM,
+  getEffectivePendingTheme,
+  THEME_CACHE_KEY,
+  THEME_PENDING_KEY,
+} from '../utils/load_theme.js';
 
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
-const CACHE_KEY = 'dm_last_theme';
-const PENDING_KEY = 'dm_theme_pending';
-
-function applyToDOM(theme) {
-  if (theme === 'dark') {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-  try { localStorage.setItem(CACHE_KEY, theme); } catch (_) {}
-}
+const API_BASE = process.env.REACT_APP_API_BASE || '/api';
 
 export function useTheme() {
   const readDOM = () =>
@@ -22,38 +17,57 @@ export function useTheme() {
   const [theme, setTheme] = useState(readDOM);
   const saveControllerRef = useRef(null);
 
-  const saveTheme = async (newTheme) => {
+  const saveTheme = useCallback(async (newTheme) => {
     if (saveControllerRef.current) saveControllerRef.current.abort();
     const controller = new AbortController();
     saveControllerRef.current = controller;
 
-    try { localStorage.setItem(CACHE_KEY, newTheme); } catch (_) {}
+    try {
+      localStorage.setItem(THEME_CACHE_KEY, newTheme);
+    } catch (_) {}
 
     try {
-      await fetch(`${API_BASE}/userPreferences.php`, {
+      const res = await fetch(`${API_BASE}/userPreferences.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ theme: newTheme }),
         signal: controller.signal,
       });
+      if (res.ok) {
+        try {
+          localStorage.removeItem(THEME_PENDING_KEY);
+        } catch (_) {}
+      }
     } catch (e) {
       if (e.name !== 'AbortError') console.warn('Failed to save theme:', e);
     }
-  };
+  }, []);
 
-  const updateTheme = (newTheme) => {
-    setTheme(newTheme);
-    applyToDOM(newTheme);
+  const updateTheme = useCallback(
+    (newTheme) => {
+      setTheme(newTheme);
+      applyThemeToDOM(newTheme);
 
-    try {
-      localStorage.setItem(PENDING_KEY, JSON.stringify({ theme: newTheme, ts: Date.now() }));
-    } catch (_) {}
+      try {
+        localStorage.setItem(
+          THEME_PENDING_KEY,
+          JSON.stringify({ theme: newTheme, ts: Date.now() })
+        );
+      } catch (_) {}
 
-    saveTheme(newTheme);
-  };
+      saveTheme(newTheme);
+    },
+    [saveTheme]
+  );
 
-  // isLoading is always false — loadUserTheme in RootLayout already resolved
-  // the authoritative theme before any page component mounts.
-  return { theme, updateTheme, isLoading: false };
+  /** Align React state + DOM with server when user has not toggled recently (avoids fighting updateTheme). */
+  const syncFromServerIfNoPending = useCallback((serverTheme) => {
+    if (serverTheme !== 'dark' && serverTheme !== 'light') return;
+    if (getEffectivePendingTheme()) return;
+    setTheme(serverTheme);
+    applyThemeToDOM(serverTheme);
+  }, []);
+
+  return { theme, updateTheme, syncFromServerIfNoPending, isLoading: false };
 }
