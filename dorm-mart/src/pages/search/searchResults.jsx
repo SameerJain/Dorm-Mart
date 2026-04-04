@@ -1,6 +1,8 @@
 // src/pages/search/searchResults.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
+import { withFallbackImage, onProductImageError } from "../../utils/imageFallback";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -301,11 +303,12 @@ export default function SearchResults() {
                       <div className="grid grid-cols-[4.5rem,1fr,6.5rem] md:grid-cols-[6rem,1fr,8rem] gap-3 items-center">
                         {/* Photo */}
                         <div className="h-20 w-20 md:h-24 md:w-24 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
-                          {it.img ? (
-                            <img src={it.img} alt={it.title} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center text-xs text-gray-400 dark:text-gray-500">No image</div>
-                          )}
+                          <img
+                            src={withFallbackImage(it.img)}
+                            alt={it.title}
+                            onError={onProductImageError}
+                            className="h-full w-full object-cover"
+                          />
                         </div>
 
                         {/* Middle details */}
@@ -322,7 +325,7 @@ export default function SearchResults() {
                         {/* Right price + status */}
                         <div className="flex flex-col items-end gap-1">
                           <div className="text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">${it.price?.toFixed(2)}</div>
-                          {it.status ? (
+                          {it.status && String(it.status).toUpperCase() !== "AVAILABLE" ? (
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
                               String(it.status).toUpperCase() === "JUST POSTED"
                                 ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-700"
@@ -606,6 +609,7 @@ function FiltersSidebar({
               maxLength={7}
               pattern="[0-9.]*"
               value={minPrice || ""} 
+              onKeyDown={decimalNumericKeyDownHandler}
               onChange={(e) => {
                 const value = e.target.value;
                 // Only allow numbers and decimal point
@@ -627,6 +631,7 @@ function FiltersSidebar({
               maxLength={7}
               pattern="[0-9.]*"
               value={maxPrice || ""} 
+              onKeyDown={decimalNumericKeyDownHandler}
               onChange={(e) => {
                 const value = e.target.value;
                 // Only allow numbers and decimal point
@@ -688,7 +693,7 @@ function FiltersSidebar({
         onClick={apply} 
         className={`w-full px-3 py-2 rounded text-sm font-medium transition-colors ${
           hasActiveFilters
-            ? "bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600"
+            ? "bg-blue-600 dark:bg-blue-800 text-white hover:bg-blue-700 dark:hover:bg-blue-900"
             : "bg-gray-400 dark:bg-gray-600 text-white cursor-not-allowed"
         }`}
         disabled={!hasActiveFilters}

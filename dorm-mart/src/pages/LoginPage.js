@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PreLoginBranding from "../components/PreLoginBranding";
+import { applyThemeToDOM, THEME_PENDING_KEY } from "../utils/load_theme.js";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
@@ -139,15 +140,14 @@ function LoginPage() {
       if (data.ok) {
         // Auth token is now set server-side as httpOnly cookie
         
-        // Apply theme immediately after successful login
-        if (data.theme) {
-          if (data.theme === 'dark') {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
-          
-          // Also save to localStorage for immediate access
+        // Apply theme immediately after successful login (class, cache, theme-color, color-scheme)
+        if (data.theme === 'dark' || data.theme === 'light') {
+          try {
+            localStorage.removeItem(THEME_PENDING_KEY);
+          } catch (_) {}
+          applyThemeToDOM(data.theme);
+
+          // Also save per-user key for immediate access
           try {
             const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
               method: 'GET', 
@@ -195,14 +195,38 @@ function LoginPage() {
 
   return (
     <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">
+      <style>{`
+        /* iPhone SE presets only (375×667 Chrome; 320×568 original) — nudge content up so bottom tagline isn’t clipped */
+        @media (max-width: 375px) and (max-height: 667px) {
+          .login-page-se-mobile-col {
+            padding-top: 3rem !important;
+            padding-bottom: 1.25rem !important;
+          }
+          .login-page-se-mobile-col .login-page-se-branding {
+            margin-bottom: 0.75rem !important;
+          }
+          .login-page-se-mobile-col .login-page-se-tagline {
+            margin-top: 0.75rem !important;
+            padding-bottom: 0.75rem !important;
+          }
+        }
+        @media (max-width: 320px) and (max-height: 568px) {
+          .login-page-se-mobile-col {
+            padding-top: 2.5rem !important;
+          }
+          .login-page-se-mobile-col .login-page-se-branding {
+            margin-bottom: 0.5rem !important;
+          }
+        }
+      `}</style>
       <PreLoginBranding />
 
       {/* Right side - Login form (full width on mobile, 50% on desktop) */}
       <div
-        className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden"
+        className="login-page-se-mobile-col w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden"
       >
         {/* Mobile branding header (visible only on mobile/tablet) */}
-        <div className="lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
+        <div className="login-page-se-branding lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">Dorm Mart</h1>
           <h2 className="text-xl sm:text-2xl md:text-4xl font-light text-gray-600 opacity-90 leading-relaxed">
             Wastage, who?
@@ -349,7 +373,7 @@ function LoginPage() {
           </div>
           
           {/* Tagline - Mobile only, outside login card */}
-          <p className="lg:hidden mt-6 sm:mt-8 md:mt-10 text-base sm:text-lg md:text-2xl text-gray-600 opacity-80 max-w-sm md:max-w-lg mx-auto leading-relaxed text-center px-4">
+          <p className="login-page-se-tagline lg:hidden mt-6 sm:mt-8 md:mt-10 text-base sm:text-lg md:text-2xl text-gray-600 opacity-80 max-w-sm md:max-w-lg mx-auto leading-relaxed text-center px-4">
             Your campus marketplace for buying and selling. Connect with fellow students and save money.
           </p>
         </div>

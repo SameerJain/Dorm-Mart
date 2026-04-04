@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
-import { withFallbackImage } from '../../utils/imageFallback';
+import { withFallbackImage, onProductImageError } from '../../utils/imageFallback';
 import ReviewModal from '../Reviews/ReviewModal';
 import StarRating from '../Reviews/StarRating';
 import BuyerRatingModal from './BuyerRatingModal';
@@ -563,7 +563,7 @@ function SellerDashboardPage() {
                                             className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden hover:ring-2 hover:ring-blue-300 transition"
                                             aria-label={`Open ${truncateProductTitle(listing.title)}`}
                                         >
-                                            <img src={withFallbackImage(listing.image)} alt={truncateProductTitle(listing.title)} className="w-full h-full object-cover" />
+                                            <img src={withFallbackImage(listing.image)} alt={truncateProductTitle(listing.title)} onError={onProductImageError} className="w-full h-full object-cover" />
                                         </button>
                                         <div className="min-w-0 flex-1 max-w-full overflow-hidden">
                                             <button

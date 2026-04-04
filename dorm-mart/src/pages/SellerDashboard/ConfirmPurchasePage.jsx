@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { decimalNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
@@ -342,17 +343,18 @@ export default function ConfirmPurchasePage() {
                       $
                     </span>
                     <input
-                      type="number"
-                      min="0"
-                      max={PRICE_LIMITS.max}
+                      type="text"
+                      inputMode="decimal"
                       value={finalPrice}
                       disabled={disableForm}
+                      onKeyDown={decimalNumericKeyDownHandler}
                       onChange={(e) => {
                         const value = e.target.value;
                         if (value === '') {
                           setFinalPrice('');
                           return;
                         }
+                        if (!/^\d*\.?\d*$/.test(value)) return;
                         const numValue = parseFloat(value);
                         if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
                           setFinalPrice(value);

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { withFallbackImage } from "../../utils/imageFallback";
+import { withFallbackImage, onProductImageError } from "../../utils/imageFallback";
 import { useState, useEffect } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
 
@@ -99,6 +99,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
           <img
             src={displayImage}
             alt="Item"
+            onError={onProductImageError}
             className="w-full h-48 sm:w-40 sm:h-40 object-cover rounded select-none"
           />
         </Link>
@@ -128,7 +129,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
           <Link
             to={detailPath}
             state={detailState}
-            className="text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-700"
+            className="text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white rounded active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-700"
           >
             See Receipt
           </Link>

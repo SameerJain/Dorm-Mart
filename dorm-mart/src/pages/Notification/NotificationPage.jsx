@@ -1,6 +1,7 @@
 // src/pages/NotificationPage.jsx
 import React, { useContext, useMemo, useState, useEffect } from "react";
 import { ChatContext } from "../../context/ChatContext";
+import { onProductImageError } from "../../utils/imageFallback";
 import { useNavigate } from "react-router-dom";
 
 const BASE = process.env.REACT_APP_API_BASE || "api";
@@ -173,6 +174,7 @@ export default function NotificationPage() {
                         <img
                           src={proxied}
                           alt={title}
+                          onError={onProductImageError}
                           className="w-full h-full object-cover"
                         />
                       </div>

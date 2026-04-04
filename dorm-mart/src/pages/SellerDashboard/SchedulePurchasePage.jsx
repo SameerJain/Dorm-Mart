@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MEET_LOCATION_OPTIONS, MEET_LOCATION_OTHER_VALUE } from '../../constants/meetLocations';
+import { decimalNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
@@ -680,16 +681,17 @@ function SchedulePurchasePage() {
                                             $
                                         </span>
                                         <input
-                                            type="number"
-                                            min="0"
-                                            max={PRICE_LIMITS.max}
+                                            type="text"
+                                            inputMode="decimal"
                                             value={negotiatedPrice}
+                                            onKeyDown={decimalNumericKeyDownHandler}
                                             onChange={(e) => {
                                                 const value = e.target.value;
                                                 if (value === '') {
                                                     setNegotiatedPrice('');
                                                     return;
                                                 }
+                                                if (!/^\d*\.?\d*$/.test(value)) return;
                                                 const numValue = parseFloat(value);
                                                 if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
                                                     setNegotiatedPrice(value);
@@ -846,7 +848,7 @@ function SchedulePurchasePage() {
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-700 dark:hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
                             >
                                 {isSubmitting ? 'Scheduling...' : 'Schedule Purchase'}
                             </button>
