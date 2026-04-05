@@ -24,6 +24,8 @@ if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+require_once __DIR__ . '/../utility/transactional_email_html.php';
+
 // Load environment variables (same as create_account.php)
 foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
     if (is_readable($envFile)) {
@@ -55,54 +57,10 @@ function sendPasswordResetEmailViaSendGrid(array $user, string $resetLink, strin
     try {
         $sendgrid = new \SendGrid($apiKey);
         
-        // XSS PROTECTION: Encoding - HTML entity encoding
-        $firstName = escapeHtml($user['first_name'] ?: 'Student');
-        $resetLinkEscaped = escapeHtml($resetLink);
-        $subject = 'Reset Your Password - Dorm Mart';
-        
-        // HTML content (same as SMTP version)
-        $html = <<<HTML
-<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{$subject}</title>
-  </head>
-  <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
-    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
-      <p style="color:#eee;">Dear {$firstName},</p>
-      <p style="color:#eee;">You requested to reset your password for your Dorm Mart account.</p>
-      <p style="margin:20px 0;">
-        <a href="{$resetLinkEscaped}" style="background:#007bff;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">Reset Password</a>
-      </p>
-      <p style="color:#eee;">This link will expire in 1 hour for security reasons.</p>
-      <p style="color:#eee;">Best regards,<br/>The Dorm Mart Team</p>
-      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
-      <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
-      <a href="mailto:dormmartsupport@gmail.com" style="color:#9db7ff;">dormmartsupport@gmail.com</a></p>
-    </div>
-  </body>
-</html>
-HTML;
-
-        // Plain-text version
-        $firstNamePlain = $user['first_name'] ?: 'Student';
-        $text = <<<TEXT
-Dear {$firstNamePlain},
-
-You requested to reset your password for your Dorm Mart account.
-
-Click this link to reset your password:
-{$resetLink}
-
-This link will expire in 1 hour for security reasons.
-
-Best regards,
-The Dorm Mart Team
-
-(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
-TEXT;
+        $pkg = dm_transactional_password_reset_package($user['first_name'] ?? '', $resetLink);
+        $subject = $pkg['subject'];
+        $html = $pkg['html'];
+        $text = $pkg['text'];
 
         $email = new \SendGrid\Mail\Mail();
         $email->setFrom("noreply@dormmart.me", "Dorm Mart");
@@ -211,54 +169,10 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($user['email'], trim($user['first_name'] . ' ' . $user['last_name']));
 
-        // XSS PROTECTION: Encoding (Layer 2) - HTML entity encoding (more foolproof than filtering)
-        $firstName = escapeHtml($user['first_name'] ?: 'Student');
-        $resetLinkEscaped = escapeHtml($resetLink);
-        $subject = 'Reset Your Password - Dorm Mart';
-
-        // Simplified email template (minimal like create_account.php)
-        $html = <<<HTML
-<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{$subject}</title>
-  </head>
-  <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
-    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
-      <p style="color:#eee;">Dear {$firstName},</p>
-      <p style="color:#eee;">You requested to reset your password for your Dorm Mart account.</p>
-      <p style="margin:20px 0;">
-        <a href="{$resetLinkEscaped}" style="background:#007bff;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">Reset Password</a>
-      </p>
-      <p style="color:#eee;">This link will expire in 1 hour for security reasons.</p>
-      <p style="color:#eee;">Best regards,<br/>The Dorm Mart Team</p>
-      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
-      <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
-      <a href="mailto:dormmartsupport@gmail.com" style="color:#9db7ff;">dormmartsupport@gmail.com</a></p>
-    </div>
-  </body>
-</html>
-HTML;
-
-        // Plain-text version for faster delivery (no HTML escaping needed for plain text)
-        $firstNamePlain = $user['first_name'] ?: 'Student';
-        $text = <<<TEXT
-Dear {$firstNamePlain},
-
-You requested to reset your password for your Dorm Mart account.
-
-Click this link to reset your password:
-{$resetLink}
-
-This link will expire in 1 hour for security reasons.
-
-Best regards,
-The Dorm Mart Team
-
-(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
-TEXT;
+        $pkg = dm_transactional_password_reset_package($user['first_name'] ?? '', $resetLink);
+        $subject = $pkg['subject'];
+        $html = $pkg['html'];
+        $text = $pkg['text'];
 
         $mail->isHTML(true);
         $mail->Subject = $subject;
