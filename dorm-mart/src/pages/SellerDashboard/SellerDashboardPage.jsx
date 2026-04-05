@@ -527,7 +527,7 @@ function SellerDashboardPage() {
                     {/* Create New Listing Button */}
                     <button
                         onClick={handleCreateNewListing}
-                        className="w-full md:w-auto bg-white hover:bg-gray-50 dark:bg-gray-100 dark:hover:bg-white text-blue-600 dark:text-blue-800 px-8 py-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-3 border-2 border-blue-600 dark:border-blue-800 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        className="w-full md:w-auto bg-white hover:bg-gray-50 dark:bg-gray-100 dark:hover:bg-white text-[#2563eb] px-8 py-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-3 border-2 border-blue-600 dark:border-blue-800 shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

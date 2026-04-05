@@ -154,7 +154,7 @@ function MainNav() {
 
                 {/* Desktop navigation - hidden on mobile */}
                 <ul className="mr-1 sm:mr-2 hidden md:flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink-0">
-                    <Icon to="/app/notification" src={notificationIcon} alt="Notification" badge={unreadNotificationTotal} />
+                    <Icon to="/app/notification" src={notificationIcon} alt="Notifications" badge={unreadNotificationTotal} />
                     <Icon to="/app/chat" src={chatIcon} alt="Chat" badge={unreadMsgTotal} />
 
                     {/* Hamburger menu icon for desktop - replaces marketplace icon */}
@@ -265,7 +265,7 @@ function MainNav() {
                                         </span>
                                     )}
                                 </span>
-                                <span>Notification</span>
+                                <span>Notifications</span>
                             </button>
 
                             <button
