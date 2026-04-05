@@ -2,15 +2,15 @@
 header('Content-Type: application/json');
 
 // Include security utilities
-require_once __DIR__ . '/security/security.php';
+require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 setSecureCORS();
 
-require_once __DIR__ . '/auth/auth_handle.php';
-require_once __DIR__ . '/database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 // Include PHPMailer for promo email functionality
-$PROJECT_ROOT = dirname(__DIR__, 1);
+$PROJECT_ROOT = dirname(__DIR__, 2);
 if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
     require $PROJECT_ROOT . '/vendor/autoload.php';
 } else {
@@ -211,7 +211,7 @@ TEXT;
 
 function sendPromoWelcomeEmail(array $user): array
 {
-    $PROJECT_ROOT = dirname(__DIR__, 1);
+    $PROJECT_ROOT = dirname(__DIR__, 2);
 
     // Check for SendGrid API key first (Railway option)
     $sendgridApiKey = getenv('SENDGRID_API_KEY');

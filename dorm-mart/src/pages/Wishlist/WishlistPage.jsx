@@ -39,7 +39,7 @@ export default function WishlistPage() {
 
             const rawImg = d.image_url || null;
             const img = rawImg
-              ? `${API_BASE}/image.php?url=${encodeURIComponent(rawImg)}`
+              ? `${API_BASE}/media/image.php?url=${encodeURIComponent(rawImg)}`
               : null;
 
             const createdAt = d.created_at || d.date_listed ? new Date(d.created_at || d.date_listed) : null;

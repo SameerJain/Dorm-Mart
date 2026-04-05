@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
 
-// dorm-mart/api/image.php
+// dorm-mart/api/media/image.php
 // Serves images that are stored under /images/ on disk
 // Accepts either ?file=filename.png OR ?url=/images/filename.png
 
 // Include security utilities
-require_once __DIR__ . '/security/security.php';
+require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 setSecureCORS();
 
 // Must match upload_profile_photo.php / product_listing.php: uploads honor DATA_IMAGES_DIR.
-$projectRoot = dirname(__DIR__);
+$projectRoot = dirname(__DIR__, 2);
 $envDir = getenv('DATA_IMAGES_DIR');
 $imagesCandidate = rtrim(
     $envDir !== false && $envDir !== ''

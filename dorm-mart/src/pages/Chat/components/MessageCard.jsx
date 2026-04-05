@@ -17,7 +17,7 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
   const imageUrl = useMemo(() => {
     if (!rawImageUrl) return null;
     return (rawImageUrl.startsWith('http') || rawImageUrl.startsWith('/data/images/') || rawImageUrl.startsWith('/images/'))
-      ? `${API_BASE}/image.php?url=${encodeURIComponent(rawImageUrl)}`
+      ? `${API_BASE}/media/image.php?url=${encodeURIComponent(rawImageUrl)}`
       : rawImageUrl;
   }, [rawImageUrl]);
 

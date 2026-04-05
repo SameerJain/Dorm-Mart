@@ -260,7 +260,7 @@ function ProductListingPage() {
         setLoadError(null);
         setServerMsg(null);
 
-        const res = await fetch(`${API_BASE}/viewProduct.php?product_id=${encodeURIComponent(id)}`, {
+        const res = await fetch(`${API_BASE}/product/viewProduct.php?product_id=${encodeURIComponent(id)}`, {
           credentials: "include",
         });
 
@@ -341,9 +341,9 @@ function ProductListingPage() {
           const raw = String(url);
           let proxiedUrl = url;
           if (/^https?:\/\//i.test(raw)) {
-            proxiedUrl = `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
+            proxiedUrl = `${API_BASE}/media/image.php?url=${encodeURIComponent(raw)}`;
           } else if (raw.startsWith('/data/images/') || raw.startsWith('/images/')) {
-            proxiedUrl = `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
+            proxiedUrl = `${API_BASE}/media/image.php?url=${encodeURIComponent(raw)}`;
           } else if (raw.startsWith("/")) {
             proxiedUrl = `${PUBLIC_BASE}${raw}`;
           }

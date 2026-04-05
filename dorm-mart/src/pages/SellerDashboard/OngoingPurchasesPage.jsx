@@ -4,6 +4,117 @@ import { withFallbackImage, onProductImageError } from '../../utils/imageFallbac
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
+/** Grace period after scheduled meet time before the card moves to Past */
+const ACTIVE_AFTER_MEETING_MS = 30 * 60 * 1000;
+
+function parseMeetingAtMs(req) {
+    if (!req?.meeting_at) return null;
+    const t = new Date(req.meeting_at).getTime();
+    return Number.isFinite(t) ? t : null;
+}
+
+function createdAtMs(req) {
+    if (!req?.created_at) return 0;
+    const t = new Date(req.created_at).getTime();
+    return Number.isFinite(t) ? t : 0;
+}
+
+/**
+ * @returns {'past' | 'active' | 'needsResponse' | 'upcoming'}
+ */
+function getScheduleBucket(req, nowMs) {
+    if (['declined', 'cancelled', 'expired'].includes(req.status) || req.has_completed_confirm === true) {
+        return 'past';
+    }
+    const meetingMs = parseMeetingAtMs(req);
+    if (meetingMs != null && nowMs >= meetingMs + ACTIVE_AFTER_MEETING_MS) {
+        return 'past';
+    }
+    if (meetingMs != null && nowMs >= meetingMs && nowMs < meetingMs + ACTIVE_AFTER_MEETING_MS) {
+        return 'active';
+    }
+    if (req.status === 'pending' && meetingMs == null) {
+        return 'needsResponse';
+    }
+    if (meetingMs != null && nowMs < meetingMs) {
+        return 'upcoming';
+    }
+    return 'upcoming';
+}
+
+function partitionAndSortPurchases(purchases, nowMs) {
+    const buckets = {
+        active: [],
+        needsResponse: [],
+        upcoming: [],
+        past: [],
+    };
+    for (const req of purchases) {
+        buckets[getScheduleBucket(req, nowMs)].push(req);
+    }
+    buckets.active.sort((a, b) => (parseMeetingAtMs(a) ?? 0) - (parseMeetingAtMs(b) ?? 0));
+    buckets.needsResponse.sort((a, b) => createdAtMs(b) - createdAtMs(a));
+    buckets.upcoming.sort((a, b) => (parseMeetingAtMs(a) ?? Infinity) - (parseMeetingAtMs(b) ?? Infinity));
+    buckets.past.sort((a, b) => {
+        const ma = parseMeetingAtMs(a);
+        const mb = parseMeetingAtMs(b);
+        if (ma != null && mb != null) return mb - ma;
+        if (ma != null) return -1;
+        if (mb != null) return 1;
+        return createdAtMs(b) - createdAtMs(a);
+    });
+    return buckets;
+}
+
+const BUCKET_ORDER = ['active', 'needsResponse', 'upcoming', 'past'];
+const BUCKET_PRIORITY = { active: 0, needsResponse: 1, upcoming: 2, past: 3 };
+
+function bestBucketKey(buckets) {
+    for (const k of BUCKET_ORDER) {
+        if (buckets[k].length > 0) return k;
+    }
+    return 'past';
+}
+
+function compareItemGroups(a, b) {
+    const ba = bestBucketKey(a.buckets);
+    const bb = bestBucketKey(b.buckets);
+    const pa = BUCKET_PRIORITY[ba];
+    const pb = BUCKET_PRIORITY[bb];
+    if (pa !== pb) return pa - pb;
+
+    const arrA = a.buckets[ba];
+    const arrB = b.buckets[bb];
+    if (ba === 'active') {
+        const minA = Math.min(...arrA.map((r) => parseMeetingAtMs(r) ?? Infinity));
+        const minB = Math.min(...arrB.map((r) => parseMeetingAtMs(r) ?? Infinity));
+        if (minA !== minB) return minA - minB;
+    } else if (ba === 'needsResponse') {
+        const maxA = Math.max(...arrA.map(createdAtMs));
+        const maxB = Math.max(...arrB.map(createdAtMs));
+        if (maxA !== maxB) return maxB - maxA;
+    } else if (ba === 'upcoming') {
+        const minA = Math.min(...arrA.map((r) => parseMeetingAtMs(r) ?? Infinity));
+        const minB = Math.min(...arrB.map((r) => parseMeetingAtMs(r) ?? Infinity));
+        if (minA !== minB) return minA - minB;
+    } else {
+        const sortKey = (r) => {
+            const m = parseMeetingAtMs(r);
+            return m != null ? m : createdAtMs(r);
+        };
+        const maxA = Math.max(...arrA.map(sortKey));
+        const maxB = Math.max(...arrB.map(sortKey));
+        if (maxA !== maxB) return maxB - maxA;
+    }
+
+    const flatA = [...a.buckets.active, ...a.buckets.needsResponse, ...a.buckets.upcoming, ...a.buckets.past];
+    const flatB = [...b.buckets.active, ...b.buckets.needsResponse, ...b.buckets.upcoming, ...b.buckets.past];
+    const newestA = Math.max(0, ...flatA.map(createdAtMs));
+    const newestB = Math.max(0, ...flatB.map(createdAtMs));
+    if (newestA !== newestB) return newestB - newestA;
+    return String(a.productId).localeCompare(String(b.productId), undefined, { numeric: true });
+}
+
 function OngoingPurchasesPage() {
     const navigate = useNavigate();
     const [buyerRequests, setBuyerRequests] = useState([]);
@@ -190,53 +301,33 @@ function OngoingPurchasesPage() {
         }
     }
 
-    // Helper function to determine if a purchase is active or past
-    const isActivePurchase = (req) => {
-        const now = new Date();
-        const meetingDate = req.meeting_at ? new Date(req.meeting_at) : null;
-        const isPastDate = meetingDate && meetingDate < now;
-        const isTerminalStatus = ['declined', 'cancelled', 'expired'].includes(req.status);
-        const isCompleted = req.has_completed_confirm === true;
-        return !isPastDate && !isTerminalStatus && !isCompleted;
-    };
-
-    // Group all purchases by item (inventory_product_id)
+    // Group all purchases by item (inventory_product_id), partition into schedule buckets, sort
     const groupedByItem = useMemo(() => {
-        // Combine all requests with perspective tracking
+        const nowMs = Date.now();
         const allRequests = [
-            ...buyerRequests.map(req => ({ ...req, perspective: 'buyer' })),
-            ...sellerRequests.map(req => ({ ...req, perspective: 'seller' }))
+            ...buyerRequests.map((req) => ({ ...req, perspective: 'buyer' })),
+            ...sellerRequests.map((req) => ({ ...req, perspective: 'seller' })),
         ];
 
-        // Group by inventory_product_id
         const grouped = {};
-        allRequests.forEach(req => {
+        allRequests.forEach((req) => {
             const productId = req.inventory_product_id;
             if (!grouped[productId]) {
                 grouped[productId] = {
                     item: req.item || { title: 'Unknown Item' },
-                    productId: productId,
-                    purchases: []
+                    productId,
+                    purchases: [],
                 };
             }
             grouped[productId].purchases.push(req);
         });
 
-        // Sort purchases within each group by created_at (most recent first)
-        Object.values(grouped).forEach(group => {
-            group.purchases.sort((a, b) => {
-                const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
-                const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
-                return dateB - dateA;
-            });
-        });
+        const groups = Object.values(grouped).map((group) => ({
+            ...group,
+            buckets: partitionAndSortPurchases(group.purchases, nowMs),
+        }));
 
-        // Convert to array and sort by most recent purchase date
-        return Object.values(grouped).sort((a, b) => {
-            const dateA = a.purchases[0]?.created_at ? new Date(a.purchases[0].created_at) : new Date(0);
-            const dateB = b.purchases[0]?.created_at ? new Date(b.purchases[0].created_at) : new Date(0);
-            return dateB - dateA;
-        });
+        return groups.sort(compareItemGroups);
     }, [buyerRequests, sellerRequests]);
 
     // Helper function to get status badge styling
@@ -602,21 +693,22 @@ function OngoingPurchasesPage() {
     const resolvePhotoUrl = (raw) => {
         if (!raw) return null;
         const s = String(raw);
-        if (/^https?:\/\//i.test(s)) return `${API_BASE}/image.php?url=${encodeURIComponent(s)}`;
-        if (s.startsWith('/data/images/') || s.startsWith('/images/')) return `${API_BASE}/image.php?url=${encodeURIComponent(s)}`;
+        if (/^https?:\/\//i.test(s)) return `${API_BASE}/media/image.php?url=${encodeURIComponent(s)}`;
+        if (s.startsWith('/data/images/') || s.startsWith('/images/')) return `${API_BASE}/media/image.php?url=${encodeURIComponent(s)}`;
         return s.startsWith('/') ? s : null;
     };
 
-    // Render item group with all its scheduled purchases
-    const renderItemGroup = (itemGroup) => {
-        if (!itemGroup || itemGroup.purchases.length === 0) return null;
+    // Item row (thumbnail + title) and cards for one bucket only — no bucket label (section title is page-level)
+    const renderItemGroupForBucket = (itemGroup, bucketKey) => {
+        const requests = itemGroup?.buckets?.[bucketKey];
+        if (!requests?.length) return null;
 
         const photos = Array.isArray(itemGroup.item?.photos) ? itemGroup.item.photos : [];
         const thumbUrl = photos.length > 0 ? resolvePhotoUrl(photos[0]) : null;
         const thumbSrc = withFallbackImage(thumbUrl);
 
         return (
-            <div key={itemGroup.productId} className="mb-6 min-w-0">
+            <div key={`${itemGroup.productId}-${bucketKey}`} className="min-w-0">
                 <div className="flex items-center gap-3 mb-3">
                     <img
                         src={thumbSrc}
@@ -629,15 +721,34 @@ function OngoingPurchasesPage() {
                     </h3>
                 </div>
                 <div className="space-y-3">
-                    {itemGroup.purchases.map((req) => (
-                        <PurchaseCard 
-                            key={`${req.perspective}-${req.request_id}`} 
-                            req={req} 
-                            perspective={req.perspective} 
+                    {requests.map((req) => (
+                        <PurchaseCard
+                            key={`${req.perspective}-${req.request_id}`}
+                            req={req}
+                            perspective={req.perspective}
                         />
                     ))}
                 </div>
             </div>
+        );
+    };
+
+    /** Single page-level heading per bucket; underneath, item groups (title repeated per item, not the bucket name) */
+    const renderGlobalBucketSection = (title, bucketKey) => {
+        const groupsWithCards = groupedByItem.filter((g) => (g.buckets?.[bucketKey]?.length ?? 0) > 0);
+        if (groupsWithCards.length === 0) return null;
+        return (
+            <section className="space-y-4" aria-labelledby={`section-${bucketKey}`}>
+                <h2
+                    id={`section-${bucketKey}`}
+                    className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-2"
+                >
+                    {title}
+                </h2>
+                <div className="space-y-8">
+                    {groupsWithCards.map((g) => renderItemGroupForBucket(g, bucketKey))}
+                </div>
+            </section>
         );
     };
 
@@ -663,8 +774,11 @@ function OngoingPurchasesPage() {
                 ) : groupedByItem.length === 0 ? (
                     <div className="text-gray-600 dark:text-gray-400">You have no scheduled purchases yet.</div>
                 ) : (
-                    <div className="space-y-6">
-                        {groupedByItem.map(itemGroup => renderItemGroup(itemGroup))}
+                    <div className="space-y-10">
+                        {renderGlobalBucketSection('Happening now', 'active')}
+                        {renderGlobalBucketSection('Needs response', 'needsResponse')}
+                        {renderGlobalBucketSection('Upcoming', 'upcoming')}
+                        {renderGlobalBucketSection('Past', 'past')}
                     </div>
                 )}
 

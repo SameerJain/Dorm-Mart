@@ -27,8 +27,8 @@ import ConfirmPurchasePage from "./pages/SellerDashboard/ConfirmPurchasePage.jsx
 import OngoingPurchasesPage from "./pages/SellerDashboard/OngoingPurchasesPage.jsx";
 import MarkCompletedPage from "./pages/SellerDashboard/MarkCompletedPage.jsx";
 import ReportIssuePage from "./pages/SellerDashboard/ReportIssuePage.jsx";
-import ViewProduct from "./itemDetails/viewProduct.jsx";
-import ViewReceipt from "./itemDetails/viewReceipt.jsx";
+import ViewProduct from "./pages/ItemDetails/viewProduct.jsx";
+import ViewReceipt from "./pages/ItemDetails/viewReceipt.jsx";
 import SearchResults from "./pages/search/searchResults.jsx";
 import WishlistPage from "./pages/Wishlist/WishlistPage.jsx";
 import PublicProfilePage from "./pages/public_profile/PublicProfilePage.jsx";

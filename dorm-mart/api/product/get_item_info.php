@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // Include security functions and set headers
-require __DIR__ . '/security/security.php';
+require __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 setSecureCORS();
 
@@ -11,8 +11,8 @@ header('Content-Type: application/json; charset=utf-8');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']); exit; }
 
-require __DIR__ . '/auth/auth_handle.php';
-require __DIR__ . '/db_connect.php';
+require __DIR__ . '/../auth/auth_handle.php';
+require __DIR__ . '/../database/db_connect.php';
 
 auth_boot_session();
 $userId = require_login();
@@ -20,7 +20,7 @@ $userId = require_login();
 $prod_id = isset($_POST['product_id']) ? trim($_POST['product_id']) : '';
 if ($prod_id === '' || !ctype_digit($prod_id)) {
     http_response_code(400);
-    echo json_encode(['ok'=>false, 'error'=>'Invalid or missing product_id']);
+    echo json_encode(['ok'=>false,'error'=>'Invalid or missing product_id']);
     exit;
 }
 $productId = (int)$prod_id;

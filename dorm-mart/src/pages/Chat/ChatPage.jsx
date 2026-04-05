@@ -1086,7 +1086,7 @@ export default function ChatPage() {
             {c.productImageUrl && (
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
                 <img
-                  src={c.productImageUrl.startsWith('http') || c.productImageUrl.startsWith('/data/images/') || c.productImageUrl.startsWith('/images/') ? `${API_BASE}/image.php?url=${encodeURIComponent(c.productImageUrl)}` : c.productImageUrl}
+                  src={c.productImageUrl.startsWith('http') || c.productImageUrl.startsWith('/data/images/') || c.productImageUrl.startsWith('/images/') ? `${API_BASE}/media/image.php?url=${encodeURIComponent(c.productImageUrl)}` : c.productImageUrl}
                   alt={c.productTitle || 'Product'}
                   onError={onProductImageError}
                   className="w-full h-full object-cover"
@@ -1245,7 +1245,7 @@ export default function ChatPage() {
                   {activeConversation?.productImageUrl && (
                     <div className="inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden shrink-0 bg-gray-200 dark:bg-gray-700">
                                 <img
-                                  src={activeConversation.productImageUrl.startsWith('http') || activeConversation.productImageUrl.startsWith('/data/images/') || activeConversation.productImageUrl.startsWith('/images/') ? `${API_BASE}/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
+                                  src={activeConversation.productImageUrl.startsWith('http') || activeConversation.productImageUrl.startsWith('/data/images/') || activeConversation.productImageUrl.startsWith('/images/') ? `${API_BASE}/media/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
                                   alt=""
                                   onError={onProductImageError}
                                   className="w-full h-full object-cover"

@@ -87,10 +87,14 @@ HTTP scripts that call the real API (or scan endpoints). Shared helpers live in 
 
 ---
 
-## 📄 **Other Files**
+## 📄 **Other API entrypoints** (under `api/`)
 
-- **landingListings.php** - Gets the main page product listings.
-- **userPreferences.php** - Handles user settings like interests and notifications.
+- **listings/landingListings.php** — Main page product listings (authenticated).
+- **profile/userPreferences.php** — User settings (theme, interests, notifications, etc.).
+- **product/viewProduct.php** — Single product by `product_id` / `id`.
+- **user/me.php** — Session user interests for landing (distinct from **auth/me.php**).
+- **media/image.php** — Image proxy (`?url=` / `?file=`).
+- **product/get_item_info.php** — POST product payload (legacy/internal).
 
 ---
 
