@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import termsPdf from '../../assets/pdfs/terms-and-conditions.pdf';
-import privacyPdf from '../../assets/pdfs/privacy.pdf';
 import PreLoginBranding from '../../components/PreLoginBranding';
 import { integerNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+// Stable URLs (no webpack content hash) so the PDF viewer shows clean filenames
+const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+const termsPdf = `${PUBLIC_BASE}/pdfs/terms-and-conditions.pdf`;
+const privacyPdf = `${PUBLIC_BASE}/pdfs/privacy.pdf`;
 
 function CreateAccountPage() {
   const navigate = useNavigate();
