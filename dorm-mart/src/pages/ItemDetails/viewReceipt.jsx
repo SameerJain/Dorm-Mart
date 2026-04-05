@@ -571,7 +571,7 @@ export default function ViewReceipt() {
                     email={normalized.sellerEmail}
                     fallback={normalized.sellerName}
                     className="font-medium text-gray-800 dark:text-gray-200 truncate min-w-0"
-                    hoverClass="hover:text-blue-600"
+                    hoverClass="hover:underline"
                   >
                     {normalized.sellerName}
                   </ProfileLink>
@@ -700,14 +700,7 @@ export default function ViewReceipt() {
                   <Detail label="Listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : "—"} />
                   {normalized.sold && <Detail label="Date sold" value={normalized.dateSold ? formatDate(normalized.dateSold) : "—"} />}
                   {normalized.sellerEmail && (
-                    <Detail
-                      label="Email"
-                      value={
-                        <a href={`mailto:${normalized.sellerEmail}`} className="text-blue-600 dark:text-blue-400 hover:underline truncate inline-block max-w-full" title={normalized.sellerEmail}>
-                          {normalized.sellerEmail}
-                        </a>
-                      }
-                    />
+                    <Detail label="Email" value={normalized.sellerEmail} />
                   )}
                 </div>
               </section>
@@ -763,6 +756,7 @@ function formatDateTime(d) {
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
+      hour12: true,
     });
   } catch (_) {
     return String(d);
