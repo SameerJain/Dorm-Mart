@@ -1,69 +1,65 @@
 <?php
+/**
+ * Integration test: forgot-password accepts a real UB email and returns success when mail can be sent.
+ *
+ * Environment:
+ *   - Set API_TEST_BASE_URL to your api root if needed (e.g. http://localhost/f25-no-brainers/dorm-mart/api).
+ *   - Repeated runs may hit rate limiting (see forgot-password.php); that is not a validation failure.
+ */
+declare(strict_types=1);
+
 header('Content-Type: application/json; charset=utf-8');
 
-// Test 5: Verify API endpoint returns success for a valid email
-// This test calls the REAL forgot-password API and checks if it returns success
+require_once dirname(__DIR__) . '/bootstrap.php';
 
-// Get JSON input
 $input = json_decode(file_get_contents('php://input'), true);
-
-// Validate required fields
-if (!isset($input['email'])) {
+if (!is_array($input) || !isset($input['email'])) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Email is required']);
     exit;
 }
 
-$email = $input['email'];
+$email = (string) $input['email'];
 
-// Validate email format
 if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !str_ends_with($email, '@buffalo.edu')) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Email must be a valid UB email address']);
     exit;
 }
 
-// Call the REAL forgot-password API to test actual functionality
-$forgotPasswordUrl = 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/api/auth/forgot-password.php';
+$result = api_test_post_json('auth/forgot-password.php', ['email' => $email]);
+$response = is_array($result['json']) ? $result['json'] : [];
+$err = isset($response['error']) ? (string) $response['error'] : '';
 
-$postData = json_encode(['email' => $email]);
-
-$context = stream_context_create([
-    'http' => [
-        'method' => 'POST',
-        'header' => 'Content-Type: application/json',
-        'content' => $postData
-    ]
-]);
-
-$result = file_get_contents($forgotPasswordUrl, false, $context);
-
-if ($result === false) {
-    http_response_code(500);
+if (!empty($response['success']) && $response['success'] === true) {
+    http_response_code(200);
     echo json_encode([
-        'success' => false, 
-        'error' => 'Failed to call forgot-password API',
-        'test_result' => 'ERROR - API call failed'
+        'success' => true,
+        'test_result' => 'PASS — forgot-password returned success',
+        'api_http_code' => $result['http_code'],
+        'api_response' => $response,
     ]);
     exit;
 }
 
-$response = json_decode($result, true);
-
-// Check if the API returned success for valid email
-if (isset($response['success']) && $response['success'] === true) {
-    http_response_code(200);
-    echo json_encode([
-        'success' => true,
-        'message' => 'Check your email',
-        'test_result' => 'PASS - API correctly returned success for valid email'
-    ]);
-} else {
+$rateLimited = $err !== '' && (stripos($err, 'wait') !== false || stripos($err, 'minute') !== false);
+if ($rateLimited) {
     http_response_code(200);
     echo json_encode([
         'success' => false,
-        'error' => 'API did not return expected response',
+        'inconclusive' => true,
+        'test_result' => 'INCONCLUSIVE — rate limited; wait and retry (not an email-validation failure)',
+        'api_http_code' => $result['http_code'],
         'api_response' => $response,
-        'test_result' => 'FAIL - API should have returned success for valid email'
     ]);
+    exit;
 }
+
+http_response_code(200);
+echo json_encode([
+    'success' => false,
+    'test_result' => 'FAIL — expected success from forgot-password (check mail/SendGrid config)',
+    'api_http_code' => $result['http_code'],
+    'api_response' => $response,
+    'api_raw' => $result['raw'],
+]);

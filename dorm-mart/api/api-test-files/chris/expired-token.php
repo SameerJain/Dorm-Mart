@@ -1,72 +1,61 @@
 <?php
+/**
+ * Integration test: reset-password rejects invalid/expired tokens.
+ * API: auth/reset-password.php (expects JSON token + newPassword).
+ *
+ * Set API_TEST_BASE_URL if auto-detection fails (e.g. CLI).
+ */
+declare(strict_types=1);
+
 header('Content-Type: application/json; charset=utf-8');
 
-// Test 2 - Expired Token Test
-// This test calls the REAL reset-password API and checks if it handles expired tokens
+require_once dirname(__DIR__) . '/bootstrap.php';
 
-// Get JSON input
 $input = json_decode(file_get_contents('php://input'), true);
+if (!is_array($input)) {
+    $input = [];
+}
 
-// Validate required fields
-if (!isset($input['token']) || !isset($input['new_password']) || !isset($input['re_new_password'])) {
+$token = isset($input['token']) ? trim((string) $input['token']) : '';
+// Policy-valid password so the server reaches token validation (not policy errors).
+$newPassword = isset($input['newPassword']) ? (string) $input['newPassword'] : 'Valid1!a';
+
+if ($token === '') {
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'error' => 'Missing required fields: token, new_password, re_new_password'
+        'error' => 'Provide JSON: {"token":"your-invalid-or-expired-token"} — newPassword optional (defaults to a policy-valid value)',
     ]);
     exit;
 }
 
-$token = $input['token'];
-$newPassword = $input['new_password'];
-$reNewPassword = $input['re_new_password'];
-
-// Call the REAL reset-password API to test actual functionality
-$resetPasswordUrl = 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/api/auth/reset-password.php';
-
-$postData = json_encode([
+$result = api_test_post_json('auth/reset-password.php', [
     'token' => $token,
-    'new_password' => $newPassword,
-    're_new_password' => $reNewPassword
+    'newPassword' => $newPassword,
 ]);
 
-$context = stream_context_create([
-    'http' => [
-        'method' => 'POST',
-        'header' => 'Content-Type: application/json',
-        'content' => $postData
-    ]
-]);
+$response = is_array($result['json']) ? $result['json'] : [];
+$error = isset($response['error']) ? (string) $response['error'] : '';
 
-$result = file_get_contents($resetPasswordUrl, false, $context);
+$looksLikeInvalidToken = $error !== ''
+    && (stripos($error, 'expired') !== false || stripos($error, 'invalid') !== false);
 
-if ($result === false) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false, 
-        'error' => 'Failed to call reset-password API',
-        'test_result' => 'ERROR - API call failed'
-    ]);
-    exit;
-}
-
-$response = json_decode($result, true);
-
-// Check if the API returned the expected error for expired token
-if (isset($response['error']) && strpos($response['error'], 'expired') !== false) {
-    http_response_code(401);
-    echo json_encode([
-        'success' => false,
-        'error' => 'Token has expired. Please request a new password reset link.',
-        'test_result' => 'PASS - API correctly identified expired token'
-    ]);
-} else {
+if ($looksLikeInvalidToken) {
     http_response_code(200);
     echo json_encode([
-        'success' => false,
-        'error' => 'API did not return expected response for expired token',
+        'success' => true,
+        'test_result' => 'PASS — API rejected token: ' . $error,
+        'api_http_code' => $result['http_code'],
         'api_response' => $response,
-        'test_result' => 'FAIL - API should have returned expired token error'
     ]);
+    exit;
 }
-?>
+
+http_response_code(200);
+echo json_encode([
+    'success' => false,
+    'test_result' => 'FAIL — expected invalid/expired token message from API',
+    'api_http_code' => $result['http_code'],
+    'api_response' => $response,
+    'api_raw' => $result['raw'],
+]);

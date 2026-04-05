@@ -8,6 +8,8 @@ const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 // File type restrictions (same as product listing and chat)
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+/** Same types as seller listing + extensions (Explorer often filters better with both). */
+const PROFILE_PHOTO_ACCEPT = [...ALLOWED_MIME, ...ALLOWED_EXTS].join(",");
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB - reasonable limit for profile photos
 
 function isAllowedType(f) {
@@ -199,7 +201,7 @@ function EditableLinkRow({
   onChange,
   onSave,
   onClear,
-  disabled = false,
+  isSaving = false,
   saveLabel = "Save",
   savingLabel = "Saving...",
 }) {
@@ -210,13 +212,11 @@ function EditableLinkRow({
         <button
           type="button"
           onClick={(e) => {
-            if (disabled) return;
             e.preventDefault();
             e.stopPropagation();
             onClear();
           }}
-          disabled={disabled}
-          className={`text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2"
         >
           Clear
         </button>
@@ -233,17 +233,17 @@ function EditableLinkRow({
           type="button"
           id={`save-${label.toLowerCase().replace(/\s+/g, '-')}-button`}
           onClick={(e) => {
-            if (disabled) return;
+            if (isSaving) return;
             e.preventDefault();
             e.stopPropagation();
             onSave();
           }}
-          disabled={disabled}
+          disabled={isSaving}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
-          className={`rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          className={`rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${isSaving ? "opacity-60 cursor-not-allowed" : ""}`}
         >
-          {disabled ? savingLabel : saveLabel}
+          {isSaving ? savingLabel : saveLabel}
         </button>
       </div>
     </div>
@@ -472,7 +472,7 @@ function MyProfilePage() {
       placeholder: "https://instagram.com/yourhandle",
       onSave: handleInstagramSave,
       onClear: handleInstagramClear,
-      disabled: isSavingInstagram,
+      isSaving: isSavingInstagram,
       saveLabel: "Save Instagram",
     },
   ];
@@ -504,7 +504,7 @@ function MyProfilePage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={PROFILE_PHOTO_ACCEPT}
                   onChange={handleAvatarChange}
                   className="hidden"
                 />
@@ -586,15 +586,14 @@ function MyProfilePage() {
                       <button
                         type="button"
                         onClick={(e) => {
-                          if (buttonClickRef.current || isSavingBio) return;
+                          if (buttonClickRef.current) return;
                           buttonClickRef.current = true;
                           e.preventDefault();
                           e.stopPropagation();
                           handleBioClear();
                           setTimeout(() => { buttonClickRef.current = false; }, 300);
                         }}
-                        disabled={isSavingBio}
-                        className={`text-xs font-medium text-rose-500 hover:text-rose-600 touch-manipulation py-1 px-2 ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
+                        className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2"
                       >
                         Clear
                       </button>
@@ -651,7 +650,7 @@ function MyProfilePage() {
                           onChange={(event) => field.setter(event.target.value)}
                           onSave={field.onSave}
                           onClear={field.onClear}
-                          disabled={Boolean(field.disabled)}
+                          isSaving={Boolean(field.isSaving)}
                           saveLabel={field.saveLabel}
                           savingLabel={field.savingLabel}
                         />

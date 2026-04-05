@@ -90,7 +90,7 @@ function ProductListingPage() {
     price: 9999.99,
     priceMin: 0.01,
     images: 6,
-    maxActiveListings: 50,
+    maxActiveListings: 25,
   };
 
   // File type restrictions (same as chat)

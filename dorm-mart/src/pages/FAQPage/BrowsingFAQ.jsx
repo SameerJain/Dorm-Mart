@@ -25,6 +25,10 @@ const BROWSING_SECTIONS = [
         question: "Where is my wishlist?",
         answer: "Open the navigation menu and select \"My Wishlist.\"",
       },
+      {
+        question: "I'm a seller: what does the wishlist count on my listing mean?",
+        answer: "It shows how many users saved your item to their wishlist. The count is hidden once the item is sold.",
+      },
     ],
   },
   {

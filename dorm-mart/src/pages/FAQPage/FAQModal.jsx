@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import HomeFAQ from "./HomeFAQ";
 import ChatFAQ from "./ChatFAQ";
@@ -32,6 +32,18 @@ function FAQModal({ isOpen, onClose }) {
   const [activeView, setActiveView] = useState("home");
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+    };
+  }, [isOpen]);
+
   if (!isOpen) {
     return null;
   }
@@ -46,6 +58,7 @@ function FAQModal({ isOpen, onClose }) {
       className="
         fixed inset-0 z-50
         flex items-center justify-center
+        overscroll-none
       "
       onClick={onClose}
     >
@@ -143,7 +156,7 @@ function FAQModal({ isOpen, onClose }) {
                 faq-content
                 flex-1
                 h-full
-                overflow-y-auto
+                overflow-y-auto overscroll-y-contain
                 px-4
                 pt-4
                 pb-2

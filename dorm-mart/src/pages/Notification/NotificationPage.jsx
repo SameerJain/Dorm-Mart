@@ -160,15 +160,15 @@ export default function NotificationPage() {
               return (
                 <div
                   key={productId}
-                  className="flex items-start gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow duration-150"
+                  className="flex items-start gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow duration-150 min-w-0"
                 >
                   {/* Dot */}
-                  <div className="pt-2">
+                  <div className="pt-2 flex-shrink-0">
                     <span className="inline-block w-2 h-2 rounded-full bg-blue-600" />
                   </div>
 
                   {/* Main content */}
-                  <div className="flex-1 flex gap-3">
+                  <div className="flex min-w-0 flex-1 gap-3">
                     {proxied && (
                       <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
                         <img
@@ -180,12 +180,13 @@ export default function NotificationPage() {
                       </div>
                     )}
 
-                    <div className="flex flex-col gap-1">
-                      <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <h2 className="min-w-0 text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
                         <button
                           type="button"
                           onClick={() => goToProduct(productId)}
-                          className="text-left hover:underline decoration-blue-500 underline-offset-2"
+                          className="block w-full min-w-0 truncate text-left hover:underline decoration-blue-500 underline-offset-2"
+                          title={title}
                         >
                           {title}
                         </button>
@@ -206,7 +207,7 @@ export default function NotificationPage() {
                   </div>
 
                   {/* Action */}
-                  <div className="pt-1">
+                  <div className="flex-shrink-0 pt-1">
                     <button
                       type="button"
                       onClick={() => handleMarkRead(productId)}

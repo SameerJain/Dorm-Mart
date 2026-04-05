@@ -1,41 +1,33 @@
 <?php
-// Include security utilities
-require_once __DIR__ . '/../../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+/**
+ * Data-dependent check: current calendar year should return exactly one legacy purchased_items row.
+ * PASS only when the API reports success and count(data) === 1.
+ */
+declare(strict_types=1);
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
-// Handle preflight requests
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+require_once dirname(__DIR__) . '/bootstrap.php';
 
-// __DIR__ points to api/
-require __DIR__ . '/../../database/db_connect.php';
+$year = (int) date('Y');
+$result = api_test_post_json('purchase-history/fetch-transacted-items.php', ['year' => $year]);
 
-$conn = db();
+$json = is_array($result['json']) ? $result['json'] : [];
+$data = isset($json['data']) && is_array($json['data']) ? $json['data'] : [];
+$n = count($data);
+$apiOk = !empty($json['success']);
+$pass = $apiOk && $n === 1;
 
-$sql = "SELECT *
-        FROM purchased_items
-        ORDER BY transacted_at DESC
-        LIMIT 1
-";
-
-$res = $conn->query($sql);
-
-// XSS PROTECTION: Escape user-generated content before returning in JSON
-$rows = [];
-while ($row = $res->fetch_assoc()) {
-    $rows[] = [
-        'item_id' => isset($row['item_id']) ? (int)$row['item_id'] : null,
-        'title' => escapeHtml($row['title'] ?? ''),
-        'sold_by' => escapeHtml($row['sold_by'] ?? ''),
-        'transacted_at' => $row['transacted_at'] ?? null,
-        'image_url' => escapeHtml($row['image_url'] ?? ''),
-        'buyer_user_id' => isset($row['buyer_user_id']) ? (int)$row['buyer_user_id'] : null,
-    ];
-}
-
-echo json_encode(['success' => true, 'data' => $rows]);
+echo json_encode([
+    'success' => $pass,
+    'year_queried' => $year,
+    'item_count' => $n,
+    'test_result' => $pass
+        ? 'PASS — exactly one purchased item for current calendar year'
+        : ($apiOk
+            ? "FAIL — expected exactly one row for {$year}, got {$n} (data-dependent)"
+            : 'FAIL — API did not return success'),
+    'api_http_code' => $result['http_code'],
+    'data' => $data,
+    'api_response' => $json,
+], JSON_UNESCAPED_UNICODE);
