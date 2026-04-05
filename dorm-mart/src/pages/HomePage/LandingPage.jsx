@@ -208,7 +208,7 @@ export default function LandingPage() {
     (async () => {
       try {
         setLoadingUser(true);
-        const r = await fetch(`${API_BASE}/me.php`, {
+        const r = await fetch(`${API_BASE}/user/me.php`, {
           signal: controller.signal,
           credentials: "include",
         });
@@ -255,7 +255,7 @@ export default function LandingPage() {
     (async () => {
       try {
         setLoadingItems(true);
-        const r = await fetch(`${API_BASE}/landingListings.php`, {
+        const r = await fetch(`${API_BASE}/listings/landingListings.php`, {
           signal: controller.signal,
           credentials: "include",
         });
@@ -270,7 +270,7 @@ export default function LandingPage() {
 
           const rawImg = d.image || d.image_url || null;
           const img = rawImg
-            ? `${API_BASE}/image.php?url=${encodeURIComponent(rawImg)}`
+            ? `${API_BASE}/media/image.php?url=${encodeURIComponent(rawImg)}`
             : null;
 
           const createdAt = d.created_at ? new Date(d.created_at) : null;
@@ -315,7 +315,7 @@ export default function LandingPage() {
         setErrorItems(false);
       } catch (e) {
         if (e.name !== "AbortError") {
-          console.error("landingListings.php failed:", e);
+          console.error("listings/landingListings.php failed:", e);
           setErrorItems(true);
           setAllItems(FALLBACK_ITEMS);
         }

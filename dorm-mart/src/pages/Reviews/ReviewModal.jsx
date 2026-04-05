@@ -227,7 +227,7 @@ function ReviewModal({
 
   const handleDownloadImage = async (imageUrl, filename) => {
     try {
-      const response = await fetch(`${API_BASE}/image.php?url=${encodeURIComponent(imageUrl)}`, {
+      const response = await fetch(`${API_BASE}/media/image.php?url=${encodeURIComponent(imageUrl)}`, {
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch image');
@@ -644,7 +644,7 @@ function ReviewModal({
                       {existingReview.image1_url && (
                         <div className="relative group">
                           <img
-                            src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
+                            src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
                             alt="Review image 1"
                             onClick={() => setSelectedImage(existingReview.image1_url)}
                             className="w-full max-h-96 object-contain rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity"
@@ -663,7 +663,7 @@ function ReviewModal({
                       {existingReview.image2_url && (
                         <div className="relative group">
                           <img
-                            src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
+                            src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
                             alt="Review image 2"
                             onClick={() => setSelectedImage(existingReview.image2_url)}
                             className="w-full max-h-96 object-contain rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity"
@@ -682,7 +682,7 @@ function ReviewModal({
                       {existingReview.image3_url && (
                         <div className="relative group">
                           <img
-                            src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
+                            src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
                             alt="Review image 3"
                             onClick={() => setSelectedImage(existingReview.image3_url)}
                             className="w-full max-h-96 object-contain rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity"
@@ -704,21 +704,21 @@ function ReviewModal({
                     <div className="grid grid-cols-3 gap-3">
                       {existingReview.image1_url && (
                         <img
-                          src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
+                          src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
                           alt="Review image 1"
                           className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
                         />
                       )}
                       {existingReview.image2_url && (
                         <img
-                          src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
+                          src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
                           alt="Review image 2"
                           className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
                         />
                       )}
                       {existingReview.image3_url && (
                         <img
-                          src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
+                          src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
                           alt="Review image 3"
                           className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
                         />
@@ -736,7 +736,7 @@ function ReviewModal({
                 >
                   <div className="relative max-w-7xl max-h-full">
                     <img
-                      src={`${API_BASE}/image.php?url=${encodeURIComponent(selectedImage)}`}
+                      src={`${API_BASE}/media/image.php?url=${encodeURIComponent(selectedImage)}`}
                       alt="Full size review image"
                       className="max-w-full max-h-[90vh] object-contain rounded-lg"
                       onClick={(e) => e.stopPropagation()}

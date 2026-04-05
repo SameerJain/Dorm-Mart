@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-// dorm-mart/api/viewProduct.php
+// dorm-mart/api/product/viewProduct.php
 // Returns a single product by product_id
 
-require_once __DIR__ . '/security/security.php';
+require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 setSecureCORS();
 
@@ -15,8 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') { http_response_code(405); echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']); exit; }
 
 try {
-    require __DIR__ . '/auth/auth_handle.php';
-    require __DIR__ . '/database/db_connect.php';
+    require __DIR__ . '/../auth/auth_handle.php';
+    require __DIR__ . '/../database/db_connect.php';
 
     auth_boot_session();
     $userId = require_login();

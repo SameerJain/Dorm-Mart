@@ -61,7 +61,7 @@ export const loadUserTheme = async (userId) => {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/userPreferences.php`, {
+    const res = await fetch(`${API_BASE}/profile/userPreferences.php`, {
       method: 'GET',
       credentials: 'include',
     });

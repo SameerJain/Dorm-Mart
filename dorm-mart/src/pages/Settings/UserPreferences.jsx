@@ -103,7 +103,7 @@ function UserPreferences() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/userPreferences.php`, { method: 'GET', credentials: 'include' });
+        const res = await fetch(`${API_BASE}/profile/userPreferences.php`, { method: 'GET', credentials: 'include' });
         if (!res.ok) return;
         const json = await res.json();
         if (!json || json.ok !== true || !json.data) return;
@@ -140,7 +140,7 @@ function UserPreferences() {
           interests: selectedInterests,
           theme: theme,
         };
-        await fetch(`${API_BASE}/userPreferences.php`, {
+        await fetch(`${API_BASE}/profile/userPreferences.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

@@ -1,15 +1,15 @@
 START TRANSACTION;
--- 010_review_test_data.sql
--- Seed data for review feature testing
--- Creates a completed purchase: Marble Notebook sold by testuserschedulered@buffalo.edu to testuser@buffalo.edu
--- Simulates organic flow: Message Seller -> Scheduled Purchase -> Confirm Purchase -> Review (user writes it)
--- Note: Review is NOT pre-seeded - user writes it themselves via the UI
+-- 011_rice_cooker_review_test_data.sql
+-- Seed data for seller review viewing tests
+-- Creates a completed purchase: Rice Cooker sold by testuserschedulered@buffalo.edu to testuserscheduleyellow@buffalo.edu (Han Solo)
+-- Includes a pre-seeded review with image
+-- Simulates organic flow: Message Seller -> Scheduled Purchase -> Confirm Purchase -> Review
 
 -- Get user IDs (users must exist from previous migrations/data files)
 -- If users don't exist, these will be NULL and subsequent operations will fail
 SELECT user_id INTO @buyer_id
 FROM user_accounts
-WHERE email = 'testuser@buffalo.edu'
+WHERE email = 'testuserscheduleyellow@buffalo.edu'
 LIMIT 1;
 
 SELECT user_id, first_name, last_name INTO @seller_id, @seller_first_name, @seller_last_name
@@ -17,9 +17,9 @@ FROM user_accounts
 WHERE email = 'testuserschedulered@buffalo.edu'
 LIMIT 1;
 
--- Delete any existing Marble Notebook item and related records (idempotent cleanup)
+-- Delete any existing Rice Cooker item and related records (idempotent cleanup)
 -- First get the product_id if it exists
-SET @existing_product_id = (SELECT product_id FROM INVENTORY WHERE title = 'Marble Notebook' AND seller_id = @seller_id LIMIT 1);
+SET @existing_product_id = (SELECT product_id FROM INVENTORY WHERE title = 'Rice Cooker' AND seller_id = @seller_id LIMIT 1);
 
 -- Delete messages first (due to FK constraints)
 DELETE FROM messages
@@ -43,20 +43,16 @@ WHERE product_id = @existing_product_id
 AND @existing_product_id IS NOT NULL;
 
 DELETE FROM confirm_purchase_requests
-WHERE inventory_product_id IN (SELECT product_id FROM INVENTORY WHERE title = 'Marble Notebook');
+WHERE inventory_product_id IN (SELECT product_id FROM INVENTORY WHERE title = 'Rice Cooker');
 
 DELETE FROM scheduled_purchase_requests
-WHERE inventory_product_id IN (SELECT product_id FROM INVENTORY WHERE title = 'Marble Notebook');
+WHERE inventory_product_id IN (SELECT product_id FROM INVENTORY WHERE title = 'Rice Cooker');
 
 DELETE FROM product_reviews
-WHERE product_id IN (SELECT product_id FROM INVENTORY WHERE title = 'Marble Notebook');
-
--- Also delete any reviews by this buyer for this seller (cleanup orphaned reviews)
-DELETE FROM product_reviews
-WHERE buyer_user_id = @buyer_id AND seller_user_id = @seller_id;
+WHERE product_id IN (SELECT product_id FROM INVENTORY WHERE title = 'Rice Cooker');
 
 DELETE FROM purchased_items
-WHERE title = 'Marble Notebook';
+WHERE title = 'Rice Cooker';
 
 -- Remove from purchase_history JSON array if exists
 UPDATE purchase_history
@@ -69,9 +65,9 @@ WHERE user_id = @buyer_id
   AND JSON_SEARCH(items, 'one', CAST(@existing_product_id AS CHAR)) IS NOT NULL;
 
 DELETE FROM INVENTORY
-WHERE title = 'Marble Notebook' AND seller_id = @seller_id;
+WHERE title = 'Rice Cooker' AND seller_id = @seller_id;
 
--- Create Marble Notebook item in INVENTORY
+-- Create Rice Cooker item in INVENTORY
 INSERT INTO INVENTORY (
   title,
   categories,
@@ -88,13 +84,13 @@ INSERT INTO INVENTORY (
   sold,
   sold_to
 ) VALUES (
-  'Marble Notebook',
-  JSON_ARRAY('School', 'Stationary'),
+  'Rice Cooker',
+  JSON_ARRAY('Kitchen'),
   'North Campus',
   'Like New',
-  'Classic marble composition notebook. Perfect for taking notes in class. Barely used, in excellent condition.',
-  JSON_ARRAY('/images/marble-notebook.jpg'),
-  5.00,
+  'Compact rice cooker perfect for dorm life. Makes perfect rice every time. Barely used, in excellent condition.',
+  JSON_ARRAY('/images/rice-cooker-product-image.jpg'),
+  25.00,
   'Sold',
   0,
   0,
@@ -107,7 +103,7 @@ INSERT INTO INVENTORY (
 -- Get the product_id of the newly created item
 SELECT product_id INTO @product_id
 FROM INVENTORY
-WHERE title = 'Marble Notebook' AND seller_id = @seller_id
+WHERE title = 'Rice Cooker' AND seller_id = @seller_id
 LIMIT 1;
 
 -- Get names for conversation and messages
@@ -178,13 +174,13 @@ VALUES (
   @seller_id,
   IFNULL(@buyer_display_name, CONCAT('User ', @buyer_id)),
   IFNULL(@seller_display_name, CONCAT('User ', @seller_id)),
-  CONCAT(@buyer_display_name, ' would like to message you about Marble Notebook'),
+  CONCAT(@buyer_display_name, ' would like to message you about Rice Cooker'),
   JSON_OBJECT(
     'type', 'listing_intro',
     'product', JSON_OBJECT(
       'product_id', @product_id,
-      'title', 'Marble Notebook',
-      'image_url', '/images/marble-notebook.jpg'
+      'title', 'Rice Cooker',
+      'image_url', '/images/rice-cooker-product-image.jpg'
     ),
     'buyer_name', @buyer_display_name
   )
@@ -226,18 +222,22 @@ INSERT INTO scheduled_purchase_requests (
   verification_code,
   description,
   status,
-  buyer_response_at
+  buyer_response_at,
+  created_at,
+  updated_at
 ) VALUES (
   @product_id,
   @seller_id,
   @buyer_id,
   @conversation_id,
   'North Campus',
-  DATE_SUB(NOW(), INTERVAL 1 DAY),
+  DATE_SUB(NOW(), INTERVAL 2 DAY),
   LPAD((@product_id * 100 + UNIX_TIMESTAMP() % 10000) % 10000, 4, '0'),
   NULL,
   'accepted',
-  DATE_SUB(NOW(), INTERVAL 1 DAY)
+  DATE_SUB(NOW(), INTERVAL 2 DAY),
+  DATE_SUB(NOW(), INTERVAL 4 DAY),
+  DATE_SUB(NOW(), INTERVAL 2 DAY)
 );
 
 -- Get the scheduled_request_id
@@ -275,17 +275,17 @@ INSERT INTO confirm_purchase_requests (
   @buyer_id,
   @conversation_id,
   TRUE,
-  5.00,
+  25.00,
   NULL,
   NULL,
   NULL,
   'buyer_accepted',
   DATE_ADD(NOW(), INTERVAL 1 DAY),
-  DATE_SUB(NOW(), INTERVAL 1 DAY),
+  DATE_SUB(NOW(), INTERVAL 2 DAY),
   JSON_OBJECT(
-    'meeting_at', DATE_SUB(NOW(), INTERVAL 1 DAY),
+    'meeting_at', DATE_SUB(NOW(), INTERVAL 2 DAY),
     'meet_location', 'North Campus',
-    'negotiated_price', 5.00,
+    'negotiated_price', 25.00,
     'is_trade', FALSE,
     'trade_item_description', NULL
   )
@@ -307,12 +307,12 @@ INSERT INTO purchased_items (
   image_url
 ) VALUES (
   @product_id,
-  'Marble Notebook',
+  'Rice Cooker',
   CONCAT(@seller_first_name, ' ', @seller_last_name),
-  DATE_SUB(NOW(), INTERVAL 1 DAY),
+  DATE_SUB(NOW(), INTERVAL 2 DAY),
   @buyer_id,
   @seller_id,
-  '/images/marble-notebook.jpg'
+  '/images/rice-cooker-product-image.jpg'
 );
 
 -- Update purchase_history table for buyer
@@ -331,8 +331,30 @@ ON DUPLICATE KEY UPDATE
   ),
   updated_at = NOW();
 
--- Note: Review should be manually submitted by tester (testuser@buffalo.edu)
--- after this data is seeded. The purchase record above allows the buyer to submit a review.
+-- Create a pre-seeded product review for the Rice Cooker
+-- Buyer (testuserscheduleyellow@buffalo.edu - Han Solo) reviews seller (testuserschedulered@buffalo.edu - Luke Skywalker)
+-- Note: Review image path should match what the API returns (test shows specific format but generic path should work)
+INSERT INTO product_reviews (
+  product_id,
+  buyer_user_id,
+  seller_user_id,
+  rating,
+  product_rating,
+  review_text,
+  image1_url,
+  image2_url,
+  image3_url
+) VALUES (
+  @product_id,
+  @buyer_id,
+  @seller_id,
+  5,
+  5,
+  'This rice cooker is super useful! Take a look at what I have made.',
+  '/media/review-images/rice-cooker-review-image.jpg',
+  NULL,
+  NULL
+);
 
 COMMIT;
 

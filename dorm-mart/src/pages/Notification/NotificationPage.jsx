@@ -154,7 +154,7 @@ export default function NotificationPage() {
             {localItems.map(({ productId, title, count, image_url }) => {
               const rawImg = image_url || null;
               const proxied = rawImg
-                ? `${BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
+                ? `${BASE}/media/image.php?url=${encodeURIComponent(String(rawImg))}`
                 : null;
 
               return (

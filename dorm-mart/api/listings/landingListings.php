@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-// dorm-mart/api/landingListings.php
+// dorm-mart/api/listings/landingListings.php
 
 // Include security utilities
-require_once __DIR__ . '/security/security.php';
+require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 setSecureCORS();
 
@@ -21,8 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 try {
-    require __DIR__ . '/auth/auth_handle.php';
-    require __DIR__ . '/database/db_connect.php';
+    require __DIR__ . '/../auth/auth_handle.php';
+    require __DIR__ . '/../database/db_connect.php';
 
     auth_boot_session();
     $userId = require_login();

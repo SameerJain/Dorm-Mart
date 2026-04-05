@@ -429,7 +429,7 @@ function format_purchase_history_image_url($value): string
 function build_image_proxy_path(string $source): string
 {
     $apiBase = get_api_base_path();
-    return rtrim($apiBase, '/') . '/image.php?url=' . rawurlencode($source);
+    return rtrim($apiBase, '/') . '/media/image.php?url=' . rawurlencode($source);
 }
 
 function rewrite_api_relative_path(string $path): string

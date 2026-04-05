@@ -148,7 +148,7 @@ function SellerDashboardPage() {
                 const transformedListings = dataArray.map(item => {
                     const rawImg = item.image_url || item.image || null;
                     const proxied = rawImg
-                        ? `${API_BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
+                        ? `${API_BASE}/media/image.php?url=${encodeURIComponent(String(rawImg))}`
                         : null;
                     return {
                         id: item.id,

@@ -27,7 +27,7 @@ export function useTheme() {
     } catch (_) {}
 
     try {
-      const res = await fetch(`${API_BASE}/userPreferences.php`, {
+      const res = await fetch(`${API_BASE}/profile/userPreferences.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

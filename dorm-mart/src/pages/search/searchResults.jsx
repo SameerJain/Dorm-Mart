@@ -115,7 +115,7 @@ export default function SearchResults() {
 
           const rawImg = d.image || d.image_url || d.photo || null;
           const img = rawImg
-            ? `${API_BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
+            ? `${API_BASE}/media/image.php?url=${encodeURIComponent(String(rawImg))}`
             : null;
 
           const seller = d.seller || d.seller_name || d.sold_by || (d.seller_id != null ? `Seller #${d.seller_id}` : "Unknown Seller");

@@ -1,8 +1,8 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ChatContext } from "../context/ChatContext";
-import { FALLBACK_IMAGE_URL, onProductImageError } from "../utils/imageFallback";
-import ProfileLink from "../components/ProfileLink";
+import { ChatContext } from "../../context/ChatContext";
+import { FALLBACK_IMAGE_URL, onProductImageError } from "../../utils/imageFallback";
+import ProfileLink from "../../components/ProfileLink";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -82,7 +82,7 @@ export default function ViewProduct() {
       try {
         setLoading(true);
         setError(null);
-        const r = await fetch(`${API_BASE}/viewProduct.php?product_id=${encodeURIComponent(productId)}`, {
+        const r = await fetch(`${API_BASE}/product/viewProduct.php?product_id=${encodeURIComponent(productId)}`, {
           signal: controller.signal,
           credentials: "include",
         });
@@ -160,11 +160,11 @@ export default function ViewProduct() {
     const photoUrls = photos.map((p) => {
       const raw = String(p);
       if (/^https?:\/\//i.test(raw)) {
-        return `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
+        return `${API_BASE}/media/image.php?url=${encodeURIComponent(raw)}`;
       }
       // Route /data/images/ and /images/ paths through image.php proxy (like other components)
       if (raw.startsWith('/data/images/') || raw.startsWith('/images/')) {
-        return `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
+        return `${API_BASE}/media/image.php?url=${encodeURIComponent(raw)}`;
       }
       return raw.startsWith("/") ? `${PUBLIC_BASE}${raw}` : raw;
     });
