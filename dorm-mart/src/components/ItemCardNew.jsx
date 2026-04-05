@@ -60,11 +60,11 @@ export default function ItemCardNew({
           className="object-contain w-full h-full p-2 transition-[transform,filter] duration-200 lg:group-hover:scale-[1.03] dark:lg:group-hover:scale-[1.02] dark:lg:group-hover:brightness-110"
         />
 
-        {/* Remove button - only shown on wishlist page, top-right corner */}
+        {/* Remove button - only shown on wishlist page; inset from corner for easier tapping */}
         {showRemoveButton && (
           <button
             onClick={handleRemoveClick}
-            className="absolute top-2 right-2 z-30 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-lg transition-colors lg:hover:bg-red-600 active:bg-red-700"
+            className="absolute top-4 right-4 z-30 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-lg transition-colors lg:hover:bg-red-600 active:bg-red-700"
             aria-label="Remove from wishlist"
             title="Remove from wishlist"
           >
@@ -88,16 +88,16 @@ export default function ItemCardNew({
         {/* NEW badge - positioned below remove button if present */}
         {isNew && (
           <div className={`absolute z-20 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow ${
-            showRemoveButton ? "top-10 right-2" : "top-2 right-2"
+            showRemoveButton ? "top-12 right-4" : "top-2 right-2"
           }`}>
             NEW
           </div>
         )}
 
-        {/* Wishlisted badge - underneath NEW if present, or below remove button */}
+        {/* Wishlisted badge - inset from corner; sits below NEW when both show */}
         {isWishlisted && !showRemoveButton && (
           <div className={`absolute z-20 bg-purple-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow flex items-center gap-1 ${
-            isNew ? "top-8 right-2" : "top-2 right-2"
+            isNew ? "top-10 right-4" : "top-4 right-4"
           }`}>
             <span>Wishlisted</span>
             <svg

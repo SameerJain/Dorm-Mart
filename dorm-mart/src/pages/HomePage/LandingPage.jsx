@@ -1,5 +1,5 @@
 // src/pages/HomePage/LandingPage.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ItemCardNew from "../../components/ItemCardNew";
 import keyboard from "../../assets/product-images/keyboard.jpg";
@@ -9,6 +9,10 @@ import { withFallbackImage } from "../../utils/imageFallback";
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 const carpetUrl = `${PUBLIC_BASE}/assets/product-images/smallcarpet.png`;
+
+/** Session-only: after dismiss, hint stays hidden until tab/session ends */
+const FOR_YOU_HINT_SESSION_KEY = "dm_for_you_feed_hint_dismissed";
+const FOR_YOU_HINT_FADE_MS = 280;
 
 const FALLBACK_ITEMS = [
   {
@@ -62,13 +66,66 @@ export default function LandingPage() {
   const [allItems, setAllItems] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
   const [wishlistedIds, setWishlistedIds] = useState(new Set());
-  const [loadingUser, setLoadingUser] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [loadingItems, setLoadingItems] = useState(false);
   const [errorUser, setErrorUser] = useState(false);
   const [errorItems, setErrorItems] = useState(false);
   const [activeTab, setActiveTab] = useState("forYou");
-  /** Touch: disabled For You only had title= tooltip; tap toggles this copy */
-  const [forYouBlockedHintOpen, setForYouBlockedHintOpen] = useState(false);
+  const [forYouHintDismissed, setForYouHintDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem(FOR_YOU_HINT_SESSION_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const dismissForYouHint = useCallback(() => {
+    setForYouHintDismissed(true);
+    try {
+      sessionStorage.setItem(FOR_YOU_HINT_SESSION_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const forYouHintCloseGuardRef = useRef(false);
+
+  const reopenForYouHint = useCallback(() => {
+    try {
+      sessionStorage.removeItem(FOR_YOU_HINT_SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
+    forYouHintCloseGuardRef.current = false;
+    setForYouHintClosing(false);
+    setForYouHintAppeared(false);
+    setForYouHintDismissed(false);
+  }, []);
+
+  const hintWantsDisplay =
+    !loadingUser && !interests.length && !forYouHintDismissed;
+
+  const [forYouHintAppeared, setForYouHintAppeared] = useState(false);
+  const [forYouHintClosing, setForYouHintClosing] = useState(false);
+  const forYouHintLeaveTimerRef = useRef(null);
+
+  const closeForYouHintFade = useCallback(() => {
+    if (forYouHintCloseGuardRef.current) return;
+    forYouHintCloseGuardRef.current = true;
+    setForYouHintClosing(true);
+    if (forYouHintLeaveTimerRef.current) {
+      clearTimeout(forYouHintLeaveTimerRef.current);
+    }
+    forYouHintLeaveTimerRef.current = setTimeout(() => {
+      forYouHintLeaveTimerRef.current = null;
+      forYouHintCloseGuardRef.current = false;
+      dismissForYouHint();
+      setForYouHintClosing(false);
+    }, FOR_YOU_HINT_FADE_MS);
+  }, [dismissForYouHint]);
+
+  const showForYouHintOverlay = hintWantsDisplay || forYouHintClosing;
+  const forYouHintFullyVisible = forYouHintAppeared && !forYouHintClosing;
   const MIN_EXPLORE_ITEMS = 30;
   const computeExploreLimit = () => {
     if (typeof window === "undefined") return MIN_EXPLORE_ITEMS;
@@ -125,8 +182,29 @@ export default function LandingPage() {
   }, [interests.length]);
 
   useEffect(() => {
-    if (interests.length > 0) setForYouBlockedHintOpen(false);
-  }, [interests.length]);
+    if (!hintWantsDisplay) {
+      forYouHintCloseGuardRef.current = false;
+    }
+  }, [hintWantsDisplay]);
+
+  useEffect(() => {
+    if (!hintWantsDisplay) {
+      setForYouHintAppeared(false);
+      return undefined;
+    }
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setForYouHintAppeared(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [hintWantsDisplay]);
+
+  useEffect(() => {
+    return () => {
+      if (forYouHintLeaveTimerRef.current) {
+        clearTimeout(forYouHintLeaveTimerRef.current);
+      }
+    };
+  }, []);
 
   // fetch user
   useEffect(() => {
@@ -519,20 +597,24 @@ export default function LandingPage() {
                 </button>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 mt-1">
-              <div className="flex min-w-0 flex-col gap-1.5 sm:w-auto">
+            <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
+              {/* Below sm (~640px): center pill for phones; sm+ unchanged for tablet/desktop */}
+              <div className="flex w-full min-w-0 flex-col items-center gap-1.5 sm:w-auto sm:items-start">
                 <div className="flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-600 dark:bg-gray-700/60">
                   <button
                     type="button"
                     onClick={() => {
                       if (!interests.length) {
-                        setForYouBlockedHintOpen((o) => !o);
+                        reopenForYouHint();
                         return;
                       }
-                      setForYouBlockedHintOpen(false);
                       setActiveTab("forYou");
                     }}
-                    aria-disabled={!interests.length}
+                    aria-label={
+                      !interests.length
+                        ? "For You — tap for instructions to unlock this feed"
+                        : undefined
+                    }
                     className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                       !interests.length
                         ? "cursor-pointer text-gray-400 opacity-60 dark:text-gray-500"
@@ -543,17 +625,14 @@ export default function LandingPage() {
                     title={
                       interests.length
                         ? undefined
-                        : "Set your interested categories in Settings → User Preferences to unlock this tab"
+                        : "Tap to show how to unlock For You (Settings → User Preferences)"
                     }
                   >
                     For You
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setForYouBlockedHintOpen(false);
-                      setActiveTab("explore");
-                    }}
+                    onClick={() => setActiveTab("explore")}
                     className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                       activeTab === "explore"
                         ? "bg-blue-600 text-white shadow dark:bg-blue-800"
@@ -563,16 +642,6 @@ export default function LandingPage() {
                     Explore More
                   </button>
                 </div>
-                {!interests.length && forYouBlockedHintOpen ? (
-                  <p
-                    role="status"
-                    className="max-w-md rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/25 dark:text-amber-100 sm:text-sm"
-                  >
-                    Set your interested categories in{" "}
-                    <span className="font-semibold">Settings</span> →{" "}
-                    <span className="font-semibold">User Preferences</span> to unlock For You.
-                  </p>
-                ) : null}
               </div>
               <p className="text-left text-sm text-gray-600 dark:text-gray-300">
                 Switch views: personalized feed or a fresh randomized mix.
@@ -720,6 +789,84 @@ export default function LandingPage() {
           </main>
         </div>
       </div>
+
+      {showForYouHintOverlay ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          role="presentation"
+        >
+          <button
+            type="button"
+            aria-label="Close dialog"
+            className={`absolute inset-0 bg-black/45 transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+              forYouHintFullyVisible ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={closeForYouHintFade}
+          />
+          <div
+            id="for-you-unlock-hint"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="for-you-unlock-hint-title"
+            className={`relative z-10 w-full max-w-[min(100%,18.75rem)] rounded-xl border border-slate-200 bg-white pl-3.5 pr-2.5 pt-4 pb-4 shadow-xl transition-all duration-300 ease-out motion-reduce:transition-none dark:border-gray-600 dark:bg-gray-800 dark:shadow-black/40 ${
+              forYouHintFullyVisible
+                ? "translate-y-0 scale-100 opacity-100"
+                : "translate-y-1 scale-[0.98] opacity-0"
+            }`}
+          >
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={closeForYouHintFade}
+              className="absolute right-1.5 top-1.5 rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <div className="min-w-0 pr-7">
+              <p
+                id="for-you-unlock-hint-title"
+                className="text-sm font-semibold text-slate-900 dark:text-gray-100"
+              >
+                How to unlock For You view:
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-gray-300">
+                Choose up to 3 interested categories in{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (forYouHintLeaveTimerRef.current) {
+                      clearTimeout(forYouHintLeaveTimerRef.current);
+                      forYouHintLeaveTimerRef.current = null;
+                    }
+                    forYouHintCloseGuardRef.current = false;
+                    setForYouHintClosing(false);
+                    setForYouHintAppeared(false);
+                    dismissForYouHint();
+                    navigate("/app/setting/user-preferences");
+                  }}
+                  className="font-semibold text-blue-600 underline decoration-blue-400/70 underline-offset-2 hover:no-underline dark:text-blue-400"
+                >
+                  Settings → User Preferences
+                </button>
+                .
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+/** Must match product_listing.php */
+const MAX_ACTIVE_LISTINGS_PER_SELLER = 25;
+
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../security/security.php';
@@ -49,7 +52,7 @@ try {
         exit;
     }
 
-    // Enforce cap of 50 active listings per seller when activating
+    // Enforce cap on active listings per seller when activating
     if ($status === 'Active') {
         $capStmt = $conn->prepare(
             'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ? AND product_id != ?'
@@ -60,11 +63,11 @@ try {
         $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
         $capStmt->close();
 
-        if ($activeCount >= 50) {
+        if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
             http_response_code(403);
             echo json_encode([
                 'success' => false,
-                'error' => 'You have reached the maximum of 50 active listings. Please deactivate or remove an existing listing before activating this one.'
+                'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . ' active listings. Please deactivate or remove an existing listing before activating this one.'
             ]);
             exit;
         }

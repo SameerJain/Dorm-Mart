@@ -67,18 +67,23 @@ Files that help administrators manage the site.
 
 ---
 
-## 📁 **api-test-files/** - Test Data
-Files used for testing the system.
+## 📁 **api-test-files/** - Integration & manual tests
+HTTP scripts that call the real API (or scan endpoints). Shared helpers live in **bootstrap.php** (`API_TEST_BASE_URL` for non-web runs).
 
-### **chris/** - Chris's Test Files
-- **items-with-year.php** - Creates fake purchase data with different years.
-- **multiple-purchased-items.php** - Creates fake data for users who bought many items.
-- **no-purchased-item.php** - Creates fake data for users who bought nothing.
-- **one-purchased-item.php** - Creates fake data for users who bought one item.
+### **chris/**
+- **items-with-year.php** - Proxies to `purchase-history/fetch-transacted-items.php` (same contract as production).
+- **no-purchased-item.php** - Asserts empty `data` for a future calendar year via that endpoint.
+- **one-purchased-item.php** / **multiple-purchased-items.php** - Data-dependent checks on current-year rows (PASS only if DB matches).
+- **expired-token.php** / **new-reset-password-invalid.php** / **reset-password-missing-fields.php** - `auth/reset-password.php` scenarios (`newPassword` JSON field).
 
-### **sameer/** - Sameer's Test Files
-- **invalid-email.php** - Tests what happens with bad email addresses.
-- **valid-email.php** - Tests what happens with good email addresses.
+### **sameer/**
+- **valid-email.php** / **invalid-email.php** - `auth/forgot-password.php` (invalid may be rate-limited; see script responses).
+- **test_sql_injection.php** / **test_xss_injection.php** - Heuristic scanners (results are not a full security audit).
+
+---
+
+## 📁 **extra-files/** (this folder)
+- **README.websocket.md** — **Legacy, archival only** (old Ratchet WebSocket notes; not the live stack).
 
 ---
 
@@ -103,8 +108,8 @@ Files used for testing the system.
 - **Rate Limit Management**: Tools to reset security limits
 - **User Lockout Control**: Tools to unlock blocked accounts
 - **Database Migration**: Tools to update the database safely
-- **Testing**: Tools to create fake data for testing
+- **Testing**: `api-test-files/` integration scripts (see section above)
 
 ---
 
-*Last Updated: October 2024*
+*Last updated: documentation refresh (api-test-files + extra-files index).*

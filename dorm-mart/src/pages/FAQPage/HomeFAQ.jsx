@@ -12,16 +12,6 @@ const HOME_FAQ_ITEMS = [
       "You haven't set interested categories yet. Go to Settings \u2192 User Preferences and pick up to 3.",
   },
   {
-    question: "How do I list a new item?",
-    answer:
-      "Click \"List an item\" in the feed header, or use the navigation menu on mobile.",
-  },
-  {
-    question: "How do I search for products?",
-    answer:
-      "Type a keyword into the search bar at the top and press Enter.",
-  },
-  {
     question: "How do I access chat and notifications?",
     answer:
       "Use the chat and bell icons in the top-right corner of the navbar.",

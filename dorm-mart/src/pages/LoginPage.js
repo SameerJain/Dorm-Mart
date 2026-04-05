@@ -270,7 +270,12 @@ function LoginPage() {
               )}
 
               {/* Login form - Improved spacing for mobile */}
-              <form onSubmit={handleLogin} noValidate className="space-y-3 sm:space-y-4 md:space-y-6">
+              {/* scheme-light: keep native inputs light when html gets color-scheme:dark right before navigate */}
+              <form
+                onSubmit={handleLogin}
+                noValidate
+                className="[color-scheme:light] space-y-3 sm:space-y-4 md:space-y-6"
+              >
                 {/* Email input */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
@@ -302,7 +307,7 @@ function LoginPage() {
                       setEmail(trimmedText);
                     }}
                     maxLength={255}
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
                   />
                 </div>
 
@@ -316,7 +321,7 @@ function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     maxLength={64}
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
                   />
                 </div>
 

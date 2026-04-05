@@ -22,7 +22,8 @@ $conn = db();
 $input = json_decode(file_get_contents('php://input'), true); // read raw request body and decode JSON
 $year  = isset($input['year']) ? intval($input['year']) : null; // coerce to integer if provided
 
-if ($year === null || $year < 2016 || $year > 2025) { // adjust bounds as needed
+$maxYear = (int) date('Y') + 1;
+if ($year === null || $year < 2016 || $year > $maxYear) {
     http_response_code(400);                          // bad request
     echo json_encode([
         'success' => false,                           // preserve response shape

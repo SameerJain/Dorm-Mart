@@ -12,10 +12,6 @@ const PURCHASES_SECTIONS = [
         question: "How do I view a receipt?",
         answer: "Click \"See Receipt\" on any item in your purchase history.",
       },
-      {
-        question: "What do the Successful and Failed badges mean?",
-        answer: "Successful means the trade completed. Failed means something went wrong such as a no-show or cancellation.",
-      },
     ],
   },
   {
@@ -28,15 +24,6 @@ const PURCHASES_SECTIONS = [
       {
         question: "Can I cancel an ongoing purchase?",
         answer: "Yes. Open the purchase card and use the cancel option. Please message the other person to let them know.",
-      },
-    ],
-  },
-  {
-    title: "Reviews",
-    items: [
-      {
-        question: "What is the difference between \"Leave a Review\" and \"View Review\"?",
-        answer: "\"Leave a Review\" appears when you haven't reviewed the item yet. After submitting it changes to \"View Review.\"",
       },
     ],
   },

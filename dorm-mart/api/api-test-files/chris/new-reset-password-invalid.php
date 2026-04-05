@@ -1,72 +1,65 @@
 <?php
+/**
+ * Integration test: reset-password rejects passwords that fail policy.
+ * API: auth/reset-password.php (token + newPassword).
+ */
+declare(strict_types=1);
+
 header('Content-Type: application/json; charset=utf-8');
 
-// Test 3 - Invalid Password Requirements Test
-// This test calls the REAL reset-password API and checks if it validates password requirements
+require_once dirname(__DIR__) . '/bootstrap.php';
 
-// Get JSON input
 $input = json_decode(file_get_contents('php://input'), true);
-
-// Validate required fields
-if (!isset($input['token']) || !isset($input['new_password']) || !isset($input['re_new_password'])) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'error' => 'Missing required fields: token, new_password, re_new_password'
-    ]);
-    exit;
+if (!is_array($input)) {
+    $input = [];
 }
 
-$token = $input['token'];
-$newPassword = $input['new_password'];
-$reNewPassword = $input['re_new_password'];
+$token = isset($input['token']) ? trim((string) $input['token']) : 'not-a-real-token';
+$newPassword = isset($input['newPassword']) ? (string) $input['newPassword'] : 'weak';
 
-// Call the REAL reset-password API to test actual functionality
-$resetPasswordUrl = 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/api/auth/reset-password.php';
-
-$postData = json_encode([
+$result = api_test_post_json('auth/reset-password.php', [
     'token' => $token,
-    'new_password' => $newPassword,
-    're_new_password' => $reNewPassword
+    'newPassword' => $newPassword,
 ]);
 
-$context = stream_context_create([
-    'http' => [
-        'method' => 'POST',
-        'header' => 'Content-Type: application/json',
-        'content' => $postData
-    ]
-]);
+$response = is_array($result['json']) ? $result['json'] : [];
+$error = isset($response['error']) ? (string) $response['error'] : '';
 
-$result = file_get_contents($resetPasswordUrl, false, $context);
+$policyRejection = $result['http_code'] === 400
+    && $error === 'Password does not meet policy requirements';
 
-if ($result === false) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false, 
-        'error' => 'Failed to call reset-password API',
-        'test_result' => 'ERROR - API call failed'
-    ]);
-    exit;
-}
-
-$response = json_decode($result, true);
-
-// Check if the API returned the expected error for invalid password
-if (isset($response['error']) && (strpos($response['error'], 'password') !== false || strpos($response['error'], 'requirements') !== false)) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'error' => 'Password does not meet requirements. Must be at least 8 characters with uppercase, lowercase, number, and special character.',
-        'test_result' => 'PASS - API correctly identified invalid password'
-    ]);
-} else {
+if ($policyRejection) {
     http_response_code(200);
     echo json_encode([
-        'success' => false,
-        'error' => 'API did not return expected response for invalid password',
+        'success' => true,
+        'test_result' => 'PASS — API returned policy error as expected',
+        'api_http_code' => $result['http_code'],
         'api_response' => $response,
-        'test_result' => 'FAIL - API should have returned password validation error'
     ]);
+    exit;
 }
-?>
+
+// Wrong password shape might still hit token path first with a dummy token
+$alsoOk = $result['http_code'] === 400
+    && $error !== ''
+    && (stripos($error, 'password') !== false || stripos($error, 'policy') !== false || stripos($error, 'long') !== false);
+
+if ($alsoOk) {
+    http_response_code(200);
+    echo json_encode([
+        'success' => true,
+        'test_result' => 'PASS — API rejected password: ' . $error,
+        'api_http_code' => $result['http_code'],
+        'api_response' => $response,
+    ]);
+    exit;
+}
+
+http_response_code(200);
+echo json_encode([
+    'success' => false,
+    'test_result' => 'FAIL — expected password policy error (HTTP 400)',
+    'api_http_code' => $result['http_code'],
+    'api_response' => $response,
+    'api_raw' => $result['raw'],
+]);

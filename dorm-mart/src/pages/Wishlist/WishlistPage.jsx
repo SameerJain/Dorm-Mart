@@ -458,16 +458,23 @@ export default function WishlistPage() {
           aria-modal="true"
           aria-labelledby="remove-confirm-title"
         >
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full min-w-0 overflow-hidden">
             <h2
               id="remove-confirm-title"
               className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4"
             >
               Remove from Wishlist?
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-6">
-              Are you sure you want to remove <strong>"{confirmRemove.title}"</strong> from your wishlist?
-            </p>
+            <div className="mb-6 min-w-0 text-gray-700 dark:text-gray-300 leading-relaxed">
+              <p className="min-w-0">Are you sure you want to remove</p>
+              <p
+                className="mt-1 min-w-0 max-w-full font-bold text-gray-900 dark:text-gray-100 truncate"
+                title={confirmRemove.title}
+              >
+                &ldquo;{confirmRemove.title}&rdquo;
+              </p>
+              <p className="mt-1">from your wishlist?</p>
+            </div>
             <div className="flex gap-3 justify-end">
               <button
                 type="button"
