@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import termsPdf from '../../assets/pdfs/terms&conditions.pdf';
+import termsPdf from '../../assets/pdfs/terms-and-conditions.pdf';
 import privacyPdf from '../../assets/pdfs/privacy.pdf';
 import PreLoginBranding from '../../components/PreLoginBranding';
 import { integerNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';

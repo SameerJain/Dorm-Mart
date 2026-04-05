@@ -64,11 +64,20 @@ if (file_exists($buildPath) && is_file($buildPath)) {
         'gif' => 'image/gif',
         'svg' => 'image/svg+xml',
         'ico' => 'image/x-icon',
-        'webp' => 'image/webp'
+        'webp' => 'image/webp',
+        'pdf' => 'application/pdf',
+        'woff2' => 'font/woff2',
+        'woff' => 'font/woff',
+        'ttf' => 'font/ttf',
     ];
     
-    $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
+    $extLower = strtolower((string) $ext);
+    $contentType = $mimeTypes[$extLower] ?? 'application/octet-stream';
     header('Content-Type: ' . $contentType);
+    // Without application/pdf, browsers treat PDFs as octet-stream and force download (weird filenames on some clients).
+    if ($extLower === 'pdf') {
+        header('Content-Disposition: inline');
+    }
     
     readfile($buildPath);
     exit;
