@@ -85,32 +85,37 @@ export default function ItemCardNew({
           </button>
         )}
 
-        {/* NEW badge - positioned below remove button if present */}
-        {isNew && (
-          <div className={`absolute z-20 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow ${
-            showRemoveButton ? "top-12 right-4" : "top-2 right-2"
-          }`}>
-            NEW
+        {/* NEW + Wishlisted: one anchored stack so right edges always line up */}
+        {!showRemoveButton && (isNew || isWishlisted) && (
+          <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-1 pointer-events-none">
+            {isNew && (
+              <div className="bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow">
+                NEW
+              </div>
+            )}
+            {isWishlisted && (
+              <div className="bg-purple-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow flex items-center gap-1">
+                <span>Wishlisted</span>
+                <svg
+                  className="w-3 h-3 fill-current"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Wishlisted badge - inset from corner; sits below NEW when both show */}
-        {isWishlisted && !showRemoveButton && (
-          <div className={`absolute z-20 bg-purple-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow flex items-center gap-1 ${
-            isNew ? "top-10 right-4" : "top-4 right-4"
-          }`}>
-            <span>Wishlisted</span>
-            <svg
-              className="w-3 h-3 fill-current"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fillRule="evenodd"
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                clipRule="evenodd"
-              />
-            </svg>
+        {/* Wishlist page: only NEW (no purple chip here); sits under X */}
+        {showRemoveButton && isNew && (
+          <div className="absolute top-12 right-4 z-20 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow pointer-events-none">
+            NEW
           </div>
         )}
 

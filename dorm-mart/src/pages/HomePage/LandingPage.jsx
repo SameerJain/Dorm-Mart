@@ -10,7 +10,7 @@ const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 const carpetUrl = `${PUBLIC_BASE}/assets/product-images/smallcarpet.png`;
 
-/** Session-only: after dismiss, hint stays hidden until tab/session ends */
+/** Session-only: after dismiss, tap "For You" again to reopen (never auto-opens on login) */
 const FOR_YOU_HINT_SESSION_KEY = "dm_for_you_feed_hint_dismissed";
 const FOR_YOU_HINT_FADE_MS = 280;
 
@@ -71,13 +71,9 @@ export default function LandingPage() {
   const [errorUser, setErrorUser] = useState(false);
   const [errorItems, setErrorItems] = useState(false);
   const [activeTab, setActiveTab] = useState("forYou");
-  const [forYouHintDismissed, setForYouHintDismissed] = useState(() => {
-    try {
-      return sessionStorage.getItem(FOR_YOU_HINT_SESSION_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  // Start dismissed so the modal never opens on its own after login / first visit.
+  // User can still open it by tapping the grayed-out "For You" tab (reopenForYouHint).
+  const [forYouHintDismissed, setForYouHintDismissed] = useState(true);
 
   const dismissForYouHint = useCallback(() => {
     setForYouHintDismissed(true);
