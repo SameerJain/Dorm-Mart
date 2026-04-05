@@ -469,7 +469,7 @@ export default function ViewProduct() {
                     email={normalized.sellerEmail}
                     fallback={normalized.sellerName}
                     className="font-medium text-gray-800 dark:text-gray-200 truncate min-w-0"
-                    hoverClass="hover:text-blue-600"
+                    hoverClass="hover:underline"
                   >
                     {normalized.sellerName}
                   </ProfileLink>
@@ -587,7 +587,7 @@ export default function ViewProduct() {
                   <Detail label="Condition" value={normalized.itemCondition || '—'} />
                   <Detail label="Price Negotiable" value={normalized.priceNego ? 'Yes' : 'No'} />
                   <Detail label="Accepts trades" value={normalized.trades ? 'Yes' : 'No'} />
-                  <Detail label="Seller email" value={normalized.sellerEmail ? (<a href={`mailto:${normalized.sellerEmail}`} className="text-blue-600 dark:text-blue-400 hover:underline truncate inline-block max-w-full" title={normalized.sellerEmail}>{normalized.sellerEmail}</a>) : '—'} />
+                  <Detail label="Seller email" value={normalized.sellerEmail || '—'} />
                 </div>
                 <div className="space-y-2">
                   <Detail label="Date listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : '—'} />
