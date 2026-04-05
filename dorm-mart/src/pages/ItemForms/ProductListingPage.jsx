@@ -221,7 +221,7 @@ function ProductListingPage() {
       try {
         setCatLoading(true);
         setCatFetchError(null);
-        const res = await fetch("api/utility/get_categories.php", {
+        const res = await fetch(`${API_BASE}/utility/get_categories.php`, {
           credentials: "include",
         });
         const text = await res.text();
@@ -245,7 +245,7 @@ function ProductListingPage() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [API_BASE]);
 
   // ============================================
   // FETCH EXISTING LISTING (EDIT MODE)

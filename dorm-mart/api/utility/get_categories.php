@@ -68,9 +68,8 @@ try {
 } catch (Throwable $e) {
     error_log('get_categories error: ' . $e->getMessage());
     http_response_code(500);
-    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
     echo json_encode([
         'ok'    => false,
-        'error' => escapeHtml($e->getMessage())
+        'error' => htmlspecialchars($e->getMessage(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
     ]);
 }
