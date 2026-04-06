@@ -22,17 +22,24 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
   }, [rawImageUrl]);
 
   const handleClick = useCallback(() => {
-    if (productId) {
-      navigate(`/app/viewProduct/${encodeURIComponent(productId)}`);
+    if (!productId) return;
+    // iOS Safari: blur focused inputs (e.g. chat composer <16px) and avoid carrying zoom across navigations
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
     }
+    navigate(`/app/viewProduct/${encodeURIComponent(productId)}`);
   }, [productId, navigate]);
 
+  const shellClass =
+    "max-w-[85%] rounded-2xl border-2 border-blue-400 bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg overflow-hidden text-left dark:border-blue-600 dark:from-blue-800 dark:to-blue-900 dark:shadow-black/30 touch-manipulation " +
+    (productId
+      ? "cursor-pointer transition-all duration-200 hover:shadow-xl md:hover:scale-[1.02]"
+      : "");
+
   // listing_intro: light mode bright brand blue; dark mode blue-800 family (matches settings / global dark brand)
-  return (
-    <div 
-      onClick={handleClick}
-      className={`max-w-[85%] rounded-2xl border-2 border-blue-400 bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg overflow-hidden dark:border-blue-600 dark:from-blue-800 dark:to-blue-900 dark:shadow-black/30 ${productId ? 'cursor-pointer hover:shadow-xl hover:scale-[1.02] transition-all duration-200' : ''}`}
-    >
+  // Use a real <button> when clickable so iOS Safari is less likely to apply double-tap zoom to a generic div.
+  const body = (
+    <>
       {imageUrl ? (
         <div className="w-full h-48 overflow-hidden border-b-2 border-blue-400/30 dark:border-blue-700/50">
           <img
@@ -59,7 +66,15 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
           </p>
         </div>
       </div>
-    </div>
+    </>
+  );
+
+  return productId ? (
+    <button type="button" onClick={handleClick} className={shellClass}>
+      {body}
+    </button>
+  ) : (
+    <div className={shellClass}>{body}</div>
   );
 });
 

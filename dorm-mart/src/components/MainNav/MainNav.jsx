@@ -94,8 +94,8 @@ function MainNav() {
     };
 
     return (
-        <nav className="bg-blue-600 text-slate-100 dark:bg-slate-900 dark:text-gray-100 dark:shadow-sm dark:shadow-black/20">
-            <div className="mx-auto flex items-center gap-1 sm:gap-2 md:gap-4 p-2 md:p-3">
+        <nav className="bg-blue-600 text-slate-100 dark:bg-slate-900 dark:text-gray-100 dark:shadow-sm dark:shadow-black/20 pt-[env(safe-area-inset-top,0px)]">
+            <div className="mx-auto flex min-w-0 max-w-[100vw] items-center gap-1 sm:gap-2 md:gap-4 px-1.5 py-2 sm:px-2 md:p-3 box-border">
                 {/* Dorm Mart logo - visible on desktop only */}
                 <button
                     onClick={() => navigate("/app")}
@@ -103,11 +103,11 @@ function MainNav() {
                 >
                     Dorm Mart
                 </button>
-                <div className="flex-1 mx-1 sm:mx-2 md:mx-3 lg:mx-5 min-w-0">
-                    <div className="flex h-10 sm:h-11 md:h-15 items-center overflow-hidden rounded-full bg-white shadow-inner">
+                <div className="flex-1 min-w-0 mx-0.5 sm:mx-2 md:mx-3 lg:mx-5">
+                    <div className="flex h-10 sm:h-11 md:h-15 min-w-0 items-center overflow-hidden rounded-full bg-white shadow-inner">
                         <input
                             type="text"
-                            placeholder="Search by item name, category, or description."
+                            placeholder="Search name, category, or description"
                             value={searchText}
                             ref={inputRef}
                             maxLength={50}
@@ -141,7 +141,7 @@ function MainNav() {
                               e.preventDefault();
                               handleSearchSubmit(searchText);
                             }}
-                            className="flex h-full w-10 sm:w-12 md:w-16 lg:w-20 items-center justify-center border-l border-slate-200 border-black flex-shrink-0"
+                            className="flex h-full w-9 shrink-0 items-center justify-center border-l border-slate-200 border-black sm:w-12 md:w-16 lg:w-20"
                         >
                             <img
                               src={searchIcon}
@@ -215,7 +215,7 @@ function MainNav() {
                 </ul>
 
                 {/* Mobile hamburger menu - visible only on mobile */}
-                <div className="mr-2 md:hidden relative" ref={mobileMenuRef}>
+                <div className="mr-1 shrink-0 md:hidden relative" ref={mobileMenuRef}>
                     <button
                         onClick={() => {
                           setShowMobileMenu((prev) => {
