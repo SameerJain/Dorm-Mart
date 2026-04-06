@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChatContext } from "../../context/ChatContext";
 import { FALLBACK_IMAGE_URL, onProductImageError } from "../../utils/imageFallback";
@@ -227,6 +227,14 @@ export default function ViewProduct() {
     // reset active image if photos change
     setActiveIdx(0);
   }, [normalized?.photoUrls?.length]);
+
+  // iOS Safari: avoid carrying input-focus zoom / odd scroll position when opening from chat (listing card, etc.)
+  useLayoutEffect(() => {
+    if (!productId) return;
+    window.scrollTo(0, 0);
+    const ae = document.activeElement;
+    if (ae instanceof HTMLElement) ae.blur();
+  }, [productId]);
 
   const hasPrev = activeIdx > 0;
   const hasNext = normalized?.photoUrls && activeIdx < normalized.photoUrls.length - 1;
