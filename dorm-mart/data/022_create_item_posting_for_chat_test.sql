@@ -30,7 +30,7 @@ INSERT INTO INVENTORY (
   'North Campus',
   'Like New',
   'Nice Wallpaper',
-  JSON_ARRAY('/images/nightmoon-wallpaper.jpg'),
+  JSON_ARRAY('/images/nightmoon-wallpaper-image.jpg'),
   20.00,
   'Active',
   0,

@@ -1,11 +1,8 @@
 START TRANSACTION;
--- ^ Begin a transaction so the insert is all-or-nothing.
+-- General test account (email is unique; user_id comes from auto-increment or existing row).
 SET FOREIGN_KEY_CHECKS = 0;
-DELETE FROM user_accounts
-WHERE email = 'testuser@buffalo.edu';
 
 INSERT INTO user_accounts (
-  user_id,
   first_name,
   last_name,
   grad_month,
@@ -17,7 +14,6 @@ INSERT INTO user_accounts (
   seller,
   theme
 ) VALUES (
-  30,
   'test',
   'general-test-user',
   5,
@@ -28,8 +24,18 @@ INSERT INTO user_accounts (
   NULL,
   0,
   0
-);
+)
+ON DUPLICATE KEY UPDATE
+  first_name = VALUES(first_name),
+  last_name = VALUES(last_name),
+  grad_month = VALUES(grad_month),
+  grad_year = VALUES(grad_year),
+  email = VALUES(email),
+  promotional = VALUES(promotional),
+  hash_pass = VALUES(hash_pass),
+  hash_auth = VALUES(hash_auth),
+  seller = VALUES(seller),
+  theme = VALUES(theme);
+
 SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;
-
-

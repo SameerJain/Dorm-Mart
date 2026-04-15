@@ -1,12 +1,29 @@
 SET SESSION foreign_key_checks = 0;
 
--- Purge conversations (cascades to participants/messages via FK ON DELETE CASCADE)
-DELETE FROM conversations;
+-- Remove only conversations tied to the three chat seed accounts.
+-- (A global DELETE FROM conversations here used to wipe every other data seed
+-- that ran earlier in migrate_data, e.g. review flows and typing-indicator chats.)
+DELETE c FROM conversations c
+WHERE EXISTS (
+    SELECT 1 FROM user_accounts ua
+    WHERE ua.user_id = c.user1_id
+      AND ua.email IN (
+        'chatuser1@buffalo.edu',
+        'chatuser2@buffalo.edu',
+        'chatuser3@buffalo.edu'
+      )
+  )
+   OR EXISTS (
+    SELECT 1 FROM user_accounts ua
+    WHERE ua.user_id = c.user2_id
+      AND ua.email IN (
+        'chatuser1@buffalo.edu',
+        'chatuser2@buffalo.edu',
+        'chatuser3@buffalo.edu'
+      )
+  );
 
--- Optional: reset the auto-increment after the purge
-ALTER TABLE conversations AUTO_INCREMENT = 1;
-
--- Clean any old test users
+-- Clean any old test users (re-seed below)
 DELETE FROM user_accounts
 WHERE email IN (
   'chatuser1@buffalo.edu',
