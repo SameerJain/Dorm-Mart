@@ -38,6 +38,10 @@ export async function logout() {
       localStorage.removeItem(THEME_CACHE_KEY);
     } catch (_) {}
 
+    try {
+      sessionStorage.removeItem("dm_home_feed_tab");
+    } catch (_) {}
+
     return response.ok;
   } catch (error) {
     console.error("Logout error:", error);

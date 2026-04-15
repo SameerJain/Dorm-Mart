@@ -14,6 +14,29 @@ const carpetUrl = `${PUBLIC_BASE}/assets/product-images/smallcarpet.png`;
 const FOR_YOU_HINT_SESSION_KEY = "dm_for_you_feed_hint_dismissed";
 const FOR_YOU_HINT_FADE_MS = 280;
 
+/** Session-only: last home feed tab (per browser tab); cleared on logout */
+const HOME_FEED_TAB_SESSION_KEY = "dm_home_feed_tab";
+
+function readStoredFeedTab() {
+  try {
+    const v = sessionStorage.getItem(HOME_FEED_TAB_SESSION_KEY);
+    if (v === "forYou" || v === "explore") return v;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function writeStoredFeedTab(tab) {
+  try {
+    if (tab === "forYou" || tab === "explore") {
+      sessionStorage.setItem(HOME_FEED_TAB_SESSION_KEY, tab);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 const FALLBACK_ITEMS = [
   {
     id: 1,
@@ -170,12 +193,19 @@ export default function LandingPage() {
     return () => clearInterval(id);
   }, [rotatingLines.length]);
 
-  // keep tab aligned with interest availability
+  // Restore last feed tab from sessionStorage; force Explore when user has no interests
   useEffect(() => {
+    if (loadingUser) return;
     if (!interests.length) {
       setActiveTab("explore");
+      writeStoredFeedTab("explore");
+      return;
     }
-  }, [interests.length]);
+    const stored = readStoredFeedTab();
+    if (stored === "explore" || stored === "forYou") {
+      setActiveTab(stored);
+    }
+  }, [loadingUser, interests.length]);
 
   useEffect(() => {
     if (!hintWantsDisplay) {
@@ -607,6 +637,7 @@ export default function LandingPage() {
                         return;
                       }
                       setActiveTab("forYou");
+                      writeStoredFeedTab("forYou");
                     }}
                     aria-label={
                       !interests.length
@@ -630,7 +661,10 @@ export default function LandingPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("explore")}
+                    onClick={() => {
+                      setActiveTab("explore");
+                      writeStoredFeedTab("explore");
+                    }}
                     className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                       activeTab === "explore"
                         ? "bg-blue-600 text-white shadow dark:bg-blue-800"

@@ -176,6 +176,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
         mode={hasReview ? "view" : "create"}
         productId={id}
         productTitle={title}
+        productImageUrl={displayImage}
         existingReview={existingReview}
         onReviewSubmitted={handleReviewSubmitted}
         viewMode="buyer"

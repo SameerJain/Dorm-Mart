@@ -196,7 +196,7 @@ function CreateAccountPage() {
       <PreLoginBranding />
 
       {/* Right side - Create Account form (full width on mobile/tablet, 50% on desktop) */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-start p-4 sm:p-6 md:p-6 lg:p-8 xl:p-8 pt-6 sm:pt-8 md:pt-16 md:pb-8 lg:pt-10 h-screen overflow-y-auto pre-login-bg relative">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-6 lg:px-8 xl:px-8 pt-6 sm:pt-8 md:pt-16 md:pb-8 lg:py-6 xl:py-8 h-screen min-h-0 overflow-y-auto lg:overflow-y-hidden pre-login-bg relative">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="lg:hidden mb-4 sm:mb-6 md:mb-8 text-center w-full relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
