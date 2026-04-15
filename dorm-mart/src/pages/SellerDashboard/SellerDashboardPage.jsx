@@ -289,11 +289,15 @@ function SellerDashboardPage() {
         }
     }, [location.state, location.pathname, navigate]);
 
-    const handleViewReview = (productId, productTitle) => {
-        const review = productReviews[productId];
+    const handleViewReview = (listing) => {
+        const review = productReviews[listing.id];
         if (review) {
             setSelectedReview(review);
-            setSelectedReviewProduct({ id: productId, title: productTitle });
+            setSelectedReviewProduct({
+                id: listing.id,
+                title: listing.title,
+                image: withFallbackImage(listing.image),
+            });
             setReviewModalOpen(true);
         }
     };
@@ -635,7 +639,7 @@ function SellerDashboardPage() {
                                             {/* View Review Button - only show if review exists */}
                                             {productReviews[listing.id] && (
                                                 <button
-                                                    onClick={() => handleViewReview(listing.id, listing.title)}
+                                                    onClick={() => handleViewReview(listing)}
                                                     className="font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                                 >
                                                     View Review
@@ -734,6 +738,7 @@ function SellerDashboardPage() {
                 mode="view"
                 productId={selectedReviewProduct.id}
                 productTitle={selectedReviewProduct.title}
+                productImageUrl={selectedReviewProduct.image}
                 existingReview={selectedReview}
                 viewMode="seller"
             />
