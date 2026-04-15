@@ -1,5 +1,6 @@
 START TRANSACTION;
 -- ^ Begin a transaction so the insert is all-or-nothing.
+SET SESSION foreign_key_checks = 0;
 
 DELETE FROM user_accounts
 WHERE email = 'testusersellerdashboard@buffalo.edu';
@@ -44,5 +45,6 @@ INSERT INTO user_accounts (
   NULL
 );
 
+SET SESSION foreign_key_checks = 1;
 COMMIT;
 

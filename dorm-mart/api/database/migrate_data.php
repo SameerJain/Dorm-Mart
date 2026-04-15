@@ -59,7 +59,16 @@ foreach ($files as $path) {
   }
 
   // Flush all result sets produced by multi_query to clear the connection for next use
-  while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+  try {
+    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+  } catch (Throwable $e) {
+    $conn->rollback();
+    echo json_encode([
+      "success" => false,
+      "message" => "Failed: " . $name . " — " . $e->getMessage(),
+    ]);
+    exit;
+  }
 
   // Record that we ran this file; if it exists, just bump the timestamp
   $stmt = $conn->prepare(                                       // Use the tracking table we created above
