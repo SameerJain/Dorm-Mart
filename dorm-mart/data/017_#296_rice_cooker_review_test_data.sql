@@ -351,7 +351,7 @@ INSERT INTO product_reviews (
   5,
   5,
   'This rice cooker is super useful! Take a look at what I have made.',
-  '/media/review-images/rice-cooker-review-image.jpg',
+  '/images/rice-cooker-review-image.jpg',
   NULL,
   NULL
 );
