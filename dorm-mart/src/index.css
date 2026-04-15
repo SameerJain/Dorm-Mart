@@ -19,6 +19,21 @@
     position: relative;
     overflow: hidden;
   }
+
+  /*
+   * Login page right column: keep light gradient + readable grays even when html has .dark
+   * (e.g. theme cache applies before navigate away from /login).
+   */
+  html.dark .login-page-right-column.pre-login-bg {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%) !important;
+    color: #111827;
+  }
+  html.dark .login-page-right-column .text-gray-800 {
+    color: #1f2937 !important;
+  }
+  html.dark .login-page-right-column .text-gray-600 {
+    color: #4b5563 !important;
+  }
   
   .review-text-rounded {
     border-radius: 0.5rem !important;

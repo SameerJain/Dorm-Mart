@@ -224,9 +224,10 @@ function LoginPage() {
       `}</style>
       <PreLoginBranding />
 
-      {/* Right side - Login form (full width on mobile, 50% on desktop) */}
+      {/* Right side - Login form (full width on mobile, 50% on desktop).
+          login-page-right-column: stay visually light even if html.dark (global CSS + brief theme flash). */}
       <div
-        className="login-page-se-mobile-col w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden"
+        className="login-page-se-mobile-col login-page-right-column w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden [color-scheme:light]"
       >
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="login-page-se-branding lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
@@ -238,11 +239,11 @@ function LoginPage() {
 
         <div className="w-full max-w-md md:max-w-xl relative z-10">
           <div
-            className="p-4 sm:p-6 md:p-10 rounded-lg relative bg-blue-600"
+            className="p-4 sm:p-6 md:p-10 rounded-lg relative bg-[#2563eb]"
           >
-            {/* Torn paper effect */}
+            {/* Torn paper effect — hex blue avoids html.dark .bg-blue-600 global remap */}
             <div
-              className="absolute inset-0 rounded-lg bg-blue-600"
+              className="absolute inset-0 rounded-lg bg-[#2563eb]"
               style={{
                 clipPath:
                   "polygon(0 0, 100% 0, 100% 85%, 95% 90%, 100% 95%, 100% 100%, 0 100%)",
