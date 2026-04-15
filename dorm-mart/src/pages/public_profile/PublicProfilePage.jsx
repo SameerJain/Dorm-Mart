@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { withFallbackImage, onProductImageError } from "../../utils/imageFallback";
+import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../../utils/imageFallback";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -32,7 +32,7 @@ function ProductCard({ product, onView }) {
   return (
     <div className="flex flex-col rounded-lg border border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md min-w-0 overflow-hidden">
       <img
-        src={withFallbackImage(product.image_url)}
+        src={withFallbackImage(resolveStoredImageUrl(product.image_url, API_BASE))}
         alt={product.title}
         onError={onProductImageError}
         className="h-40 w-full rounded-t-lg object-cover"
@@ -71,7 +71,7 @@ function ReviewCard({ review }) {
           {attachments.map((url, index) => (
             <img
               key={`${review.review_id || index}-img-${index}`}
-              src={url}
+              src={resolveStoredImageUrl(url, API_BASE)}
               alt={`Review attachment ${index + 1}`}
               onError={onProductImageError}
               className="h-28 w-32 rounded-xl object-cover shadow"
@@ -204,7 +204,7 @@ function PublicProfilePage() {
     instagram: profileData.instagram || "",
     avgRating: profileData.avg_rating ?? 0,
     reviewCount: profileData.review_count ?? reviews.length,
-    imageUrl: withFallbackImage(profileData.image_url),
+    imageUrl: withFallbackImage(resolveStoredImageUrl(profileData.image_url, API_BASE)),
     userId: profileData.user_id,
   };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import StarRating from "../Reviews/StarRating";
+import PageBackButton from "../../components/PageBackButton";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 /**
@@ -64,14 +65,7 @@ function BuyerReviewsPage() {
             See ratings and feedback from sellers about your purchases
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate("/app/setting/my-profile")}
-          className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-blue-600 hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-700"
-          aria-label="Go back"
-        >
-          ← Back
-        </button>
+        <PageBackButton onClick={() => navigate("/app/setting/my-profile")} />
       </div>
 
       <div className="flex flex-col gap-6">

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { decimalNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
+import PageBackButton from '../../components/PageBackButton';
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
@@ -240,12 +241,7 @@ export default function ConfirmPurchasePage() {
     <div className="max-w-4xl mx-auto px-4 py-10">
       <div className="flex items-center justify-between mb-6 min-w-0">
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 truncate block min-w-0 flex-1">Confirm Purchase</h1>
-        <button
-          onClick={() => navigate(-1)}
-          className="text-sm text-indigo-600 hover:text-indigo-500 font-medium flex-shrink-0 ml-4"
-        >
-          Back
-        </button>
+        <PageBackButton onClick={() => navigate(-1)} className="ml-4 flex-shrink-0" />
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 space-y-6">

@@ -107,7 +107,7 @@ function MainNav() {
                     <div className="flex h-10 sm:h-11 md:h-15 min-w-0 items-center overflow-hidden rounded-full bg-white shadow-inner">
                         <input
                             type="text"
-                            placeholder="Search name, category, or description"
+                            placeholder="Search"
                             value={searchText}
                             ref={inputRef}
                             maxLength={50}
@@ -118,7 +118,7 @@ function MainNav() {
                                   handleSearchSubmit(searchText);
                               }
                             }}
-                            className="h-full w-full px-2 sm:px-3 text-sm md:text-base text-slate-900 placeholder-slate-400 focus:outline-none min-w-0"
+                            className="h-full w-full pl-4 pr-2 sm:pl-5 sm:pr-3 text-sm md:text-base text-slate-900 placeholder-slate-400 focus:outline-none min-w-0"
                         />
 
                         {searchText ? (
@@ -236,13 +236,13 @@ function MainNav() {
                     </button>
 
                     {showMobileMenu && (
-                        <div className="absolute right-0 mt-2 w-56 rounded-lg border-2 border-blue-400 bg-blue-600 py-2 shadow-lg z-50 dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/40">
+                        <div className="absolute right-0 mt-2 w-56 rounded-lg border-2 border-blue-400 bg-blue-600 py-2 shadow-lg z-50 dark:border-blue-700 dark:bg-blue-800 dark:shadow-black/40">
                             <button
                                 onClick={() => {
                                     navigate("/app");
                                     closeMobileMenuAndMarket();
                                 }}
-                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-blue-700"
                             >
                                 <img src={homeIcon} alt="" className="h-6 w-6" />
                                 <span>Home</span>
@@ -252,7 +252,7 @@ function MainNav() {
                                     navigate("/app/notification");
                                     closeMobileMenuAndMarket();
                                 }}
-                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-blue-700"
                             >
                                 <span className="relative inline-block">
                                     <img src={notificationIcon} alt="" className="h-6 w-6" />
@@ -273,7 +273,7 @@ function MainNav() {
                                     navigate("/app/chat");
                                     closeMobileMenuAndMarket();
                                 }}
-                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-blue-700"
                             >
                                 <span className="relative inline-block">
                                     <img src={chatIcon} alt="" className="h-6 w-6" />
@@ -293,7 +293,7 @@ function MainNav() {
                             <div className="relative">
                                 <button
                                     onClick={() => setShowMobileMarketDropdown((prev) => !prev)}
-                                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
+                                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-blue-700"
                                 >
                                     <span className="flex items-center gap-3">
                                         <img src={marketIcon} alt="" className="h-6 w-6" />
@@ -305,13 +305,13 @@ function MainNav() {
                                 </button>
 
                                 {showMobileMarketDropdown && (
-                                    <div className="mx-2 mt-1 rounded-md bg-blue-500 shadow-inner dark:bg-slate-950 dark:shadow-none dark:ring-1 dark:ring-slate-700/80">
+                                    <div className="mx-2 mt-1 rounded-md border border-blue-500/50 bg-blue-700/95 shadow-inner dark:border-blue-800 dark:bg-blue-900 dark:shadow-md dark:shadow-black/40">
                                         <button
                                             onClick={() => {
                                                 handleSellerDashboard();
                                                 closeMobileMenuAndMarket();
                                             }}
-                                            className="w-full rounded-t-md px-4 py-2 text-left text-white transition-colors hover:bg-blue-700 dark:hover:bg-slate-800"
+                                            className="w-full rounded-t-md px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                                         >
                                             Seller Dashboard
                                         </button>
@@ -320,7 +320,7 @@ function MainNav() {
                                                 handleWishlist();
                                                 closeMobileMenuAndMarket();
                                             }}
-                                            className="w-full px-4 py-2 text-left text-white transition-colors hover:bg-blue-700 dark:hover:bg-slate-800"
+                                            className="w-full px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                                         >
                                             My Wishlist
                                         </button>
@@ -329,7 +329,7 @@ function MainNav() {
                                                 handleOngoingPurchases();
                                                 closeMobileMenuAndMarket();
                                             }}
-                                            className="w-full px-4 py-2 text-left text-white transition-colors hover:bg-blue-700 dark:hover:bg-slate-800"
+                                            className="w-full px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                                         >
                                             Ongoing Purchases
                                         </button>
@@ -338,7 +338,7 @@ function MainNav() {
                                                 handlePurchaseHistory();
                                                 closeMobileMenuAndMarket();
                                             }}
-                                            className="w-full rounded-b-md px-4 py-2 text-left text-white transition-colors hover:bg-blue-700 dark:hover:bg-slate-800"
+                                            className="w-full rounded-b-md px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                                         >
                                             Purchase History
                                         </button>
@@ -351,7 +351,7 @@ function MainNav() {
                                     navigate("/app/setting");
                                     closeMobileMenuAndMarket();
                                 }}
-                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-blue-700"
                             >
                                 <img src={settingIcon} alt="" className="h-6 w-6" />
                                 <span>Settings</span>
@@ -362,7 +362,7 @@ function MainNav() {
                                 navigate("/app/faq");
                                 closeMobileMenuAndMarket();
                                 }}
-                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-slate-800"
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-blue-700"
                             >
                                 <img src={questionIcon} alt="" className="h-6 w-6" />
                                 <span>FAQ</span>

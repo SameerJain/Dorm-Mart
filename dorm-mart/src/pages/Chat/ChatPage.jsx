@@ -10,6 +10,7 @@ import ConfirmMessageCard from "./components/ConfirmMessageCard";
 import ReviewPromptMessageCard from "./components/ReviewPromptMessageCard";
 import BuyerRatingPromptMessageCard from "./components/BuyerRatingPromptMessageCard";
 import { onProductImageError } from "../../utils/imageFallback";
+import PageBackButton from "../../components/PageBackButton";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -1213,7 +1214,7 @@ export default function ChatPage() {
                     <button
                       type="button"
                       onClick={handleProfileHeaderClick}
-                      className="text-left text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 min-w-0 w-full flex flex-col"
+                      className="text-left text-sm leading-snug font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 min-w-0 w-full flex flex-col md:text-lg md:leading-tight"
                     >
                       <span className="md:hidden block w-full truncate" title={activeLabelFirstName}>{activeLabelFirstName}</span>
                       <span className="hidden md:block w-full break-words min-w-0 leading-tight" title={activeLabel}>
@@ -1222,7 +1223,7 @@ export default function ChatPage() {
                       </span>
                     </button>
                   ) : (
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 min-w-0 w-full flex flex-col">
+                    <h2 className="text-sm leading-snug font-semibold text-gray-900 dark:text-gray-100 min-w-0 w-full flex flex-col md:text-lg md:leading-tight">
                       <span className="md:hidden block w-full truncate" title={activeLabelFirstName}>{activeLabelFirstName}</span>
                       <span className="hidden md:block w-full break-words min-w-0 leading-tight" title={activeLabel}>
                         <span className="block break-words">{activeFirstName}</span>
@@ -1243,7 +1244,7 @@ export default function ChatPage() {
 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {activeConversation?.productImageUrl && (
-                    <div className="inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden shrink-0 bg-gray-200 dark:bg-gray-700">
+                    <div className="hidden md:inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden shrink-0 bg-gray-200 dark:bg-gray-700">
                                 <img
                                   src={activeConversation.productImageUrl.startsWith('http') || activeConversation.productImageUrl.startsWith('/data/images/') || activeConversation.productImageUrl.startsWith('/images/') ? `${API_BASE}/media/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
                                   alt=""
@@ -1270,13 +1271,13 @@ export default function ChatPage() {
                       View Item
                     </button>
                   )}
-                  <button
-                    onClick={() => { setIsMobileList(true); clearActiveConversation(); }}
-                    className="md:hidden rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:shadow transition-all duration-200"
-                    aria-label="Back"
-                  >
-                    Back
-                  </button>
+                  <PageBackButton
+                    onClick={() => {
+                      setIsMobileList(true);
+                      clearActiveConversation();
+                    }}
+                    className="md:hidden"
+                  />
                 </div>
               </div>
             </div>

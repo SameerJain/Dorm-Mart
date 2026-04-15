@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import { useTheme } from "../../hooks/useTheme";
+import PageBackButton from "../../components/PageBackButton";
 
 function UserPreferences() {
   const navigate = useNavigate();
@@ -162,14 +163,7 @@ function UserPreferences() {
         <h1 className="text-2xl font-serif font-semibold text-blue-600">
           User Preferences
         </h1>
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-blue-600 hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-700"
-          aria-label="Go back"
-        >
-          ← Back
-        </button>
+        <PageBackButton onClick={() => navigate(-1)} />
       </div>
 
       <div className="space-y-8">

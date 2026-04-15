@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
-import { withFallbackImage, FALLBACK_IMAGE_URL } from "../../utils/imageFallback";
+import { withFallbackImage, FALLBACK_IMAGE_URL, resolveStoredImageUrl, onProductImageError } from "../../utils/imageFallback";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+
+/** Primary actions: match home / landing square-ish CTAs (rounded-lg, not pill). */
+const primaryActionButtonClass =
+  "inline-flex items-center justify-center rounded-lg bg-blue-600 dark:bg-blue-800 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 dark:hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 touch-manipulation";
 
 // File type restrictions (same as product listing and chat)
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -181,9 +185,10 @@ function ReviewRow({ review }) {
           attachments.map((image, index) => (
             <img
               key={index}
-              src={image}
+              src={resolveStoredImageUrl(image, API_BASE)}
               alt={`Review attachment ${index + 1}`}
               className={imageClass}
+              onError={onProductImageError}
             />
           ))
         ) : (
@@ -241,7 +246,7 @@ function EditableLinkRow({
           disabled={isSaving}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
-          className={`rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${isSaving ? "opacity-60 cursor-not-allowed" : ""}`}
+          className={`${primaryActionButtonClass} ${isSaving ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           {isSaving ? savingLabel : saveLabel}
         </button>
@@ -516,15 +521,16 @@ function MyProfilePage() {
                     className={`relative flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full border-4 border-white dark:border-gray-800 bg-slate-100 dark:bg-gray-700 shadow-lg ring-2 sm:ring-4 ring-blue-100 dark:ring-blue-900 transition hover:brightness-105 flex-shrink-0 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
                   >
                     <img 
-                      src={avatarPreview ? withFallbackImage(avatarPreview) : FALLBACK_IMAGE_URL} 
-                      alt="" 
+                      src={
+                        avatarPreview
+                          ? withFallbackImage(resolveStoredImageUrl(avatarPreview, API_BASE))
+                          : FALLBACK_IMAGE_URL
+                      }
+                      alt=""
                       className="h-full w-full rounded-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = FALLBACK_IMAGE_URL;
-                      }}
+                      onError={onProductImageError}
                     />
-                    <span className="absolute bottom-1.5 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-semibold text-white shadow">
+                    <span className="absolute bottom-1.5 rounded-md bg-blue-600 px-3 py-0.5 text-xs font-medium text-white shadow-sm dark:bg-blue-800">
                       {avatarUploading ? "Uploading..." : "Edit"}
                     </span>
                   </button>
@@ -573,7 +579,7 @@ function MyProfilePage() {
                         navigate(`/app/profile?username=${encodeURIComponent(profile.username)}&preview=true`);
                         setTimeout(() => { buttonClickRef.current = false; }, 300);
                       }}
-                      className="rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 transition-colors touch-manipulation"
+                      className={primaryActionButtonClass}
                     >
                       View Public Profile Display
                     </button>
@@ -624,7 +630,7 @@ function MyProfilePage() {
                         disabled={isSavingBio}
                         onMouseDown={(e) => e.stopPropagation()}
                         onMouseUp={(e) => e.stopPropagation()}
-                        className={`rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
+                        className={`${primaryActionButtonClass} ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
                         {isSavingBio ? "Saving..." : "Save Bio"}
                       </button>
@@ -683,7 +689,7 @@ function MyProfilePage() {
                 <button
                   type="button"
                   onClick={() => navigate("/app/setting/buyer-reviews")}
-                  className="rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 transition-colors touch-manipulation"
+                  className={primaryActionButtonClass}
                 >
                   View how sellers have rated you
                 </button>

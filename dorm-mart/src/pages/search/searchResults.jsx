@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import { useLocation, useNavigate } from "react-router-dom";
 import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
 import { withFallbackImage, onProductImageError } from "../../utils/imageFallback";
+import PageBackButton from "../../components/PageBackButton";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -184,12 +185,7 @@ export default function SearchResults() {
         {/* LEFT SIDE */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* Desktop: Back on the left */}
-          <button
-            onClick={() => navigate(-1)}
-            className="hidden md:inline text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            Back
-          </button>
+          <PageBackButton onClick={() => navigate(-1)} className="hidden md:inline-flex" />
 
           {/* Mobile: Filters on the left */}
           <button
@@ -209,12 +205,7 @@ export default function SearchResults() {
         {/* RIGHT SIDE */}
         <div className="flex items-center justify-end flex-shrink-0">
           {/* Mobile: Back on the right */}
-          <button
-            onClick={() => navigate(-1)}
-            className="md:hidden text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            Back
-          </button>
+          <PageBackButton onClick={() => navigate(-1)} className="md:hidden" />
 
           {/* Desktop: empty spacer to balance layout */}
           <div className="hidden md:block w-0" />

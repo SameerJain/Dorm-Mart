@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChatContext } from "../../context/ChatContext";
 import { FALLBACK_IMAGE_URL, onProductImageError } from "../../utils/imageFallback";
 import ProfileLink from "../../components/ProfileLink";
+import PageBackButton from "../../components/PageBackButton";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -426,7 +427,7 @@ export default function ViewReceipt() {
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 grid grid-cols-3 items-center relative">
         <div className="flex justify-start">
-          <button
+          <PageBackButton
             onClick={() => {
               if (returnTo) {
                 navigate(returnTo);
@@ -434,10 +435,7 @@ export default function ViewReceipt() {
                 navigate(-1);
               }
             }}
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            Back
-          </button>
+          />
         </div>
         <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 text-center">{pageHeading}</h1>
         <div className="flex items-center gap-2 justify-end">

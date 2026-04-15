@@ -3,6 +3,43 @@ const ITEM_PLACEHOLDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="800
 
 export const FALLBACK_IMAGE_URL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(ITEM_PLACEHOLDER_SVG)}`;
 
+/**
+ * Map DB-stored paths (/images/, /data/images/, /media/) to the PHP image endpoint so the
+ * browser loads files from the API host (needed for Railway / SPA-only static hosts where
+ * /images/ is not served from disk). Does not wrap blob:, data:, or URLs already using image.php.
+ * Absolute http(s) URLs are returned unchanged (image.php only resolves local paths).
+ *
+ * @param {unknown} raw
+ * @param {string} apiBase e.g. process.env.REACT_APP_API_BASE or `${PUBLIC_URL}/api`, no trailing slash
+ * @returns {string}
+ */
+export function resolveStoredImageUrl(raw, apiBase) {
+  if (raw == null) return "";
+  const s = String(raw).trim();
+  if (!s) return "";
+  if (s.startsWith("blob:") || s.startsWith("data:")) return s;
+  if (s.includes("/media/image.php")) return s;
+
+  const base = String(apiBase || "").replace(/\/$/, "");
+  if (!base) return s;
+
+  if (/^https?:\/\//i.test(s)) {
+    try {
+      const u = new URL(s);
+      if (u.pathname.includes("media/image.php")) return s;
+    } catch {
+      /* ignore */
+    }
+    return s;
+  }
+
+  if (s.startsWith("/data/images/") || s.startsWith("/images/") || s.startsWith("/media/")) {
+    return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
+  }
+
+  return s;
+}
+
 export function withFallbackImage(url) {
   if (typeof url === "string" && url.trim() !== "") {
     return url;

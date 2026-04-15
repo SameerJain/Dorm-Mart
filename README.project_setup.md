@@ -85,6 +85,11 @@ Copy any necessary files to the server:
    - Since your URL has a hash (#/login), the browser doesn't ask the server for a separate /login resource. Everything after # is handled purely on the client side, meaning all components are loaded entirely within the index.html at once.
    - The React Router reads that hash fragment (#/login) and renders the right component (your Login page). This is how SPA works.
 
+# Railway and uploaded images
+
+- On **Railway** (and similar), the app shell is often a React `build/` plus PHP. Browsers must load user uploads via **`/api/media/image.php?url=...`**, not as raw `/images/...` paths on the static host (those requests do not hit the PHP `images/` folder and tend to 404, which shows the gray “No photo” placeholder).
+- The **container filesystem is ephemeral** unless you attach a **volume**: new deploys or restarts can delete files under `dorm-mart/images` and `dorm-mart/media`. The database will still point at old paths. Set **`DATA_IMAGES_DIR`** (and optionally **`DATA_IMAGES_URL_BASE`**) to a persistent volume path that matches where `api/media/image.php` reads from.
+
 # Development Utilities
 
 - Clear forgot password rate limit: `php api/utility/manage_forgot_password_rate_limiting.php` (run from dorm-mart folder)
