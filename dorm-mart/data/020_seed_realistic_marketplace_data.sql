@@ -7,6 +7,9 @@ START TRANSACTION;
 -- Password hash for "1234!" for all accounts
 SET @password_hash = '$2y$10$GbrdUE1/URrVdrSoa83d1OMfNWeJAuuzyEU4UvMMANKeub4./C.UO';
 
+-- Re-running migrate_data.php leaves chat rows pointing at these users; allow cleanup without FK errors.
+SET SESSION foreign_key_checks = 0;
+
 -- ============================================
 -- ACCOUNT 1: Lisa Patterson
 -- ============================================
@@ -529,5 +532,6 @@ INSERT INTO INVENTORY (
   0
 );
 
+SET SESSION foreign_key_checks = 1;
 COMMIT;
 

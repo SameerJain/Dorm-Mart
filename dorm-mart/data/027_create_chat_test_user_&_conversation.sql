@@ -1,3 +1,5 @@
+SET SESSION foreign_key_checks = 0;
+
 -- Purge conversations (cascades to participants/messages via FK ON DELETE CASCADE)
 DELETE FROM conversations;
 
@@ -11,6 +13,8 @@ WHERE email IN (
   'chatuser2@buffalo.edu',
   'chatuser3@buffalo.edu'
 );
+
+SET SESSION foreign_key_checks = 1;
 
 START TRANSACTION;
 
