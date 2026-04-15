@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { withFallbackImage, onProductImageError } from "../../utils/imageFallback";
+import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../../utils/imageFallback";
 import { useState, useEffect } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
 
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 
 /** Match receipt / site style: short date + 12h time (not raw SQL 24h). */
 function formatPurchasedAt(value) {
@@ -23,7 +24,7 @@ function formatPurchasedAt(value) {
 function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false }) {
   const productIdParam = id !== undefined && id !== null ? encodeURIComponent(id) : "";
   const detailPath = `/app/viewReceipt?id=${productIdParam}`;
-  const displayImage = withFallbackImage(image);
+  const displayImage = withFallbackImage(resolveStoredImageUrl(image, API_BASE));
   const detailState = { id, title, seller, date, image: displayImage };
 
   const [hasReview, setHasReview] = useState(false);

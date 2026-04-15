@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SettingsLayout from "./SettingsLayout";
+import PageBackButton from "../../components/PageBackButton";
 
 const MAX_LEN = 64;
 
@@ -199,14 +200,7 @@ function ChangePasswordPage() {
         <h1 className="text-2xl font-serif font-semibold text-blue-600">
           Change Password
         </h1>
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-blue-600 hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-700"
-          aria-label="Go back"
-        >
-          ← Back
-        </button>
+        <PageBackButton onClick={() => navigate(-1)} />
       </div>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">

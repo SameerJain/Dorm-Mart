@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useMemo } from "react";
-import { onProductImageError } from "../../../utils/imageFallback";
+import { onProductImageError, resolveStoredImageUrl } from "../../../utils/imageFallback";
 import { useNavigate } from "react-router-dom";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
@@ -13,12 +13,10 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
   const rawImageUrl = product.image_url;
   const productId = product.product_id;
   
-  // Route image URL through proxy if it's a relative path or /images/ path - memoized
   const imageUrl = useMemo(() => {
     if (!rawImageUrl) return null;
-    return (rawImageUrl.startsWith('http') || rawImageUrl.startsWith('/data/images/') || rawImageUrl.startsWith('/images/'))
-      ? `${API_BASE}/media/image.php?url=${encodeURIComponent(rawImageUrl)}`
-      : rawImageUrl;
+    const resolved = resolveStoredImageUrl(rawImageUrl, API_BASE);
+    return resolved || null;
   }, [rawImageUrl]);
 
   const handleClick = useCallback(() => {
