@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PreLoginBranding from "../components/PreLoginBranding";
-import { applyThemeToDOM, THEME_PENDING_KEY } from "../utils/load_theme.js";
+import { THEME_CACHE_KEY, THEME_PENDING_KEY } from "../utils/load_theme.js";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
@@ -140,18 +140,21 @@ function LoginPage() {
       if (data.ok) {
         // Auth token is now set server-side as httpOnly cookie
         
-        // Apply theme immediately after successful login (class, cache, theme-color, color-scheme)
+        // Cache theme only — do not call applyThemeToDOM here, or the pre-login layout
+        // (e.g. left branding card) flashes dark for a moment before navigate("/app").
+        // RootLayout's loadUserTheme applies class/meta once the app shell mounts.
         if (data.theme === 'dark' || data.theme === 'light') {
           try {
             localStorage.removeItem(THEME_PENDING_KEY);
           } catch (_) {}
-          applyThemeToDOM(data.theme);
-
-          // Also save per-user key for immediate access
           try {
-            const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
-              method: 'GET', 
-              credentials: 'include' 
+            localStorage.setItem(THEME_CACHE_KEY, data.theme);
+          } catch (_) {}
+
+          try {
+            const meRes = await fetch(`${API_BASE}/auth/me.php`, {
+              method: "GET",
+              credentials: "include",
             });
             if (meRes.ok) {
               const meJson = await meRes.json();
