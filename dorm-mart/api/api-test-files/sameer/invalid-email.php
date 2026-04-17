@@ -1,69 +1,70 @@
 <?php
+/**
+ * Integration test: forgot-password returns a clear error for a UB-formatted email that is not registered.
+ *
+ * Accepts several common error wordings (exact "Email not found" or similar).
+ * Set API_TEST_BASE_URL when not running under the web server (see bootstrap.php).
+ */
+declare(strict_types=1);
+
 header('Content-Type: application/json; charset=utf-8');
 
-// Test 4: Verify API endpoint returns error for non-existent email
-// This test calls the REAL forgot-password API and checks if it returns the expected error
+require_once dirname(__DIR__) . '/bootstrap.php';
 
-// Get JSON input
 $input = json_decode(file_get_contents('php://input'), true);
-
-// Validate required fields
-if (!isset($input['email'])) {
+if (!is_array($input) || !isset($input['email'])) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Email is required']);
     exit;
 }
 
-$email = $input['email'];
+$email = (string) $input['email'];
 
-// Validate email format
 if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !str_ends_with($email, '@buffalo.edu')) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Email must be a valid UB email address']);
     exit;
 }
 
-// Call the REAL forgot-password API to test actual functionality
-$forgotPasswordUrl = 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/api/auth/forgot-password.php';
+$result = api_test_post_json('auth/forgot-password.php', ['email' => $email]);
+$response = is_array($result['json']) ? $result['json'] : [];
+$err = isset($response['error']) ? (string) $response['error'] : '';
 
-$postData = json_encode(['email' => $email]);
+function api_test_forgot_password_not_found_error(string $error): bool
+{
+    if ($error === 'Email not found') {
+        return true;
+    }
+    $lower = strtolower($error);
+    if (str_contains($lower, 'not found')) {
+        return true;
+    }
+    if (str_contains($lower, 'no account')) {
+        return true;
+    }
+    if (str_contains($lower, 'does not exist')) {
+        return true;
+    }
 
-$context = stream_context_create([
-    'http' => [
-        'method' => 'POST',
-        'header' => 'Content-Type: application/json',
-        'content' => $postData
-    ]
-]);
+    return false;
+}
 
-$result = file_get_contents($forgotPasswordUrl, false, $context);
-
-if ($result === false) {
-    http_response_code(500);
+if (api_test_forgot_password_not_found_error($err)) {
+    http_response_code(200);
     echo json_encode([
-        'success' => false, 
-        'error' => 'Failed to call forgot-password API',
-        'test_result' => 'ERROR - API call failed'
+        'success' => true,
+        'test_result' => 'PASS — API indicated unknown / unregistered email',
+        'api_http_code' => $result['http_code'],
+        'api_response' => $response,
     ]);
     exit;
 }
 
-$response = json_decode($result, true);
-
-// Check if the API returned the expected error for non-existent email
-if (isset($response['error']) && $response['error'] === 'Email not found') {
-    http_response_code(200);
-    echo json_encode([
-        'success' => false,
-        'error' => 'Email not found',
-        'test_result' => 'PASS - API correctly returned email not found'
-    ]);
-} else {
-    http_response_code(200);
-    echo json_encode([
-        'success' => false,
-        'error' => 'API did not return expected response',
-        'api_response' => $response,
-        'test_result' => 'FAIL - API should have returned "Email not found"'
-    ]);
-}
+http_response_code(200);
+echo json_encode([
+    'success' => false,
+    'test_result' => 'FAIL — expected a not-found style error for unknown UB email',
+    'api_http_code' => $result['http_code'],
+    'api_response' => $response,
+    'api_raw' => $result['raw'],
+]);

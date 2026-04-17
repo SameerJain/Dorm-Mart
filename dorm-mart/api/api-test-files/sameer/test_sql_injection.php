@@ -7,10 +7,13 @@
  * Make sure you have valid session cookies for authenticated endpoints
  */
 
-require_once __DIR__ . '/security.php';
+require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 2) . '/security/security.php';
 setSecurityHeaders();
 
 header('Content-Type: text/html; charset=utf-8');
+
+$cookieJar = api_test_cookie_jar_path();
 
 // Test payloads for SQL injection
 $sqlPayloads = [
@@ -35,21 +38,21 @@ $sqlPayloads = [
 $testEndpoints = [
     [
         'name' => 'Login',
-        'url' => '/api/auth/login.php',
+        'url' => '/auth/login.php',
         'method' => 'POST',
         'data' => ['email' => 'test@buffalo.edu', 'password' => 'test123'],
         'field' => 'email'
     ],
     [
         'name' => 'Search',
-        'url' => '/api/search/getSearchItems.php',
+        'url' => '/search/getSearchItems.php',
         'method' => 'POST',
         'data' => ['q' => '', 'category' => ''],
         'field' => 'q'
     ],
     [
         'name' => 'Product Listing (Title)',
-        'url' => '/api/seller-dashboard/product_listing.php',
+        'url' => '/seller-dashboard/product_listing.php',
         'method' => 'POST',
         'data' => ['mode' => 'create', 'title' => '', 'description' => 'Test', 'price' => '10'],
         'field' => 'title'
@@ -71,10 +74,10 @@ echo "<!DOCTYPE html>
 </head>
 <body>
     <h1>SQL Injection Test Results</h1>
-    <p class='info'>This script tests endpoints for SQL injection vulnerabilities. All endpoints should reject SQL injection attempts.</p>";
+    <p class='info'>This script tests endpoints for SQL injection vulnerabilities. All endpoints should reject SQL injection attempts.</p>
+    <p class='info'><strong>Note:</strong> A &quot;PASS&quot; here only means the response looked like a validation or error outcome (e.g. HTTP 4xx, or JSON error flags). Unauthenticated 401/403 responses also count as PASS, so results are heuristic — not a substitute for code review or prepared statements.</p>";
 
-$baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . 
-           '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+$baseUrl = api_test_api_base_url();
 
 $totalTests = 0;
 $passedTests = 0;
@@ -95,8 +98,8 @@ foreach ($testEndpoints as $endpoint) {
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
         ]);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, '/tmp/test_cookies.txt');
-        curl_setopt($ch, CURLOPT_COOKIEFILE, '/tmp/test_cookies.txt');
+        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieJar);
+        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieJar);
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);

@@ -87,11 +87,7 @@ function WelcomePage() {
           {/* Create Account Button */}
           <button
             onClick={() => navigate('/create-account')}
-            className="w-full py-4 md:py-6 px-6 rounded-lg text-lg md:text-2xl font-semibold text-white transition-all duration-300 transform hover:scale-105 hover:shadow-2xl active:scale-95"
-            style={{ 
-              backgroundColor: "#2563eb",
-              boxShadow: "0 4px 15px rgba(37, 99, 235, 0.4)"
-            }}
+            className="w-full transform rounded-lg bg-blue-600 px-6 py-4 text-lg font-semibold text-white shadow-[0_4px_15px_rgba(37,99,235,0.4)] transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95 dark:shadow-[0_4px_15px_rgba(30,64,175,0.45)] md:py-6 md:text-2xl"
           >
             Create Account
           </button>

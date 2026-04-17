@@ -3,6 +3,8 @@
 ## What This Is
 A simple guide to all the frontend files in the src folder. Each file does one main thing.
 
+For other notes (including **legacy/archival** WebSocket/Ratchet material), see **[README.md](README.md)** in this folder.
+
 ---
 
 ## 📄 **Main Files**
@@ -43,8 +45,7 @@ Pictures and documents used on the website.
 ## 📁 **components/** - Reusable Parts
 Small pieces that can be used on multiple pages.
 
-- **ItemCard.js** - Old version of how to show product cards.
-- **ItemCardNew.jsx** - New version of how to show product cards.
+- **ItemCardNew.jsx** - Product card used on the landing page, wishlist, and similar lists.
 
 ### **MainNav/** - Navigation Bar
 - **Icon.jsx** - Makes icons that can be used anywhere.
@@ -121,4 +122,4 @@ Small functions that help other files work.
 
 ---
 
-*Last Updated: October 2024*
+*Last updated: aligned with current components (removed stale asset reference).*

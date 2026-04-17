@@ -1,10 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import termsPdf from '../../assets/pdfs/terms&conditions.pdf';
-import privacyPdf from '../../assets/pdfs/privacy.pdf';
 import PreLoginBranding from '../../components/PreLoginBranding';
+import { integerNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+// Stable URLs (no webpack content hash) so the PDF viewer shows clean filenames
+const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+const termsPdf = `${PUBLIC_BASE}/pdfs/terms-and-conditions.pdf`;
+const privacyPdf = `${PUBLIC_BASE}/pdfs/privacy.pdf`;
 
 function CreateAccountPage() {
   const navigate = useNavigate();
@@ -67,10 +70,10 @@ function CreateAccountPage() {
       nextValue = String(nextValue).slice(0, 255);
     }
     if (name === "gradMonth") {
-      nextValue = String(nextValue).slice(0, 2);
+      nextValue = String(nextValue).replace(/\D/g, "").slice(0, 2);
     }
     if (name === "gradYear") {
-      nextValue = String(nextValue).slice(0, 4);
+      nextValue = String(nextValue).replace(/\D/g, "").slice(0, 4);
     }
 
     setFormData(prev => ({
@@ -193,7 +196,7 @@ function CreateAccountPage() {
       <PreLoginBranding />
 
       {/* Right side - Create Account form (full width on mobile/tablet, 50% on desktop) */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-start p-4 sm:p-6 md:p-6 lg:p-8 xl:p-8 pt-6 sm:pt-8 md:pt-16 md:pb-8 lg:pt-10 h-screen overflow-y-auto pre-login-bg relative">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-6 lg:px-8 xl:px-8 pt-6 sm:pt-8 md:pt-16 md:pb-8 lg:py-6 xl:py-8 h-screen min-h-0 overflow-y-auto lg:overflow-y-hidden pre-login-bg relative">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="lg:hidden mb-4 sm:mb-6 md:mb-8 text-center w-full relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
@@ -253,21 +256,27 @@ function CreateAccountPage() {
                   <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">Graduation Date (Month / Year)</label>
                   <div className="flex gap-3 sm:gap-4 md:gap-3">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       name="gradMonth"
                       value={formData.gradMonth}
                       onChange={handleChange}
+                      onKeyDown={integerNumericKeyDownHandler}
                       placeholder="MM"
                       maxLength={2}
+                      autoComplete="off"
                       className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base"
                     />
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       name="gradYear"
                       value={formData.gradYear}
                       onChange={handleChange}
+                      onKeyDown={integerNumericKeyDownHandler}
                       placeholder="YYYY"
                       maxLength={4}
+                      autoComplete="off"
                       className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base"
                     />
                   </div>

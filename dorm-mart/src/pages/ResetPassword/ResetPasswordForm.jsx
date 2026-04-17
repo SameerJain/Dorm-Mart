@@ -197,15 +197,15 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="h-screen flex flex-col md:flex-row pre-login-bg overflow-hidden">
+    <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
-      {/* Right side - Reset password form (full width on mobile, 50% on desktop) */}
+      {/* Form: full width below lg (matches mobile when left branding is hidden); half width on lg+ with image panel */}
       <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 h-screen pre-login-bg relative overflow-hidden"
+        className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 h-screen pre-login-bg relative overflow-hidden"
       >
-        {/* Mobile branding header (visible only on mobile/tablet) */}
-        <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
+        {/* Branding header: same as mobile through tablet; hidden on lg+ where PreLoginBranding shows */}
+        <div className="lg:hidden mb-6 sm:mb-8 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
           </h1>

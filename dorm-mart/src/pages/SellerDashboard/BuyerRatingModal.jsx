@@ -239,7 +239,7 @@ function BuyerRatingModal({
         {/* Header */}
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between rounded-t-2xl">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Rate Buyer
+            {existingRating ? "Buyer Rating" : "Rate Buyer"}
           </h2>
           <button
             onClick={onClose}
@@ -313,7 +313,7 @@ function BuyerRatingModal({
               <div className="flex justify-end">
                 <button
                   onClick={onClose}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg font-medium"
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white rounded-lg font-medium"
                 >
                   Close
                 </button>
@@ -404,7 +404,7 @@ function BuyerRatingModal({
                 <button
                   type="submit"
                   disabled={!isFormValid || isSubmitting}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? "Submitting..." : "Submit Rating"}
                 </button>
@@ -473,7 +473,7 @@ function BuyerRatingModal({
                     setPendingSubmit(false);
                   }
                 }}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900"
               >
                 Confirm
               </button>

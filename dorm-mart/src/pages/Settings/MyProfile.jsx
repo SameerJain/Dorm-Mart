@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useRef, useState, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
-import { withFallbackImage, FALLBACK_IMAGE_URL } from "../../utils/imageFallback";
+import { withFallbackImage, FALLBACK_IMAGE_URL, resolveStoredImageUrl, onProductImageError } from "../../utils/imageFallback";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+
+/** Primary actions: match home / landing square-ish CTAs (rounded-lg, not pill). */
+const primaryActionButtonClass =
+  "inline-flex items-center justify-center rounded-lg bg-blue-600 dark:bg-blue-800 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 dark:hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 touch-manipulation";
 
 // File type restrictions (same as product listing and chat)
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+/** Same types as seller listing + extensions (Explorer often filters better with both). */
+const PROFILE_PHOTO_ACCEPT = [...ALLOWED_MIME, ...ALLOWED_EXTS].join(",");
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB - reasonable limit for profile photos
 
 function isAllowedType(f) {
@@ -179,9 +185,10 @@ function ReviewRow({ review }) {
           attachments.map((image, index) => (
             <img
               key={index}
-              src={image}
+              src={resolveStoredImageUrl(image, API_BASE)}
               alt={`Review attachment ${index + 1}`}
               className={imageClass}
+              onError={onProductImageError}
             />
           ))
         ) : (
@@ -192,7 +199,17 @@ function ReviewRow({ review }) {
   );
 }
 
-function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear, disabled = false }) {
+function EditableLinkRow({
+  label,
+  placeholder,
+  value,
+  onChange,
+  onSave,
+  onClear,
+  isSaving = false,
+  saveLabel = "Save",
+  savingLabel = "Saving...",
+}) {
   return (
     <div className="space-y-2 rounded-none sm:rounded-lg border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/60 dark:sm:bg-gray-800 p-3 sm:p-4 shadow-none sm:shadow-sm">
       <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700 dark:text-gray-200">
@@ -200,15 +217,13 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
         <button
           type="button"
           onClick={(e) => {
-            if (disabled) return;
             e.preventDefault();
             e.stopPropagation();
             onClear();
           }}
-          disabled={disabled}
-          className={`text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2"
         >
-          Delete
+          Clear
         </button>
       </div>
       <input
@@ -223,17 +238,17 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
           type="button"
           id={`save-${label.toLowerCase().replace(/\s+/g, '-')}-button`}
           onClick={(e) => {
-            if (disabled) return;
+            if (isSaving) return;
             e.preventDefault();
             e.stopPropagation();
             onSave();
           }}
-          disabled={disabled}
+          disabled={isSaving}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
-          className={`rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          className={`${primaryActionButtonClass} ${isSaving ? "opacity-60 cursor-not-allowed" : ""}`}
         >
-          {disabled ? "Saving..." : "Save"}
+          {isSaving ? savingLabel : saveLabel}
         </button>
       </div>
     </div>
@@ -248,7 +263,7 @@ function MyProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState("");
   const [bio, setBio] = useState("");
   const [instagram, setInstagram] = useState("");
-  const [feedback, setFeedback] = useState({ message: "", tone: "success" });
+  const [feedback, setFeedback] = useState({ message: "", tone: "success", placement: null });
   const [avatarError, setAvatarError] = useState("");
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [isSavingInstagram, setIsSavingInstagram] = useState(false);
@@ -294,21 +309,15 @@ function MyProfilePage() {
     };
   }, []);
 
-  const showFeedback = (message, tone = "success") => {
-    setFeedback({ message, tone });
+  const showFeedback = (message, tone = "success", placement = null) => {
+    setFeedback({ message, tone, placement });
     if (feedbackTimerRef.current) {
       clearTimeout(feedbackTimerRef.current);
     }
-    feedbackTimerRef.current = setTimeout(() => setFeedback({ message: "", tone: "success" }), 2400);
-  };
-
-  const handleFieldSave = (label) => {
-    showFeedback(`${label} saved locally`);
-  };
-
-  const handleFieldClear = (label, setter) => {
-    setter("");
-    showFeedback(`${label} cleared`);
+    feedbackTimerRef.current = setTimeout(
+      () => setFeedback({ message: "", tone: "success", placement: null }),
+      2400
+    );
   };
 
   const ratingValue = useMemo(() => {
@@ -333,7 +342,6 @@ function MyProfilePage() {
     if (file.size > MAX_BYTES) {
       const errorMsg = "Image is too large. Maximum file size is 10 MB.";
       setAvatarError(errorMsg);
-      showFeedback(errorMsg, "error");
       event.target.value = null; // Clear the input
       return;
     }
@@ -342,7 +350,6 @@ function MyProfilePage() {
     if (!isAllowedType(file)) {
       const errorMsg = "Only JPG/JPEG, PNG, and WEBP images are allowed.";
       setAvatarError(errorMsg);
-      showFeedback(errorMsg, "error");
       event.target.value = null; // Clear the input
       return;
     }
@@ -367,7 +374,7 @@ function MyProfilePage() {
       setAvatarPreview(finalUrl);
       updateProfileState({ image_url: finalUrl });
       setAvatarError(""); // Clear any errors on success
-      showFeedback("Profile photo updated");
+      showFeedback("Profile photo updated", "success", "avatar");
     } catch (err) {
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
@@ -376,7 +383,6 @@ function MyProfilePage() {
       setAvatarPreview(fallback);
       const message = err instanceof Error ? err.message : "Unable to update profile photo.";
       setAvatarError(message);
-      showFeedback(message, "error");
     } finally {
       setAvatarUploading(false);
     }
@@ -396,11 +402,11 @@ function MyProfilePage() {
       const sanitized = (updated.bio ?? value ?? "").slice(0, 200);
       setBio(sanitized);
       updateProfileState({ bio: sanitized });
-      showFeedback(successMessage);
+      showFeedback(successMessage, "success", "bio");
     } catch (err) {
       setBio(previousBio);
       const message = err instanceof Error ? err.message : "Unable to update bio.";
-      showFeedback(message, "error");
+      showFeedback(message, "error", "bio");
     } finally {
       setIsSavingBio(false);
     }
@@ -424,11 +430,11 @@ function MyProfilePage() {
     const previous = instagram;
     const trimmed = value.trim();
     if (trimmed.length > 150) {
-      showFeedback("Instagram link must be 150 characters or fewer.", "error");
+      showFeedback("Instagram link must be 150 characters or fewer.", "error", "instagram");
       return;
     }
     if (!isValidInstagramUrl(trimmed)) {
-      showFeedback("Please enter a valid Instagram profile link.", "error");
+      showFeedback("Please enter a valid Instagram profile link.", "error", "instagram");
       return;
     }
     setInstagram(trimmed);
@@ -438,32 +444,41 @@ function MyProfilePage() {
       const sanitized = updated.instagram ?? trimmed ?? "";
       setInstagram(sanitized);
       updateProfileState({ instagram: sanitized });
-      showFeedback(successMessage);
+      showFeedback(successMessage, "success", "instagram");
     } catch (err) {
       setInstagram(previous);
       const message = err instanceof Error ? err.message : "Unable to update Instagram link.";
-      showFeedback(message, "error");
+      showFeedback(message, "error", "instagram");
     } finally {
       setIsSavingInstagram(false);
     }
   };
 
-  const handleBioSave = () => persistBio(bio, "Bio saved");
-  const handleBioClear = () => persistBio("", "Bio cleared");
-  const handleInstagramSave = () => persistInstagram(instagram, "Instagram saved");
-  const handleInstagramClear = () => persistInstagram("", "Instagram deleted");
+  const handleBioSave = () =>
+    persistBio(bio, bio.trim() === "" ? "Bio cleared" : "Bio saved");
+  /** Local-only: avoids save/loading UI on unrelated blue buttons until user clicks Save Bio */
+  const handleBioClear = () => setBio("");
+
+  const handleInstagramSave = () =>
+    persistInstagram(
+      instagram,
+      instagram.trim() === "" ? "Instagram cleared" : "Instagram saved"
+    );
+  const handleInstagramClear = () => setInstagram("");
 
   const reviewList = profile?.reviews ?? [];
   const bioRemaining = 200 - bio.length;
   const socialFields = [
     {
       label: "Instagram",
+      feedbackPlacement: "instagram",
       value: instagram,
       setter: (next) => setInstagram(next.slice(0, 150)),
       placeholder: "https://instagram.com/yourhandle",
       onSave: handleInstagramSave,
       onClear: handleInstagramClear,
-      disabled: isSavingInstagram,
+      isSaving: isSavingInstagram,
+      saveLabel: "Save Instagram",
     },
   ];
 
@@ -494,7 +509,7 @@ function MyProfilePage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={PROFILE_PHOTO_ACCEPT}
                   onChange={handleAvatarChange}
                   className="hidden"
                 />
@@ -506,15 +521,16 @@ function MyProfilePage() {
                     className={`relative flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full border-4 border-white dark:border-gray-800 bg-slate-100 dark:bg-gray-700 shadow-lg ring-2 sm:ring-4 ring-blue-100 dark:ring-blue-900 transition hover:brightness-105 flex-shrink-0 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
                   >
                     <img 
-                      src={avatarPreview ? withFallbackImage(avatarPreview) : FALLBACK_IMAGE_URL} 
-                      alt="" 
+                      src={
+                        avatarPreview
+                          ? withFallbackImage(resolveStoredImageUrl(avatarPreview, API_BASE))
+                          : FALLBACK_IMAGE_URL
+                      }
+                      alt=""
                       className="h-full w-full rounded-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = FALLBACK_IMAGE_URL;
-                      }}
+                      onError={onProductImageError}
                     />
-                    <span className="absolute bottom-1.5 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-semibold text-white shadow">
+                    <span className="absolute bottom-1.5 rounded-md bg-blue-600 px-3 py-0.5 text-xs font-medium text-white shadow-sm dark:bg-blue-800">
                       {avatarUploading ? "Uploading..." : "Edit"}
                     </span>
                   </button>
@@ -538,6 +554,15 @@ function MyProfilePage() {
                     </div>
                   </div>
                 )}
+                {feedback.placement === "avatar" && feedback.message && (
+                  <p
+                    className={`mt-3 text-sm font-medium ${
+                      feedback.tone === "error" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                    }`}
+                  >
+                    {feedback.message}
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-1 flex-col rounded-none sm:rounded-xl border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/80 dark:sm:bg-gray-800 p-4 sm:p-6 shadow-none sm:shadow mb-6 sm:mb-8">
@@ -554,7 +579,7 @@ function MyProfilePage() {
                         navigate(`/app/profile?username=${encodeURIComponent(profile.username)}&preview=true`);
                         setTimeout(() => { buttonClickRef.current = false; }, 300);
                       }}
-                      className="rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 transition-colors touch-manipulation"
+                      className={primaryActionButtonClass}
                     >
                       View Public Profile Display
                     </button>
@@ -567,15 +592,14 @@ function MyProfilePage() {
                       <button
                         type="button"
                         onClick={(e) => {
-                          if (buttonClickRef.current || isSavingBio) return;
+                          if (buttonClickRef.current) return;
                           buttonClickRef.current = true;
                           e.preventDefault();
                           e.stopPropagation();
                           handleBioClear();
                           setTimeout(() => { buttonClickRef.current = false; }, 300);
                         }}
-                        disabled={isSavingBio}
-                        className={`text-xs font-medium text-rose-500 hover:text-rose-600 touch-manipulation py-1 px-2 ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
+                        className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2"
                       >
                         Clear
                       </button>
@@ -606,37 +630,53 @@ function MyProfilePage() {
                         disabled={isSavingBio}
                         onMouseDown={(e) => e.stopPropagation()}
                         onMouseUp={(e) => e.stopPropagation()}
-                        className={`rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
+                        className={`${primaryActionButtonClass} ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
                         {isSavingBio ? "Saving..." : "Save Bio"}
                       </button>
                     </div>
+                    {feedback.placement === "bio" && feedback.message && (
+                      <p
+                        className={`mt-3 text-sm font-medium ${
+                          feedback.tone === "error" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                        }`}
+                      >
+                        {feedback.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-3">
                     {socialFields.map((field) => (
-                      <EditableLinkRow
-                        key={field.label}
-                        label={field.label}
-                        placeholder={field.placeholder}
-                        value={field.value}
-                        onChange={(event) => field.setter(event.target.value)}
-                        onSave={field.onSave ?? (() => handleFieldSave(field.label))}
-                        onClear={field.onClear ?? (() => handleFieldClear(field.label, field.setter))}
-                        disabled={Boolean(field.disabled)}
-                      />
+                      <div key={field.label}>
+                        <EditableLinkRow
+                          label={field.label}
+                          placeholder={field.placeholder}
+                          value={field.value}
+                          onChange={(event) => field.setter(event.target.value)}
+                          onSave={field.onSave}
+                          onClear={field.onClear}
+                          isSaving={Boolean(field.isSaving)}
+                          saveLabel={field.saveLabel}
+                          savingLabel={field.savingLabel}
+                        />
+                        {field.feedbackPlacement &&
+                          feedback.placement === field.feedbackPlacement &&
+                          feedback.message && (
+                            <p
+                              className={`mt-2 text-sm font-medium ${
+                                feedback.tone === "error"
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-emerald-600 dark:text-emerald-400"
+                              }`}
+                            >
+                              {feedback.message}
+                            </p>
+                          )}
+                      </div>
                     ))}
                   </div>
                 </div>
-                {feedback.message && (
-                  <p
-                    className={`mt-4 mb-2 text-sm font-medium ${
-                      feedback.tone === "error" ? "text-rose-600" : "text-emerald-600"
-                    }`}
-                  >
-                    {feedback.message}
-                  </p>
-                )}
               </div>
             </section>
 
@@ -649,7 +689,7 @@ function MyProfilePage() {
                 <button
                   type="button"
                   onClick={() => navigate("/app/setting/buyer-reviews")}
-                  className="rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 transition-colors touch-manipulation"
+                  className={primaryActionButtonClass}
                 >
                   View how sellers have rated you
                 </button>

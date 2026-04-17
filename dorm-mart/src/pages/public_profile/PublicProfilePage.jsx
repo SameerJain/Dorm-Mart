@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../../utils/imageFallback";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
-const FALLBACK_AVATAR = `${PUBLIC_BASE}/data/test-images/No_image_available.svg.png`;
 
 const useQuery = () => {
   const location = useLocation();
@@ -31,7 +31,12 @@ function ProductCard({ product, onView }) {
   const hasProductLink = Boolean(product.product_id);
   return (
     <div className="flex flex-col rounded-lg border border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md min-w-0 overflow-hidden">
-      <img src={product.image_url || FALLBACK_AVATAR} alt={product.title} className="h-40 w-full rounded-t-lg object-cover" />
+      <img
+        src={withFallbackImage(resolveStoredImageUrl(product.image_url, API_BASE))}
+        alt={product.title}
+        onError={onProductImageError}
+        className="h-40 w-full rounded-t-lg object-cover"
+      />
       <div className="flex flex-col gap-2 p-4 min-w-0">
         <p className="text-base font-semibold text-slate-900 dark:text-gray-100 truncate" title={product.title}>{product.title}</p>
         <p className="text-sm text-slate-500 dark:text-gray-400">${Number(product.price || 0).toFixed(2)}</p>
@@ -66,8 +71,9 @@ function ReviewCard({ review }) {
           {attachments.map((url, index) => (
             <img
               key={`${review.review_id || index}-img-${index}`}
-              src={url}
+              src={resolveStoredImageUrl(url, API_BASE)}
               alt={`Review attachment ${index + 1}`}
+              onError={onProductImageError}
               className="h-28 w-32 rounded-xl object-cover shadow"
             />
           ))}
@@ -198,7 +204,7 @@ function PublicProfilePage() {
     instagram: profileData.instagram || "",
     avgRating: profileData.avg_rating ?? 0,
     reviewCount: profileData.review_count ?? reviews.length,
-    imageUrl: profileData.image_url || FALLBACK_AVATAR,
+    imageUrl: withFallbackImage(resolveStoredImageUrl(profileData.image_url, API_BASE)),
     userId: profileData.user_id,
   };
 
@@ -242,10 +248,7 @@ function PublicProfilePage() {
                   src={profile.imageUrl} 
                   alt="" 
                   className="h-full w-full object-cover"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = FALLBACK_AVATAR;
-                  }}
+                  onError={onProductImageError}
                 />
               </div>
               <div className="text-center md:text-left min-w-0 max-w-full overflow-hidden flex-1">

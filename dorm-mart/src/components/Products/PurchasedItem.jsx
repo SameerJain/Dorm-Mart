@@ -1,14 +1,30 @@
 import { Link } from "react-router-dom";
-import { withFallbackImage } from "../../utils/imageFallback";
+import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../../utils/imageFallback";
 import { useState, useEffect } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
 
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+
+/** Match receipt / site style: short date + 12h time (not raw SQL 24h). */
+function formatPurchasedAt(value) {
+  if (value == null || value === "") return "";
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false }) {
   const productIdParam = id !== undefined && id !== null ? encodeURIComponent(id) : "";
   const detailPath = `/app/viewReceipt?id=${productIdParam}`;
-  const displayImage = withFallbackImage(image);
+  const displayImage = withFallbackImage(resolveStoredImageUrl(image, API_BASE));
   const detailState = { id, title, seller, date, image: displayImage };
 
   const [hasReview, setHasReview] = useState(false);
@@ -99,6 +115,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
           <img
             src={displayImage}
             alt="Item"
+            onError={onProductImageError}
             className="w-full h-48 sm:w-40 sm:h-40 object-cover rounded select-none"
           />
         </Link>
@@ -120,7 +137,9 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
           </div>
 
           {/* Bottom: date */}
-          <p className="mt-2 sm:mt-1 text-sm text-gray-500 dark:text-gray-400">Purchased on {date}</p>
+          <p className="mt-2 sm:mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Purchased on {formatPurchasedAt(date)}
+          </p>
         </div>
 
         {/* Right: buttons */}
@@ -128,7 +147,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
           <Link
             to={detailPath}
             state={detailState}
-            className="text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-700"
+            className="text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white rounded active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-700"
           >
             See Receipt
           </Link>
@@ -157,6 +176,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
         mode={hasReview ? "view" : "create"}
         productId={id}
         productTitle={title}
+        productImageUrl={displayImage}
         existingReview={existingReview}
         onReviewSubmitted={handleReviewSubmitted}
         viewMode="buyer"

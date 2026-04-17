@@ -39,7 +39,7 @@ export default function WishlistPage() {
 
             const rawImg = d.image_url || null;
             const img = rawImg
-              ? `${API_BASE}/image.php?url=${encodeURIComponent(rawImg)}`
+              ? `${API_BASE}/media/image.php?url=${encodeURIComponent(rawImg)}`
               : null;
 
             const createdAt = d.created_at || d.date_listed ? new Date(d.created_at || d.date_listed) : null;
@@ -223,7 +223,7 @@ export default function WishlistPage() {
                     onClick={() => setSelectedCategory(null)}
                     className={`px-4 py-1.5 rounded-full text-sm border ${
                       selectedCategory === null
-                        ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700"
+                        ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
                         : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                     }`}
                   >
@@ -235,7 +235,7 @@ export default function WishlistPage() {
                       onClick={() => setSelectedCategory(cat)}
                       className={`px-4 py-1.5 rounded-full text-sm border ${
                         selectedCategory === cat
-                          ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700"
+                          ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
                           : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                       }`}
                     >
@@ -353,7 +353,7 @@ export default function WishlistPage() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+                <div className="flex min-w-0 flex-wrap gap-4 sm:gap-6">
                   {items.map((item) => (
                     <ItemCardNew
                       key={item.id}
@@ -368,6 +368,7 @@ export default function WishlistPage() {
                       sellerEmail={item.sellerEmail}
                       isWishlisted={true}
                       showRemoveButton={true}
+                      fixedWidth={true}
                       onRemoveFromWishlist={handleRemoveFromWishlist}
                     />
                   ))}
@@ -421,7 +422,7 @@ export default function WishlistPage() {
                   }}
                   className={`px-4 py-2 rounded-full text-sm border ${
                     selectedCategory === null
-                      ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700"
+                      ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
                       : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                   }`}
                 >
@@ -436,7 +437,7 @@ export default function WishlistPage() {
                     }}
                     className={`px-4 py-2 rounded-full text-sm border ${
                       selectedCategory === cat
-                        ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700"
+                        ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
                         : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                     }`}
                   >
@@ -457,16 +458,23 @@ export default function WishlistPage() {
           aria-modal="true"
           aria-labelledby="remove-confirm-title"
         >
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full min-w-0 overflow-hidden">
             <h2
               id="remove-confirm-title"
               className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4"
             >
               Remove from Wishlist?
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-6">
-              Are you sure you want to remove <strong>"{confirmRemove.title}"</strong> from your wishlist?
-            </p>
+            <div className="mb-6 min-w-0 text-gray-700 dark:text-gray-300 leading-relaxed">
+              <p className="min-w-0">Are you sure you want to remove</p>
+              <p
+                className="mt-1 min-w-0 max-w-full font-bold text-gray-900 dark:text-gray-100 truncate"
+                title={confirmRemove.title}
+              >
+                &ldquo;{confirmRemove.title}&rdquo;
+              </p>
+              <p className="mt-1">from your wishlist?</p>
+            </div>
             <div className="flex gap-3 justify-end">
               <button
                 type="button"

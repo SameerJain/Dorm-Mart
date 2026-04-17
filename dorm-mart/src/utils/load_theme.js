@@ -1,13 +1,46 @@
-const CACHE_KEY = 'dm_last_theme';
-const PENDING_KEY = 'dm_theme_pending';
+export const THEME_CACHE_KEY = 'dm_last_theme';
+export const THEME_PENDING_KEY = 'dm_theme_pending';
 
-function applyToDOM(theme) {
+/** How long a client-side theme toggle wins over a stale in-flight server response (ms). */
+const PENDING_THEME_TTL_MS = 120_000;
+
+/**
+ * Update <html> class, localStorage cache, browser UI (theme-color), and color-scheme for form controls.
+ */
+export function applyThemeToDOM(theme) {
   if (theme === 'dark') {
     document.documentElement.classList.add('dark');
+    document.documentElement.style.colorScheme = 'dark';
   } else {
     document.documentElement.classList.remove('dark');
+    document.documentElement.style.colorScheme = 'light';
   }
-  try { localStorage.setItem(CACHE_KEY, theme); } catch (_) {}
+  try {
+    localStorage.setItem(THEME_CACHE_KEY, theme);
+  } catch (_) {}
+
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    meta.setAttribute('content', theme === 'dark' ? '#0f172a' : '#ffffff');
+  }
+}
+
+export function getEffectivePendingTheme() {
+  try {
+    const pendingRaw = localStorage.getItem(THEME_PENDING_KEY);
+    if (!pendingRaw) return null;
+    const pending = JSON.parse(pendingRaw);
+    if (
+      (pending?.theme !== 'dark' && pending?.theme !== 'light') ||
+      typeof pending?.ts !== 'number'
+    ) {
+      return null;
+    }
+    if (Date.now() - pending.ts > PENDING_THEME_TTL_MS) return null;
+    return pending.theme;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -17,33 +50,18 @@ function applyToDOM(theme) {
 export const loadUserTheme = async (userId) => {
   const API_BASE = (process.env.REACT_APP_API_BASE || '/api').replace(/\/$/, '');
 
-  // 1. If a recent toggle marker exists, honour it and stop.
-  try {
-    const pendingRaw = localStorage.getItem(PENDING_KEY);
-    if (pendingRaw) {
-      const pending = JSON.parse(pendingRaw);
-      if (
-        (pending?.theme === 'dark' || pending?.theme === 'light') &&
-        typeof pending?.ts === 'number' &&
-        Date.now() - pending.ts < 5000
-      ) {
-        applyToDOM(pending.theme);
-        localStorage.removeItem(PENDING_KEY);
-        return;
-      }
+  const pendingFirst = getEffectivePendingTheme();
+  if (pendingFirst) {
+    applyThemeToDOM(pendingFirst);
+  } else {
+    const cached = localStorage.getItem(THEME_CACHE_KEY);
+    if (cached === 'dark' || cached === 'light') {
+      applyThemeToDOM(cached);
     }
-  } catch (_) {}
-
-  // 2. Apply the instant cache so the page renders in the right theme
-  //    while we wait for the backend. No flash.
-  const cached = localStorage.getItem(CACHE_KEY);
-  if (cached === 'dark' || cached === 'light') {
-    applyToDOM(cached);
   }
 
-  // 3. Fetch authoritative theme from backend and reconcile.
   try {
-    const res = await fetch(`${API_BASE}/userPreferences.php`, {
+    const res = await fetch(`${API_BASE}/profile/userPreferences.php`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -51,13 +69,20 @@ export const loadUserTheme = async (userId) => {
       const json = await res.json();
       const backendTheme = json?.ok && json?.data?.theme ? json.data.theme : null;
       if (backendTheme === 'dark' || backendTheme === 'light') {
-        applyToDOM(backendTheme);
+        const pending = getEffectivePendingTheme();
+        if (pending) {
+          applyThemeToDOM(pending);
+        } else {
+          applyThemeToDOM(backendTheme);
+        }
         if (userId) {
-          try { localStorage.setItem(`userTheme_${userId}`, backendTheme); } catch (_) {}
+          try {
+            localStorage.setItem(`userTheme_${userId}`, backendTheme);
+          } catch (_) {}
         }
       }
     }
   } catch (_) {
-    // Network error — the cached theme is already applied, so nothing to do.
+    // Network error — cached or pending theme is already applied.
   }
 };

@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { ChatContext } from "../../context/ChatContext";
 import fmtTime from "./chat_page_utils";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
@@ -9,6 +9,8 @@ import ImageModal from "./components/ImageModal";
 import ConfirmMessageCard from "./components/ConfirmMessageCard";
 import ReviewPromptMessageCard from "./components/ReviewPromptMessageCard";
 import BuyerRatingPromptMessageCard from "./components/BuyerRatingPromptMessageCard";
+import { onProductImageError } from "../../utils/imageFallback";
+import PageBackButton from "../../components/PageBackButton";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -108,17 +110,27 @@ export default function ChatPage() {
   const taRef = useRef(null);
   const [confirmStatus, setConfirmStatus] = useState(null);
 
-  /** Auto-resize the textarea height based on its content */
   const autoGrow = useCallback(() => {
     const el = taRef.current;
     if (!el) return;
+    const minLine =
+      typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches
+        ? 44
+        : 48;
+    const trimmed = (el.value || "").trim();
+    if (!trimmed) {
+      el.style.height = `${minLine}px`;
+      el.style.overflowY = "hidden";
+      return;
+    }
     el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    const next = Math.max(minLine, el.scrollHeight);
+    el.style.height = `${next}px`;
     el.style.overflowY = el.scrollHeight > el.clientHeight ? "auto" : "hidden";
   }, []);
 
-  /** Re-run autoGrow when draft changes */
-  useEffect(() => {
+  /** Sync textarea height before paint so composer row stays aligned with attach/send */
+  useLayoutEffect(() => {
     autoGrow();
   }, [draft, autoGrow]);
 
@@ -551,47 +563,68 @@ export default function ChatPage() {
     createImageMessage(content, file);
   }, [activeConversation?.item_deleted, createImageMessage]);
 
+  const flushTypingOnSend = useCallback(() => {
+    const convId = activeConvId;
+    if (!convId || currentConvIdRef.current !== convId || !isMountedRef.current) return;
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    if (typingStatusTimeoutRef.current) {
+      clearTimeout(typingStatusTimeoutRef.current);
+      typingStatusTimeoutRef.current = null;
+    }
+    if (pendingTypingFalseTimeoutRef.current) {
+      clearTimeout(pendingTypingFalseTimeoutRef.current);
+      pendingTypingFalseTimeoutRef.current = null;
+    }
+    sendTypingStatus(convId, false);
+    lastTypingStatusSentRef.current = false;
+    typingStartedAtRef.current = null;
+  }, [activeConvId, sendTypingStatus]);
+
+  /** Send text and/or attached image (Enter key or Send button) */
+  const submitComposer = useCallback(() => {
+    if (activeConversation?.item_deleted || !activeConvId) return;
+    if (attachedImage) {
+      handleCreateImageMessage(draft, attachedImage);
+      setDraft("");
+      setAttachedImage(null);
+      flushTypingOnSend();
+      return;
+    }
+    if (!draft.trim()) return;
+    handleCreateMessage(draft);
+    setDraft("");
+    setAttachedImage(null);
+    flushTypingOnSend();
+  }, [
+    activeConvId,
+    activeConversation?.item_deleted,
+    attachedImage,
+    draft,
+    flushTypingOnSend,
+    handleCreateImageMessage,
+    handleCreateMessage,
+  ]);
+
+  const canSendMessage =
+    Boolean(activeConvId) &&
+    !activeConversation?.item_deleted &&
+    (Boolean(attachedImage) || draft.trim().length > 0);
+
   /** Keydown handler for textarea: submit on Enter (without Shift) */
   function handleKeyDown(e) {
-    // Prevent ALL keyboard input if item is deleted
     if (activeConversation?.item_deleted) {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
       return false;
     }
-    
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (attachedImage) {
-        handleCreateImageMessage(draft, attachedImage);
-      } else {
-        handleCreateMessage(draft);
-      }
-      setDraft("");
-      setAttachedImage(null);
-      
-      // Stop typing status when message is sent - clear all timeouts first
-      const convId = activeConvId;
-      if (convId && currentConvIdRef.current === convId && isMountedRef.current) {
-        // Clear all timeouts to prevent race conditions
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
-          typingTimeoutRef.current = null;
-        }
-        if (typingStatusTimeoutRef.current) {
-          clearTimeout(typingStatusTimeoutRef.current);
-          typingStatusTimeoutRef.current = null;
-        }
-        if (pendingTypingFalseTimeoutRef.current) {
-          clearTimeout(pendingTypingFalseTimeoutRef.current);
-          pendingTypingFalseTimeoutRef.current = null;
-        }
-        // Send typing=false after clearing timeouts
-        sendTypingStatus(convId, false);
-        lastTypingStatusSentRef.current = false;
-        typingStartedAtRef.current = null; // Reset typing start time when message is sent
-      }
+      submitComposer();
     }
   }
 
@@ -1054,8 +1087,9 @@ export default function ChatPage() {
             {c.productImageUrl && (
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
                 <img
-                  src={c.productImageUrl.startsWith('http') || c.productImageUrl.startsWith('/data/images/') || c.productImageUrl.startsWith('/images/') ? `${API_BASE}/image.php?url=${encodeURIComponent(c.productImageUrl)}` : c.productImageUrl}
+                  src={c.productImageUrl.startsWith('http') || c.productImageUrl.startsWith('/data/images/') || c.productImageUrl.startsWith('/images/') ? `${API_BASE}/media/image.php?url=${encodeURIComponent(c.productImageUrl)}` : c.productImageUrl}
                   alt={c.productTitle || 'Product'}
+                  onError={onProductImageError}
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
@@ -1180,7 +1214,7 @@ export default function ChatPage() {
                     <button
                       type="button"
                       onClick={handleProfileHeaderClick}
-                      className="text-left text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 min-w-0 w-full flex flex-col"
+                      className="text-left text-sm leading-snug font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 min-w-0 w-full flex flex-col md:text-lg md:leading-tight"
                     >
                       <span className="md:hidden block w-full truncate" title={activeLabelFirstName}>{activeLabelFirstName}</span>
                       <span className="hidden md:block w-full break-words min-w-0 leading-tight" title={activeLabel}>
@@ -1189,7 +1223,7 @@ export default function ChatPage() {
                       </span>
                     </button>
                   ) : (
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 min-w-0 w-full flex flex-col">
+                    <h2 className="text-sm leading-snug font-semibold text-gray-900 dark:text-gray-100 min-w-0 w-full flex flex-col md:text-lg md:leading-tight">
                       <span className="md:hidden block w-full truncate" title={activeLabelFirstName}>{activeLabelFirstName}</span>
                       <span className="hidden md:block w-full break-words min-w-0 leading-tight" title={activeLabel}>
                         <span className="block break-words">{activeFirstName}</span>
@@ -1210,10 +1244,11 @@ export default function ChatPage() {
 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {activeConversation?.productImageUrl && (
-                    <div className="inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden shrink-0 bg-gray-200 dark:bg-gray-700">
+                    <div className="hidden md:inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden shrink-0 bg-gray-200 dark:bg-gray-700">
                                 <img
-                                  src={activeConversation.productImageUrl.startsWith('http') || activeConversation.productImageUrl.startsWith('/data/images/') || activeConversation.productImageUrl.startsWith('/images/') ? `${API_BASE}/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
+                                  src={activeConversation.productImageUrl.startsWith('http') || activeConversation.productImageUrl.startsWith('/data/images/') || activeConversation.productImageUrl.startsWith('/images/') ? `${API_BASE}/media/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
                                   alt=""
+                                  onError={onProductImageError}
                                   className="w-full h-full object-cover"
                                   loading="lazy"
                                 />
@@ -1229,20 +1264,20 @@ export default function ChatPage() {
                       className={`hidden md:flex px-3 py-1.5 text-sm text-white rounded-lg font-medium transition-colors ${
                         isSellerPerspective
                           ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
-                          : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+                          : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900"
                       }`}
                       aria-label="View item"
                     >
                       View Item
                     </button>
                   )}
-                  <button
-                    onClick={() => { setIsMobileList(true); clearActiveConversation(); }}
-                    className="md:hidden rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:shadow transition-all duration-200"
-                    aria-label="Back"
-                  >
-                    Back
-                  </button>
+                  <PageBackButton
+                    onClick={() => {
+                      setIsMobileList(true);
+                      clearActiveConversation();
+                    }}
+                    className="md:hidden"
+                  />
                 </div>
               </div>
             </div>
@@ -1470,7 +1505,7 @@ export default function ChatPage() {
             </div>
 
             {/* Composer */}
-            <div className={`sticky bottom-0 z-10 border-t border-gray-200 dark:border-gray-700 p-4 relative ${activeConversation?.item_deleted ? 'bg-gray-100 dark:bg-gray-700' : 'bg-white dark:bg-gray-800'}`}>
+            <div className={`sticky bottom-0 z-10 max-w-full overflow-x-hidden border-t border-gray-200 p-4 dark:border-gray-700 relative ${activeConversation?.item_deleted ? 'bg-gray-100 dark:bg-gray-700' : 'bg-white dark:bg-gray-800'}`}>
               {/* Overlay to block all interactions when item is deleted */}
               {activeConversation?.item_deleted && (
                 <div className="absolute inset-0 z-50 bg-gray-100 dark:bg-gray-700 opacity-90 cursor-not-allowed" 
@@ -1489,7 +1524,7 @@ export default function ChatPage() {
                     className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
                       hasActiveScheduledPurchase
                         ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white'
-                        : 'bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-600 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-900 text-white'
                     }`}
                     title={hasActiveScheduledPurchase ? 'There is already a Scheduled Purchase for this item' : ''}
                   >
@@ -1553,58 +1588,54 @@ export default function ChatPage() {
                   aria-label="Attach a file"
                   aria-haspopup="dialog"
                   aria-expanded={attachOpen}
-                  className={`inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shrink-0 ${activeConversation?.item_deleted ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-600'}`}
+                  className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 md:h-11 md:w-11 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 ${activeConversation?.item_deleted ? 'cursor-not-allowed bg-gray-100 opacity-50 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-600'}`}
                   title={activeConversation?.item_deleted ? 'Item has been deleted' : 'Attach'}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0" aria-hidden="true">
                     <rect x="3" y="4" width="18" height="16" rx="2" />
                     <circle cx="8.5" cy="10" r="1.6" />
                     <path d="M21 16l-5.5-5.5L9 17l-3-3-3 3" />
                   </svg>
                 </button>
 
-                <div className="relative w-full">
-                  <div className="flex items-end gap-2">
-                    {activeConversation?.item_deleted ? (
-                      <div className="relative w-full">
-                        <div className="w-full h-auto rounded-xl border-2 border-gray-300 dark:border-gray-600 px-3 py-2.5 pr-12 text-sm leading-5 min-h-[44px] bg-gray-300 dark:bg-gray-800 text-gray-500 dark:text-gray-500 cursor-not-allowed opacity-80 flex items-center pointer-events-none">
-                          <span>This chat has been closed.</span>
-                        </div>
+                <div className="relative min-w-0 flex-1">
+                  {activeConversation?.item_deleted ? (
+                    <div className="relative w-full">
+                      <div className="flex h-12 min-h-12 w-full cursor-not-allowed items-center rounded-xl border-2 border-gray-300 bg-gray-300 px-3 py-2.5 pr-12 text-base leading-5 text-gray-500 opacity-80 pointer-events-none md:h-11 md:min-h-[44px] md:text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-500">
+                        <span>This chat has been closed.</span>
                       </div>
-                    ) : (
-                      <div className="relative w-full">
-                        <textarea
-                          ref={taRef}
-                          value={draft}
-                          onChange={handleDraftChange}
-                          onInput={autoGrow}
-                          onKeyDown={handleKeyDown}
-                          placeholder="Type a message…"
-                          rows={1}
-                          maxLength={MAX_LEN}
-                          aria-describedby="message-char-remaining"
-                          wrap="soft"
-                          className="w-full h-auto resize-none rounded-xl border-2 border-gray-300 dark:border-gray-600 px-3 py-2.5 pr-12 text-sm leading-5 min-h-[44px] whitespace-pre-wrap break-words overflow-y-hidden max-h-[28vh] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
-                          aria-label="Message input"
-                        />
-                        <span id="message-char-remaining" className="pointer-events-none absolute right-3 bottom-2 text-xs text-gray-500 dark:text-gray-400">
-                          {MAX_LEN - draft.length}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="relative w-full">
+                      <textarea
+                        ref={taRef}
+                        value={draft}
+                        onChange={handleDraftChange}
+                        onInput={autoGrow}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Type a message."
+                        rows={1}
+                        maxLength={MAX_LEN}
+                        aria-describedby="message-char-remaining"
+                        wrap="soft"
+                        className="m-0 box-border block min-h-[44px] max-h-[28vh] w-full resize-none overflow-y-hidden whitespace-pre-wrap break-words rounded-xl border-2 border-gray-300 bg-white px-3 py-2.5 pr-11 text-base leading-5 text-gray-900 focus:ring-2 focus:ring-indigo-500 md:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                        aria-label="Message input"
+                      />
+                      <span id="message-char-remaining" className="pointer-events-none absolute right-2.5 bottom-2 text-xs text-gray-500 dark:text-gray-400">
+                        {MAX_LEN - draft.length}
+                      </span>
+                    </div>
+                  )}
 
                   <ImageModal
                     open={attachOpen}
                     onClose={() => setAttachOpen(false)}
                     onSelect={(file) => {
-                      // Prevent attaching if item is deleted
                       if (activeConversation?.item_deleted) {
                         setAttachOpen(false);
                         return;
                       }
-                      // On mobile, auto-send the image immediately
-                      const isMobile = window.innerWidth < 768; // md breakpoint
+                      const isMobile = window.innerWidth < 768;
                       if (isMobile) {
                         handleCreateImageMessage(draft, file);
                         setDraft("");
@@ -1616,6 +1647,23 @@ export default function ChatPage() {
                     }}
                   />
                 </div>
+
+                <button
+                  type="button"
+                  onClick={submitComposer}
+                  disabled={!canSendMessage}
+                  aria-label="Send message"
+                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 md:h-11 md:w-11 dark:bg-blue-800 dark:hover:bg-blue-900 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800"
+                  title="Send"
+                >
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <path
+                      fillRule="evenodd"
+                      d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
               </div>
             </div>
 
