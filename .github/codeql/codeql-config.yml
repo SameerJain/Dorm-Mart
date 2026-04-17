@@ -1,0 +1,6 @@
+name: "Dorm Mart (frontend + shared config)"
+
+paths-ignore:
+  - "**/node_modules/**"
+  - "**/vendor/**"
+  - "**/build/**"
