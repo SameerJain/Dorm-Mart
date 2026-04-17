@@ -22,7 +22,7 @@ const SETTINGS_FAQ_ITEMS = [
       "Go to Settings \u2192 User Profile to update your display name, bio, and profile picture.",
   },
   {
-    question: "I forgot my password. What do I do?",
+    question: "Let's say I forget my password. What do I do?",
     answer:
       "Click \"Forgot Password\" on the login page. Enter your email and follow the link sent to your inbox.",
   },

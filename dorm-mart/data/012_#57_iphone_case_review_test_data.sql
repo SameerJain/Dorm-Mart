@@ -222,7 +222,9 @@ INSERT INTO scheduled_purchase_requests (
   verification_code,
   description,
   status,
-  buyer_response_at
+  buyer_response_at,
+  created_at,
+  updated_at
 ) VALUES (
   @product_id,
   @seller_id,
@@ -233,6 +235,8 @@ INSERT INTO scheduled_purchase_requests (
   LPAD((@product_id * 100 + UNIX_TIMESTAMP() % 10000) % 10000, 4, '0'),
   NULL,
   'accepted',
+  DATE_SUB(NOW(), INTERVAL 3 DAY),
+  DATE_SUB(NOW(), INTERVAL 5 DAY),
   DATE_SUB(NOW(), INTERVAL 3 DAY)
 );
 

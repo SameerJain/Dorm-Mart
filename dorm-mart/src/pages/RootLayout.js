@@ -6,7 +6,6 @@ import { loadUserTheme } from "../utils/load_theme.js";
 import { ChatContext } from "../context/ChatContext.js";
 import FAQModal from "./FAQPage/FAQModal.jsx";
 
-// once user logs in, load websocket
 function RootLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -100,14 +99,16 @@ function RootLayout() {
             rounded-full shadow-lg
             bg-blue-600 text-white
             hover:bg-blue-700
-            dark:bg-blue-500 dark:hover:bg-blue-600
+            dark:bg-blue-500 dark:hover:bg-blue-900
             focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
             qna-bounce-z
             transition-transform
           "
           aria-label="FAQ"
         >
-          ?
+          <span className="text-xl font-normal leading-none select-none" aria-hidden>
+            ?
+          </span>
         </button>
 
         <FAQModal isOpen={isFAQModalOpen} onClose={handleCloseFAQ} />

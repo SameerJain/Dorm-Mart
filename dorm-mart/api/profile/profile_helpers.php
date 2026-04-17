@@ -45,7 +45,8 @@ if (!function_exists('format_profile_media_url')) {
             return $trimmed;
         }
 
-        if (strpos($trimmed, '/api/image.php') === 0) {
+        if (strpos($trimmed, '/api/image.php') === 0
+            || strpos($trimmed, '/api/media/image.php') === 0) {
             return $trimmed;
         }
 
@@ -64,7 +65,7 @@ if (!function_exists('build_profile_image_proxy_url')) {
         if ($apiBase === '') {
             $apiBase = '/api';
         }
-        return $apiBase . '/image.php?url=' . rawurlencode($source);
+        return $apiBase . '/media/image.php?url=' . rawurlencode($source);
     }
 }
 

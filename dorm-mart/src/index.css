@@ -19,6 +19,21 @@
     position: relative;
     overflow: hidden;
   }
+
+  /*
+   * Login page right column: keep light gradient + readable grays even when html has .dark
+   * (e.g. theme cache applies before navigate away from /login).
+   */
+  html.dark .login-page-right-column.pre-login-bg {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%) !important;
+    color: #111827;
+  }
+  html.dark .login-page-right-column .text-gray-800 {
+    color: #1f2937 !important;
+  }
+  html.dark .login-page-right-column .text-gray-600 {
+    color: #4b5563 !important;
+  }
   
   .review-text-rounded {
     border-radius: 0.5rem !important;
@@ -89,6 +104,47 @@ html.dark input, html.dark textarea, html.dark select {
   background-color: white !important;
   color: #1f2937 !important; /* gray-800 */
   border-color: #d1d5db !important; /* gray-300 */
+}
+
+/*
+ * Dark mode: map primary brand blue (Tailwind blue-600 ≈ #2563EB) to blue-800 (#1e40af),
+ * matching settings sidebar / app preference. Catches any missed per-component dark: tokens.
+ */
+html.dark .bg-blue-600 {
+  background-color: rgb(30 64 175) !important; /* blue-800 */
+}
+html.dark .bg-blue-500 {
+  background-color: rgb(30 64 175) !important;
+}
+html.dark .hover\:bg-blue-700:hover {
+  background-color: rgb(30 58 138) !important; /* blue-900 */
+}
+html.dark .hover\:bg-blue-600:hover {
+  background-color: rgb(30 58 138) !important;
+}
+html.dark .active\:bg-blue-700:active {
+  background-color: rgb(30 58 138) !important;
+}
+html.dark .hover\:bg-blue-500:hover {
+  background-color: rgb(30 58 138) !important;
+}
+html.dark .border-blue-600 {
+  border-color: rgb(30 64 175) !important;
+}
+html.dark .border-blue-500 {
+  border-color: rgb(30 64 175) !important;
+}
+html.dark .text-blue-600 {
+  color: rgb(147 197 253) !important; /* blue-300 — readable on dark surfaces */
+}
+html.dark .ring-blue-600,
+html.dark .ring-blue-500 {
+  --tw-ring-color: rgb(30 64 175) !important;
+}
+html.dark .focus\:ring-blue-500:focus,
+html.dark .focus-visible\:ring-blue-600:focus-visible {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(30 64 175 / var(--tw-ring-opacity, 1)) !important;
 }
 
 :root {

@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+/** Max simultaneous Active listings per seller (create + activate paths must match). */
+const MAX_ACTIVE_LISTINGS_PER_SELLER = 25;
+
 // --- Optional debug: .../productListing.php?debug=1 ---
 $DEBUG = true;
 ini_set('display_errors', '1');
@@ -242,6 +245,25 @@ try {
       'ok'         => true,
       'prod_id' => $itemId,
       'image_urls' => $imageUrls
+    ]);
+    exit;
+  }
+
+  // Enforce cap on active listings per seller
+  $capStmt = $conn->prepare(
+    'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ?'
+  );
+  $activeStatus = 'Active';
+  $capStmt->bind_param('is', $userId, $activeStatus);
+  $capStmt->execute();
+  $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
+  $capStmt->close();
+
+  if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+    http_response_code(403);
+    echo json_encode([
+      'ok' => false,
+      'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . ' active listings. Please deactivate or remove an existing listing before creating a new one.'
     ]);
     exit;
   }

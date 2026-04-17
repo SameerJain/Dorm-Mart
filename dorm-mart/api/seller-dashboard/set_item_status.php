@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+/** Must match product_listing.php */
+const MAX_ACTIVE_LISTINGS_PER_SELLER = 25;
+
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../security/security.php';
@@ -47,6 +50,27 @@ try {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid id or status']);
         exit;
+    }
+
+    // Enforce cap on active listings per seller when activating
+    if ($status === 'Active') {
+        $capStmt = $conn->prepare(
+            'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ? AND product_id != ?'
+        );
+        $activeLabel = 'Active';
+        $capStmt->bind_param('isi', $userId, $activeLabel, $id);
+        $capStmt->execute();
+        $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
+        $capStmt->close();
+
+        if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . ' active listings. Please deactivate or remove an existing listing before activating this one.'
+            ]);
+            exit;
+        }
     }
 
     // ============================================================================

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PreLoginBranding from "../components/PreLoginBranding";
+import { THEME_CACHE_KEY, THEME_PENDING_KEY } from "../utils/load_theme.js";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
@@ -139,19 +140,21 @@ function LoginPage() {
       if (data.ok) {
         // Auth token is now set server-side as httpOnly cookie
         
-        // Apply theme immediately after successful login
-        if (data.theme) {
-          if (data.theme === 'dark') {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
-          
-          // Also save to localStorage for immediate access
+        // Cache theme only — do not call applyThemeToDOM here, or the pre-login layout
+        // (e.g. left branding card) flashes dark for a moment before navigate("/app").
+        // RootLayout's loadUserTheme applies class/meta once the app shell mounts.
+        if (data.theme === 'dark' || data.theme === 'light') {
           try {
-            const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
-              method: 'GET', 
-              credentials: 'include' 
+            localStorage.removeItem(THEME_PENDING_KEY);
+          } catch (_) {}
+          try {
+            localStorage.setItem(THEME_CACHE_KEY, data.theme);
+          } catch (_) {}
+
+          try {
+            const meRes = await fetch(`${API_BASE}/auth/me.php`, {
+              method: "GET",
+              credentials: "include",
             });
             if (meRes.ok) {
               const meJson = await meRes.json();
@@ -195,14 +198,39 @@ function LoginPage() {
 
   return (
     <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">
+      <style>{`
+        /* iPhone SE presets only (375×667 Chrome; 320×568 original) — nudge content up so bottom tagline isn’t clipped */
+        @media (max-width: 375px) and (max-height: 667px) {
+          .login-page-se-mobile-col {
+            padding-top: 3rem !important;
+            padding-bottom: 1.25rem !important;
+          }
+          .login-page-se-mobile-col .login-page-se-branding {
+            margin-bottom: 0.75rem !important;
+          }
+          .login-page-se-mobile-col .login-page-se-tagline {
+            margin-top: 0.75rem !important;
+            padding-bottom: 0.75rem !important;
+          }
+        }
+        @media (max-width: 320px) and (max-height: 568px) {
+          .login-page-se-mobile-col {
+            padding-top: 2.5rem !important;
+          }
+          .login-page-se-mobile-col .login-page-se-branding {
+            margin-bottom: 0.5rem !important;
+          }
+        }
+      `}</style>
       <PreLoginBranding />
 
-      {/* Right side - Login form (full width on mobile, 50% on desktop) */}
+      {/* Right side - Login form (full width on mobile, 50% on desktop).
+          login-page-right-column: stay visually light even if html.dark (global CSS + brief theme flash). */}
       <div
-        className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden"
+        className="login-page-se-mobile-col login-page-right-column w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden [color-scheme:light]"
       >
         {/* Mobile branding header (visible only on mobile/tablet) */}
-        <div className="lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
+        <div className="login-page-se-branding lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">Dorm Mart</h1>
           <h2 className="text-xl sm:text-2xl md:text-4xl font-light text-gray-600 opacity-90 leading-relaxed">
             Wastage, who?
@@ -211,11 +239,11 @@ function LoginPage() {
 
         <div className="w-full max-w-md md:max-w-xl relative z-10">
           <div
-            className="p-4 sm:p-6 md:p-10 rounded-lg relative bg-blue-600"
+            className="p-4 sm:p-6 md:p-10 rounded-lg relative bg-[#2563eb]"
           >
-            {/* Torn paper effect */}
+            {/* Torn paper effect — hex blue avoids html.dark .bg-blue-600 global remap */}
             <div
-              className="absolute inset-0 rounded-lg bg-blue-600"
+              className="absolute inset-0 rounded-lg bg-[#2563eb]"
               style={{
                 clipPath:
                   "polygon(0 0, 100% 0, 100% 85%, 95% 90%, 100% 95%, 100% 100%, 0 100%)",
@@ -246,7 +274,12 @@ function LoginPage() {
               )}
 
               {/* Login form - Improved spacing for mobile */}
-              <form onSubmit={handleLogin} noValidate className="space-y-3 sm:space-y-4 md:space-y-6">
+              {/* scheme-light: keep native inputs light when html gets color-scheme:dark right before navigate */}
+              <form
+                onSubmit={handleLogin}
+                noValidate
+                className="[color-scheme:light] space-y-3 sm:space-y-4 md:space-y-6"
+              >
                 {/* Email input */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
@@ -278,7 +311,7 @@ function LoginPage() {
                       setEmail(trimmedText);
                     }}
                     maxLength={255}
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
                   />
                 </div>
 
@@ -292,7 +325,7 @@ function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     maxLength={64}
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
                   />
                 </div>
 
@@ -349,7 +382,7 @@ function LoginPage() {
           </div>
           
           {/* Tagline - Mobile only, outside login card */}
-          <p className="lg:hidden mt-6 sm:mt-8 md:mt-10 text-base sm:text-lg md:text-2xl text-gray-600 opacity-80 max-w-sm md:max-w-lg mx-auto leading-relaxed text-center px-4">
+          <p className="login-page-se-tagline lg:hidden mt-6 sm:mt-8 md:mt-10 text-base sm:text-lg md:text-2xl text-gray-600 opacity-80 max-w-sm md:max-w-lg mx-auto leading-relaxed text-center px-4">
             Your campus marketplace for buying and selling. Connect with fellow students and save money.
           </p>
         </div>

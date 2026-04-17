@@ -2,10 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import StarRating from "../Reviews/StarRating";
+import PageBackButton from "../../components/PageBackButton";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
-const NAV_BLUE = "#2563EB";
-
 /**
  * BuyerReviewsPage Component
  * 
@@ -59,22 +58,14 @@ function BuyerReviewsPage() {
     <SettingsLayout>
       <div className="mb-6 flex items-center justify-between border-b border-slate-200 dark:border-gray-700 pb-3">
         <div>
-          <h1 className="text-2xl font-serif font-semibold text-slate-900 dark:text-gray-100" style={{ color: NAV_BLUE }}>
+          <h1 className="text-2xl font-serif font-semibold text-blue-600">
             How Sellers Rated You
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             See ratings and feedback from sellers about your purchases
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate("/app/setting/my-profile")}
-          className="rounded-lg border border-slate-300 dark:border-gray-600 px-3 py-1 text-sm hover:bg-slate-50 dark:hover:bg-gray-700"
-          style={{ color: NAV_BLUE }}
-          aria-label="Go back"
-        >
-          ← Back
-        </button>
+        <PageBackButton onClick={() => navigate("/app/setting/my-profile")} />
       </div>
 
       <div className="flex flex-col gap-6">

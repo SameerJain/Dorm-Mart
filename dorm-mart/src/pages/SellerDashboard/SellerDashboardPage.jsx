@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
-import { withFallbackImage } from '../../utils/imageFallback';
+import { withFallbackImage, onProductImageError } from '../../utils/imageFallback';
 import ReviewModal from '../Reviews/ReviewModal';
 import StarRating from '../Reviews/StarRating';
 import BuyerRatingModal from './BuyerRatingModal';
@@ -148,7 +148,7 @@ function SellerDashboardPage() {
                 const transformedListings = dataArray.map(item => {
                     const rawImg = item.image_url || item.image || null;
                     const proxied = rawImg
-                        ? `${API_BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
+                        ? `${API_BASE}/media/image.php?url=${encodeURIComponent(String(rawImg))}`
                         : null;
                     return {
                         id: item.id,
@@ -289,11 +289,15 @@ function SellerDashboardPage() {
         }
     }, [location.state, location.pathname, navigate]);
 
-    const handleViewReview = (productId, productTitle) => {
-        const review = productReviews[productId];
+    const handleViewReview = (listing) => {
+        const review = productReviews[listing.id];
         if (review) {
             setSelectedReview(review);
-            setSelectedReviewProduct({ id: productId, title: productTitle });
+            setSelectedReviewProduct({
+                id: listing.id,
+                title: listing.title,
+                image: withFallbackImage(listing.image),
+            });
             setReviewModalOpen(true);
         }
     };
@@ -527,7 +531,7 @@ function SellerDashboardPage() {
                     {/* Create New Listing Button */}
                     <button
                         onClick={handleCreateNewListing}
-                        className="w-full md:w-auto bg-white hover:bg-gray-50 text-blue-600 px-8 py-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-3 border-2 border-blue-600 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        className="w-full md:w-auto bg-white hover:bg-gray-50 dark:bg-gray-100 dark:hover:bg-white text-[#2563eb] px-8 py-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-3 border-2 border-blue-600 dark:border-blue-800 shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -563,7 +567,7 @@ function SellerDashboardPage() {
                                             className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden hover:ring-2 hover:ring-blue-300 transition"
                                             aria-label={`Open ${truncateProductTitle(listing.title)}`}
                                         >
-                                            <img src={withFallbackImage(listing.image)} alt={truncateProductTitle(listing.title)} className="w-full h-full object-cover" />
+                                            <img src={withFallbackImage(listing.image)} alt={truncateProductTitle(listing.title)} onError={onProductImageError} className="w-full h-full object-cover" />
                                         </button>
                                         <div className="min-w-0 flex-1 max-w-full overflow-hidden">
                                             <button
@@ -635,7 +639,7 @@ function SellerDashboardPage() {
                                             {/* View Review Button - only show if review exists */}
                                             {productReviews[listing.id] && (
                                                 <button
-                                                    onClick={() => handleViewReview(listing.id, listing.title)}
+                                                    onClick={() => handleViewReview(listing)}
                                                     className="font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                                 >
                                                     View Review
@@ -734,6 +738,7 @@ function SellerDashboardPage() {
                 mode="view"
                 productId={selectedReviewProduct.id}
                 productTitle={selectedReviewProduct.title}
+                productImageUrl={selectedReviewProduct.image}
                 existingReview={selectedReview}
                 viewMode="seller"
             />
