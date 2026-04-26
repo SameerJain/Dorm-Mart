@@ -1,5 +1,5 @@
 // src/pages/NotificationPage.jsx
-import React, { useContext, useMemo, useState, useEffect } from "react";
+import { useContext, useMemo, useState, useEffect } from "react";
 import { ChatContext } from "../../context/ChatContext";
 import { onProductImageError } from "../../utils/imageFallback";
 import { useNavigate } from "react-router-dom";

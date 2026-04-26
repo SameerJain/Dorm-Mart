@@ -200,17 +200,3 @@ function validate_csrf_token(string $token): bool {
   
   return hash_equals($_SESSION['csrf_token'], $token);
 }
-
-/**
- * Require valid CSRF token for state-changing operations
- * Returns 403 if token is missing or invalid
- */
-function require_csrf_token(): void {
-  $token = $_POST['csrf_token'] ?? $_GET['csrf_token'] ?? null;
-  
-  if (!$token || !validate_csrf_token($token)) {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
-    exit;
-  }
-}

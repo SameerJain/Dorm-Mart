@@ -550,19 +550,6 @@ try {
         error_log("Exception sending welcome email to {$email}: " . $e->getMessage());
     }
 
-    // Promo email is no longer sent during account creation
-    // Promo emails will only be sent from user preferences settings
-    // The promotional preference is still saved to the database above
-    /*
-    // Send promo welcome email if user opted into promotional emails
-    if ($promos) {
-        $promoEmailResult = sendPromoWelcomeEmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email]);
-        if (!$promoEmailResult['ok']) {
-            error_log("Failed to send promo welcome email during account creation: " . $promoEmailResult['error']);
-        }
-    }
-    */
-
     // Success
     echo json_encode([
         'ok' => true

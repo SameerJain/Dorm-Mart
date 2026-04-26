@@ -1,5 +1,3 @@
-import React from "react";
-
 const SELLER_DASHBOARD_SECTIONS = [
   {
     title: "Managing Listings",

@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { onProductImageError, resolveStoredImageUrl } from "../../../utils/imageFallback";
 import { useNavigate } from "react-router-dom";
 

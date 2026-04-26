@@ -1,5 +1,3 @@
-import React from "react";
-
 /**
  * Standard in-app back control: bordered chip with "← Back" (matches settings headers).
  * Pass optional `className` for visibility breakpoints (e.g. `hidden md:inline-flex`).

@@ -1,5 +1,5 @@
 // src/pages/search/searchResults.jsx
-import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
 import { withFallbackImage, onProductImageError } from "../../utils/imageFallback";

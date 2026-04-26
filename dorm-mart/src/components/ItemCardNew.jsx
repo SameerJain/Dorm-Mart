@@ -1,5 +1,4 @@
 // src/components/ItemCardNew.jsx
-import React from "react";
 import { useNavigate } from "react-router-dom";
 import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../utils/imageFallback";
 

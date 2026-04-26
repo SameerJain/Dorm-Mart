@@ -1,5 +1,3 @@
-import React from "react";
-
 const BROWSING_SECTIONS = [
   {
     title: "Search & Filters",

@@ -1,5 +1,3 @@
-import React from "react";
-
 const PURCHASES_SECTIONS = [
   {
     title: "Purchase History",

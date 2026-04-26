@@ -1,5 +1,3 @@
-import React from "react";
-
 const SETTINGS_FAQ_ITEMS = [
   {
     question: "How do I change my password?",

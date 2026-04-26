@@ -207,49 +207,6 @@ function sanitize_email($email) {
 }
 
 /**
- * Sanitize JSON input
- * @param string $json JSON string to sanitize
- * @return array|false Sanitized array or false if invalid
- */
-function sanitize_json($json) {
-    if (!is_string($json)) {
-        return false;
-    }
-    
-    // Decode JSON
-    $data = json_decode($json, true);
-    
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        return false;
-    }
-    
-    // Recursively sanitize all string values
-    $data = sanitize_array($data);
-    
-    return $data;
-}
-
-/**
- * Recursively sanitize array values
- * @param array $data Array to sanitize
- * @return array Sanitized array
- */
-function sanitize_array($data) {
-    if (!is_array($data)) {
-        return (array) sanitize_string($data);
-    }
-    
-    $sanitized = [];
-    foreach ($data as $key => $value) {
-        $sanitizedKey = sanitize_string($key, 100);
-        $sanitizedValue = is_array($value) ? sanitize_array($value) : sanitize_string($value);
-        $sanitized[$sanitizedKey] = $sanitizedValue;
-    }
-    
-    return $sanitized;
-}
-
-/**
  * Sanitize number input with min/max validation
  * @param mixed $input The input to sanitize
  * @param int $min Minimum allowed value
@@ -259,24 +216,6 @@ function sanitize_array($data) {
 function sanitize_number($input, $min = 0, $max = PHP_INT_MAX) {
     $number = (int) $input;
     return max($min, min($max, $number));
-}
-
-// ============================================================================
-// ACCESS CONTROL
-// ============================================================================
-
-/**
- * Validate user access to prevent IDOR attacks
- * @param int $requestedUserId The user ID being requested
- * @param int $loggedInUserId The currently logged in user ID
- */
-function validateUserAccess($requestedUserId, $loggedInUserId) {
-    // IDOR Protection - Ensure user can only access their own data
-    if ($requestedUserId != $loggedInUserId) {
-        http_response_code(403);
-        echo json_encode(['ok' => false, 'error' => 'Permission denied - cannot access other user data']);
-        exit;
-    }
 }
 
 // ============================================================================
@@ -294,16 +233,6 @@ function validateUserAccess($requestedUserId, $loggedInUserId) {
  */
 function escapeHtml($str) {
     return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
-}
-
-/**
- * Escape JSON output to prevent XSS
- * @param string $str String to escape
- * @return string Escaped JSON string
- */
-function escapeJson($str) {
-    // XSS PROTECTION: JSON encode with hex encoding to prevent XSS attacks
-    return json_encode($str ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 }
 
 /**
@@ -357,36 +286,6 @@ function containsXSSPattern($input) {
     ];
     
     foreach ($xssPatterns as $pattern) {
-        if (preg_match($pattern, $input)) {
-            return true;
-        }
-    }
-    
-    return false;
-}
-
-/**
- * Check if input contains SQL injection attack patterns
- * @param string $input Input to check
- * @return bool True if SQL injection pattern detected
- */
-function containsSQLInjectionPattern($input) {
-    if (!is_string($input)) {
-        return false;
-    }
-    
-    $sqlPatterns = [
-        '/;\s*(DROP|DELETE|INSERT|UPDATE|ALTER|CREATE|TRUNCATE|EXEC|EXECUTE)/i',
-        '/\'\s*;\s*--/',
-        '/\/\*/',
-        '/UNION\s+SELECT/i',
-        '/OR\s+1\s*=\s*1/i',
-        '/OR\s+\'1\'\s*=\s*\'1\'/i',
-        '/\'\s+OR\s+\'\'/i',
-        '/\'\s+OR\s+1\s*=/i'
-    ];
-    
-    foreach ($sqlPatterns as $pattern) {
         if (preg_match($pattern, $input)) {
             return true;
         }
@@ -609,20 +508,6 @@ function get_remaining_lockout_minutes($lockoutUntil) {
     
     $remainingSeconds = (int)$row['remaining_seconds'];
     return max(0, ceil($remainingSeconds / 60));
-}
-
-/**
- * Reset all lockouts (admin function)
- * Resets all session-based rate limiting lockouts
- */
-function reset_all_lockouts() {
-    require_once __DIR__ . '/../database/db_connect.php';
-    
-    $conn = db();
-    $stmt = $conn->prepare('UPDATE login_rate_limits SET failed_login_attempts = 0, last_failed_attempt = NULL, lockout_until = NULL');
-    $stmt->execute();
-    $stmt->close();
-    $conn->close();
 }
 
 // ============================================================================

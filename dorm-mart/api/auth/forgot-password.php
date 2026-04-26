@@ -183,7 +183,6 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
 }
 
 require_once __DIR__ . '/../database/db_connect.php';
-require_once __DIR__ . '/../utility/manage_forgot_password_rate_limiting.php';
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

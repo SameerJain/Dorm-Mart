@@ -1,6 +1,6 @@
 import PurchasedItem from "../../components/Products/PurchasedItem";
 import { Outlet, useSearchParams } from "react-router-dom";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 
 async function fetchPurchasedItems(filters, signal) {
   const BASE = process.env.REACT_APP_API_BASE || "/api";

@@ -1,5 +1,3 @@
-import React from "react";
-
 const HOME_FAQ_ITEMS = [
   {
     question: "What is the difference between \"For You\" and \"Explore More\"?",
