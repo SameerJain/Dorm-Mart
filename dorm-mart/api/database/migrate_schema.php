@@ -1,4 +1,12 @@
 <?php
+// Migration runner — block all web access; run via CLI only
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => 'Forbidden']);
+    exit;
+}
+
 // Enable error reporting for debugging (remove in production)
 ini_set('display_errors', '1');
 error_reporting(E_ALL);

@@ -88,7 +88,12 @@ function ResetPasswordForm() {
     // Validate token with backend
     const validateToken = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/validate-reset-token.php?token=${encodeURIComponent(token)}`);
+        const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/validate-reset-token.php`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
         const data = await response.json();
         
         if (data.success && data.valid) {

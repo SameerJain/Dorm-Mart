@@ -82,12 +82,6 @@ try {
 } catch (Throwable $e) {
     error_log('me.php error: ' . $e->getMessage());
     http_response_code(500);
-    // Note: No HTML encoding needed for JSON - React handles XSS protection
-    // SECURITY: In production, consider removing 'detail' field to prevent information disclosure
-    echo json_encode([
-        'ok' => false,
-        'error' => 'Server error',
-        'detail' => $e->getMessage(),
-    ]);
+    echo json_encode(['ok' => false, 'error' => 'Server error']);
     exit;
 }

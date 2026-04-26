@@ -16,25 +16,28 @@
  * This function should be called at the start of every API endpoint
  */
 function setSecurityHeaders() {
-    // Content Security Policy - Prevents XSS by controlling resource loading
-    // Restricts which resources can be loaded and executed
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none';");
-    
-    // X-XSS-Protection - Enables browser's built-in XSS filter
-    header("X-XSS-Protection: 1; mode=block");
-    
+    // Content Security Policy - unsafe-eval removed; production React bundles don't need it
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' wss:; frame-ancestors 'none';");
+
     // X-Content-Type-Options - Prevents MIME type sniffing
     header("X-Content-Type-Options: nosniff");
-    
-    // X-Frame-Options - Prevents clickjacking
+
+    // X-Frame-Options - Prevents clickjacking (kept for older browser compat alongside frame-ancestors)
     header("X-Frame-Options: DENY");
-    
+
     // Referrer Policy - Controls referrer information
     header("Referrer-Policy: strict-origin-when-cross-origin");
-    
+
     // Permissions Policy - Controls browser features
     header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
-    
+
+    // HSTS - Force HTTPS for all future requests; only sent over HTTPS to avoid breaking HTTP
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+    if ($isHttps) {
+        header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
+    }
+
     // Remove X-Powered-By header to hide PHP version
     header_remove('X-Powered-By');
 }

@@ -57,18 +57,18 @@ WHERE product_id = ?";
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
+    error_log('get_item_info: prepare failed: ' . $conn->error);
     http_response_code(500);
-    // Note: No HTML encoding needed for JSON - React handles XSS protection
-    echo json_encode(['ok'=>false,'error'=>'DB prepare failed','detail'=>$conn->error]);
+    echo json_encode(['ok' => false, 'error' => 'Server error']);
     exit;
 }
 
-$stmt->bind_param('i', $productId);  // 'i' = integer type, safely bound as parameter
+$stmt->bind_param('i', $productId);
 
 if (!$stmt->execute()) {
+    error_log('get_item_info: execute failed: ' . $stmt->error);
     http_response_code(500);
-    // XSS PROTECTION: Escape database error message to prevent XSS
-    echo json_encode(['ok'=>false,'error'=>'DB execute failed','detail'=>$stmt->error]); // Note: No HTML encoding needed for JSON - React handles XSS protection
+    echo json_encode(['ok' => false, 'error' => 'Server error']);
     exit;
 }
 

@@ -1,10 +1,9 @@
 <?php
 declare(strict_types=1);
 
-// CORS headers to allow frontend access
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+require_once __DIR__ . '/../security/security.php';
+initSecurity();
+
 header('Content-Type: application/json; charset=utf-8');
 
 // Handle preflight OPTIONS request
@@ -68,8 +67,5 @@ try {
 } catch (Throwable $e) {
     error_log('get_categories error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode([
-        'ok'    => false,
-        'error' => htmlspecialchars($e->getMessage(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
-    ]);
+    echo json_encode(['ok' => false, 'error' => 'Server error']);
 }

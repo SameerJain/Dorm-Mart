@@ -345,12 +345,6 @@ try {
 } catch (Throwable $e) {
     error_log('getSearchItems error: ' . $e->getMessage());
     http_response_code(500);
-    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
-    // SECURITY: In production, consider removing 'detail' field to prevent information disclosure
-    echo json_encode([
-        'ok' => false,
-        'error' => 'Server error',
-        'detail' => $e->getMessage(), // Note: No HTML encoding needed for JSON - React handles XSS protection
-    ]);
+    echo json_encode(['ok' => false, 'error' => 'Server error']);
     exit;
 }

@@ -161,14 +161,5 @@ try {
     error_log('Stack trace: ' . $e->getTraceAsString());
 
     http_response_code(500);
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
-    // SECURITY: In production, consider removing detailed error fields to prevent information disclosure
-    $debug = true; // Temporarily enabled for debugging
-    echo json_encode([
-        'success' => false, 
-        'error' => $e->getMessage(),
-        'file' => $debug ? $e->getFile() : null,
-        'line' => $debug ? $e->getLine() : null,
-        'trace' => $debug ? $e->getTraceAsString() : null
-    ]);
+    echo json_encode(['success' => false, 'error' => 'Server error']);
 }

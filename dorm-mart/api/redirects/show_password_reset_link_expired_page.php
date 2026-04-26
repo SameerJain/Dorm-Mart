@@ -1,5 +1,15 @@
 <?php
 // Universal page for expired/invalid reset links
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('Content-Security-Policy: default-src \'none\'; style-src \'unsafe-inline\'; font-src \'self\';');
+header_remove('X-Powered-By');
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+if ($isHttps) {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

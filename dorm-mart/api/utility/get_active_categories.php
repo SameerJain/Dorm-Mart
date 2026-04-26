@@ -1,13 +1,9 @@
 <?php
 declare(strict_types=1);
 
-// Include security utilities for escapeHtml function
 require_once __DIR__ . '/../security/security.php';
+initSecurity();
 
-// CORS headers to allow frontend access
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=utf-8');
 
 // Handle preflight OPTIONS request
@@ -68,11 +64,8 @@ try {
     echo json_encode($escapedCategories);
 
 } catch (Throwable $e) {
+    error_log('get_active_categories error: ' . $e->getMessage());
     http_response_code(500);
-    // XSS PROTECTION: Escape exception message to prevent XSS
-    echo json_encode([
-        'ok'    => false,
-        'error' => escapeHtml($e->getMessage())
-    ]);
+    echo json_encode(['ok' => false, 'error' => 'Server error']);
 }
 
