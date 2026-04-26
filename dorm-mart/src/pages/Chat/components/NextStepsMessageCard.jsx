@@ -1,5 +1,3 @@
-import React from "react";
-
 function NextStepsMessageCard({ message }) {
   const metadata = message.metadata || {};
   const content = message.content || '';

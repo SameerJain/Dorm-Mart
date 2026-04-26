@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import chatIcon from '../../assets/icons/icons8-chat-96.png'
-import userIcon from '../../assets/icons/icons8-user-icon-96.png'
 import notificationIcon from '../../assets/icons/icons8-notification-96.png'
 import settingIcon from '../../assets/icons/icons8-setting-96.png'
 import marketIcon from '../../assets/icons/icons8-market-96.png';

@@ -1,5 +1,3 @@
-import React from "react";
-
 const CHAT_SECTIONS = [
   {
     title: "Getting Started",
