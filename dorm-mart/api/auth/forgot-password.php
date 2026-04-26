@@ -152,14 +152,6 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
         // Optimizations for faster email delivery
         $mail->Timeout = 10; // Reduced timeout (Railway may block SMTP) // Reduced timeout for faster failure detection
         $mail->SMTPKeepAlive = false; // Close connection after sending
-        $mail->SMTPOptions = [
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
-        ];
-
         // Tell PHPMailer we are sending UTF-8 and how to encode it (EXACT same as create_account.php)
         $mail->CharSet   = 'UTF-8';
         $mail->Encoding  = 'base64';
@@ -268,7 +260,8 @@ try {
     if ($result->num_rows === 0) {
         $stmt->close();
         $conn->close();
-        echo json_encode(['success' => false, 'error' => 'Email not found']);
+        // Return the same response as a successful send to prevent email enumeration
+        echo json_encode(['success' => true, 'message' => 'If this email is registered, a reset link has been sent.']);
         exit;
     }
 
@@ -340,11 +333,7 @@ try {
     $conn->close();
     echo json_encode([
         'success' => true,
-        'message' => 'Check your email',
-        'debug' => [
-            'email_duration_ms' => $emailDuration,
-            'environment' => $envLabel
-        ]
+        'message' => 'If this email is registered, a reset link has been sent.',
     ]);
 } catch (Exception $e) {
     http_response_code(500);

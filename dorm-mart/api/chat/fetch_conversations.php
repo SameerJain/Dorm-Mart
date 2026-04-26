@@ -59,9 +59,9 @@ $sql = "
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
+  error_log('fetch_conversations: prepare failed: ' . $conn->error);
   http_response_code(500);
-  // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
-  echo json_encode(['success' => false, 'error' => 'Prepare failed', 'detail' => $conn->error]);
+  echo json_encode(['success' => false, 'error' => 'Server error']);
   exit;
 }
 

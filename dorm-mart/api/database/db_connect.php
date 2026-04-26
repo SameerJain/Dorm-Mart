@@ -14,35 +14,18 @@ function db(): mysqli
     $username   = getenv('DB_USERNAME');
     $password   = getenv('DB_PASSWORD');
 
-    // Debug: Check if DB_NAME is empty or invalid
     if (empty($dbname) || $dbname === false) {
-        die(json_encode([
-            "success" => false, 
-            "message" => "DB_NAME environment variable is not set or empty",
-            "debug" => [
-                "DB_HOST" => $servername ? "set" : "not set",
-                "DB_NAME" => $dbname ?: "empty/false",
-                "DB_USERNAME" => $username ? "set" : "not set",
-                "DB_PASSWORD" => $password ? "set" : "not set"
-            ]
-        ]));
+        error_log('db_connect: DB_NAME is not set or empty');
+        die(json_encode(["success" => false, "message" => "Database configuration error"]));
     }
 
     // Trim whitespace
     $dbname = trim($dbname);
 
-    // SQL INJECTION PROTECTION: Validate database name format (alphanumeric, underscore, hyphen only)
-    // Database names from environment should be safe, but we validate to be extra cautious
+    // Validate database name format (alphanumeric, underscore, hyphen only)
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $dbname)) {
-        die(json_encode([
-            "success" => false, 
-            "message" => "Invalid database name format",
-            "debug" => [
-                "dbname_value" => $dbname,
-                "dbname_length" => strlen($dbname),
-                "dbname_hex" => bin2hex($dbname)
-            ]
-        ]));
+        error_log('db_connect: DB_NAME contains invalid characters');
+        die(json_encode(["success" => false, "message" => "Database configuration error"]));
     }
 
     // db connection
@@ -50,8 +33,8 @@ function db(): mysqli
 
     // check if db connected successfully
     if ($conn->connect_error) {
-        // Note: No HTML encoding needed for JSON - React handles XSS protection
-        die(json_encode(["success" => false, "message" => "Connection failed: " . $conn->connect_error]));
+        error_log('db_connect: Connection failed: ' . $conn->connect_error);
+        die(json_encode(["success" => false, "message" => "Database connection error"]));
     }
 
     // SQL INJECTION PROTECTION: Escape database name for use in SQL queries
@@ -63,8 +46,8 @@ function db(): mysqli
         // db doesn't exist — create it
         // Use backticks for identifier escaping in CREATE DATABASE
         if (!$conn->query("CREATE DATABASE `$dbname`")) {
-            // Note: No HTML encoding needed for JSON - React handles XSS protection
-            die(json_encode(["success" => false, "message" => "Failed to create database: " . $conn->error]));
+            error_log('db_connect: Failed to create database: ' . $conn->error);
+            die(json_encode(["success" => false, "message" => "Database initialization error"]));
         }
     }
 

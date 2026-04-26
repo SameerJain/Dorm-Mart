@@ -59,14 +59,12 @@ try {
     $email    = (string)($userRow['email'] ?? '');
     $username = derive_username($email);
 
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $response = [
         'success' => true,
         'profile' => [
             'user_id'     => $userId,
             'name'        => $fullName !== '' ? $fullName : null,
             'username'    => $username,
-            'email'       => $email,
             'image_url'   => format_profile_photo_url($userRow['profile_photo'] ?? null),
             'bio'         => $userRow['bio'] ?? '',
             'instagram'   => $userRow['instagram'] ?? '',

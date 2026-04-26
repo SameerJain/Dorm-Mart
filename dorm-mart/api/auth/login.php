@@ -33,8 +33,13 @@ $isHttps = (
 // Skip HTTPS redirect for Railway (Railway handles HTTPS at the proxy level)
 // Also skip for localhost
 if (!$isLocalhost && !$isRailway && !$isHttps) {
-    $httpsUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? '') . ($_SERVER['REQUEST_URI'] ?? '');
-    header("Location: $httpsUrl", true, 301);
+    // Validate host against allowlist before using in redirect to prevent Host header injection
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    $allowedHosts = ['dormmart.me', 'www.dormmart.me', 'aptitude.cse.buffalo.edu', 'cattle.cse.buffalo.edu'];
+    if (in_array($host, $allowedHosts, true)) {
+        $httpsUrl = 'https://' . $host . ($_SERVER['REQUEST_URI'] ?? '');
+        header("Location: $httpsUrl", true, 301);
+    }
     exit;
 }
 

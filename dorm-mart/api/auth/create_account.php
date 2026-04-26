@@ -183,14 +183,6 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
         // Optimizations for faster email delivery
         $mail->Timeout = 10; // Reduced timeout for faster failure detection (Railway may block SMTP)
         $mail->SMTPKeepAlive = false; // Close connection after sending
-        $mail->SMTPOptions = [
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
-        ];
-
         // Tell PHPMailer we are sending UTF-8 and how to encode it
         $mail->CharSet   = 'UTF-8';
         $mail->Encoding  = 'base64'; // robust for UTF-8; 'quoted-printable' also fine

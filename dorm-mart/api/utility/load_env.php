@@ -29,7 +29,8 @@ function load_env(): void {
     } elseif (file_exists($cattleEnvFile)) {
         $envFile = $cattleEnvFile;
     } else {
-        echo json_encode(["success" => false, "message" => "load_env fails: No .env file found"]);
+        error_log('load_env: No .env file found in expected locations');
+        echo json_encode(["success" => false, "message" => "Server configuration error"]);
         exit;
     }
 

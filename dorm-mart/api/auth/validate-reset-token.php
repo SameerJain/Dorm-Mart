@@ -14,8 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Only allow GET requests
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+// Only allow POST requests — token must stay out of the URL / server access logs
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
     exit;
@@ -23,7 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 require_once __DIR__ . '/../database/db_connect.php';
 
-$token = $_GET['token'] ?? '';
+$body  = json_decode(file_get_contents('php://input'), true) ?? [];
+$token = $body['token'] ?? '';
 
 if (empty($token)) {
     http_response_code(400);

@@ -90,9 +90,9 @@ if (isset($_GET['url']) && $_GET['url'] !== '') {
             $path = $mediaPath;
         }
     }
-    // Handle other /media/ paths
+    // Handle other /media/ paths — use basename() to prevent path traversal
     elseif (strpos($url, '/media/') === 0) {
-        $file = substr($url, strlen('/media/'));
+        $file = basename(substr($url, strlen('/media/')));
         $mediaPath = $projectRoot . '/media/' . $file;
         if (file_exists($mediaPath)) {
             $path = $mediaPath;

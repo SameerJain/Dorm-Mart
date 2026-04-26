@@ -1,9 +1,15 @@
 <?php
 
+// Dev-only utility — block all web access
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'error' => 'Forbidden']);
+    exit;
+}
+
 // Include security utilities
 require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
 
 // Include auth handle for session management
 require_once __DIR__ . '/../auth/auth_handle.php';
