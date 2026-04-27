@@ -1277,7 +1277,10 @@ export default function ChatPage() {
                       clearActiveConversation();
                     }}
                     className="md:hidden"
-                  />
+                    aria-label="Return to chats"
+                  >
+                    ← Chats
+                  </PageBackButton>
                 </div>
               </div>
             </div>

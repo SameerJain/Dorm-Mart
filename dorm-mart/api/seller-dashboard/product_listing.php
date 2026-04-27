@@ -196,6 +196,31 @@ try {
       ]);
       exit;
     }
+
+    $checkStmt = $conn->prepare('SELECT sold, item_status FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
+    if (!$checkStmt) {
+      throw new RuntimeException('Failed to prepare sold-state check');
+    }
+    $checkStmt->bind_param('ii', $itemId, $userId);
+    $checkStmt->execute();
+    $existing = $checkStmt->get_result()->fetch_assoc();
+    $checkStmt->close();
+    if (!$existing) {
+      http_response_code(404);
+      echo json_encode([
+        'ok' => false,
+        'error' => 'Product not found or you do not have permission to edit this product.'
+      ]);
+      exit;
+    }
+    $soldFlag = isset($existing['sold']) ? (int)$existing['sold'] : 0;
+    $statusStr = isset($existing['item_status']) ? (string)$existing['item_status'] : '';
+    if ($soldFlag === 1 || $statusStr === 'Sold') {
+      http_response_code(403);
+      echo json_encode(['ok' => false, 'error' => 'Sold listings cannot be edited.']);
+      exit;
+    }
+
     // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     // ============================================================================
@@ -213,7 +238,9 @@ try {
                    listing_price=?,
                    trades=?,
                    price_nego=?
-             WHERE product_id=? AND seller_id=?";
+             WHERE product_id=? AND seller_id=?
+               AND (sold IS NULL OR sold = 0)
+               AND (item_status IS NULL OR item_status <> 'Sold')";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param(
       'ssssssdiiii',

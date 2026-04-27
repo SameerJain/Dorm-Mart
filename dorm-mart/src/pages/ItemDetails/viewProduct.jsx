@@ -593,7 +593,7 @@ export default function ViewProduct() {
                   <Detail label="Condition" value={normalized.itemCondition || '—'} />
                   <Detail label="Price Negotiable" value={normalized.priceNego ? 'Yes' : 'No'} />
                   <Detail label="Accepts trades" value={normalized.trades ? 'Yes' : 'No'} />
-                  <Detail label="Seller email" value={normalized.sellerEmail || '—'} />
+                  <Detail label="Seller email" value={normalized.sellerEmail || '—'} suppressContactDetection />
                 </div>
                 <div className="space-y-2">
                   <Detail label="Date listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : '—'} />
@@ -614,13 +614,21 @@ export default function ViewProduct() {
   );
 }
 
-function Detail({ label, value }) {
-  return (
+function Detail({ label, value, suppressContactDetection = false }) {
+  const inner = (
     <div className="flex items-center gap-2">
-      <span className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 flex-shrink-0">{label}</span>
-      <span className="text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1 truncate">{value}</span>
+      <span className={`text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 flex-shrink-0 ${suppressContactDetection ? "no-underline" : ""}`}>{label}</span>
+      <span className={`text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1 truncate ${suppressContactDetection ? "plain-contact-text no-underline" : ""}`}>{value}</span>
     </div>
   );
+  if (suppressContactDetection) {
+    return (
+      <div x-apple-data-detectors="false" data-detectors="false" className="plain-contact-text min-w-0">
+        {inner}
+      </div>
+    );
+  }
+  return inner;
 }
 
 function formatDate(d) {
