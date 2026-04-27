@@ -9,6 +9,15 @@ const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const termsPdf = `${PUBLIC_BASE}/pdfs/terms-and-conditions.pdf`;
 const privacyPdf = `${PUBLIC_BASE}/pdfs/privacy.pdf`;
 
+function FieldError({ children, className = "" }) {
+  if (!children) return null;
+  return (
+    <p className={`mt-0.5 text-[11px] font-medium leading-tight text-red-500 sm:text-xs ${className}`.trim()}>
+      {children}
+    </p>
+  );
+}
+
 function CreateAccountPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -222,7 +231,12 @@ function CreateAccountPage() {
               </div>
 
               {/* Form - Improved spacing and touch targets */}
-              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-4 lg:space-y-2.5 xl:space-y-3">
+              <form
+                onSubmit={handleSubmit}
+                className={Object.keys(errors).length > 0
+                  ? "space-y-1.5 sm:space-y-2 md:space-y-2 lg:space-y-1 xl:space-y-1.5"
+                  : "space-y-3 sm:space-y-4 md:space-y-4 lg:space-y-2.5 xl:space-y-3"}
+              >
                 {/* First Name */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">First Name</label>
@@ -234,7 +248,7 @@ function CreateAccountPage() {
                     maxLength={30}
                     className="w-full min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base"
                   />
-                  {errors.firstName && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.firstName}</p>}
+                  <FieldError>{errors.firstName}</FieldError>
                 </div>
 
                 {/* Last Name */}
@@ -248,7 +262,7 @@ function CreateAccountPage() {
                     maxLength={30}
                     className="w-full min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base"
                   />
-                  {errors.lastName && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.lastName}</p>}
+                  <FieldError>{errors.lastName}</FieldError>
                 </div>
 
                 {/* Graduation Date */}
@@ -280,7 +294,7 @@ function CreateAccountPage() {
                       className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base"
                     />
                   </div>
-                  {errors.gradDate && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.gradDate}</p>}
+                  <FieldError>{errors.gradDate}</FieldError>
                 </div>
 
                 {/* Email */}
@@ -294,7 +308,7 @@ function CreateAccountPage() {
                     maxLength={255}
                     className="w-full min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base"
                   />
-                  {errors.email && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.email}</p>}
+                  <FieldError>{errors.email}</FieldError>
                 </div>
 
                 {/* Checkboxes - Improved touch targets */}
@@ -330,7 +344,7 @@ function CreateAccountPage() {
                       </a>
                     </span>
                   </label>
-                  {errors.terms && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed ml-8">{errors.terms}</p>}
+                  <FieldError className="ml-8">{errors.terms}</FieldError>
 
                   <label className="flex items-start text-gray-100 min-h-[44px] py-2">
                     <input
