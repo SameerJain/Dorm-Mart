@@ -52,6 +52,27 @@ try {
         exit;
     }
 
+    $checkStmt = $conn->prepare('SELECT sold, item_status FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
+    if (!$checkStmt) {
+        throw new RuntimeException('Failed to prepare sold-state check');
+    }
+    $checkStmt->bind_param('ii', $id, $userId);
+    $checkStmt->execute();
+    $existing = $checkStmt->get_result()->fetch_assoc();
+    $checkStmt->close();
+    if (!$existing) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Not found']);
+        exit;
+    }
+    $soldFlag = isset($existing['sold']) ? (int)$existing['sold'] : 0;
+    $statusStr = isset($existing['item_status']) ? (string)$existing['item_status'] : '';
+    if ($soldFlag === 1 || $statusStr === 'Sold') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Sold listings cannot be edited.']);
+        exit;
+    }
+
     // Enforce cap on active listings per seller when activating
     if ($status === 'Active') {
         $capStmt = $conn->prepare(
@@ -80,7 +101,10 @@ try {
     // The '?' placeholders ensure user input is treated as data, not executable SQL.
     // Status is validated against a whitelist ('Active','Pending','Draft','Sold') before binding.
     // ============================================================================
-    $stmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND seller_id = ?');
+    $stmt = $conn->prepare(
+        'UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND seller_id = ?'
+        . ' AND (sold IS NULL OR sold = 0) AND (item_status IS NULL OR item_status <> \'Sold\')'
+    );
     if (!$stmt) throw new RuntimeException('Failed to prepare update');
     $stmt->bind_param('sii', $status, $id, $userId);  // 's'=string, 'i'=integer, all safely bound
     $stmt->execute();

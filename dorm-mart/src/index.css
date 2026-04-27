@@ -12,6 +12,16 @@
   .all-\[unset\] {
     all: unset;
   }
+
+  .plain-contact-text,
+  .plain-contact-text a,
+  .plain-contact-text a[x-apple-data-detectors],
+  a[x-apple-data-detectors].plain-contact-text {
+    color: inherit !important;
+    text-decoration: none !important;
+    pointer-events: none !important;
+    cursor: default !important;
+  }
   
   /* Pre-login right side background - subtle blue gradient */
   .pre-login-bg {

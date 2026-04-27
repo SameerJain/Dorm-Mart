@@ -254,20 +254,25 @@ function ChangePasswordPage() {
       {/* Success Notice Modal */}
       {showNotice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* backdrop */}
-          <div className="absolute inset-0 bg-black bg-opacity-50" />
-          {/* card */}
+          <div className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm" aria-hidden />
           <div
-            className="relative z-10 w-full max-w-lg mx-4 rounded-xl shadow-2xl border border-white/10"
-            style={{ backgroundColor: "#3d3eb5" }}
+            className="relative z-10 mx-4 w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-2xl ring-1 ring-black/5 dark:border-gray-700 dark:bg-gray-800 dark:ring-white/10"
+            role="dialog"
+            aria-labelledby="password-changed-title"
+            aria-modal="true"
           >
             <div className="p-6">
-              <h3 className="text-2xl font-serif text-white mb-3 text-center">Password Changed</h3>
-              <p className="text-white/90 text-center leading-relaxed">
+              <h3
+                id="password-changed-title"
+                className="mb-3 text-center font-serif text-2xl font-semibold text-blue-600 dark:text-blue-400"
+              >
+                Password Changed
+              </h3>
+              <p className="text-center leading-relaxed text-gray-700 dark:text-gray-300">
                 Your password was changed successfully.
                 <br />
                 You will be taken to our log in page in{" "}
-                <span className="font-semibold">{countdown}</span> seconds.
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{countdown}</span> seconds.
               </p>
             </div>
           </div>

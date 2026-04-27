@@ -698,7 +698,7 @@ export default function ViewReceipt() {
                   <Detail label="Listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : "—"} />
                   {normalized.sold && <Detail label="Date sold" value={normalized.dateSold ? formatDate(normalized.dateSold) : "—"} />}
                   {normalized.sellerEmail && (
-                    <Detail label="Email" value={normalized.sellerEmail} />
+                    <Detail label="Email" value={normalized.sellerEmail} suppressContactDetection />
                   )}
                 </div>
               </section>
@@ -710,13 +710,21 @@ export default function ViewReceipt() {
   );
 }
 
-function Detail({ label, value }) {
-  return (
+function Detail({ label, value, suppressContactDetection = false }) {
+  const inner = (
     <div className="flex items-start gap-2">
-      <span className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 pt-0.5 flex-shrink-0">{label}</span>
-      <span className="text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1 truncate">{value ?? "—"}</span>
+      <span className={`text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 pt-0.5 flex-shrink-0 ${suppressContactDetection ? "no-underline" : ""}`}>{label}</span>
+      <span className={`text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1 truncate ${suppressContactDetection ? "plain-contact-text no-underline" : ""}`}>{value ?? "—"}</span>
     </div>
   );
+  if (suppressContactDetection) {
+    return (
+      <div x-apple-data-detectors="false" data-detectors="false" className="plain-contact-text min-w-0">
+        {inner}
+      </div>
+    );
+  }
+  return inner;
 }
 
 function ReceiptDetail({ label, value }) {

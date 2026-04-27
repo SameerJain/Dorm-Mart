@@ -22,11 +22,11 @@ import BuyerReviewsPage from "./pages/Settings/BuyerReviewsPage.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
-import SchedulePurchasePage from "./pages/SellerDashboard/SchedulePurchasePage.jsx";
-import ConfirmPurchasePage from "./pages/SellerDashboard/ConfirmPurchasePage.jsx";
-import OngoingPurchasesPage from "./pages/SellerDashboard/OngoingPurchasesPage.jsx";
-import MarkCompletedPage from "./pages/SellerDashboard/MarkCompletedPage.jsx";
-import ReportIssuePage from "./pages/SellerDashboard/ReportIssuePage.jsx";
+import SchedulePurchasePage from "./pages/ScheduledPurchases/SchedulePurchasePage.jsx";
+import ConfirmPurchasePage from "./pages/ScheduledPurchases/ConfirmPurchasePage.jsx";
+import OngoingPurchasesPage from "./pages/ScheduledPurchases/OngoingPurchasesPage.jsx";
+import MarkCompletedPage from "./pages/ScheduledPurchases/MarkCompletedPage.jsx";
+import ReportIssuePage from "./pages/ScheduledPurchases/ReportIssuePage.jsx";
 import ViewProduct from "./pages/ItemDetails/viewProduct.jsx";
 import ViewReceipt from "./pages/ItemDetails/viewReceipt.jsx";
 import SearchResults from "./pages/search/searchResults.jsx";
