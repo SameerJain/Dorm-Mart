@@ -157,6 +157,49 @@ html.dark .focus-visible\:ring-blue-600:focus-visible {
   --tw-ring-color: rgb(30 64 175 / var(--tw-ring-opacity, 1)) !important;
 }
 
+/*
+ * Pre-login pages are intentionally light even if a signed-out user still has
+ * html.dark from their in-app preference.
+ */
+html.dark .pre-login-bg {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%) !important;
+  color: #111827;
+  color-scheme: light;
+}
+html.dark .pre-login-bg .bg-blue-600 {
+  background-color: rgb(37 99 235) !important; /* blue-600 */
+}
+html.dark .pre-login-bg .bg-blue-500 {
+  background-color: rgb(59 130 246) !important; /* blue-500 */
+}
+html.dark .pre-login-bg .hover\:bg-blue-700:hover {
+  background-color: rgb(29 78 216) !important; /* blue-700 */
+}
+html.dark .pre-login-bg .hover\:bg-blue-600:hover {
+  background-color: rgb(37 99 235) !important;
+}
+html.dark .pre-login-bg .active\:bg-blue-700:active {
+  background-color: rgb(29 78 216) !important;
+}
+html.dark .pre-login-bg .border-blue-600 {
+  border-color: rgb(37 99 235) !important;
+}
+html.dark .pre-login-bg .border-blue-500 {
+  border-color: rgb(59 130 246) !important;
+}
+html.dark .pre-login-bg .text-blue-600 {
+  color: rgb(37 99 235) !important;
+}
+html.dark .pre-login-bg .ring-blue-600,
+html.dark .pre-login-bg .ring-blue-500 {
+  --tw-ring-color: rgb(37 99 235) !important;
+}
+html.dark .pre-login-bg .focus\:ring-blue-500:focus,
+html.dark .pre-login-bg .focus-visible\:ring-blue-600:focus-visible {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(59 130 246 / var(--tw-ring-opacity, 1)) !important;
+}
+
 :root {
   --animate-spin: spin 1s linear infinite;
 }

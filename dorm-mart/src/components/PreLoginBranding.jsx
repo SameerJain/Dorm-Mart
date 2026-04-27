@@ -1,6 +1,35 @@
+import { useLayoutEffect } from 'react';
 import backgroundImage from '../assets/images/cf704b7b8689fdfa8cf49a9f368bb17c.jpg';
 
 function PreLoginBranding({ animate = false, animateText = false }) {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const hadDarkClass = root.classList.contains('dark');
+    const previousColorScheme = root.style.colorScheme;
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    const previousThemeColor = themeMeta?.getAttribute('content') ?? null;
+
+    root.classList.remove('dark');
+    root.style.colorScheme = 'light';
+    if (themeMeta) {
+      themeMeta.setAttribute('content', '#ffffff');
+    }
+
+    return () => {
+      if (hadDarkClass) {
+        root.classList.add('dark');
+      }
+      root.style.colorScheme = previousColorScheme;
+      if (themeMeta) {
+        if (previousThemeColor === null) {
+          themeMeta.removeAttribute('content');
+        } else {
+          themeMeta.setAttribute('content', previousThemeColor);
+        }
+      }
+    };
+  }, []);
+
   return (
     <>
       {/* Left side - Background image with branding (hidden on mobile, 50% on desktop) */}
@@ -64,4 +93,3 @@ function PreLoginBranding({ animate = false, animateText = false }) {
 }
 
 export default PreLoginBranding;
-
