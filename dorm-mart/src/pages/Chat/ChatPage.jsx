@@ -9,11 +9,9 @@ import ImageModal from "./components/ImageModal";
 import ConfirmMessageCard from "./components/ConfirmMessageCard";
 import ReviewPromptMessageCard from "./components/ReviewPromptMessageCard";
 import BuyerRatingPromptMessageCard from "./components/BuyerRatingPromptMessageCard";
-import { onProductImageError } from "../../utils/imageFallback";
+import { onProductImageError, resolveProductPhotoUrl } from "../../utils/imageFallback";
 import PageBackButton from "../../components/PageBackButton";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import { API_BASE } from "../../utils/apiConfig";
 
 // Typing indicator message component (displays in messages area)
 const TypingIndicatorMessage = ({ firstName }) => {
@@ -653,8 +651,7 @@ export default function ChatPage() {
     setDeleteError('');
 
     try {
-      const API = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
-      const res = await fetch(`${API}/chat/delete_conversation.php`, {
+      const res = await fetch(`${API_BASE}/chat/delete_conversation.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1087,7 +1084,7 @@ export default function ChatPage() {
             {c.productImageUrl && (
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
                 <img
-                  src={c.productImageUrl.startsWith('http') || c.productImageUrl.startsWith('/data/images/') || c.productImageUrl.startsWith('/images/') ? `${API_BASE}/media/image.php?url=${encodeURIComponent(c.productImageUrl)}` : c.productImageUrl}
+                  src={resolveProductPhotoUrl(c.productImageUrl, { apiBase: API_BASE, proxyUnknown: true })}
                   alt={c.productTitle || 'Product'}
                   onError={onProductImageError}
                   className="w-full h-full object-cover"
@@ -1246,7 +1243,7 @@ export default function ChatPage() {
                   {activeConversation?.productImageUrl && (
                     <div className="hidden md:inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden shrink-0 bg-gray-200 dark:bg-gray-700">
                                 <img
-                                  src={activeConversation.productImageUrl.startsWith('http') || activeConversation.productImageUrl.startsWith('/data/images/') || activeConversation.productImageUrl.startsWith('/images/') ? `${API_BASE}/media/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
+                                  src={resolveProductPhotoUrl(activeConversation.productImageUrl, { apiBase: API_BASE, proxyUnknown: true })}
                                   alt=""
                                   onError={onProductImageError}
                                   className="w-full h-full object-cover"

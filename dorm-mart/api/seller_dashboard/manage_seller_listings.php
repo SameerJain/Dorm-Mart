@@ -3,27 +3,13 @@
 declare(strict_types=1);
 
 // Include security utilities
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/inventory.php';
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 
-// Handle preflight requests
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-// Enforce POST method
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     // Require authentication - this will redirect to login if not authenticated
@@ -104,30 +90,14 @@ try {
 
     $data = [];
     while ($row = $res->fetch_assoc()) {
-        $photosJson = $row['photos'] ?? null;
-        $firstImage = null;
-        if ($photosJson) {
-            $decoded = json_decode($photosJson, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && !empty($decoded)) {
-                $firstImage = $decoded[0] ?? null;
-            }
-        }
+        $firstImage = inventory_first_photo($row['photos'] ?? null);
 
         $isSold = isset($row['sold']) ? (bool)$row['sold'] : false;
         $buyerId = $isSold ? ($row['sold_to'] ?? null) : null;
         $statusFromDb = isset($row['item_status']) && $row['item_status'] !== '' ? (string)$row['item_status'] : null;
         $status = $statusFromDb ?? ($isSold ? 'Sold' : 'Active');
 
-        // derive categories from JSON column if present
-        $catsArr = [];
-        if (isset($row['categories']) && $row['categories'] !== null && $row['categories'] !== '') {
-            $tmp = json_decode($row['categories'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) {
-                foreach ($tmp as $v) {
-                    if (is_string($v) && $v !== '') $catsArr[] = $v;
-                }
-            }
-        }
+        $catsArr = inventory_string_list($row['categories'] ?? null);
 
         $hasAcceptedScheduledPurchase = isset($row['has_accepted_scheduled_purchase']) && (int)$row['has_accepted_scheduled_purchase'] === 1;
 
@@ -152,12 +122,11 @@ try {
         ];
     }
 
-    echo json_encode(['success' => true, 'data' => $data]);
+    json_response(['success' => true, 'data' => $data]);
 } catch (Throwable $e) {
     // Log error server-side (in production, use proper logging)
     error_log('Seller listings error: ' . $e->getMessage());
     error_log('Stack trace: ' . $e->getTraceAsString());
 
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Server error']);
+    json_response(['success' => false, 'error' => 'Server error'], 500);
 }

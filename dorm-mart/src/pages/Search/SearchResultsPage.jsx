@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
 import { withFallbackImage, onProductImageError, resolveProductPhotoUrl } from "../../utils/imageFallback";
 import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
-import { formatDate } from "../../utils/formatters";
+import { formatCurrency, formatDate } from "../../utils/formatters";
 import PageBackButton from "../../components/PageBackButton";
 
 function useQuery() {
@@ -307,7 +307,7 @@ export default function SearchResults() {
 
                         {/* Right price + status */}
                         <div className="flex flex-col items-end gap-1">
-                          <div className="text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">${it.price?.toFixed(2)}</div>
+                          <div className="text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">{formatCurrency(it.price) ?? "$0.00"}</div>
                           {it.status && String(it.status).toUpperCase() !== "AVAILABLE" ? (
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
                               String(it.status).toUpperCase() === "JUST POSTED"

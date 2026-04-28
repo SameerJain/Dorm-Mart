@@ -1,14 +1,10 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../helpers/response.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
-setSecurityHeaders();
-setSecureCORS();
 
-allow_options_request();
-require_request_method('POST');
+init_json_endpoint('POST');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';

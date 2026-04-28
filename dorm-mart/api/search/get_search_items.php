@@ -3,21 +3,10 @@ declare(strict_types=1);
 
 // dorm-mart/api/search/get_search_items.php
 
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/inventory.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST', ['ok' => false, 'error' => 'Method Not Allowed']);
 
 try {
     require __DIR__ . '/../auth/auth_handle.php';
@@ -45,10 +34,8 @@ try {
     
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     // Note: SQL injection prevented by prepared statements
-    if ($qRaw !== '' && containsXSSPattern($qRaw)) {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => 'Invalid characters in search query']);
-        exit;
+    if ($qRaw !== '' && contains_xss_pattern($qRaw)) {
+        json_response(['ok' => false, 'error' => 'Invalid characters in search query'], 400);
     }
     
     $q = $qRaw;
@@ -269,28 +256,8 @@ try {
     $out = [];
     $now = time();
     while ($row = $res->fetch_assoc()) {
-        // categories JSON -> array
-        $tags = [];
-        if (!empty($row['categories'])) {
-            $decoded = json_decode($row['categories'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $tags = array_values(array_filter($decoded, fn($v) => is_string($v) && $v !== ''));
-            }
-        }
-
-        // photos JSON -> first photo path
-        $image = null;
-        if (!empty($row['photos'])) {
-            $photos = json_decode($row['photos'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($photos) && count($photos)) {
-                $first = $photos[0];
-                if (is_string($first)) {
-                    $image = $first;
-                } elseif (is_array($first) && isset($first['url'])) {
-                    $image = $first['url'];
-                }
-            }
-        }
+        $tags = inventory_string_list($row['categories'] ?? null);
+        $image = inventory_first_photo($row['photos'] ?? null);
 
         // status from date_listed
         $statusOut = 'AVAILABLE';
@@ -309,15 +276,7 @@ try {
             $statusOut = 'SOLD';
         }
 
-        // seller name
-        $seller = 'Unknown Seller';
-        $first = trim((string)($row['first_name'] ?? ''));
-        $last  = trim((string)($row['last_name'] ?? ''));
-        if ($first !== '' || $last !== '') {
-            $seller = trim($first . ' ' . $last);
-        } elseif (!empty($row['email'])) {
-            $seller = $row['email'];
-        }
+        $seller = inventory_display_name($row);
         $out[] = [
             'id'         => (int)$row['product_id'],
             'title'      => $row['title'] ?? 'Untitled',
@@ -337,12 +296,9 @@ try {
         ];
     }
 
-    echo json_encode($out);
-    exit;
+    json_response($out);
 
 } catch (Throwable $e) {
     error_log('get_search_items error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Server error']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Server error'], 500);
 }

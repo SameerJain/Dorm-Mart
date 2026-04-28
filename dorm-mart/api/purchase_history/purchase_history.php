@@ -5,35 +5,18 @@ declare(strict_types=1);
 // Suppress any output that might interfere with headers
 ob_start();
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/inventory.php';
+require_once __DIR__ . '/../helpers/request.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     $userId = require_login();
 
-    $payload = json_decode(file_get_contents('php://input'), true);
-    if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
-    }
+    $payload = json_request_body_or_error();
 
     // Get filter parameters (with defaults for backward compatibility)
     $dateRange = isset($payload['dateRange']) ? (string)$payload['dateRange'] : (isset($payload['year']) ? 'Last Year' : 'All Time');
@@ -144,12 +127,11 @@ try {
     }
 
     ob_end_clean(); // Clear output buffer before sending response
-    echo json_encode(['success' => true, 'data' => $rows]);
+    json_response(['success' => true, 'data' => $rows]);
 } catch (Throwable $e) {
     ob_end_clean(); // Clear any output buffer
     error_log('purchase_history.php error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
 
 /**
@@ -375,24 +357,7 @@ function load_legacy_purchased_items(mysqli $conn, int $userId, string $start, s
 
 function resolve_primary_photo($photos): string
 {
-    if (is_string($photos) && trim($photos) !== '') {
-        $decoded = json_decode($photos, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            $photos = $decoded;
-        }
-    }
-
-    if (is_array($photos)) {
-        foreach ($photos as $photo) {
-            if (is_string($photo) && trim($photo) !== '') {
-                return format_purchase_history_image_url($photo);
-            }
-        }
-    } elseif (is_string($photos) && trim($photos) !== '') {
-        return format_purchase_history_image_url($photos);
-    }
-
-    return '';
+    return format_purchase_history_image_url(inventory_first_photo($photos) ?? '');
 }
 
 function format_purchase_history_image_url($value): string

@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { withFallbackImage, onProductImageError } from '../../utils/imageFallback';
+import { withFallbackImage, onProductImageError, resolveProductPhotoUrl } from '../../utils/imageFallback';
 import { API_BASE } from '../../utils/apiConfig';
+import { formatCurrency } from '../../utils/formatters';
 
 /** Grace period after scheduled meet time before the card moves to Past */
 const ACTIVE_AFTER_MEETING_MS = 30 * 60 * 1000;
@@ -376,7 +377,7 @@ function OngoingPurchasesPage() {
                         </svg>
                         <span className="text-sm font-bold uppercase tracking-wide text-white">Negotiated Price</span>
                     </div>
-                    <p className="text-2xl font-bold text-white">${Number(req.negotiated_price).toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-white">{formatCurrency(req.negotiated_price) ?? "$0.00"}</p>
                 </div>
             );
         } else if (req.item?.listing_price !== null && req.item?.listing_price !== undefined) {
@@ -388,7 +389,7 @@ function OngoingPurchasesPage() {
                         </svg>
                         <span className="text-sm font-bold uppercase tracking-wide text-white">Listed Price</span>
                     </div>
-                    <p className="text-2xl font-bold text-white">${Number(req.item.listing_price).toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-white">{formatCurrency(req.item.listing_price) ?? "$0.00"}</p>
                 </div>
             );
         }
@@ -688,21 +689,13 @@ function OngoingPurchasesPage() {
         );
     };
 
-    const resolvePhotoUrl = (raw) => {
-        if (!raw) return null;
-        const s = String(raw);
-        if (/^https?:\/\//i.test(s)) return `${API_BASE}/media/image.php?url=${encodeURIComponent(s)}`;
-        if (s.startsWith('/data/images/') || s.startsWith('/images/')) return `${API_BASE}/media/image.php?url=${encodeURIComponent(s)}`;
-        return s.startsWith('/') ? s : null;
-    };
-
     // Item row (thumbnail + title) and cards for one bucket only — no bucket label (section title is page-level)
     const renderItemGroupForBucket = (itemGroup, bucketKey) => {
         const requests = itemGroup?.buckets?.[bucketKey];
         if (!requests?.length) return null;
 
         const photos = Array.isArray(itemGroup.item?.photos) ? itemGroup.item.photos : [];
-        const thumbUrl = photos.length > 0 ? resolvePhotoUrl(photos[0]) : null;
+        const thumbUrl = photos.length > 0 ? resolveProductPhotoUrl(photos[0], { apiBase: API_BASE, proxyUnknown: true }) : null;
         const thumbSrc = withFallbackImage(thumbUrl);
 
         return (

@@ -25,19 +25,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/../utility/transactional_email_html.php';
-
-// Load environment variables (same as create_account.php)
-foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-    if (is_readable($envFile)) {
-        foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-            $line = trim($line);
-            if ($line === '' || str_starts_with($line, '#')) continue;
-            [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-            putenv(trim($k) . '=' . trim($v));
-        }
-        break;
-    }
-}
+require_once __DIR__ . '/../config/app_config.php';
 
 /**
  * Send password reset email via SendGrid REST API (for Railway)
@@ -62,8 +50,14 @@ function sendPasswordResetEmailViaSendGrid(array $user, string $resetLink, strin
         $html = $pkg['html'];
         $text = $pkg['text'];
 
+        $fromEmail = dm_mail_from_email();
+        if ($fromEmail === '') {
+            error_log("SendGrid password reset failed: MAIL_FROM_EMAIL or GMAIL_USERNAME is not set");
+            return ['success' => false, 'error' => 'Email configuration missing'];
+        }
+
         $email = new \SendGrid\Mail\Mail();
-        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setFrom($fromEmail, dm_mail_from_name());
         $email->setSubject($subject);
         $email->addTo($user['email'], trim($user['first_name'] . ' ' . $user['last_name']));
         $email->addContent("text/html", $html);
@@ -103,25 +97,6 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
     }
     error_log("DEBUG: SendGrid API key not found, falling back to PHPMailer");
 
-    // Otherwise, use existing SMTP code (cattle/aptitude/local)
-    // Check if we're on Railway (or similar platform) where env vars are set directly
-    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
-    if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
-        // Not on Railway, load from .env files
-        foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-            if (is_readable($envFile)) {
-                foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                    $line = trim($line);
-                    if ($line === '' || str_starts_with($line, '#')) continue;
-                    [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-                    putenv(trim($k) . '=' . trim($v));
-                }
-                break;
-            }
-        }
-    }
-    // On Railway, environment variables are already set, no need to load from files
-
     // Ensure PHP is using UTF-8 internally (EXACT same as create_account.php)
     if (function_exists('mb_internal_encoding')) {
         @mb_internal_encoding('UTF-8');
@@ -129,10 +104,8 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
 
     $mail = new PHPMailer(true);
     try {
-        // SMTP Configuration (EXACT same as create_account.php)
-        // Uses Gmail SMTP with STARTTLS encryption (port 587 - Railway may block port 465)
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = dm_smtp_host();
         $mail->SMTPAuth   = true;
         $gmailUsername = getenv('GMAIL_USERNAME');
         $gmailPassword = getenv('GMAIL_PASSWORD');
@@ -145,20 +118,20 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
         
         $mail->Username   = $gmailUsername;
         $mail->Password   = $gmailPassword;
-        // Try STARTTLS on port 587 first (Railway may block port 465)
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+        $secure = dm_smtp_secure();
+        $mail->SMTPSecure = $secure === 'smtps' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = dm_smtp_port();
 
         // Optimizations for faster email delivery
-        $mail->Timeout = 10; // Reduced timeout (Railway may block SMTP) // Reduced timeout for faster failure detection
+        $mail->Timeout = dm_smtp_timeout();
         $mail->SMTPKeepAlive = false; // Close connection after sending
         // Tell PHPMailer we are sending UTF-8 and how to encode it (EXACT same as create_account.php)
         $mail->CharSet   = 'UTF-8';
         $mail->Encoding  = 'base64';
 
         // From/To (EXACT same as create_account.php)
-        $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
-        $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
+        $mail->setFrom(dm_mail_from_email(), dm_mail_from_name());
+        $mail->addReplyTo(dm_mail_reply_to_email(), dm_mail_reply_to_name());
         $mail->addAddress($user['email'], trim($user['first_name'] . ' ' . $user['last_name']));
 
         $pkg = dm_transactional_password_reset_package($user['first_name'] ?? '', $resetLink);
@@ -216,7 +189,7 @@ require_once __DIR__ . '/../config/email_config.php';
 
 // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
 // Note: SQL injection prevented by prepared statements
-if ($emailRaw !== '' && containsXSSPattern($emailRaw)) {
+if ($emailRaw !== '' && contains_xss_pattern($emailRaw)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Invalid input format']);
     exit;
@@ -225,7 +198,7 @@ if ($emailRaw !== '' && containsXSSPattern($emailRaw)) {
 // Email validation based on ALLOW_ALL_EMAILS flag
 if (ALLOW_ALL_EMAILS) {
     // Accept any valid email format
-    $email = validateInput($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
+    $email = validate_input($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
     if ($email === false || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid email format']);
@@ -233,7 +206,7 @@ if (ALLOW_ALL_EMAILS) {
     }
 } else {
     // Only accept @buffalo.edu
-    $email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
+    $email = validate_input($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
     if ($email === false || !preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Email must be @buffalo.edu']);
@@ -298,21 +271,8 @@ try {
     $stmt->execute();
     $stmt->close();
 
-    // Generate reset link with correct domain
-    $baseUrl = get_reset_password_base_url();
-    $resetLink = $baseUrl . '/api/redirects/handle_password_reset_token_redirect.php?token=' . $resetToken;
-
-    // Determine environment label for email copy
-    $envLabel = 'Local';
-    if (strpos($resetLink, 'aptitude.cse.buffalo.edu') !== false) {
-        $envLabel = 'Aptitude';
-    } elseif (strpos($resetLink, 'cattle.cse.buffalo.edu') !== false) {
-        $envLabel = 'Cattle';
-    } else {
-        // Distinguish local dev methods (npm start vs local Apache) is not visible to recipient;
-        // keep it short and generic as "Local".
-        $envLabel = 'Local';
-    }
+    $resetLink = dm_api_url('redirects/handle_password_reset_token_redirect.php') . '?token=' . urlencode($resetToken);
+    $envLabel = dm_env_string('APP_ENV', 'Local');
 
     // Send email using the same function as create_account.php
     $emailStartTime = microtime(true);
@@ -337,71 +297,4 @@ try {
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Internal server error']);
-}
-
-function get_reset_password_base_url(): string
-{
-    // Prefer explicit origin/host detection
-    $host   = $_SERVER['HTTP_HOST']   ?? '';
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-
-    // Railway deployment - check for Railway environment or Railway domain
-    $isRailway = (
-        getenv('RAILWAY_ENVIRONMENT') !== false ||
-        getenv('RAILWAY_SERVICE_NAME') !== false ||
-        strpos($host, 'railway.app') !== false ||
-        strpos($host, 'dormmart.me') !== false ||
-        strpos($origin, 'railway.app') !== false ||
-        strpos($origin, 'dormmart.me') !== false
-    );
-
-    if ($isRailway) {
-        // Use HTTPS and the Railway domain (dormmart.me or Railway-provided domain)
-        // $host from $_SERVER['HTTP_HOST'] is just the hostname (e.g., 'dormmart.me')
-        $railwayHost = $host ?: (parse_url($origin, PHP_URL_HOST) ?: 'dormmart.me');
-        // Ensure we use HTTPS for Railway
-        return 'https://' . rtrim($railwayHost, '/');
-    }
-
-    // Production server
-    if (strpos($host, 'cattle.cse.buffalo.edu') !== false || strpos($origin, 'cattle.cse.buffalo.edu') !== false) {
-        return 'https://cattle.cse.buffalo.edu/CSE442/2025-Fall/cse-442j';
-    }
-
-    // Test server
-    if (strpos($host, 'aptitude.cse.buffalo.edu') !== false || strpos($origin, 'aptitude.cse.buffalo.edu') !== false) {
-        return 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j';
-    }
-
-    // Local development - detect which method is being used
-    $isLocal = (
-        $host === 'localhost' ||
-        $host === 'localhost:8080' ||
-        strpos($host, '127.0.0.1') === 0 ||
-        strpos($origin, 'http://localhost:3000') === 0 ||
-        strpos($origin, 'http://localhost:8080') === 0 ||
-        strpos($origin, 'http://127.0.0.1') === 0
-    );
-
-    if ($isLocal) {
-        // Check if we're running the development server (npm start) vs production build (Apache)
-        // Development server: React runs on :3000, PHP API on :8080
-        // Production build: Everything served through Apache on :80
-
-        // If the request is coming from React dev server (port 3000), use the PHP dev server
-        if (strpos($origin, 'http://localhost:3000') === 0 || strpos($origin, 'http://127.0.0.1:3000') === 0) {
-            return 'http://localhost:8080';
-        }
-
-        // If the request is coming from Apache (port 80), use the serve folder
-        if ($host === 'localhost' || strpos($host, '127.0.0.1') === 0) {
-            return 'http://localhost/serve/dorm-mart';
-        }
-
-        // Default to PHP dev server for other local cases
-        return 'http://localhost:8080';
-    }
-
-    // Fallback to test server
-    return 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j';
 }

@@ -5,13 +5,14 @@
 # and that attempt 6+ are blocked with 429 status
 
 echo "=== Rate Limiting Test ==="
+API_BASE="${API_TEST_BASE_URL:-${API_BASE_URL:-http://localhost:8080/api}}"
 
 # Clean up any previous cookies
 rm -f cookies.txt
 
 # Attempt 1: Initial login attempt to get a session cookie
 echo -e "\nAttempt 1"
-curl -X POST "http://localhost:8080/api/auth/login.php" \
+curl -X POST "${API_BASE%/}/auth/login.php" \
   -H "Content-Type: application/json" \
   -d '{"email":"test@buffalo.edu","password":"wrongpassword"}' \
   -c cookies.txt \
@@ -21,7 +22,7 @@ curl -X POST "http://localhost:8080/api/auth/login.php" \
 # Attempts 2-6 using the same session cookie
 for i in {2..6}; do 
   echo -e "\nAttempt $i"
-  curl -X POST "http://localhost:8080/api/auth/login.php" \
+  curl -X POST "${API_BASE%/}/auth/login.php" \
     -H "Content-Type: application/json" \
     -b cookies.txt \
     -c cookies.txt \
@@ -36,4 +37,3 @@ echo "Expected: Attempts 1-4 return 401, Attempt 5+ return 429"
 echo "Cleaning up..."
 rm -f cookies.txt
 echo "Done!"
-

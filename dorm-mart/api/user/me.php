@@ -3,15 +3,9 @@ declare(strict_types=1);
 
 // api/user/me.php — landing/session profile (interested categories, etc.)
 
-// Include security headers and CORS
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../helpers/response.php';
-setSecurityHeaders();
-setSecureCORS();
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 
-// CORS / preflight
-allow_options_request();
-require_request_method('GET', ['ok' => false, 'error' => 'Method Not Allowed']);
+init_json_endpoint('GET', ['ok' => false, 'error' => 'Method Not Allowed']);
 
 try {
     require __DIR__ . '/../auth/auth_handle.php';

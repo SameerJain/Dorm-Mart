@@ -1,37 +1,25 @@
 <?php
 
-// Set JSON response header early
-header('Content-Type: application/json');
-
-// Include security utilities
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
-
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+init_json_endpoint();
 
 require_login();
 
 $conn = db();
 
-$input = json_decode(file_get_contents('php://input'), true); // read raw request body and decode JSON
+$input = json_request_body(); // read raw request body and decode JSON
 $year  = isset($input['year']) ? intval($input['year']) : null; // coerce to integer if provided
 
 $maxYear = (int) date('Y') + 1;
 if ($year === null || $year < 2016 || $year > $maxYear) {
-    http_response_code(400);                          // bad request
-    echo json_encode([
+    json_response([
         'success' => false,                           // preserve response shape
         'error'   => 'Invalid or missing year'
-    ]);
-    exit;                                             // stop execution on validation failure
+    ], 400);
 }
 
 $start = sprintf('%04d-01-01 00:00:00', $year);       // start of the year (inclusive)
@@ -44,9 +32,7 @@ $sql = "SELECT item_id, title, sold_by, transacted_at, image_url
 
 $stmt = $conn->prepare($sql);                         // prepare statement to avoid SQL injection
 if (!$stmt) {
-    http_response_code(500);                          // server error if prepare fails
-    echo json_encode(['success' => false, 'error' => 'Failed to prepare query']);
-    exit;
+    json_response(['success' => false, 'error' => 'Failed to prepare query'], 500);
 }
 
 $stmt->bind_param('ss', $start, $end);                // bind date range params as strings
@@ -64,4 +50,4 @@ while ($row = $res->fetch_assoc()) {
     ];
 }
 
-echo json_encode(['success' => true, 'data' => $rows]);
+json_response(['success' => true, 'data' => $rows]);

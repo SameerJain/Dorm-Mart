@@ -10,18 +10,7 @@ setSecureCORS();
 
 header('Content-Type: application/json; charset=utf-8');
 
-// HTTPS enforcement for production (exclude localhost for development)
-$isLocalhost = (
-    ($_SERVER['HTTP_HOST'] ?? '') === 'localhost' ||
-    ($_SERVER['HTTP_HOST'] ?? '') === 'localhost:8080' ||
-    strpos($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1') === 0
-);
-
-// Check if Railway (Railway sets X-Forwarded-Proto header)
-$isRailway = (
-    strpos($_SERVER['HTTP_HOST'] ?? '', '.up.railway.app') !== false ||
-    strpos($_SERVER['HTTP_HOST'] ?? '', '.railway.app') !== false
-);
+$host = $_SERVER['HTTP_HOST'] ?? '';
 
 // Check if request is HTTPS (check both direct HTTPS and proxy headers)
 $isHttps = (
@@ -30,13 +19,9 @@ $isHttps = (
     (!empty($_SERVER['X-Forwarded-Proto']) && $_SERVER['X-Forwarded-Proto'] === 'https')
 );
 
-// Skip HTTPS redirect for Railway (Railway handles HTTPS at the proxy level)
-// Also skip for localhost
-if (!$isLocalhost && !$isRailway && !$isHttps) {
+if (!dm_is_local_host($host) && !$isHttps) {
     // Validate host against allowlist before using in redirect to prevent Host header injection
-    $host = $_SERVER['HTTP_HOST'] ?? '';
-    $allowedHosts = ['dormmart.me', 'www.dormmart.me', 'aptitude.cse.buffalo.edu', 'cattle.cse.buffalo.edu'];
-    if (in_array($host, $allowedHosts, true)) {
+    if (dm_is_allowed_redirect_host($host)) {
         $httpsUrl = 'https://' . $host . ($_SERVER['REQUEST_URI'] ?? '');
         header("Location: $httpsUrl", true, 301);
     }
@@ -82,15 +67,15 @@ if (strpos($ct, 'application/json') !== false) {
 
 // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
 // Note: SQL injection prevented by prepared statements
-if (containsXSSPattern($emailRaw)) {
+if (contains_xss_pattern($emailRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
     exit;
 }
 
 // Accept any valid email format (to support existing non-UB accounts)
-$email = validateInput($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
-$password = validateInput($passwordRaw, 64);
+$email = validate_input($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
+$password = validate_input($passwordRaw, 64);
 
 if ($email === false || $password === false) {
     http_response_code(400);

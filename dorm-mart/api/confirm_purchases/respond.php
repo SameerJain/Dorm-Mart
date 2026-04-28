@@ -2,25 +2,18 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
-require_once __DIR__ . '/../helpers/response.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-allow_options_request();
-require_request_method('POST');
+init_json_endpoint('POST');
 
 try {
     $buyerId = require_login();
 
-    $payload = json_decode(file_get_contents('php://input'), true);
-    if (!is_array($payload)) {
-        json_response(['success' => false, 'error' => 'Invalid JSON payload'], 400);
-    }
+    $payload = json_request_body_or_error();
 
     $confirmRequestId = isset($payload['confirm_request_id']) ? (int)$payload['confirm_request_id'] : 0;
     $action = isset($payload['action']) ? strtolower(trim((string)$payload['action'])) : '';

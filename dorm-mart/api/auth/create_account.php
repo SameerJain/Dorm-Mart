@@ -32,6 +32,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/../utility/transactional_email_html.php';
+require_once __DIR__ . '/../config/app_config.php';
 
 
 function generatePassword(int $length = 8): string
@@ -95,8 +96,14 @@ function sendWelcomeEmailViaSendGrid(array $user, string $tempPassword, string $
         $html = $pkg['html'];
         $text = $pkg['text'];
 
+        $fromEmail = dm_mail_from_email();
+        if ($fromEmail === '') {
+            error_log("SendGrid welcome email failed: MAIL_FROM_EMAIL or GMAIL_USERNAME is not set");
+            return ['ok' => false, 'error' => 'Email configuration missing'];
+        }
+
         $email = new \SendGrid\Mail\Mail();
-        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setFrom($fromEmail, dm_mail_from_name());
         $email->setSubject($subject);
         $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
         $email->addContent("text/html", $html);
@@ -135,25 +142,6 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
     }
     error_log("DEBUG: SendGrid API key not found, falling back to PHPMailer");
 
-    // Otherwise, use existing SMTP code (cattle/aptitude/local)
-    // Check if we're on Railway (or similar platform) where env vars are set directly
-    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
-    if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
-        // Not on Railway, load from .env files
-        foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-            if (is_readable($envFile)) {
-                foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                    $line = trim($line);
-                    if ($line === '' || str_starts_with($line, '#')) continue;
-                    [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-                    putenv(trim($k) . '=' . trim($v));
-                }
-                break;
-            }
-        }
-    }
-    // On Railway, environment variables are already set, no need to load from files
-
     // Ensure PHP is using UTF-8 internally
     if (function_exists('mb_internal_encoding')) {
         @mb_internal_encoding('UTF-8');
@@ -161,9 +149,8 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
 
     $mail = new PHPMailer(true);
     try {
-        // SMTP Configuration with optimizations for production servers
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = dm_smtp_host();
         $mail->SMTPAuth   = true;
         $gmailUsername = getenv('GMAIL_USERNAME');
         $gmailPassword = getenv('GMAIL_PASSWORD');
@@ -176,12 +163,12 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
         
         $mail->Username   = $gmailUsername;
         $mail->Password   = $gmailPassword;
-        // Try STARTTLS on port 587 first (Railway may block port 465)
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+        $secure = dm_smtp_secure();
+        $mail->SMTPSecure = $secure === 'smtps' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = dm_smtp_port();
 
         // Optimizations for faster email delivery
-        $mail->Timeout = 10; // Reduced timeout for faster failure detection (Railway may block SMTP)
+        $mail->Timeout = dm_smtp_timeout();
         $mail->SMTPKeepAlive = false; // Close connection after sending
         // Tell PHPMailer we are sending UTF-8 and how to encode it
         $mail->CharSet   = 'UTF-8';
@@ -189,8 +176,8 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
         // Optional: $mail->setLanguage('en');
 
         // From/To
-        $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
-        $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
+        $mail->setFrom(dm_mail_from_email(), dm_mail_from_name());
+        $mail->addReplyTo(dm_mail_reply_to_email(), dm_mail_reply_to_name());
         $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
         $pkg = dm_transactional_welcome_package($user['firstName'] ?? '', $tempPassword);
@@ -235,8 +222,14 @@ function sendPromoWelcomeEmailViaSendGrid(array $user, string $apiKey): array
         $html = $pkg['html'];
         $text = $pkg['text'];
 
+        $fromEmail = dm_mail_from_email();
+        if ($fromEmail === '') {
+            error_log("SendGrid promo email failed: MAIL_FROM_EMAIL or GMAIL_USERNAME is not set");
+            return ['ok' => false, 'error' => 'Email configuration missing'];
+        }
+
         $email = new \SendGrid\Mail\Mail();
-        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setFrom($fromEmail, dm_mail_from_name());
         $email->setSubject($subject);
         $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
         $email->addContent("text/html", $html);
@@ -268,25 +261,6 @@ function sendPromoWelcomeEmail(array $user): array
         return sendPromoWelcomeEmailViaSendGrid($user, $sendgridApiKey);
     }
 
-    // Otherwise, use existing SMTP code (cattle/aptitude/local)
-    // Check if we're on Railway (or similar platform) where env vars are set directly
-    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
-    if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
-        // Not on Railway, load from .env files
-        foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-            if (is_readable($envFile)) {
-                foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                    $line = trim($line);
-                    if ($line === '' || str_starts_with($line, '#')) continue;
-                    [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-                    putenv(trim($k) . '=' . trim($v));
-                }
-                break;
-            }
-        }
-    }
-    // On Railway, environment variables are already set, no need to load from files
-
     // Ensure PHP is using UTF-8 internally
     if (function_exists('mb_internal_encoding')) {
         @mb_internal_encoding('UTF-8');
@@ -294,9 +268,8 @@ function sendPromoWelcomeEmail(array $user): array
 
     $mail = new PHPMailer(true);
     try {
-        // SMTP Configuration
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = dm_smtp_host();
         $mail->SMTPAuth   = true;
         $gmailUsername = getenv('GMAIL_USERNAME');
         $gmailPassword = getenv('GMAIL_PASSWORD');
@@ -309,12 +282,12 @@ function sendPromoWelcomeEmail(array $user): array
         
         $mail->Username   = $gmailUsername;
         $mail->Password   = $gmailPassword;
-        // Try STARTTLS on port 587 first (Railway may block port 465)
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+        $secure = dm_smtp_secure();
+        $mail->SMTPSecure = $secure === 'smtps' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = dm_smtp_port();
 
         // Optimizations for faster email delivery
-        $mail->Timeout = 30;
+        $mail->Timeout = dm_smtp_timeout();
         $mail->SMTPKeepAlive = false;
         $mail->SMTPOptions = [
             'ssl' => [
@@ -329,8 +302,8 @@ function sendPromoWelcomeEmail(array $user): array
         $mail->Encoding  = 'base64';
 
         // From/To
-        $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
-        $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
+        $mail->setFrom(dm_mail_from_email(), dm_mail_from_name());
+        $mail->addReplyTo(dm_mail_reply_to_email(), dm_mail_reply_to_name());
         $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
         $pkg = dm_transactional_promo_welcome_package($user['firstName'] ?? '');
@@ -390,7 +363,7 @@ $emailRaw = strtolower(trim($data['email'] ?? ''));
 
 // XSS PROTECTION: Check for XSS patterns in firstName and lastName fields
 // Note: SQL injection is already prevented by prepared statements and regex validation
-if (containsXSSPattern($firstNameRaw) || containsXSSPattern($lastNameRaw)) {
+if (contains_xss_pattern($firstNameRaw) || contains_xss_pattern($lastNameRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
     exit;
@@ -400,8 +373,8 @@ if (containsXSSPattern($firstNameRaw) || containsXSSPattern($lastNameRaw)) {
 require_once __DIR__ . '/../config/email_config.php';
 
 // XSS PROTECTION: Input validation with regex patterns to prevent XSS attacks
-$firstName = validateInput($firstNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
-$lastName = validateInput($lastNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
+$firstName = validate_input($firstNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
+$lastName = validate_input($lastNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
 $gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
 $gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
 $promos    = !empty($data['promos']);
@@ -409,7 +382,7 @@ $promos    = !empty($data['promos']);
 // Email validation based on ALLOW_ALL_EMAILS flag
 if (ALLOW_ALL_EMAILS) {
     // Accept any valid email format
-    $email = validateInput($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
+    $email = validate_input($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
     if ($email === false || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
@@ -417,7 +390,7 @@ if (ALLOW_ALL_EMAILS) {
     }
 } else {
     // Only accept @buffalo.edu
-    $email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
+    $email = validate_input($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
     if ($email === false || !preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);

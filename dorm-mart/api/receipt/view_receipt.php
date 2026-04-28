@@ -2,26 +2,13 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../confirm_purchases/helpers.php';
+require_once __DIR__ . '/../helpers/inventory.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('GET');
 
 try {
     auth_boot_session();
@@ -34,9 +21,7 @@ try {
     $confirmRequestId = $confirmParam !== '' && ctype_digit($confirmParam) ? (int)$confirmParam : 0;
 
     if ($productId <= 0 && $confirmRequestId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'product_id or confirm_request_id is required','product_id' => $productId, 'confirm_request_id' => $confirmRequestId]);
-        exit;
+        json_response(['success' => false, 'error' => 'product_id or confirm_request_id is required','product_id' => $productId, 'confirm_request_id' => $confirmRequestId], 400);
     }
 
     $conn = db();
@@ -44,14 +29,10 @@ try {
 
     [$confirmRow, $resolvedProductId, $isAuthorized] = fetchConfirmRow($conn, $userId, $productId, $confirmRequestId);
     if (!$confirmRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Receipt not found for this listing','product_id' => $productId, 'confirm_request_id' => $confirmRequestId]);
-        exit;
+        json_response(['success' => false, 'error' => 'Receipt not found for this listing','product_id' => $productId, 'confirm_request_id' => $confirmRequestId], 404);
     }
     if (!$isAuthorized) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You are not part of this transaction']);
-        exit;
+        json_response(['success' => false, 'error' => 'You are not part of this transaction'], 403);
     }
 
     // Auto finalize if the request expired without a response.
@@ -59,16 +40,12 @@ try {
 
     $scheduledRow = fetchScheduledRequest($conn, (int)$confirmRow['scheduled_request_id']);
     if (!$scheduledRow) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Scheduled purchase details not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'Scheduled purchase details not found'], 500);
     }
 
     $productPayload = fetchProductPayload($conn, $resolvedProductId);
     if (!$productPayload) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Product not found for this receipt']);
-        exit;
+        json_response(['success' => false, 'error' => 'Product not found for this receipt'], 404);
     }
 
     $snapshot = get_confirm_snapshot($confirmRow);
@@ -79,17 +56,16 @@ try {
 
     $receiptPayload = buildReceiptPayload($confirmRow, $scheduledRow, $snapshot, $finalPrice);
 
-    echo json_encode([
+    json_response([
         'success' => true,
         'data' => [
             'product' => $productPayload,
             'receipt' => $receiptPayload,
         ],
-    ], JSON_UNESCAPED_SLASHES);
+    ], 200, JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
     error_log('view_receipt error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
 
 /**
@@ -210,48 +186,8 @@ function fetchProductPayload(mysqli $conn, int $productId): ?array
         return null;
     }
 
-    $tags = [];
-    if (!empty($row['categories'])) {
-        $decoded = json_decode($row['categories'], true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            $tags = array_values(array_filter($decoded, static fn($v) => is_string($v) && $v !== ''));
-        }
-    }
-
-    $photos = [];
-    if (!empty($row['photos'])) {
-        $decodedPhotos = json_decode($row['photos'], true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decodedPhotos)) {
-            $photos = $decodedPhotos;
-        }
-    }
-
-    $seller = formatDisplayName($row['first_name'] ?? '', $row['last_name'] ?? '', isset($row['seller_id']) ? 'Seller #' . $row['seller_id'] : 'Unknown Seller');
-    if ($seller === '' && !empty($row['email'])) {
-        $seller = (string)$row['email'];
-    }
-    return [
-        'product_id'    => (int)$row['product_id'],
-        'title'         => $row['title'] ?? 'Untitled',
-        'description'   => $row['description'] ?? '',
-        'listing_price' => $row['listing_price'] !== null ? (float)$row['listing_price'] : null,
-        'tags'          => $tags,
-        'categories'    => $row['categories'] ?? null,
-        'item_location' => $row['item_location'] ?? '',
-        'item_condition'=> $row['item_condition'] ?? '',
-        'photos'        => $photos,
-        'trades'        => (bool)$row['trades'],
-        'price_nego'    => (bool)$row['price_nego'],
-        'date_listed'   => $row['date_listed'] ?? null,
-        'seller_id'     => isset($row['seller_id']) ? (int)$row['seller_id'] : null,
-        'sold'          => (bool)$row['sold'],
-        'final_price'   => $row['final_price'] !== null ? (float)$row['final_price'] : null,
-        'date_sold'     => $row['date_sold'] ?? null,
-        'sold_to'       => isset($row['sold_to']) ? (int)$row['sold_to'] : null,
-        'seller'        => $seller !== '' ? $seller : 'Unknown Seller',
-        'email'         => $row['email'] ?? '',
-        'created_at'    => !empty($row['date_listed']) ? ($row['date_listed'] . ' 00:00:00') : null,
-    ];
+    $fallback = isset($row['seller_id']) ? 'Seller #' . $row['seller_id'] : 'Unknown Seller';
+    return inventory_product_payload($row, $fallback, false);
 }
 
 function buildReceiptPayload(array $confirmRow, array $scheduledRow, array $snapshot, ?float $finalPrice): array

@@ -2,43 +2,22 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     $userId = require_login();
 
-    $rawBody = file_get_contents('php://input');
-    $payload = json_decode($rawBody, true);
-    if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
-    }
+    $payload = json_request_body_or_error();
 
     $requestId = isset($payload['request_id']) ? (int)$payload['request_id'] : 0;
 
     if ($requestId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid request']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid request'], 400);
     }
 
     $conn = db();
@@ -71,9 +50,7 @@ try {
     $selectStmt->close();
 
     if (!$row) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Request not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'Request not found'], 404);
     }
 
     $sellerId = (int)$row['seller_user_id'];
@@ -81,24 +58,18 @@ try {
     
     // Allow both seller and buyer to cancel
     if ($userId !== $sellerId && $userId !== $buyerId) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Not authorized to cancel this request']);
-        exit;
+        json_response(['success' => false, 'error' => 'Not authorized to cancel this request'], 403);
     }
 
     // Prevent invalid cancellation states
     $currentStatus = (string)$row['status'];
     if ($currentStatus === 'cancelled') {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'error' => 'Request is already cancelled']);
-        exit;
+        json_response(['success' => false, 'error' => 'Request is already cancelled'], 409);
     }
 
     // Cannot cancel a declined request (buyer already rejected it)
     if ($currentStatus === 'declined') {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'error' => 'Cannot cancel a declined request']);
-        exit;
+        json_response(['success' => false, 'error' => 'Cannot cancel a declined request'], 409);
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
@@ -218,10 +189,8 @@ try {
         ],
     ];
 
-    echo json_encode($response);
+    json_response($response);
 } catch (Throwable $e) {
     error_log('scheduled-purchase cancel error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
-

@@ -8,21 +8,25 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../config/app_config.php';
 
 function dm_transactional_footer_inner_html(): string
 {
+    $supportEmail = dm_support_email();
+    $supportEmailEscaped = escape_html($supportEmail);
+
     return '<p style="margin:0 0 10px;color:#94a3b8;font-size:12px;line-height:1.5;">This is an automated message; please do not reply to this email.</p>'
         . '<p style="margin:0;color:#64748b;font-size:12px;line-height:1.5;">Need help? Contact us at '
-        . '<a href="mailto:dormmartsupport@gmail.com" style="color:#38bdf8;text-decoration:underline;">dormmartsupport@gmail.com</a></p>';
+        . '<a href="mailto:' . $supportEmailEscaped . '" style="color:#38bdf8;text-decoration:underline;">' . $supportEmailEscaped . '</a></p>';
 }
 
 function dm_transactional_shell(string $documentTitle, ?string $preheader, string $bodyContentHtml): string
 {
-    $docTitle = escapeHtml($documentTitle);
+    $docTitle = escape_html($documentTitle);
     $hidden = '';
     if ($preheader !== null && $preheader !== '') {
         $hidden = '<div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0;">'
-            . escapeHtml($preheader) . '</div>';
+            . escape_html($preheader) . '</div>';
     }
 
     return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
@@ -53,8 +57,8 @@ function dm_transactional_shell(string $documentTitle, ?string $preheader, strin
 function dm_transactional_welcome_package(string $firstName, string $tempPassword): array
 {
     $plainFirst = $firstName !== '' ? $firstName : 'Student';
-    $f = escapeHtml($plainFirst);
-    $p = escapeHtml($tempPassword);
+    $f = escape_html($plainFirst);
+    $p = escape_html($tempPassword);
     $subject = 'Welcome to Dorm Mart';
     $preheader = 'Your temporary password and next steps for Dorm Mart.';
 
@@ -76,7 +80,7 @@ function dm_transactional_welcome_package(string $firstName, string $tempPasswor
         . "{$tempPassword}\n\n"
         . "If you want to change this password, go to Settings -> Change Password.\n\n"
         . "Happy trading,\nThe Dorm Mart Team\n\n"
-        . "(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)";
+        . "(This is an automated message; do not reply. Support: " . dm_support_email() . ")";
 
     return ['subject' => $subject, 'html' => $html, 'text' => $text];
 }
@@ -87,8 +91,8 @@ function dm_transactional_welcome_package(string $firstName, string $tempPasswor
 function dm_transactional_password_reset_package(string $firstName, string $resetLink): array
 {
     $plainFirst = $firstName !== '' ? $firstName : 'Student';
-    $f = escapeHtml($plainFirst);
-    $href = escapeHtml($resetLink);
+    $f = escape_html($plainFirst);
+    $href = escape_html($resetLink);
     $subject = 'Reset Your Password - Dorm Mart';
     $preheader = 'Use this link to reset your Dorm Mart password. It expires in one hour.';
 
@@ -110,7 +114,7 @@ function dm_transactional_password_reset_package(string $firstName, string $rese
         . "Click this link to reset your password:\n{$resetLink}\n\n"
         . "This link will expire in 1 hour for security reasons.\n\n"
         . "Best regards,\nThe Dorm Mart Team\n\n"
-        . "(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)";
+        . "(This is an automated message; do not reply. Support: " . dm_support_email() . ")";
 
     return ['subject' => $subject, 'html' => $html, 'text' => $text];
 }
@@ -121,7 +125,7 @@ function dm_transactional_password_reset_package(string $firstName, string $rese
 function dm_transactional_promo_welcome_package(string $firstName): array
 {
     $plainFirst = $firstName !== '' ? $firstName : 'Student';
-    $f = escapeHtml($plainFirst);
+    $f = escape_html($plainFirst);
     $subject = 'Welcome to Dorm Mart Promotional Updates';
     $preheader = 'You are subscribed to Dorm Mart promotional updates.';
 
@@ -152,7 +156,7 @@ function dm_transactional_promo_welcome_package(string $firstName): array
         . "This is a one-time email confirming your choice. You can update preferences in account settings.\n\n"
         . "Subscribed successfully\n\n"
         . "Happy trading,\nThe Dorm Mart Team\n\n"
-        . "(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)";
+        . "(This is an automated message; do not reply. Support: " . dm_support_email() . ")";
 
     return ['subject' => $subject, 'html' => $html, 'text' => $text];
 }

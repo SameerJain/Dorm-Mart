@@ -2,25 +2,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('GET');
 
 try {
     auth_boot_session();
@@ -29,9 +15,7 @@ try {
     // Validate product_id
     $productIdParam = trim((string)($_GET['product_id'] ?? ''));
     if (!ctype_digit($productIdParam)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid product_id']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
     }
     $productId = (int)$productIdParam;
 
@@ -50,16 +34,12 @@ try {
     $stmt->close();
 
     if (!$productRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Product not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'Product not found'], 404);
     }
 
     $sellerId = (int)$productRow['seller_id'];
     if ($sellerId !== $userId) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You are not authorized to view reviews for this product']);
-        exit;
+        json_response(['success' => false, 'error' => 'You are not authorized to view reviews for this product'], 403);
     }
 
     // Get all reviews for this product
@@ -109,7 +89,7 @@ try {
     $stmt->close();
     $conn->close();
 
-    echo json_encode([
+    json_response([
         'success' => true,
         'count' => count($reviews),
         'reviews' => $reviews
@@ -117,7 +97,5 @@ try {
 
 } catch (Throwable $e) {
     error_log('get_product_reviews.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
-

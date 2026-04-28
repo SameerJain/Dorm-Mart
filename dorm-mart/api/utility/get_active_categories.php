@@ -52,7 +52,7 @@ try {
     sort($categories, SORT_STRING | SORT_FLAG_CASE);
     
     // XSS PROTECTION: Escape user-generated content before returning in JSON
-    $escapedCategories = array_map('escapeHtml', $categories);
+    $escapedCategories = array_map('escape_html', $categories);
     
     $conn->close();
     

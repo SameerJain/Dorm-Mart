@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../config/app_config.php';
+
 /**
  * Base URL of the api/ directory (no trailing slash).
  */
@@ -16,6 +18,11 @@ function api_test_api_base_url(): string
     $env = getenv('API_TEST_BASE_URL');
     if (is_string($env) && $env !== '') {
         return rtrim($env, '/');
+    }
+
+    $apiBase = dm_api_base_url();
+    if ($apiBase !== '' && $apiBase !== '/api') {
+        return rtrim($apiBase, '/');
     }
 
     if (!empty($_SERVER['HTTP_HOST']) && !empty($_SERVER['SCRIPT_NAME'])) {

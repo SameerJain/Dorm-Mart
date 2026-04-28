@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
+import { formatCurrency } from "../../utils/formatters";
 
 const useQuery = () => {
   const location = useLocation();
@@ -37,7 +38,7 @@ function ProductCard({ product, onView }) {
       />
       <div className="flex flex-col gap-2 p-4 min-w-0">
         <p className="text-base font-semibold text-slate-900 dark:text-gray-100 truncate" title={product.title}>{product.title}</p>
-        <p className="text-sm text-slate-500 dark:text-gray-400">${Number(product.price || 0).toFixed(2)}</p>
+        <p className="text-sm text-slate-500 dark:text-gray-400">{formatCurrency(product.price) ?? "$0.00"}</p>
         <button
           type="button"
           onClick={hasProductLink ? onView : undefined}
