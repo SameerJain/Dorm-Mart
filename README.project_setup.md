@@ -94,7 +94,7 @@ Copy any necessary files to the server:
 
 - Clear forgot password rate limit: `php api/utility/manage_forgot_password_rate_limiting.php` (run from dorm-mart folder)
 - Clear login lockout timer: `php api/utility/reset_session_lockout.php` (run from dorm-mart folder)
-
+- More docs are in /extra-files
 # Windows Powershell Build Scripts Commands
 
 **Build Method 1: Local Development:**

@@ -71,19 +71,19 @@ try {
 
   // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
   // Note: SQL injection prevented by prepared statements
-  if ($titleRaw !== '' && containsXSSPattern($titleRaw)) {
+  if ($titleRaw !== '' && contains_xss_pattern($titleRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid characters in title']);
     exit;
   }
   // XSS PROTECTION: Filtering (Layer 1)
-  if ($descriptionRaw !== null && $descriptionRaw !== '' && containsXSSPattern($descriptionRaw)) {
+  if ($descriptionRaw !== null && $descriptionRaw !== '' && contains_xss_pattern($descriptionRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid characters in description']);
     exit;
   }
   // XSS PROTECTION: Filtering (Layer 1)
-  if ($itemLocationRaw !== null && $itemLocationRaw !== '' && containsXSSPattern($itemLocationRaw)) {
+  if ($itemLocationRaw !== null && $itemLocationRaw !== '' && contains_xss_pattern($itemLocationRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid characters in location']);
     exit;
@@ -347,8 +347,8 @@ try {
   // SECURITY: In production, consider removing detailed error fields to prevent information disclosure
   echo json_encode([
     'ok'    => false,
-    'error' => $DEBUG ? escapeHtml($e->getMessage()) : 'Internal Server Error',
-    'type'  => $DEBUG ? escapeHtml(get_class($e)) : null,
-    'trace' => $DEBUG ? escapeHtml($e->getTraceAsString()) : null,
+    'error' => $DEBUG ? escape_html($e->getMessage()) : 'Internal Server Error',
+    'type'  => $DEBUG ? escape_html(get_class($e)) : null,
+    'trace' => $DEBUG ? escape_html($e->getTraceAsString()) : null,
   ]);
 }

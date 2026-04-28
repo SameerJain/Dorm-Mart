@@ -2,26 +2,13 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/expire_stale.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('GET');
 
 try {
     $sellerId = require_login();
@@ -110,13 +97,7 @@ try {
             }
         }
 
-        $photos = [];
-        if (!empty($row['item_photos'])) {
-            $decoded = json_decode((string)$row['item_photos'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $photos = $decoded;
-            }
-        }
+        $photos = inventory_json_array($row['item_photos'] ?? null);
 
         $negotiatedPrice = isset($row['negotiated_price']) && $row['negotiated_price'] !== null 
             ? (float)$row['negotiated_price'] : null;
@@ -171,11 +152,8 @@ try {
 
     $stmt->close();
 
-    echo json_encode(['success' => true, 'data' => $records]);
+    json_response(['success' => true, 'data' => $records]);
 } catch (Throwable $e) {
     error_log('scheduled-purchase list_seller error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
-
-

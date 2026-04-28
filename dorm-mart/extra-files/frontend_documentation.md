@@ -27,7 +27,7 @@ Shared frontend logic.
 - `context/ChatContext.jsx`, `context/chatContextUtils.js` - Chat state provider and API helpers.
 - `hooks/useTheme.js`, `hooks/useEmailPolicy.js` - Shared app hooks.
 - `constants/meetLocations.js` - Scheduled purchase meet-location constants.
-- `utils/apiConfig.js` - API base URL helpers.
+- `utils/apiConfig.js` - `PUBLIC_URL` and `REACT_APP_API_BASE` helpers.
 - `utils/formatters.js`, `utils/productDetails.js`, `utils/imageFallback.js` - Display, product, and media helpers.
 - `utils/handleAuth.js`, `utils/loadTheme.js` - Auth and theme helpers.
 - `utils/inputValidation.js`, `utils/passwordPolicy.js`, `utils/priceValidation.js`, `utils/numericInputKeyHandlers.js` - Form validation helpers.
@@ -67,5 +67,6 @@ Static images used by the app and README screenshots.
 
 - User-facing React routes intentionally keep existing kebab/camel route paths such as `/app/seller-dashboard`, `/app/purchase-history`, and `/app/viewProduct/:id`.
 - Backend API endpoint URLs use snake_case paths such as `/api/seller_dashboard/product_listing.php`.
+- Build base paths come from `PUBLIC_URL` in the target environment file or platform environment, not from hardcoded package scripts.
 
-*Last updated: current React tree after naming and ItemDetails refactors.*
+*Last updated: environment-backed frontend build configuration.*

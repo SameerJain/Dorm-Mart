@@ -2,45 +2,23 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     $userId = require_login();
 
     $conn = db();
     $conn->set_charset('utf8mb4');
-    $rawBody = file_get_contents('php://input');
-    $payload = json_decode($rawBody, true);
-    if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
-    }
+    $payload = json_request_body_or_error();
 
     $convId = isset($payload['conv_id']) ? (int)$payload['conv_id'] : 0;
     if ($convId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid conversation ID']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid conversation ID'], 400);
     }
 
     // Verify user is a participant in this conversation
@@ -55,9 +33,7 @@ try {
     $checkStmt->close();
 
     if (!$convRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Conversation not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'Conversation not found'], 404);
     }
 
     $user1Id = (int)$convRow['user1_id'];
@@ -66,16 +42,12 @@ try {
     $isUser2 = $userId === $user2Id;
 
     if (!$isUser1 && !$isUser2) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Not authorized to delete this conversation']);
-        exit;
+        json_response(['success' => false, 'error' => 'Not authorized to delete this conversation'], 403);
     }
 
     // Check if already deleted by this user
     if (($isUser1 && (int)$convRow['user1_deleted'] === 1) || ($isUser2 && (int)$convRow['user2_deleted'] === 1)) {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'error' => 'Conversation already deleted']);
-        exit;
+        json_response(['success' => false, 'error' => 'Conversation already deleted'], 409);
     }
 
     // Get count of scheduled purchases to delete
@@ -187,7 +159,7 @@ try {
         }
     }
     
-    echo json_encode([
+    json_response([
         'success' => true,
         'message' => 'Conversation deleted successfully',
         'deleted_scheduled_purchases' => $scheduledPurchaseCount,
@@ -196,10 +168,8 @@ try {
     $conn->close();
 } catch (Throwable $e) {
     error_log('delete_conversation error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
     if (isset($conn)) {
         $conn->close();
     }
 }
-

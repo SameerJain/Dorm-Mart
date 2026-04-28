@@ -1,42 +1,17 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../helpers/response.php';
-setSecurityHeaders();
-setSecureCORS();
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/inventory.php';
 
-allow_options_request();
-require_request_method('GET');
+init_json_endpoint('GET');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 
-function parse_json_string_list($value): array
-{
-    if (empty($value)) {
-        return [];
-    }
-
-    $decoded = json_decode((string)$value, true);
-    if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
-        return [];
-    }
-
-    return array_values(array_filter($decoded, static fn($item) => is_string($item) && $item !== ''));
-}
-
 function wishlist_seller_name(array $row): string
 {
-    $firstName = trim((string)($row['first_name'] ?? ''));
-    $lastName = trim((string)($row['last_name'] ?? ''));
-    $name = trim($firstName . ' ' . $lastName);
-
-    if ($name !== '') {
-        return $name;
-    }
-
-    return !empty($row['email']) ? (string)$row['email'] : 'Unknown Seller';
+    return inventory_display_name($row);
 }
 
 try {
@@ -80,8 +55,8 @@ try {
 
     $items = [];
     while ($row = $result->fetch_assoc()) {
-        $categories = parse_json_string_list($row['categories'] ?? null);
-        $photos = parse_json_string_list($row['photos'] ?? null);
+        $categories = inventory_string_list($row['categories'] ?? null);
+        $photos = inventory_string_list($row['photos'] ?? null);
 
         $items[] = [
             'wishlist_id' => (int)$row['wishlist_id'],

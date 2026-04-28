@@ -91,7 +91,6 @@ if (file_exists($logFile)) {
 
 echo "💡 COMMANDS:\n";
 echo "  php api/utility/monitor_user_attempts.php [session_id]  - Monitor specific session\n";
-echo "  php api/utility/attempt_logger.php view           - View all logs\n";
 echo "  php api/utility/reset_session_lockout.php          - Reset current session lockout\n";
 echo "  php api/utility/rate_limit_dashboard.php           - Show this dashboard\n";
 echo "\n";

@@ -1,18 +1,10 @@
 <?php
 
 declare(strict_types=1);
-header('Content-Type: application/json; charset=utf-8');
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require __DIR__ . '/../database/db_connect.php';
-setSecurityHeaders();
-// Ensure CORS headers are present for React dev server and local PHP server
-setSecureCORS();
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+init_json_endpoint();
 
 $conn = db();
 
@@ -20,18 +12,14 @@ session_start(); // read the PHP session cookie to identify the caller
 
 $userId = (int)($_SESSION['user_id'] ?? 0);
 if ($userId <= 0) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
+    json_response(['success' => false, 'error' => 'Not authenticated'], 401);
 }
 
 // --- input: conv_id must come from the query string ---
 // e.g. GET /api/chat/fetch_conversation.php?conv_id=123
 $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
 if ($convId <= 0) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'conv_id is required']);
-    exit;
+    json_response(['success' => false, 'error' => 'conv_id is required'], 400);
 }
 
 // --- fetch all messages for this conversation (oldest first) ---
@@ -129,7 +117,7 @@ if ($stmt) {
 }
 
 // --- done ---
-echo json_encode([
+json_response([
     'success'  => true,
     'conv_id'  => $convId,
     'messages' => $messages,

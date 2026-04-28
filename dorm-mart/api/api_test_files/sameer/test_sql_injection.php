@@ -118,10 +118,10 @@ foreach ($testEndpoints as $endpoint) {
         }
         
         $status = $isSafe ? "<span class='pass'>PASS</span>" : "<span class='fail'>FAIL</span>";
-        echo "<p>{$status} Payload: <code>" . htmlspecialchars($payload) . "</code></p>";
+        echo "<p>{$status} Payload: <code>" . escape_html($payload) . "</code></p>";
         
         if (!$isSafe) {
-            echo "<pre>Response: " . htmlspecialchars($response) . "</pre>";
+            echo "<pre>Response: " . escape_html($response) . "</pre>";
         }
     }
     
@@ -141,4 +141,3 @@ echo "</div>";
 echo "</body>
 </html>";
 ?>
-

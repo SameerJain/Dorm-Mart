@@ -4,22 +4,10 @@ declare(strict_types=1);
 /** Must match product_listing.php */
 const MAX_ACTIVE_LISTINGS_PER_SELLER = 25;
 
-header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
@@ -30,16 +18,12 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    $raw = file_get_contents('php://input');
-    $input = json_decode($raw, true);
-    if (!is_array($input)) $input = [];
+    $input = json_request_body();
 
     /* Conditional CSRF validation - only validate if token is provided */
     $token = $input['csrf_token'] ?? null;
     if ($token !== null && !validate_csrf_token($token)) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'CSRF token validation failed']);
-        exit;
+        json_response(['success' => false, 'error' => 'CSRF token validation failed'], 403);
     }
 
     $id = isset($input['id']) ? (int)$input['id'] : 0;
@@ -47,9 +31,7 @@ try {
 
     $valid = ['Active','Pending','Draft','Sold'];
     if ($id <= 0 || !in_array($status, $valid, true)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid id or status']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid id or status'], 400);
     }
 
     $checkStmt = $conn->prepare('SELECT sold, item_status FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
@@ -61,16 +43,12 @@ try {
     $existing = $checkStmt->get_result()->fetch_assoc();
     $checkStmt->close();
     if (!$existing) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'Not found'], 404);
     }
     $soldFlag = isset($existing['sold']) ? (int)$existing['sold'] : 0;
     $statusStr = isset($existing['item_status']) ? (string)$existing['item_status'] : '';
     if ($soldFlag === 1 || $statusStr === 'Sold') {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Sold listings cannot be edited.']);
-        exit;
+        json_response(['success' => false, 'error' => 'Sold listings cannot be edited.'], 403);
     }
 
     // Enforce cap on active listings per seller when activating
@@ -85,12 +63,10 @@ try {
         $capStmt->close();
 
         if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
-            http_response_code(403);
-            echo json_encode([
+            json_response([
                 'success' => false,
                 'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . ' active listings. Please deactivate or remove an existing listing before activating this one.'
-            ]);
-            exit;
+            ], 403);
         }
     }
 
@@ -110,16 +86,12 @@ try {
     $stmt->execute();
 
     if ($stmt->affected_rows < 1) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'Not found'], 404);
     }
 
-    echo json_encode(['success' => true, 'id' => $id, 'status' => $status]);
+    json_response(['success' => true, 'id' => $id, 'status' => $status]);
 } catch (Throwable $e) {
     error_log('set_item_status error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
-
 

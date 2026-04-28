@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SettingsLayout from "./SettingsLayout";
 import PageBackButton from "../../components/PageBackButton";
 import PasswordRequirementRow from "../../components/forms/PasswordRequirementRow";
+import { API_BASE } from "../../utils/apiConfig";
 import { buildPasswordPolicy, hasDigit, hasLower, hasSpecial, hasUpper, MAX_PASSWORD_LEN } from "../../utils/passwordPolicy";
 
 const MAX_LEN = MAX_PASSWORD_LEN;
@@ -154,7 +155,7 @@ function ChangePasswordPage() {
     }
 
     try {
-      const res = await fetch("api/auth/change_password.php", {
+      const res = await fetch(`${API_BASE}/auth/change_password.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

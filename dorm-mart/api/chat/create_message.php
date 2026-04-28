@@ -1,19 +1,13 @@
 <?php
 
 declare(strict_types=1);
-header('Content-Type: application/json');
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
-setSecurityHeaders();
-setSecureCORS();
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+init_json_endpoint();
 
 $conn = db();
 $conn->set_charset('utf8mb4');
@@ -24,14 +18,12 @@ auth_boot_session();
 $userId = require_login();
 
 $sender = $userId;
-$body = json_decode(file_get_contents('php://input'), true);
+$body = json_request_body();
 
 /* Conditional CSRF validation - only validate if token is provided */
 $token = $body['csrf_token'] ?? null;
 if ($token !== null && !validate_csrf_token($token)) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'CSRF token validation failed']);
-    exit;
+    json_response(['success' => false, 'error' => 'CSRF token validation failed'], 403);
 }
 
 $receiver = isset($body['receiver_id']) ? trim((string)$body['receiver_id']) : '';
@@ -39,31 +31,25 @@ $contentRaw  = isset($body['content'])     ? trim((string)$body['content'])     
 $convIdParam = isset($body['conv_id']) ? (int)$body['conv_id'] : null;
 
 if ($sender === '' || $receiver === '' || $contentRaw === '') {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'missing_fields']);
-    exit;
+    json_response(['success' => false, 'error' => 'missing_fields'], 400);
 }
 
 // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
 // Note: SQL injection prevented by prepared statements
-if (containsXSSPattern($contentRaw)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid characters in message']);
-    exit;
+if (contains_xss_pattern($contentRaw)) {
+    json_response(['success' => false, 'error' => 'Invalid characters in message'], 400);
 }
 
 $content = $contentRaw;
 
 $len = function_exists('mb_strlen') ? mb_strlen($content, 'UTF-8') : strlen($content); // mb_strlen counts Unicode chars
 if ($len > 500) {
-    http_response_code(400);
-    echo json_encode([
+    json_response([
         'success' => false,
         'error'   => 'content_too_long',
         'max'     => 500,
         'length'  => $len
-    ]);
-    exit;
+    ], 400);
 }
 
 $senderId   = (int)$sender;
@@ -137,9 +123,7 @@ try {
             $stmt->bind_param('s', $lockKey);
             $stmt->execute();
             $stmt->close();
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Invalid conversation ID']);
-            exit;
+            json_response(['success' => false, 'error' => 'Invalid conversation ID'], 403);
         }
     } else {
         // Find existing conversation (NEW SCHEMA: user1_id/user2_id)
@@ -188,9 +172,7 @@ try {
         $stmt->execute();
         $stmt->close();
         $conn->rollback();
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Item has been deleted. Cannot send messages.']);
-        exit;
+        json_response(['success' => false, 'error' => 'Item has been deleted. Cannot send messages.'], 403);
     }
 
     // Ensure both participants exist
@@ -270,7 +252,7 @@ try {
         $createdIso = gmdate('Y-m-d\TH:i:s\Z'); // UTC "now"
     }
 
-    echo json_encode([
+    json_response([
         'success'     => true,
         'conv_id'     => $convId,
         'message_id'  => $msgId,
@@ -280,7 +262,7 @@ try {
             'content'    => $content,
             'created_at' => $createdIso, // ISO-8601 UTC, e.g., 2025-10-31T03:05:06Z
         ],
-    ], JSON_UNESCAPED_SLASHES);
+    ], 200, JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
     if ($conn->errno === 0) {
         $conn->rollback();
@@ -293,6 +275,5 @@ try {
             $stmt->close();
         }
     }
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Server error']);
+    json_response(['success' => false, 'error' => 'Server error'], 500);
 }

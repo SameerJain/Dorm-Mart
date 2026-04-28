@@ -1,14 +1,11 @@
 <?php
-header('Content-Type: application/json');
-
-// Include security utilities
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../utility/transactional_email_html.php';
+require_once __DIR__ . '/../config/app_config.php';
 
 // Include PHPMailer for promo email functionality
 $PROJECT_ROOT = dirname(__DIR__, 2);
@@ -23,11 +20,7 @@ if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Handle CORS preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+init_json_endpoint();
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -116,8 +109,14 @@ function sendPromoWelcomeEmailViaSendGrid(array $user, string $apiKey): array
         $html = $pkg['html'];
         $text = $pkg['text'];
 
+        $fromEmail = dm_mail_from_email();
+        if ($fromEmail === '') {
+            error_log("SendGrid promo email failed: MAIL_FROM_EMAIL or GMAIL_USERNAME is not set");
+            return ['ok' => false, 'error' => 'Email configuration missing'];
+        }
+
         $email = new \SendGrid\Mail\Mail();
-        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setFrom($fromEmail, dm_mail_from_name());
         $email->setSubject($subject);
         $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
         $email->addContent("text/html", $html);
@@ -140,33 +139,12 @@ function sendPromoWelcomeEmailViaSendGrid(array $user, string $apiKey): array
 
 function sendPromoWelcomeEmail(array $user): array
 {
-    $PROJECT_ROOT = dirname(__DIR__, 2);
-
     // Check for SendGrid API key first (Railway option)
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
     if (!empty($sendgridApiKey)) {
         // Use SendGrid REST API for Railway
         return sendPromoWelcomeEmailViaSendGrid($user, $sendgridApiKey);
     }
-
-    // Otherwise, use existing SMTP code (cattle/aptitude/local)
-    // Check if we're on Railway (or similar platform) where env vars are set directly
-    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
-    if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
-        // Not on Railway, load from .env files
-        foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-            if (is_readable($envFile)) {
-                foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                    $line = trim($line);
-                    if ($line === '' || str_starts_with($line, '#')) continue;
-                    [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-                    putenv(trim($k) . '=' . trim($v));
-                }
-                break;
-            }
-        }
-    }
-    // On Railway, environment variables are already set, no need to load from files
 
     // Ensure PHP is using UTF-8 internally
     if (function_exists('mb_internal_encoding')) {
@@ -175,17 +153,17 @@ function sendPromoWelcomeEmail(array $user): array
 
     $mail = new PHPMailer(true);
     try {
-        // SMTP Configuration
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = dm_smtp_host();
         $mail->SMTPAuth   = true;
         $mail->Username   = getenv('GMAIL_USERNAME');
         $mail->Password   = getenv('GMAIL_PASSWORD');
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port       = 465;
+        $secure = dm_smtp_secure();
+        $mail->SMTPSecure = $secure === 'smtps' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = dm_smtp_port();
 
         // Optimizations for faster email delivery
-        $mail->Timeout = 30;
+        $mail->Timeout = dm_smtp_timeout();
         $mail->SMTPKeepAlive = false;
         $mail->SMTPOptions = [
             'ssl' => [
@@ -200,8 +178,8 @@ function sendPromoWelcomeEmail(array $user): array
         $mail->Encoding  = 'base64';
 
         // From/To
-        $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
-        $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
+        $mail->setFrom(dm_mail_from_email(), dm_mail_from_name());
+        $mail->addReplyTo(dm_mail_reply_to_email(), dm_mail_reply_to_name());
         $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
         $pkg = dm_transactional_promo_welcome_package($user['firstName'] ?? '');
@@ -224,22 +202,17 @@ function sendPromoWelcomeEmail(array $user): array
 try {
   if ($method === 'GET') {
     $data = getPrefs($conn, $userId);
-    echo json_encode(['ok' => true, 'data' => $data]);
     $conn->close();
-    exit;
+    json_response(['ok' => true, 'data' => $data]);
   }
 
   if ($method === 'POST') {
-    $raw = file_get_contents('php://input');
-    $body = json_decode($raw, true);
-    if (!is_array($body)) $body = [];
+    $body = json_request_body();
 
     /* Conditional CSRF validation - only validate if token is provided */
     $token = $body['csrf_token'] ?? null;
     if ($token !== null && !validate_csrf_token($token)) {
-        http_response_code(403);
-        echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
-        exit;
+        json_response(['ok' => false, 'error' => 'CSRF token validation failed'], 403);
     }
 
     $promo = isset($body['promoEmails']) ? (int)!!$body['promoEmails'] : 0;
@@ -315,18 +288,13 @@ try {
       }
     }
 
-    echo json_encode(['ok' => true]);
     $conn->close();
-    exit;
+    json_response(['ok' => true]);
   }
 
-  http_response_code(405);
-  echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
   $conn->close();
-  exit;
+  json_response(['ok' => false, 'error' => 'Method Not Allowed'], 405);
 } catch (Throwable $e) {
-  http_response_code(500);
-  echo json_encode(['ok' => false, 'error' => 'Server error']);
   if (isset($conn)) $conn->close();
-  exit;
+  json_response(['ok' => false, 'error' => 'Server error'], 500);
 }

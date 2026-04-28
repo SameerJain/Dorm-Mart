@@ -1,35 +1,18 @@
 <?php
 declare(strict_types=1);
 
-// Include security headers for XSS protection
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
-// Handle preflight requests
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-// Only allow POST requests — token must stay out of the URL / server access logs
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 require_once __DIR__ . '/../database/db_connect.php';
 
-$body  = json_decode(file_get_contents('php://input'), true) ?? [];
+$body  = json_request_body();
 $token = $body['token'] ?? '';
 
 if (empty($token)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Token required']);
-    exit;
+    json_response(['success' => false, 'error' => 'Token required'], 400);
 }
 
 try {
@@ -60,14 +43,14 @@ try {
     $conn->close();
 
     if ($isValidToken) {
-        echo json_encode([
+        json_response([
             'success' => true,
             'valid' => true,
             'user_id' => $userId,
             'message' => 'Token is valid'
         ]);
     } else {
-        echo json_encode([
+        json_response([
             'success' => true,
             'valid' => false,
             'message' => 'Token is invalid or expired'
@@ -75,8 +58,5 @@ try {
     }
     
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Server error']);
+    json_response(['success' => false, 'error' => 'Server error'], 500);
 }
-?>
-

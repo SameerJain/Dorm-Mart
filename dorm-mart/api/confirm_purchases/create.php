@@ -2,36 +2,18 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     $sellerId = require_login();
 
-    $payload = json_decode(file_get_contents('php://input'), true);
-    if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
-    }
+    $payload = json_request_body_or_error();
 
     $scheduledRequestId = isset($payload['scheduled_request_id']) ? (int)$payload['scheduled_request_id'] : 0;
     $conversationId = isset($payload['conversation_id']) ? (int)$payload['conversation_id'] : 0;
@@ -39,37 +21,27 @@ try {
 
     $isSuccessfulRaw = $payload['is_successful'] ?? null;
     if ($isSuccessfulRaw === null) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'is_successful is required']);
-        exit;
+        json_response(['success' => false, 'error' => 'is_successful is required'], 400);
     }
     $isSuccessful = filter_var($isSuccessfulRaw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
     if ($isSuccessful === null) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid is_successful value']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid is_successful value'], 400);
     }
 
     $finalPrice = isset($payload['final_price']) && $payload['final_price'] !== ''
         ? (float)$payload['final_price']
         : null;
     if ($finalPrice !== null && ($finalPrice < 0 || $finalPrice > 9999.99)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Final price must be between 0 and 9,999.99']);
-        exit;
+        json_response(['success' => false, 'error' => 'Final price must be between 0 and 9,999.99'], 400);
     }
 
     $sellerNotes = isset($payload['seller_notes']) ? trim((string)$payload['seller_notes']) : '';
     if (strlen($sellerNotes) > 2000) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Notes cannot exceed 2000 characters']);
-        exit;
+        json_response(['success' => false, 'error' => 'Notes cannot exceed 2000 characters'], 400);
     }
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if ($sellerNotes !== '' && containsXSSPattern($sellerNotes)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in seller notes']);
-        exit;
+    if ($sellerNotes !== '' && contains_xss_pattern($sellerNotes)) {
+        json_response(['success' => false, 'error' => 'Invalid characters in seller notes'], 400);
     }
 
     $failureReason = isset($payload['failure_reason']) ? trim((string)$payload['failure_reason']) : null;
@@ -81,37 +53,25 @@ try {
         $failureReasonNotes = null;
     } else {
         if ($failureReason === null || $failureReason === '') {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Failure reason is required for unsuccessful confirmations']);
-            exit;
+            json_response(['success' => false, 'error' => 'Failure reason is required for unsuccessful confirmations'], 400);
         }
         if (!in_array($failureReason, $validFailureReasons, true)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Invalid failure reason']);
-            exit;
+            json_response(['success' => false, 'error' => 'Invalid failure reason'], 400);
         }
         if ($failureReason === 'other' && ($failureReasonNotes === null || $failureReasonNotes === '')) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Please provide details for the selected reason']);
-            exit;
+            json_response(['success' => false, 'error' => 'Please provide details for the selected reason'], 400);
         }
         if ($failureReasonNotes !== null && strlen($failureReasonNotes) > 1000) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Failure notes cannot exceed 1000 characters']);
-            exit;
+            json_response(['success' => false, 'error' => 'Failure notes cannot exceed 1000 characters'], 400);
         }
         // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-        if ($failureReasonNotes !== null && $failureReasonNotes !== '' && containsXSSPattern($failureReasonNotes)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Invalid characters in failure reason notes']);
-            exit;
+        if ($failureReasonNotes !== null && $failureReasonNotes !== '' && contains_xss_pattern($failureReasonNotes)) {
+            json_response(['success' => false, 'error' => 'Invalid characters in failure reason notes'], 400);
         }
     }
 
     if ($scheduledRequestId <= 0 || $conversationId <= 0 || $productId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Missing reference ids']);
-        exit;
+        json_response(['success' => false, 'error' => 'Missing reference ids'], 400);
     }
 
     $conn = db();
@@ -158,15 +118,11 @@ try {
     $schedStmt->close();
 
     if (!$schedRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Scheduled purchase not found or not accepted']);
-        exit;
+        json_response(['success' => false, 'error' => 'Scheduled purchase not found or not accepted'], 404);
     }
 
     if ((int)$schedRow['seller_user_id'] !== $sellerId) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You cannot confirm purchases for this listing']);
-        exit;
+        json_response(['success' => false, 'error' => 'You cannot confirm purchases for this listing'], 403);
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
@@ -182,9 +138,7 @@ try {
     if ($pendingRow) {
         $pendingRow = auto_finalize_confirm_request($conn, $pendingRow);
         if ($pendingRow && ($pendingRow['status'] ?? '') === 'pending') {
-            http_response_code(409);
-            echo json_encode(['success' => false, 'error' => 'There is already a pending confirmation for this scheduled purchase']);
-            exit;
+            json_response(['success' => false, 'error' => 'There is already a pending confirmation for this scheduled purchase'], 409);
         }
     }
     
@@ -198,9 +152,7 @@ try {
     $latestStmt->close();
     
     if ($latestRow && in_array($latestRow['status'], ['buyer_accepted', 'auto_accepted'], true)) {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'error' => 'This transaction has already been confirmed']);
-        exit;
+        json_response(['success' => false, 'error' => 'This transaction has already been confirmed'], 409);
     }
 
     $buyerId = (int)$schedRow['buyer_user_id'];
@@ -295,7 +247,7 @@ try {
     $messageContent = $sellerDisplayName . ' submitted a Confirm Purchase form for ' . $itemTitle . '.';
     insert_confirm_chat_message($conn, $conversationId, $sellerId, $buyerId, $messageContent, $metadata);
 
-    echo json_encode([
+    json_response([
         'success' => true,
         'data' => [
             'confirm_request_id' => $confirmRequestId,
@@ -306,6 +258,5 @@ try {
     ]);
 } catch (Throwable $e) {
     error_log('confirm-purchase create error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

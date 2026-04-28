@@ -2,36 +2,17 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     $sellerId = require_login();
 
-    $rawBody = file_get_contents('php://input');
-    $payload = json_decode($rawBody, true);
-    if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
-    }
+    $payload = json_request_body_or_error();
 
     $inventoryId = isset($payload['inventory_product_id']) ? (int)$payload['inventory_product_id'] : 0;
     $conversationId = isset($payload['conversation_id']) ? (int)$payload['conversation_id'] : 0;
@@ -39,10 +20,8 @@ try {
     $description = isset($payload['description']) ? trim((string)$payload['description']) : '';
     
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if ($description !== '' && containsXSSPattern($description)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in description']);
-        exit;
+    if ($description !== '' && contains_xss_pattern($description)) {
+        json_response(['success' => false, 'error' => 'Invalid characters in description'], 400);
     }
     
     // New fields for price negotiation and trades
@@ -53,10 +32,8 @@ try {
         ? trim((string)$payload['trade_item_description']) : null;
 
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if ($tradeItemDescription !== null && $tradeItemDescription !== '' && containsXSSPattern($tradeItemDescription)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in trade item description']);
-        exit;
+    if ($tradeItemDescription !== null && $tradeItemDescription !== '' && contains_xss_pattern($tradeItemDescription)) {
+        json_response(['success' => false, 'error' => 'Invalid characters in trade item description'], 400);
     }
 
     $meetLocationChoice = isset($payload['meet_location_choice'])
@@ -70,26 +47,20 @@ try {
         : '';
 
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if ($customMeetLocation !== '' && containsXSSPattern($customMeetLocation)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in meet location']);
-        exit;
+    if ($customMeetLocation !== '' && contains_xss_pattern($customMeetLocation)) {
+        json_response(['success' => false, 'error' => 'Invalid characters in meet location'], 400);
     }
 
     $allowedMeetLocationChoices = ['', 'North Campus', 'South Campus', 'Ellicott', 'Other'];
 
     if ($meetLocationChoice !== null) {
         if (!in_array($meetLocationChoice, $allowedMeetLocationChoices, true)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Invalid meet location choice']);
-            exit;
+            json_response(['success' => false, 'error' => 'Invalid meet location choice'], 400);
         }
 
         if ($meetLocationChoice === 'Other') {
             if ($customMeetLocation === '') {
-                http_response_code(400);
-                echo json_encode(['success' => false, 'error' => 'Custom meet location is required']);
-                exit;
+                json_response(['success' => false, 'error' => 'Custom meet location is required'], 400);
             }
             $meetLocation = $customMeetLocation;
         } elseif ($meetLocationChoice !== '') {
@@ -98,22 +69,16 @@ try {
     }
 
     if ($inventoryId <= 0 || $conversationId <= 0 || $meetLocation === '' || $meetingAtRaw === '') {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Missing required fields']);
-        exit;
+        json_response(['success' => false, 'error' => 'Missing required fields'], 400);
     }
 
     if (strlen($meetLocation) > 30) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Meet location is too long']);
-        exit;
+        json_response(['success' => false, 'error' => 'Meet location is too long'], 400);
     }
 
     $meetingAt = date_create($meetingAtRaw);
     if ($meetingAt === false) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid meeting date/time']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid meeting date/time'], 400);
     }
     
     // Check if meeting is more than 3 months in the future
@@ -122,16 +87,12 @@ try {
     $threeMonthsFromNow->modify('+3 months');
     
     if ($meetingAt > $threeMonthsFromNow) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Meeting date cannot be more than 3 months in advance']);
-        exit;
+        json_response(['success' => false, 'error' => 'Meeting date cannot be more than 3 months in advance'], 400);
     }
     
     // Check if meeting is in the past
     if ($meetingAt < $now) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Meeting date cannot be in the past']);
-        exit;
+        json_response(['success' => false, 'error' => 'Meeting date cannot be in the past'], 400);
     }
     
     $meetingAt->setTimezone(new DateTimeZone('UTC'));
@@ -152,9 +113,7 @@ try {
     $itemStmt->close();
 
     if (!$itemRow || (int)$itemRow['seller_id'] !== $sellerId) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You can only schedule for your own listings']);
-        exit;
+        json_response(['success' => false, 'error' => 'You can only schedule for your own listings'], 403);
     }
 
     // Snapshot mechanism: Capture item settings at scheduling time
@@ -176,43 +135,31 @@ try {
     $convStmt->close();
 
     if (!$convRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Conversation not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'Conversation not found'], 404);
     }
 
     $buyerId = 0;
     if ((int)$convRow['user1_id'] === $sellerId) {
         if ((int)$convRow['user1_deleted'] === 1) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Conversation is no longer available']);
-            exit;
+            json_response(['success' => false, 'error' => 'Conversation is no longer available'], 403);
         }
         $buyerId = (int)$convRow['user2_id'];
     } elseif ((int)$convRow['user2_id'] === $sellerId) {
         if ((int)$convRow['user2_deleted'] === 1) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Conversation is no longer available']);
-            exit;
+            json_response(['success' => false, 'error' => 'Conversation is no longer available'], 403);
         }
         $buyerId = (int)$convRow['user1_id'];
     } else {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You do not have access to this conversation']);
-        exit;
+        json_response(['success' => false, 'error' => 'You do not have access to this conversation'], 403);
     }
 
     if ($buyerId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Could not determine buyer']);
-        exit;
+        json_response(['success' => false, 'error' => 'Could not determine buyer'], 400);
     }
 
     // Ensure buyer is not the seller
     if ($buyerId === $sellerId) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Cannot schedule with yourself']);
-        exit;
+        json_response(['success' => false, 'error' => 'Cannot schedule with yourself'], 400);
     }
 
     // Generate unique 4-character verification code for buyer-seller meetup confirmation
@@ -220,43 +167,31 @@ try {
 
     // Validation: Ensure negotiated price is only allowed for price-negotiable items
     if ($negotiatedPrice !== null && !$snapshotPriceNego) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'This item is not marked as price negotiable']);
-        exit;
+        json_response(['success' => false, 'error' => 'This item is not marked as price negotiable'], 400);
     }
 
     // Validation: Ensure trade option is only allowed for items that accept trades
     if ($isTrade && !$snapshotTrades) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'This item does not accept trades']);
-        exit;
+        json_response(['success' => false, 'error' => 'This item does not accept trades'], 400);
     }
 
     // Validation: Price and trade are mutually exclusive
     if ($isTrade && $negotiatedPrice !== null) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Cannot enter a price for a trade']);
-        exit;
+        json_response(['success' => false, 'error' => 'Cannot enter a price for a trade'], 400);
     }
 
     // Validate trade item description if trade is selected
     if ($isTrade && ($tradeItemDescription === null || $tradeItemDescription === '')) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Trade item description is required when trade is selected']);
-        exit;
+        json_response(['success' => false, 'error' => 'Trade item description is required when trade is selected'], 400);
     }
 
     // Validate negotiated price if provided
     if ($negotiatedPrice !== null) {
         if ($negotiatedPrice < 0 || !is_finite($negotiatedPrice)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Invalid negotiated price']);
-            exit;
+            json_response(['success' => false, 'error' => 'Invalid negotiated price'], 400);
         }
         if ($negotiatedPrice > 9999.99) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Negotiated price must be $9999.99 or less']);
-            exit;
+            json_response(['success' => false, 'error' => 'Negotiated price must be $9999.99 or less'], 400);
         }
         // Allow 0 as a valid price (free item)
         // But convert empty/whitespace to null for consistency
@@ -407,11 +342,10 @@ try {
         ],
     ];
 
-    echo json_encode($response);
+    json_response($response);
 } catch (Throwable $e) {
     error_log('scheduled-purchase create error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
 
 function generateUniqueCode(mysqli $conn): string
@@ -443,5 +377,3 @@ function generateUniqueCode(mysqli $conn): string
         $checkStmt->close();
     }
 }
-
-

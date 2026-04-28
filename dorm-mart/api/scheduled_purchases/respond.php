@@ -2,45 +2,24 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/expire_stale.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     $buyerId = require_login();
 
-    $rawBody = file_get_contents('php://input');
-    $payload = json_decode($rawBody, true);
-    if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
-    }
+    $payload = json_request_body_or_error();
 
     $requestId = isset($payload['request_id']) ? (int)$payload['request_id'] : 0;
     $action = isset($payload['action']) ? strtolower(trim((string)$payload['action'])) : '';
 
     if ($requestId <= 0 || ($action !== 'accept' && $action !== 'decline')) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid request']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid request'], 400);
     }
 
     $conn = db();
@@ -84,21 +63,15 @@ try {
     $selectStmt->close();
 
     if (!$row) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Request not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'Request not found'], 404);
     }
 
     if ((int)$row['buyer_user_id'] !== $buyerId) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Not authorized to respond to this request']);
-        exit;
+        json_response(['success' => false, 'error' => 'Not authorized to respond to this request'], 403);
     }
 
     if ($row['status'] !== 'pending') {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'error' => 'Request has already been handled']);
-        exit;
+        json_response(['success' => false, 'error' => 'Request has already been handled'], 409);
     }
 
     // Prevent double-booking: Check if item is already pending before accepting
@@ -118,9 +91,7 @@ try {
         
         // If item already has 'Pending' status, reject this acceptance
         if ($itemStatusRow && isset($itemStatusRow['item_status']) && $itemStatusRow['item_status'] === 'Pending') {
-            http_response_code(409);
-            echo json_encode(['success' => false, 'error' => 'This item has already been accepted by another buyer']);
-            exit;
+            json_response(['success' => false, 'error' => 'This item has already been accepted by another buyer'], 409);
         }
     }
 
@@ -383,11 +354,9 @@ try {
         ],
     ];
 
-    echo json_encode($response);
+    json_response($response);
 } catch (Throwable $e) {
     error_log('scheduled-purchase respond error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
-
 

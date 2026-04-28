@@ -1,48 +1,77 @@
 <?php
 
-function load_env(): void {
-    // Check if we're on Railway (or similar platform) where env vars are set directly
-    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
-    if (getenv('RAILWAY_ENVIRONMENT') !== false || getenv('DB_HOST') !== false) {
-        // Environment variables are already set by Railway/platform
-        // No need to load from .env file
+function load_env(): void
+{
+    static $loaded = false;
+    if ($loaded) {
         return;
     }
-    
-    // dorm-mart/
+    $loaded = true;
+
     $root = dirname(__DIR__, 2);
-    // load whichever exists
-    $devEnvFile = "{$root}/.env.development";
-    $localEnvFile = "{$root}/.env.local";
-    $prodEnvFile = "{$root}/.env.production";
-    $cattleEnvFile = "{$root}/.env.cattle";
-
-    // load whichever exists
-    //! the order matters here
-    //! make sure only one env file exists on any server you upload the project
-    if (file_exists($devEnvFile)) {
-        $envFile = $devEnvFile;
-    } elseif (file_exists($localEnvFile)) {
-        $envFile = $localEnvFile;
-    } elseif (file_exists($prodEnvFile)) {
-        $envFile = $prodEnvFile;
-    } elseif (file_exists($cattleEnvFile)) {
-        $envFile = $cattleEnvFile;
-    } else {
-        error_log('load_env: No .env file found in expected locations');
-        echo json_encode(["success" => false, "message" => "Server configuration error"]);
-        exit;
+    $envFile = dm_resolve_env_file($root);
+    if ($envFile === null) {
+        return;
     }
 
-    // parse and set env file
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
         $line = trim($line);
-        // skipping comments or empty lines
-        if ($line === '' || str_starts_with($line, '#')) continue;
-        // parse kvs
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+
         [$key, $value] = array_pad(explode('=', $line, 2), 2, '');
-        putenv(trim($key) . '=' . trim($value));
+        $key = trim($key);
+        if ($key === '' || getenv($key) !== false) {
+            continue;
+        }
+
+        putenv($key . '=' . dm_clean_env_value($value));
     }
-    
+}
+
+function dm_resolve_env_file(string $root): ?string
+{
+    $explicitFile = getenv('ENV_FILE');
+    if ($explicitFile !== false && trim($explicitFile) !== '') {
+        $path = trim($explicitFile);
+        if (!preg_match('/^[A-Za-z]:[\/\\\\]/', $path) && !str_starts_with($path, '/')) {
+            $path = $root . DIRECTORY_SEPARATOR . $path;
+        }
+        return is_readable($path) ? $path : null;
+    }
+
+    $appEnv = getenv('APP_ENV');
+    if ($appEnv === false || trim($appEnv) === '') {
+        foreach (['development', 'local'] as $fallbackEnv) {
+            $fallback = "{$root}/.env.{$fallbackEnv}";
+            if (is_readable($fallback)) {
+                return $fallback;
+            }
+        }
+        return null;
+    }
+
+    $safeEnv = strtolower(trim($appEnv));
+    $allowed = ['development', 'local', 'production', 'cattle'];
+    if (!in_array($safeEnv, $allowed, true)) {
+        error_log("load_env: unsupported APP_ENV '{$safeEnv}'");
+        return null;
+    }
+
+    $path = "{$root}/.env.{$safeEnv}";
+    return is_readable($path) ? $path : null;
+}
+
+function dm_clean_env_value(string $value): string
+{
+    $value = trim($value);
+    if (strlen($value) >= 2) {
+        $first = $value[0];
+        $last = $value[strlen($value) - 1];
+        if (($first === '"' && $last === '"') || ($first === "'" && $last === "'")) {
+            return substr($value, 1, -1);
+        }
+    }
+    return $value;
 }
