@@ -7,8 +7,8 @@ declare(strict_types=1);
 
 // Include security utilities
 require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+set_security_headers();
+set_secure_cors();
 
 // Must match upload_profile_photo.php / product_listing.php: uploads honor DATA_IMAGES_DIR.
 $projectRoot = dirname(__DIR__, 2);

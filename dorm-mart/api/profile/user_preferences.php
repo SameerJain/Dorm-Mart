@@ -29,15 +29,9 @@ $userId = require_login();
 $conn = db();
 
 // Helpers
-function getPrefs(mysqli $conn, int $userId)
+function get_prefs(mysqli $conn, int $userId)
 {
-  // ============================================================================
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  // ============================================================================
-  // Using prepared statement with '?' placeholder and bind_param() to safely
-  // handle $userId. Even if malicious SQL is in $userId, it cannot execute
-  // because it's bound as an integer parameter, not concatenated into SQL.
-  // ============================================================================
   $stmt = $conn->prepare('SELECT theme, promotional, reveal_contact_info, interested_category_1, interested_category_2, interested_category_3 FROM user_accounts WHERE user_id = ?');
   $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
@@ -89,7 +83,7 @@ function getPrefs(mysqli $conn, int $userId)
 /**
  * Send promo welcome email via SendGrid REST API (for Railway)
  */
-function sendPromoWelcomeEmailViaSendGrid(array $user, string $apiKey): array
+function send_promo_welcome_email_via_sendgrid(array $user, string $apiKey): array
 {
     global $PROJECT_ROOT;
     
@@ -132,18 +126,18 @@ function sendPromoWelcomeEmailViaSendGrid(array $user, string $apiKey): array
             return ['ok' => false, 'error' => 'Failed to send promo email via SendGrid'];
         }
     } catch (Exception $e) {
-        error_log("SendGrid exception in sendPromoWelcomeEmailViaSendGrid: " . $e->getMessage());
+        error_log("SendGrid exception in send_promo_welcome_email_via_sendgrid: " . $e->getMessage());
         return ['ok' => false, 'error' => $e->getMessage()];
     }
 }
 
-function sendPromoWelcomeEmail(array $user): array
+function send_promo_welcome_email(array $user): array
 {
     // Check for SendGrid API key first (Railway option)
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
     if (!empty($sendgridApiKey)) {
         // Use SendGrid REST API for Railway
-        return sendPromoWelcomeEmailViaSendGrid($user, $sendgridApiKey);
+        return send_promo_welcome_email_via_sendgrid($user, $sendgridApiKey);
     }
 
     // Ensure PHP is using UTF-8 internally
@@ -201,7 +195,7 @@ function sendPromoWelcomeEmail(array $user): array
 
 try {
   if ($method === 'GET') {
-    $data = getPrefs($conn, $userId);
+    $data = get_prefs($conn, $userId);
     $conn->close();
     json_response(['ok' => true, 'data' => $data]);
   }
@@ -242,13 +236,7 @@ try {
       }
     }
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // All user preference data is bound as parameters using bind_param().
-    // The '?' placeholders ensure user input is treated as data, not executable SQL.
-    // Interests come from predefined categories (dropdown), minimizing XSS risk.
-    // ============================================================================
     $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, promotional = ?, reveal_contact_info = ?, interested_category_1 = ?, interested_category_2 = ?, interested_category_3 = ? WHERE user_id = ?');
     $stmt->bind_param('iiisssi', $theme, $promo, $reveal, $int1, $int2, $int3, $userId);  // 'i'=integer, 's'=string
     $result = $stmt->execute();
@@ -276,7 +264,7 @@ try {
       $stmt->close();
       
       if ($userDetails) {
-        $emailResult = sendPromoWelcomeEmail([
+        $emailResult = send_promo_welcome_email([
           'firstName' => $userDetails['first_name'],
           'lastName' => $userDetails['last_name'],
           'email' => $userDetails['email']

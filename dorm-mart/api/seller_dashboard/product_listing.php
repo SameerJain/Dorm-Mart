@@ -19,7 +19,7 @@ try {
 
   // Security
   require $API_ROOT . '/security/security.php';
-  initSecurity();
+  init_security();
 
   // CORS / method
   if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
@@ -70,7 +70,6 @@ try {
   $descriptionRaw = (($t = $_POST['description'] ?? '') !== '') ? trim((string)$t) : null;
 
   // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-  // Note: SQL injection prevented by prepared statements
   if ($titleRaw !== '' && contains_xss_pattern($titleRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid characters in title']);
@@ -221,13 +220,7 @@ try {
       exit;
     }
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // All user input (title, description, itemLocation, etc.) is bound as parameters.
-    // The '?' placeholders ensure user input is treated as data, not executable SQL.
-    // This prevents SQL injection attacks even if malicious SQL code is in any field.
-    // ============================================================================
     $sql = "UPDATE INVENTORY
                SET title=?,
                    categories=?,
@@ -296,13 +289,7 @@ try {
   }
 
   // INSERT
-  // ============================================================================
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  // ============================================================================
-  // All user input is inserted using prepared statement with parameter binding.
-  // The '?' placeholders ensure user input is treated as data, not executable SQL.
-  // This prevents SQL injection attacks even if malicious SQL code is in any field.
-  // ============================================================================
   $sql = "INSERT INTO INVENTORY
             (title, categories, item_location, item_condition, description, photos, listing_price, item_status, trades, price_nego, seller_id)
           VALUES

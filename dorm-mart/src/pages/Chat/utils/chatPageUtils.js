@@ -1,5 +1,5 @@
 export default function fmtTime(ts) {
-  const d = new Date(ts);     // if ts is seconds, use new Date(ts * 1000)
+  const d = new Date(ts); // if ts is seconds, use new Date(ts * 1000)
   const now = new Date();
 
   // Compare calendar dates in the user's local time zone

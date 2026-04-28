@@ -55,13 +55,7 @@ try {
         LIMIT 1
     ";
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // Using prepared statement with '?' placeholder and bind_param() to safely
-    // handle $productId. Even if malicious SQL is in $productId, it cannot execute
-    // because it's bound as an integer parameter, not concatenated into SQL.
-    // ============================================================================
     $stmt = $mysqli->prepare($sql);
     if (!$stmt) {
         throw new Exception('DB prepare failed: ' . $mysqli->error);

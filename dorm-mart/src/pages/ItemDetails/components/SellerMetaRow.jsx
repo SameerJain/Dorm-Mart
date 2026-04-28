@@ -3,7 +3,9 @@ import ProfileLink from "../../../components/ProfileLink";
 export default function SellerMetaRow({ normalized }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm min-w-0">
-      <span className="text-gray-600 dark:text-gray-400 flex-shrink-0">Sold by</span>
+      <span className="text-gray-600 dark:text-gray-400 flex-shrink-0">
+        Sold by
+      </span>
       <ProfileLink
         username={normalized.sellerUsername}
         email={normalized.sellerEmail}

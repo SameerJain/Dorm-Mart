@@ -35,7 +35,6 @@ if ($sender === '' || $receiver === '' || $contentRaw === '') {
 }
 
 // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-// Note: SQL injection prevented by prepared statements
 if (contains_xss_pattern($contentRaw)) {
     json_response(['success' => false, 'error' => 'Invalid characters in message'], 400);
 }
@@ -195,13 +194,7 @@ try {
     $stmt->execute();
     $stmt->close();
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // All message data (content, names) is bound as parameters using bind_param().
-    // The '?' placeholders ensure user input is treated as data, not executable SQL.
-    // This prevents SQL injection attacks even if malicious SQL code is in any field.
-    // ============================================================================
     $stmt = $conn->prepare(
         'INSERT INTO messages
            (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content)

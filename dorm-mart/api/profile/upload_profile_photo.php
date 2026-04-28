@@ -78,7 +78,7 @@ try {
     $publicPath = $imageBaseUrl . '/' . $filename;
 
     // Process and compress image if GD is available
-    $processed = processProfileImage($imageInfo['tmp_name'], $imageInfo['mime'], $destPath);
+    $processed = process_profile_image($imageInfo['tmp_name'], $imageInfo['mime'], $destPath);
     if (!$processed) {
         // Fallback: if processing fails, just move the file
         if (!@move_uploaded_file($imageInfo['tmp_name'], $destPath)) {
@@ -117,7 +117,7 @@ function extract_upload(): ?array
  * Resizes to max 800x800px and compresses JPEG/PNG/WebP
  * Returns true if processing succeeded, false otherwise
  */
-function processProfileImage(string $sourcePath, ?string $mime, string $destPath): bool
+function process_profile_image(string $sourcePath, ?string $mime, string $destPath): bool
 {
     // Check if GD extension is available
     if (!extension_loaded('gd')) {

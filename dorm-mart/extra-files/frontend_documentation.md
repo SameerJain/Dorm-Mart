@@ -69,4 +69,4 @@ Static images used by the app and README screenshots.
 - Backend API endpoint URLs use snake_case paths such as `/api/seller_dashboard/product_listing.php`.
 - Build base paths come from `PUBLIC_URL` in the target environment file or platform environment, not from hardcoded package scripts.
 
-*Last updated: environment-backed frontend build configuration.*
+_Last updated: environment-backed frontend build configuration._

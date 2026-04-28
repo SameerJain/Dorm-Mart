@@ -28,7 +28,8 @@ const REVIEWS_SECTIONS = [
     items: [
       {
         question: "When can I rate a buyer?",
-        answer: 'After the item is marked Sold, use "Rate Buyer" on that listing in your Seller Dashboard.',
+        answer:
+          'After the item is marked Sold, use "Rate Buyer" on that listing in your Seller Dashboard.',
       },
       {
         question: "What are seller and product ratings?",

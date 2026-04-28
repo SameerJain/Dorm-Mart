@@ -1,11 +1,11 @@
 const HOME_FAQ_ITEMS = [
   {
-    question: "What is the difference between \"For You\" and \"Explore More\"?",
+    question: 'What is the difference between "For You" and "Explore More"?',
     answer:
-      "\"For You\" shows listings matching your interested categories. \"Explore More\" shows a randomized mix of everything.",
+      '"For You" shows listings matching your interested categories. "Explore More" shows a randomized mix of everything.',
   },
   {
-    question: "Why is the \"For You\" tab grayed out?",
+    question: 'Why is the "For You" tab grayed out?',
     answer:
       "You haven't set interested categories yet. Go to Settings \u2192 User Preferences and pick up to 3.",
   },
@@ -22,7 +22,7 @@ const HOME_FAQ_ITEMS = [
   {
     question: "Why don't I see any personalized items?",
     answer:
-      "You may not have set interested categories, or no listings match them yet. Try adding more or switch to \"Explore More.\"",
+      'You may not have set interested categories, or no listings match them yet. Try adding more or switch to "Explore More."',
   },
 ];
 

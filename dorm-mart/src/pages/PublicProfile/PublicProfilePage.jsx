@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../../utils/imageFallback";
+import {
+  withFallbackImage,
+  onProductImageError,
+  resolveStoredImageUrl,
+} from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
 import { formatCurrency } from "../../utils/formatters";
 
@@ -31,14 +35,23 @@ function ProductCard({ product, onView }) {
   return (
     <div className="flex flex-col rounded-lg border border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md min-w-0 overflow-hidden">
       <img
-        src={withFallbackImage(resolveStoredImageUrl(product.image_url, API_BASE))}
+        src={withFallbackImage(
+          resolveStoredImageUrl(product.image_url, API_BASE),
+        )}
         alt={product.title}
         onError={onProductImageError}
         className="h-40 w-full rounded-t-lg object-cover"
       />
       <div className="flex flex-col gap-2 p-4 min-w-0">
-        <p className="text-base font-semibold text-slate-900 dark:text-gray-100 truncate" title={product.title}>{product.title}</p>
-        <p className="text-sm text-slate-500 dark:text-gray-400">{formatCurrency(product.price) ?? "$0.00"}</p>
+        <p
+          className="text-base font-semibold text-slate-900 dark:text-gray-100 truncate"
+          title={product.title}
+        >
+          {product.title}
+        </p>
+        <p className="text-sm text-slate-500 dark:text-gray-400">
+          {formatCurrency(product.price) ?? "$0.00"}
+        </p>
         <button
           type="button"
           onClick={hasProductLink ? onView : undefined}
@@ -53,18 +66,32 @@ function ProductCard({ product, onView }) {
 }
 
 function ReviewCard({ review }) {
-  const attachments = [review.image_1, review.image_2, review.image_3].filter(Boolean);
+  const attachments = [review.image_1, review.image_2, review.image_3].filter(
+    Boolean,
+  );
 
   return (
     <article className="flex flex-col gap-3 rounded-lg border border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm transition hover:shadow-md">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-col min-w-0 flex-1">
-          <p className="text-base font-semibold text-slate-900 dark:text-gray-100 truncate" title={review.reviewer_name}>{review.reviewer_name}</p>
-          <p className="text-sm text-slate-500 dark:text-gray-400 truncate" title={review.product_title}>{review.product_title}</p>
+          <p
+            className="text-base font-semibold text-slate-900 dark:text-gray-100 truncate"
+            title={review.reviewer_name}
+          >
+            {review.reviewer_name}
+          </p>
+          <p
+            className="text-sm text-slate-500 dark:text-gray-400 truncate"
+            title={review.product_title}
+          >
+            {review.product_title}
+          </p>
         </div>
         <StarRating rating={review.rating} />
       </div>
-      <p className="text-sm leading-relaxed text-slate-700 dark:text-gray-300">{review.review}</p>
+      <p className="text-sm leading-relaxed text-slate-700 dark:text-gray-300">
+        {review.review}
+      </p>
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-3">
           {attachments.map((url, index) => (
@@ -109,7 +136,7 @@ function PublicProfilePage() {
         setError("");
         const res = await fetch(
           `${API_BASE}/profile/public_profile.php?username=${encodeURIComponent(usernameParam)}`,
-          { signal: controller.signal, credentials: "include" }
+          { signal: controller.signal, credentials: "include" },
         );
         const json = await res.json().catch(() => null);
         if (!res.ok || !json?.success) {
@@ -120,7 +147,8 @@ function PublicProfilePage() {
         setReviews(Array.isArray(json.reviews) ? json.reviews : []);
       } catch (err) {
         if (err.name === "AbortError") return;
-        const message = err instanceof Error ? err.message : "Unable to load profile.";
+        const message =
+          err instanceof Error ? err.message : "Unable to load profile.";
         setError(message);
         setProfileData(null);
         setListings([]);
@@ -137,8 +165,12 @@ function PublicProfilePage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 dark:bg-gray-900 px-4 text-center">
         <div className="max-w-md rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 shadow">
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-gray-100">Profile Lookup</h1>
-          <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">Please provide a username to view a public profile.</p>
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
+            Profile Lookup
+          </h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">
+            Please provide a username to view a public profile.
+          </p>
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -163,8 +195,12 @@ function PublicProfilePage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-gray-900 px-4 text-center">
         <div className="max-w-md rounded-lg border border-rose-200 dark:border-rose-700 bg-white dark:bg-gray-800 p-8 shadow">
-          <h1 className="text-lg font-semibold text-rose-600 dark:text-rose-400">Unable to load profile</h1>
-          <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">{error}</p>
+          <h1 className="text-lg font-semibold text-rose-600 dark:text-rose-400">
+            Unable to load profile
+          </h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">
+            {error}
+          </p>
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -181,8 +217,12 @@ function PublicProfilePage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-gray-900 px-4 text-center">
         <div className="max-w-md rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 shadow">
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-gray-100">Profile not found</h1>
-          <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">We couldn't find a user with that username.</p>
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
+            Profile not found
+          </h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">
+            We couldn't find a user with that username.
+          </p>
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -203,7 +243,9 @@ function PublicProfilePage() {
     instagram: profileData.instagram || "",
     avgRating: profileData.avg_rating ?? 0,
     reviewCount: profileData.review_count ?? reviews.length,
-    imageUrl: withFallbackImage(resolveStoredImageUrl(profileData.image_url, API_BASE)),
+    imageUrl: withFallbackImage(
+      resolveStoredImageUrl(profileData.image_url, API_BASE),
+    ),
     userId: profileData.user_id,
   };
 
@@ -222,15 +264,36 @@ function PublicProfilePage() {
         {isPreview && (
           <div className="mb-3 p-4 bg-yellow-50 dark:bg-yellow-900/30 border-2 border-yellow-200 dark:border-yellow-700 rounded-lg">
             <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              <svg
+                className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                />
               </svg>
               <div className="flex-1">
-                <p className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-1">Public Profile Preview</p>
-                <p className="text-base text-yellow-700 dark:text-yellow-300 mb-3">You're viewing your profile as others see it. This helps you see how your profile appears to potential buyers to help you make any adjustments.</p>
+                <p className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                  Public Profile Preview
+                </p>
+                <p className="text-base text-yellow-700 dark:text-yellow-300 mb-3">
+                  You're viewing your profile as others see it. This helps you
+                  see how your profile appears to potential buyers to help you
+                  make any adjustments.
+                </p>
                 <button
-                  onClick={() => navigate('/app/setting/my-profile')}
+                  onClick={() => navigate("/app/setting/my-profile")}
                   className="rounded-full font-medium px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm"
                 >
                   Edit Profile
@@ -243,17 +306,29 @@ function PublicProfilePage() {
           <div className="flex flex-col gap-6 md:flex-row md:items-center min-w-0">
             <div className="flex flex-col items-center gap-4 md:flex-row min-w-0 flex-1">
               <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-white dark:border-gray-800 shadow-lg flex-shrink-0">
-                <img 
-                  src={profile.imageUrl} 
-                  alt="" 
+                <img
+                  src={profile.imageUrl}
+                  alt=""
                   className="h-full w-full object-cover"
                   onError={onProductImageError}
                 />
               </div>
               <div className="text-center md:text-left min-w-0 max-w-full overflow-hidden flex-1">
-                <h1 className="text-2xl font-serif font-semibold text-slate-900 dark:text-gray-100 truncate block">{profile.name}</h1>
-                <p className="text-sm text-slate-500 dark:text-gray-400 truncate" title={`@${profile.username}`}>@{profile.username}</p>
-                <p className="text-sm text-slate-500 dark:text-gray-400 truncate" title={profile.email}>{profile.email}</p>
+                <h1 className="text-2xl font-serif font-semibold text-slate-900 dark:text-gray-100 truncate block">
+                  {profile.name}
+                </h1>
+                <p
+                  className="text-sm text-slate-500 dark:text-gray-400 truncate"
+                  title={`@${profile.username}`}
+                >
+                  @{profile.username}
+                </p>
+                <p
+                  className="text-sm text-slate-500 dark:text-gray-400 truncate"
+                  title={profile.email}
+                >
+                  {profile.email}
+                </p>
                 {profile.instagram && (
                   <a
                     href={profile.instagram}
@@ -268,24 +343,35 @@ function PublicProfilePage() {
             </div>
             <div className="flex flex-col items-center justify-center rounded-lg border border-slate-100 dark:border-gray-700 bg-slate-50 dark:bg-gray-700 px-6 py-4 md:ml-auto flex-shrink-0">
               {profile.reviewCount === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-gray-400">No reviews yet</p>
+                <p className="text-sm text-slate-500 dark:text-gray-400">
+                  No reviews yet
+                </p>
               ) : (
                 <>
                   <StarRating rating={profile.avgRating} />
-                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">{profile.reviewCount} review(s)</p>
+                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                    {profile.reviewCount} review(s)
+                  </p>
                 </>
               )}
             </div>
           </div>
-          {profile.bio && <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words overflow-wrap-anywhere">{profile.bio}</p>}
+          {profile.bio && (
+            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words overflow-wrap-anywhere">
+              {profile.bio}
+            </p>
+          )}
         </header>
 
         <section className="rounded-xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800 p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-gray-100">Active Listings</h2>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-gray-100">
+                Active Listings
+              </h2>
               <p className="text-sm text-slate-500 dark:text-gray-400">
-                {listings.length} item{listings.length === 1 ? "" : "s"} available
+                {listings.length} item{listings.length === 1 ? "" : "s"}{" "}
+                available
               </p>
             </div>
           </div>
@@ -295,21 +381,28 @@ function PublicProfilePage() {
                 <ProductCard
                   key={product.product_id}
                   product={product}
-                  onView={() => navigate(`/app/viewProduct/${product.product_id}`)}
+                  onView={() =>
+                    navigate(`/app/viewProduct/${product.product_id}`)
+                  }
                 />
               ))}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-slate-500 dark:text-gray-400">No active listings at this time.</p>
+            <p className="mt-4 text-sm text-slate-500 dark:text-gray-400">
+              No active listings at this time.
+            </p>
           )}
         </section>
 
         <section className="rounded-xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800 p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-gray-100">Reviews</h2>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-gray-100">
+                Reviews
+              </h2>
               <p className="text-sm text-slate-500 dark:text-gray-400">
-                {reviews.length} review{reviews.length === 1 ? "" : "s"} received
+                {reviews.length} review{reviews.length === 1 ? "" : "s"}{" "}
+                received
               </p>
             </div>
           </div>
@@ -320,7 +413,9 @@ function PublicProfilePage() {
               ))}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-slate-500 dark:text-gray-400">No reviews yet.</p>
+            <p className="mt-4 text-sm text-slate-500 dark:text-gray-400">
+              No reviews yet.
+            </p>
           )}
         </section>
       </div>

@@ -1,30 +1,30 @@
-import { useLayoutEffect } from 'react';
-import backgroundImage from '../assets/images/cf704b7b8689fdfa8cf49a9f368bb17c.jpg';
+import { useLayoutEffect } from "react";
+import backgroundImage from "../assets/images/cf704b7b8689fdfa8cf49a9f368bb17c.jpg";
 
 function PreLoginBranding({ animate = false, animateText = false }) {
   useLayoutEffect(() => {
     const root = document.documentElement;
-    const hadDarkClass = root.classList.contains('dark');
+    const hadDarkClass = root.classList.contains("dark");
     const previousColorScheme = root.style.colorScheme;
     const themeMeta = document.querySelector('meta[name="theme-color"]');
-    const previousThemeColor = themeMeta?.getAttribute('content') ?? null;
+    const previousThemeColor = themeMeta?.getAttribute("content") ?? null;
 
-    root.classList.remove('dark');
-    root.style.colorScheme = 'light';
+    root.classList.remove("dark");
+    root.style.colorScheme = "light";
     if (themeMeta) {
-      themeMeta.setAttribute('content', '#ffffff');
+      themeMeta.setAttribute("content", "#ffffff");
     }
 
     return () => {
       if (hadDarkClass) {
-        root.classList.add('dark');
+        root.classList.add("dark");
       }
       root.style.colorScheme = previousColorScheme;
       if (themeMeta) {
         if (previousThemeColor === null) {
-          themeMeta.removeAttribute('content');
+          themeMeta.removeAttribute("content");
         } else {
-          themeMeta.setAttribute('content', previousThemeColor);
+          themeMeta.setAttribute("content", previousThemeColor);
         }
       }
     };
@@ -39,7 +39,7 @@ function PreLoginBranding({ animate = false, animateText = false }) {
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: `url(${backgroundImage})`,
-            filter: 'brightness(1.15)',
+            filter: "brightness(1.15)",
           }}
         ></div>
 
@@ -49,15 +49,22 @@ function PreLoginBranding({ animate = false, animateText = false }) {
         {/* Branding content */}
         <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 lg:p-8">
           <div className="text-center w-full px-4">
-            <h1 className={`text-6xl lg:text-8xl xl:text-9xl font-serif text-white mb-4 lg:mb-6 flex flex-col lg:flex-row items-center justify-center lg:space-x-6 leading-tight lg:leading-normal ${animateText ? 'animate-fade-in' : ''}`}>
+            <h1
+              className={`text-6xl lg:text-8xl xl:text-9xl font-serif text-white mb-4 lg:mb-6 flex flex-col lg:flex-row items-center justify-center lg:space-x-6 leading-tight lg:leading-normal ${animateText ? "animate-fade-in" : ""}`}
+            >
               <span>Dorm</span>
               <span>Mart</span>
             </h1>
-            <h2 className={`text-2xl lg:text-3xl xl:text-4xl font-light text-white opacity-90 ${animateText ? 'animate-fade-in-delay' : ''}`}>
+            <h2
+              className={`text-2xl lg:text-3xl xl:text-4xl font-light text-white opacity-90 ${animateText ? "animate-fade-in-delay" : ""}`}
+            >
               Wastage, who?
             </h2>
-            <p className={`text-lg lg:text-xl text-white opacity-95 mt-6 lg:mt-8 max-w-md mx-auto ${animateText ? 'animate-fade-in-delay-2' : ''}`}>
-              Your campus marketplace for buying and selling. Connect with fellow students and save money.
+            <p
+              className={`text-lg lg:text-xl text-white opacity-95 mt-6 lg:mt-8 max-w-md mx-auto ${animateText ? "animate-fade-in-delay-2" : ""}`}
+            >
+              Your campus marketplace for buying and selling. Connect with
+              fellow students and save money.
             </p>
           </div>
         </div>

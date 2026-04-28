@@ -3,10 +3,13 @@ import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ItemCardNew from "../../components/ItemCardNew";
 import keyboard from "../../assets/product-images/keyboard.jpg";
+import carpet from "../../assets/product-images/smallcarpet.png";
 import mouse from "../../assets/product-images/wireless-mouse.jpg";
-import { resolveProductPhotoUrl, withFallbackImage } from "../../utils/imageFallback";
-import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
-const carpetUrl = `${PUBLIC_BASE}/assets/product-images/smallcarpet.png`;
+import {
+  resolveProductPhotoUrl,
+  withFallbackImage,
+} from "../../utils/imageFallback";
+import { API_BASE } from "../../utils/apiConfig";
 
 /** Session-only: after dismiss, tap "For You" again to reopen (never auto-opens on login) */
 const FOR_YOU_HINT_SESSION_KEY = "dm_for_you_feed_hint_dismissed";
@@ -52,9 +55,9 @@ const FALLBACK_ITEMS = [
   },
   {
     id: 2,
-    title: "Small Carpet (5x7)", 
+    title: "Small Carpet (5x7)",
     price: 25,
-    img: carpetUrl,
+    img: carpet,
     tags: ["Furniture", "Decor"],
     seller: "Mark D.",
     sellerUsername: "markd",
@@ -161,16 +164,13 @@ export default function LandingPage() {
       setIsMobile(window.innerWidth < 768); // md breakpoint
     };
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const rotatingLines = isMobile 
+  const rotatingLines = isMobile
     ? ["Happy Shopping!"]
-    : [
-        "Welcome to Dorm Mart!",
-        "Happy Shopping!",
-      ];
+    : ["Welcome to Dorm Mart!", "Happy Shopping!"];
   const [bannerIdx, setBannerIdx] = useState(0);
 
   const openExternalRoute = (url) => {
@@ -181,7 +181,7 @@ export default function LandingPage() {
   useEffect(() => {
     const id = setInterval(
       () => setBannerIdx((p) => (p + 1) % rotatingLines.length),
-      4000
+      4000,
     );
     return () => clearInterval(id);
   }, [rotatingLines.length]);
@@ -290,7 +290,13 @@ export default function LandingPage() {
               : parseFloat(`${d.price}`.replace(/[^0-9.]/g, "")) || 0;
 
           const rawImg = d.image || d.image_url || null;
-          const img = rawImg ? resolveProductPhotoUrl(rawImg, { apiBase: API_BASE, publicBase: PUBLIC_BASE, proxyUnknown: true }) : null;
+          const img = rawImg
+            ? resolveProductPhotoUrl(rawImg, {
+                apiBase: API_BASE,
+                publicBase: PUBLIC_BASE,
+                proxyUnknown: true,
+              })
+            : null;
 
           const createdAt = d.created_at ? new Date(d.created_at) : null;
           let status = d.status || null;
@@ -302,12 +308,17 @@ export default function LandingPage() {
           const tags = Array.isArray(d.tags)
             ? d.tags
             : typeof d.tags === "string"
-            ? d.tags.split(",").map((t) => t.trim()).filter(Boolean)
-            : [];
+              ? d.tags
+                  .split(",")
+                  .map((t) => t.trim())
+                  .filter(Boolean)
+              : [];
 
           const category = d.category || (tags.length ? tags[0] : "General");
           const sellerEmail = d.email || d.seller_email || null;
-          const sellerUsername = d.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null);
+          const sellerUsername =
+            d.seller_username ||
+            (sellerEmail ? sellerEmail.split("@")[0] : null);
 
           return {
             id: d.id ?? i,
@@ -350,7 +361,9 @@ export default function LandingPage() {
     const controller = new AbortController();
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/utility/get_active_categories.php`, { signal: controller.signal });
+        const r = await fetch(`${API_BASE}/utility/get_active_categories.php`, {
+          signal: controller.signal,
+        });
         if (!r.ok) return;
         const data = await r.json();
         if (Array.isArray(data)) setAllCategories(data);
@@ -388,7 +401,7 @@ export default function LandingPage() {
     const MAX_TOTAL_ITEMS = 50;
     const exploreCap = Math.min(
       MAX_TOTAL_ITEMS,
-      Math.max(MIN_EXPLORE_ITEMS, exploreLimit)
+      Math.max(MIN_EXPLORE_ITEMS, exploreLimit),
     );
     const shuffleArray = (arr) => {
       const copy = [...arr];
@@ -402,7 +415,10 @@ export default function LandingPage() {
     if (!interests.length) {
       // No interests: randomize across everything so older items still surface
       const shuffled = shuffleArray(allItems);
-      return { itemsByInterest: {}, exploreItems: shuffled.slice(0, exploreCap) };
+      return {
+        itemsByInterest: {},
+        exploreItems: shuffled.slice(0, exploreCap),
+      };
     }
 
     const byInterest = {};
@@ -441,12 +457,14 @@ export default function LandingPage() {
     const used = new Set();
     const cmp = (cat) => (a, b) => {
       const catLower = (cat || "").toLowerCase();
-      const aPrimary = Array.isArray(a.tags) && a.tags[0]
-        ? String(a.tags[0]).toLowerCase() === catLower
-        : false;
-      const bPrimary = Array.isArray(b.tags) && b.tags[0]
-        ? String(b.tags[0]).toLowerCase() === catLower
-        : false;
+      const aPrimary =
+        Array.isArray(a.tags) && a.tags[0]
+          ? String(a.tags[0]).toLowerCase() === catLower
+          : false;
+      const bPrimary =
+        Array.isArray(b.tags) && b.tags[0]
+          ? String(b.tags[0]).toLowerCase() === catLower
+          : false;
       if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
       const at = typeof a.createdAtTs === "number" ? a.createdAtTs : 0;
       const bt = typeof b.createdAtTs === "number" ? b.createdAtTs : 0;
@@ -462,11 +480,11 @@ export default function LandingPage() {
 
     // Get explore items (randomized) and keep at least the requested explore minimum
     const allExploreItems = shuffleArray(
-      allItems.filter((it) => !used.has(it.id))
+      allItems.filter((it) => !used.has(it.id)),
     );
     const limitedExploreItems = allExploreItems.slice(
       0,
-      Math.min(exploreCap, allExploreItems.length)
+      Math.min(exploreCap, allExploreItems.length),
     );
 
     return {
@@ -486,8 +504,8 @@ export default function LandingPage() {
             ...(Array.isArray(item.tags) ? item.tags : []),
           ])
           .filter(Boolean)
-          .map((c) => String(c))
-      )
+          .map((c) => String(c)),
+      ),
     );
     return derived.length
       ? derived
@@ -518,53 +536,53 @@ export default function LandingPage() {
         </div>
 
         <div className="flex min-w-0 w-full flex-wrap items-center gap-2 justify-between md:w-auto md:flex-nowrap md:justify-end">
-        {/* Mobile Filter Button */}
-        <button
-          onClick={() => navigate('/app/listings')}
-          className="lg:hidden flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          aria-label="Open filters"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          {/* Mobile Filter Button */}
+          <button
+            onClick={() => navigate("/app/listings")}
+            className="lg:hidden flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Open filters"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-            />
-          </svg>
-          <span className="text-sm font-medium">Filters</span>
-        </button>
-
-        {/* interest chips */}
-        <div className="flex min-w-0 flex-1 basis-[min(100%,14rem)] flex-wrap items-center justify-end gap-2 md:basis-auto md:flex-initial">
-          {interests.length ? (
-            interests.map((cat) => (
-              <button
-                key={cat}
-                onClick={() =>
-                  openExternalRoute(
-                    `${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`
-                  )
-                }
-                className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-4 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
-              >
-                {cat}
-              </button>
-            ))
-          ) : (
-            <button
-              onClick={() => navigate("/app/setting/user-preferences")}
-              className="inline-flex max-w-full items-center justify-center rounded-lg bg-blue-600 dark:bg-blue-800 text-white px-3 py-2 text-center text-sm font-medium leading-tight hover:bg-blue-700 dark:hover:bg-blue-900 transition whitespace-normal sm:whitespace-nowrap sm:px-4"
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              Set Interested Categories
-            </button>
-          )}
-        </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+              />
+            </svg>
+            <span className="text-sm font-medium">Filters</span>
+          </button>
+
+          {/* interest chips */}
+          <div className="flex min-w-0 flex-1 basis-[min(100%,14rem)] flex-wrap items-center justify-end gap-2 md:basis-auto md:flex-initial">
+            {interests.length ? (
+              interests.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() =>
+                    openExternalRoute(
+                      `${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`,
+                    )
+                  }
+                  className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-4 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
+                >
+                  {cat}
+                </button>
+              ))
+            ) : (
+              <button
+                onClick={() => navigate("/app/setting/user-preferences")}
+                className="inline-flex max-w-full items-center justify-center rounded-lg bg-blue-600 dark:bg-blue-800 text-white px-3 py-2 text-center text-sm font-medium leading-tight hover:bg-blue-700 dark:hover:bg-blue-900 transition whitespace-normal sm:whitespace-nowrap sm:px-4"
+              >
+                Set Interested Categories
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -581,7 +599,9 @@ export default function LandingPage() {
                 <button
                   key={cat}
                   onClick={() =>
-                    openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`)
+                    openExternalRoute(
+                      `${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`,
+                    )
                   }
                   className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition"
                 >
@@ -691,7 +711,7 @@ export default function LandingPage() {
                       </p>
                     </div>
                     <button
-                      onClick={() => navigate('/app/setting/user-preferences')}
+                      onClick={() => navigate("/app/setting/user-preferences")}
                       className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                     >
                       Manage interests
@@ -709,10 +729,7 @@ export default function LandingPage() {
                           <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-blue-200 dark:scrollbar-thumb-blue-700 w-full max-w-full min-w-0">
                             {catItems.length ? (
                               catItems.slice(0, 10).map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="flex-shrink-0"
-                                >
+                                <div key={item.id} className="flex-shrink-0">
                                   <ItemCardNew
                                     id={item.id}
                                     title={item.title}

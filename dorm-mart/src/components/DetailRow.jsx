@@ -27,7 +27,11 @@ export default function DetailRow({
   if (!suppressContactDetection) return inner;
 
   return (
-    <div x-apple-data-detectors="false" data-detectors="false" className="plain-contact-text min-w-0">
+    <div
+      x-apple-data-detectors="false"
+      data-detectors="false"
+      className="plain-contact-text min-w-0"
+    >
       {inner}
     </div>
   );

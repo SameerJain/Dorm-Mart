@@ -70,13 +70,7 @@ try {
         }
     }
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // Status, product ID, and user ID are bound as parameters using bind_param().
-    // The '?' placeholders ensure user input is treated as data, not executable SQL.
-    // Status is validated against a whitelist ('Active','Pending','Draft','Sold') before binding.
-    // ============================================================================
     $stmt = $conn->prepare(
         'UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND seller_id = ?'
         . ' AND (sold IS NULL OR sold = 0) AND (item_status IS NULL OR item_status <> \'Sold\')'

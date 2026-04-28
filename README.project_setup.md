@@ -78,7 +78,6 @@ Copy any necessary files to the server:
    The "homepage" field in your package.json tells the React build tools (like react-scripts) what the base URL of your app will be. - It makes sure all asset paths (like CSS, JS, images) inside the build are prefixed with /CSE442/2025-Fall/cse-442j/, so they load correctly when hosted under that subpath instead of at the root. - The key piece is that homepage only affects asset paths, not route handling.
 
 2. Apache just serves whatever’s in that folder — the index.html, JavaScript, CSS, etc.
-
    - When you go to https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/#/login, Apache returns the same index.html file, because that’s what’s physically there.
 
 3. The React app (client-side router) kicks in after the browser loads the index.html.
@@ -95,6 +94,7 @@ Copy any necessary files to the server:
 - Clear forgot password rate limit: `php api/utility/manage_forgot_password_rate_limiting.php` (run from dorm-mart folder)
 - Clear login lockout timer: `php api/utility/reset_session_lockout.php` (run from dorm-mart folder)
 - More docs are in /extra-files
+
 # Windows Powershell Build Scripts Commands
 
 **Build Method 1: Local Development:**

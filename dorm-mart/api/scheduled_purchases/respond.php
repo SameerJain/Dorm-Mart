@@ -25,7 +25,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    expireStaleRequests($conn);
+    expire_stale_requests($conn);
 
     $selectSql = <<<SQL
         SELECT

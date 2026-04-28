@@ -9,7 +9,7 @@
 
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/security/security.php';
-setSecurityHeaders();
+set_security_headers();
 
 header('Content-Type: text/html; charset=utf-8');
 

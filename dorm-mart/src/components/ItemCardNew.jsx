@@ -1,6 +1,10 @@
 // src/components/ItemCardNew.jsx
 import { useNavigate } from "react-router-dom";
-import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../utils/imageFallback";
+import {
+  withFallbackImage,
+  onProductImageError,
+  resolveStoredImageUrl,
+} from "../utils/imageFallback";
 import { API_BASE } from "../utils/apiConfig";
 import { formatCurrency } from "../utils/formatters";
 
@@ -44,7 +48,7 @@ export default function ItemCardNew({
     <div
       onClick={handleClick}
       className={`group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200/90 dark:border-gray-700/70 overflow-hidden
-                 ${fixedWidth ? 'w-[240px]' : 'w-full'} h-[350px] cursor-pointer transition-all duration-200
+                 ${fixedWidth ? "w-[240px]" : "w-full"} h-[350px] cursor-pointer transition-all duration-200
                  lg:hover:shadow-xl lg:hover:-translate-y-1
                  dark:lg:hover:border-blue-500/45 dark:lg:hover:shadow-[0_12px_40px_-10px_rgba(0,0,0,0.85),0_0_0_1px_rgba(59,130,246,0.25)]
                  dark:lg:hover:ring-1 dark:lg:hover:ring-blue-400/30 dark:lg:hover:-translate-y-0.5`}
@@ -150,7 +154,7 @@ export default function ItemCardNew({
         <p className="text-lg font-bold text-gray-900 dark:text-gray-50 mt-0.5">
           {typeof price === "string"
             ? price
-            : formatCurrency(price) ?? "$0.00"}
+            : (formatCurrency(price) ?? "$0.00")}
         </p>
       </div>
 

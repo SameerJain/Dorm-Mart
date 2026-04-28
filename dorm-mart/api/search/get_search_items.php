@@ -33,7 +33,6 @@ try {
     $category  = isset($body['category']) ? trim((string)$body['category']) : '';
     
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    // Note: SQL injection prevented by prepared statements
     if ($qRaw !== '' && contains_xss_pattern($qRaw)) {
         json_response(['ok' => false, 'error' => 'Invalid characters in search query'], 400);
     }
@@ -225,14 +224,7 @@ try {
     }
     $sql .= $order . "\n" . ' LIMIT ? ';
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // All search parameters (query, category, condition, location, prices, etc.) 
-    // are bound as parameters using bind_param() with type specifiers ('s'=string, 'd'=double, 'i'=integer).
-    // The '?' placeholders ensure user input is treated as data, not executable SQL.
-    // This prevents SQL injection attacks even if malicious SQL code is in any search field.
-    // ============================================================================
     $stmt = $mysqli->prepare($sql);
     if ($stmt === false) {
         throw new Exception('Prepare failed: ' . $mysqli->error);

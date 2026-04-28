@@ -1,7 +1,10 @@
 // src/pages/NotificationPage.jsx
 import { useContext, useMemo, useState, useEffect } from "react";
 import { ChatContext } from "../../context/ChatContext";
-import { onProductImageError, resolveProductPhotoUrl } from "../../utils/imageFallback";
+import {
+  onProductImageError,
+  resolveProductPhotoUrl,
+} from "../../utils/imageFallback";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../../utils/apiConfig";
 
@@ -22,12 +25,12 @@ export default function NotificationPage() {
       .map(([productId, info]) => {
         const count = Number(info?.count ?? 0);
         const title = info?.title ?? `Listing #${productId}`;
-        const image_url = info?.image_url ?? null;
+        const imageUrl = info?.imageUrl ?? null;
         return {
           productId: Number(productId),
           title,
           count,
-          image_url,
+          imageUrl,
         };
       })
       .filter((item) => item.count > 0);
@@ -94,7 +97,7 @@ export default function NotificationPage() {
 
       // Optimistic local UI update
       setLocalItems((prev) =>
-        prev.filter((item) => item.productId !== productId)
+        prev.filter((item) => item.productId !== productId),
       );
 
       // Decrement the global total + remove from map so nav badge updates
@@ -150,10 +153,13 @@ export default function NotificationPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {localItems.map(({ productId, title, count, image_url }) => {
-              const rawImg = image_url || null;
+            {localItems.map(({ productId, title, count, imageUrl }) => {
+              const rawImg = imageUrl || null;
               const proxied = rawImg
-                ? resolveProductPhotoUrl(rawImg, { apiBase: API_BASE, proxyUnknown: true })
+                ? resolveProductPhotoUrl(rawImg, {
+                    apiBase: API_BASE,
+                    proxyUnknown: true,
+                  })
                 : null;
 
               return (

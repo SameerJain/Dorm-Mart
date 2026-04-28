@@ -105,9 +105,7 @@ function ForgotPasswordPage() {
       <PreLoginBranding />
 
       {/* Right side - forgot password form (full width on mobile, 50% on desktop) */}
-      <div
-        className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 py-8 sm:py-12 md:pt-16 md:pb-8 lg:py-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden"
-      >
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 py-8 sm:py-12 md:pt-16 md:pb-8 lg:py-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
@@ -118,9 +116,7 @@ function ForgotPasswordPage() {
           </h2>
         </div>
         <div className="w-full max-w-md md:max-w-xl px-2 sm:px-0 relative z-10">
-          <div
-            className="p-4 sm:p-6 md:p-10 rounded-lg relative bg-blue-600"
-          >
+          <div className="p-4 sm:p-6 md:p-10 rounded-lg relative bg-blue-600">
             {/* Torn paper effect */}
             <div
               className="absolute inset-0 rounded-lg bg-blue-600"
