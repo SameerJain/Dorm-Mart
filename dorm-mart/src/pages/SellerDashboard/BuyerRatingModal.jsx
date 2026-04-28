@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import StarRating from "../Reviews/StarRating";
 import { API_BASE } from "../../utils/apiConfig";
 
@@ -35,25 +35,7 @@ function BuyerRatingModal({
 
   const maxChars = 250;
 
-  // Fetch existing rating when modal opens
-  useEffect(() => {
-    if (isOpen && productId && buyerId) {
-      fetchExistingRating();
-    } else if (!isOpen) {
-      // Reset state when modal closes
-      setExistingRating(null);
-      setRating(0);
-      setReviewText("");
-      setCharCount(0);
-      setError(null);
-      setShowConfirmModal(false);
-      setConfirmMessage("");
-      setConfirmCallback(null);
-      setPendingSubmit(false);
-    }
-  }, [isOpen, productId, buyerId]);
-
-  const fetchExistingRating = async () => {
+  const fetchExistingRating = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE}/reviews/get_buyer_rating.php?product_id=${productId}`,
@@ -90,7 +72,25 @@ function BuyerRatingModal({
       setReviewText("");
       setCharCount(0);
     }
-  };
+  }, [productId]);
+
+  // Fetch existing rating when modal opens
+  useEffect(() => {
+    if (isOpen && productId && buyerId) {
+      fetchExistingRating();
+    } else if (!isOpen) {
+      // Reset state when modal closes
+      setExistingRating(null);
+      setRating(0);
+      setReviewText("");
+      setCharCount(0);
+      setError(null);
+      setShowConfirmModal(false);
+      setConfirmMessage("");
+      setConfirmCallback(null);
+      setPendingSubmit(false);
+    }
+  }, [isOpen, productId, buyerId, fetchExistingRating]);
 
   // Reset form when modal opens
   useEffect(() => {
