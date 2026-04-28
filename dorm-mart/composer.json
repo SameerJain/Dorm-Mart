@@ -3,11 +3,7 @@
     "php": ">=8.0",
     "ext-mysqli": "*",
     "phpmailer/phpmailer": "^6.11",
-    "sendgrid/sendgrid": "^8.0",
-    "symfony/http-foundation": "5.4.50",
-    "symfony/deprecation-contracts": "2.5",
-    "symfony/service-contracts": "2.5",
-    "symfony/translation-contracts": "2.5"
+    "sendgrid/sendgrid": "^8.0"
   },
   "config": {
     "platform": {
