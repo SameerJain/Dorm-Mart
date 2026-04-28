@@ -84,8 +84,6 @@ foreach ($rows as &$row) {
     }
     $row['product_image_url'] = $productImageUrl;
     unset($row['product_photos']); // Remove raw photos JSON from response
-    
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $row['user1_fname'] = $row['user1_fname'] ?? '';
     $row['user2_fname'] = $row['user2_fname'] ?? '';
     $row['product_title'] = $row['product_title'] ?? '';

@@ -154,7 +154,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     setIsResponding(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/confirm-purchases/respond.php`, {
+      const res = await fetch(`${API_BASE}/confirm_purchases/respond.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

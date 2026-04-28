@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { logout } from "../../utils/handle_auth";
+import { logout } from "../../utils/handleAuth";
 
 function SettingsLayout({ children }) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);

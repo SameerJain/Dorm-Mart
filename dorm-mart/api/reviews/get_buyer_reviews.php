@@ -75,7 +75,7 @@ SQL;
             'rating_id'         => (int)$row['rating_id'],
             'product_id'        => (int)$row['product_id'],
             'seller_user_id'    => (int)$row['seller_user_id'],
-            'seller_name'       => $sellerName, // Note: No HTML encoding needed for JSON - React handles XSS protection
+            'seller_name'       => $sellerName,
             'seller_email'      => $row['seller_email'] ?? '',
             'seller_username'   => derive_username((string)($row['seller_email'] ?? '')),
             'product_title'     => $row['product_title'] ?? 'Untitled product',

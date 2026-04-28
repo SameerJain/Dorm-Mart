@@ -64,7 +64,6 @@ foreach ($files as $path) {
   if (!$conn->multi_query($sql)) {
     $err = $conn->error;
     $conn->rollback();
-    // Note: No HTML encoding needed for JSON - React handles XSS protection
     echo json_encode(["success" => false, "message" => "Failed: " . $name . " — " . $err]);
     exit;
   }

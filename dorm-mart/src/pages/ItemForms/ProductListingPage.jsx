@@ -1,4 +1,3 @@
-// src/pages/ItemForms/ProductListingPage.jsx
 import { useState, useRef, useEffect } from "react";
 import { useParams, useMatch, useNavigate, useLocation } from "react-router-dom";
 import { MEET_LOCATION_OPTIONS } from "../../constants/meetLocations";
@@ -6,8 +5,13 @@ import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandler
 import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
 import { resolveProductPhotoUrl } from "../../utils/imageFallback";
 import { MAX_LISTING_PRICE, containsMemePrice } from "../../utils/priceValidation";
+import { containsXssPattern } from "../../utils/inputValidation";
 
 const CATEGORIES_MAX = 3;
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const PRICE_INPUT_PATTERN = /^\d*\.?\d*$/;
+const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 const LIMITS = {
   title: 50,
@@ -18,12 +22,33 @@ const LIMITS = {
   maxActiveListings: 25,
 };
 
+const DEFAULT_FORM = {
+  title: "",
+  categories: [],
+  itemLocation: "",
+  condition: "",
+  description: "",
+  price: "",
+  acceptTrades: false,
+  priceNegotiable: false,
+  images: [],
+};
+
+function getPreviewBoxSize() {
+  if (typeof window === "undefined") {
+    return 480;
+  }
+
+  const isMobile = window.innerWidth < 768;
+  return isMobile ? Math.min(480, window.innerWidth - 80) : 480;
+}
+
 function ProductListingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // robust matcher for /product-listing/new in different mount contexts
+  // Supports both routed and nested /product-listing/new mounts.
   const matchNewAbs = useMatch({ path: "/product-listing/new", end: true });
   const matchNewApp = useMatch({ path: "/app/product-listing/new", end: true });
   const matchNewRel = useMatch({ path: "new", end: true });
@@ -31,31 +56,17 @@ function ProductListingPage() {
   const isEdit = Boolean(id);
   const isNew = !isEdit && Boolean(matchNewAbs || matchNewApp || matchNewRel);
 
-  // --- default form values ---
-  const defaultForm = {
-    title: "",
-    categories: [],
-    itemLocation: "",
-    condition: "",
-    description: "",
-    price: "",
-    acceptTrades: false,
-    priceNegotiable: false,
-    images: [],
-  };
-
-  // --- form state ---
-  const [title, setTitle] = useState(defaultForm.title);
-  const [categories, setCategories] = useState(defaultForm.categories);
-  const [itemLocation, setItemLocation] = useState(defaultForm.itemLocation);
-  const [condition, setCondition] = useState(defaultForm.condition);
-  const [description, setDescription] = useState(defaultForm.description);
-  const [price, setPrice] = useState(defaultForm.price);
-  const [acceptTrades, setAcceptTrades] = useState(defaultForm.acceptTrades);
+  const [title, setTitle] = useState(DEFAULT_FORM.title);
+  const [categories, setCategories] = useState(() => [...DEFAULT_FORM.categories]);
+  const [itemLocation, setItemLocation] = useState(DEFAULT_FORM.itemLocation);
+  const [condition, setCondition] = useState(DEFAULT_FORM.condition);
+  const [description, setDescription] = useState(DEFAULT_FORM.description);
+  const [price, setPrice] = useState(DEFAULT_FORM.price);
+  const [acceptTrades, setAcceptTrades] = useState(DEFAULT_FORM.acceptTrades);
   const [priceNegotiable, setPriceNegotiable] = useState(
-    defaultForm.priceNegotiable
+    DEFAULT_FORM.priceNegotiable
   );
-  const [images, setImages] = useState([]); // [{file, url}, ...]
+  const [images, setImages] = useState(() => [...DEFAULT_FORM.images]);
   const fileInputRef = useRef();
   const formTopRef = useRef(null);
   const scrollPositionRef = useRef(0);
@@ -67,54 +78,33 @@ function ProductListingPage() {
   const [loadError, setLoadError] = useState(null);
   const [isSold, setIsSold] = useState(false);
 
-  // active listing cap
   const [atListingCap, setAtListingCap] = useState(false);
   const [activeListingCount, setActiveListingCount] = useState(0);
 
-  // success modal
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // categories dropdown state
   const [availableCategories, setAvailableCategories] = useState([]);
   const [catFetchError, setCatFetchError] = useState(null);
   const [catLoading, setCatLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
 
-  // File type restrictions (same as chat)
-  const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-  const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
-  const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
-
-  // ========== CROPPER STATE ==========
   const [showCropper, setShowCropper] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState(null);
   const [cropImgEl, setCropImgEl] = useState(null);
   const [pendingFileName, setPendingFileName] = useState("");
   
-  // Responsive preview box size - smaller on mobile
-  const [previewBoxSize, setPreviewBoxSize] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const isMobile = window.innerWidth < 768;
-      return isMobile ? Math.min(480, window.innerWidth - 80) : 480;
-    }
-    return 480;
-  });
+  const [previewBoxSize, setPreviewBoxSize] = useState(getPreviewBoxSize);
 
-  // Update preview box size on window resize
   useEffect(() => {
-    const updatePreviewSize = () => {
-      const isMobile = window.innerWidth < 768;
-      setPreviewBoxSize(isMobile ? Math.min(480, window.innerWidth - 80) : 480);
-    };
+    const updatePreviewSize = () => setPreviewBoxSize(getPreviewBoxSize());
 
-    window.addEventListener('resize', updatePreviewSize);
-    return () => window.removeEventListener('resize', updatePreviewSize);
+    window.addEventListener("resize", updatePreviewSize);
+    return () => window.removeEventListener("resize", updatePreviewSize);
   }, []);
 
   // Prevent body scroll when cropper modal is open
   useEffect(() => {
     if (showCropper) {
-      // Store current scroll position
       scrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
       document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
@@ -122,14 +112,12 @@ function ProductListingPage() {
       document.body.style.top = `-${scrollPositionRef.current}px`;
       document.body.style.width = '100%';
     } else {
-      // Restore scroll position
       const scrollY = scrollPositionRef.current;
       document.documentElement.style.overflow = '';
       document.body.style.overflow = '';
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
-      // Use requestAnimationFrame to ensure DOM is updated before scrolling
       requestAnimationFrame(() => {
         window.scrollTo(0, scrollY);
       });
@@ -143,8 +131,7 @@ function ProductListingPage() {
     };
   }, [showCropper]);
 
-  // we still keep React state for display/selection so UI updates,
-  // but we ALSO mirror them in refs so drag reads the latest values.
+  // Mirror crop geometry in refs so dragging reads the latest values.
   const displayInfoRef = useRef({
     dx: 0,
     dy: 0,
@@ -164,7 +151,6 @@ function ProductListingPage() {
     size: 200,
   });
 
-  // drag refs
   const draggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const selectionStartRef = useRef({ x: 0, y: 0 });
@@ -172,15 +158,27 @@ function ProductListingPage() {
   const cropCanvasRef = useRef(null);
   const cropContainerRef = useRef(null);
 
-  // ============================================
-  // CHECK ACTIVE LISTING CAP (new listings only)
-  // ============================================
+  function resetFormFields() {
+    setTitle(DEFAULT_FORM.title);
+    setCategories([...DEFAULT_FORM.categories]);
+    setItemLocation(DEFAULT_FORM.itemLocation);
+    setCondition(DEFAULT_FORM.condition);
+    setDescription(DEFAULT_FORM.description);
+    setPrice(DEFAULT_FORM.price);
+    setAcceptTrades(DEFAULT_FORM.acceptTrades);
+    setPriceNegotiable(DEFAULT_FORM.priceNegotiable);
+    setImages([...DEFAULT_FORM.images]);
+    setSelectedCategory("");
+    setErrors({});
+  }
+
+  // New listing cap
   useEffect(() => {
     if (!isNew) return;
     let ignore = false;
     async function checkActiveListingCap() {
       try {
-        const res = await fetch(`${API_BASE}/seller-dashboard/manage_seller_listings.php`, {
+        const res = await fetch(`${API_BASE}/seller_dashboard/manage_seller_listings.php`, {
           method: "POST",
           credentials: "include",
         });
@@ -199,9 +197,7 @@ function ProductListingPage() {
     return () => { ignore = true; };
   }, [isNew]);
 
-  // ============================================
-  // FETCH CATEGORIES
-  // ============================================
+  // Categories
   useEffect(() => {
     let ignore = false;
     async function loadCategories() {
@@ -234,9 +230,7 @@ function ProductListingPage() {
     };
   }, []);
 
-  // ============================================
-  // FETCH EXISTING LISTING (EDIT MODE)
-  // ============================================
+  // Existing listing
   useEffect(() => {
     if (!isEdit || !id) return;
 
@@ -247,7 +241,7 @@ function ProductListingPage() {
         setLoadError(null);
         setServerMsg(null);
 
-        const res = await fetch(`${API_BASE}/product/viewProduct.php?product_id=${encodeURIComponent(id)}`, {
+        const res = await fetch(`${API_BASE}/product/view_product.php?product_id=${encodeURIComponent(id)}`, {
           credentials: "include",
         });
 
@@ -353,22 +347,10 @@ function ProductListingPage() {
     };
   }, [id, isEdit, navigate]);
 
-  // ============================================
-  // MODE-AWARE RESET (NEW MODE)
-  // ============================================
+  // Reset form when switching back to new-listing mode.
   useEffect(() => {
     if (isNew) {
-      setTitle(defaultForm.title);
-      setCategories([...defaultForm.categories]);
-      setItemLocation(defaultForm.itemLocation);
-      setCondition(defaultForm.condition);
-      setDescription(defaultForm.description);
-      setPrice(defaultForm.price);
-      setAcceptTrades(defaultForm.acceptTrades);
-      setPriceNegotiable(defaultForm.priceNegotiable);
-      setImages([]);
-      setSelectedCategory("");
-      setErrors({});
+      resetFormFields();
       setServerMsg(null);
       setLoadError(null);
       setIsSold(false);
@@ -376,34 +358,21 @@ function ProductListingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew]);
 
-  // ============================================
-  // INPUT HANDLER
-  // ============================================
   const handleInputChange = (field, value, setter) => {
     if (field === "title" && value.length > LIMITS.title) return;
     if (field === "description" && value.length > LIMITS.description) return;
     
-    // For price (text input), validate format: only digits and at most one decimal point
     if (field === "price") {
-      // Allow empty string
       if (value === "") {
         setter(value);
         return;
       }
       
-      // Count decimal points - only allow one
       const decimalCount = (value.match(/\./g) || []).length;
       if (decimalCount > 1) return;
       
-      // Check if value matches valid number format (non-negative digits with optional decimal point)
-      // Allow: "40", "40.5", "40.99", "0.5", ".5", etc.
-      // Reject: "40.5.5", "abc", "40a", "-40", etc.
-      const validPricePattern = /^\d*\.?\d*$/;
+      if (!PRICE_INPUT_PATTERN.test(value)) return;
       
-      // Check if value matches valid pattern
-      if (!validPricePattern.test(value)) return;
-      
-      // Validate numeric limit if value is not empty and is a valid number
       if (value !== "" && !isNaN(parseFloat(value)) && parseFloat(value) > LIMITS.price) return;
     }
     
@@ -417,9 +386,6 @@ function ProductListingPage() {
     }
   };
 
-  // ============================================
-  // CATEGORY HANDLERS
-  // ============================================
   const removeCategory = (val) => {
     const next = categories.filter((c) => c !== val);
     setCategories(next);
@@ -430,30 +396,12 @@ function ProductListingPage() {
     });
   };
 
-  // ============================================
-  // VALIDATION
-  // ============================================
   const validateAll = () => {
     const newErrors = {};
 
-    // XSS PROTECTION: Check for XSS patterns in title and description
-    const xssPatterns = [
-      /<script/i,
-      /javascript:/i,
-      /onerror=/i,
-      /onload=/i,
-      /onclick=/i,
-      /<iframe/i,
-      /<object/i,
-      /<embed/i,
-      /<img[^>]*on/i,
-      /<svg[^>]*on/i,
-      /vbscript:/i
-    ];
-
     if (!title.trim()) {
       newErrors.title = "Title is required";
-    } else if (xssPatterns.some(pattern => pattern.test(title))) {
+    } else if (containsXssPattern(title)) {
       newErrors.title = "Invalid characters in title";
     } else if (title.length > LIMITS.title) {
       newErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
@@ -461,7 +409,7 @@ function ProductListingPage() {
 
     if (!description.trim()) {
       newErrors.description = "Description is required";
-    } else if (xssPatterns.some(pattern => pattern.test(description))) {
+    } else if (containsXssPattern(description)) {
       newErrors.description = "Invalid characters in description";
     } else if (description.length > LIMITS.description) {
       newErrors.description = `Description must be ${LIMITS.description} characters or fewer`;
@@ -498,7 +446,6 @@ function ProductListingPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Clear image error when images are added
   useEffect(() => {
     if (images.length > 0 && errors.images) {
       setErrors((prev) => {
@@ -509,25 +456,17 @@ function ProductListingPage() {
     }
   }, [images.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ============================================
-  // IMAGE UPLOAD + 1:1 ENFORCEMENT
-  // ============================================
   function isAllowedType(f) {
-    // Prefer MIME, but fall back to extension if needed
-    if (f.type && ALLOWED_MIME.has(f.type)) return true;
+    if (f.type && ALLOWED_IMAGE_MIME_TYPES.has(f.type)) return true;
 
     const name = (f.name || "").toLowerCase();
-    const ext = ALLOWED_EXTS.has(
-      name.slice(name.lastIndexOf(".")) // includes dot
-    );
-    return ext;
+    return ALLOWED_IMAGE_EXTENSIONS.has(name.slice(name.lastIndexOf(".")));
   }
 
   function onFileChange(e) {
     const files = Array.from(e.target.files || []).slice(0, 1);
     if (!files.length) return;
 
-    // Check image limit
     if (images.length >= LIMITS.images) {
       setErrors((prev) => ({
         ...prev,
@@ -539,8 +478,7 @@ function ProductListingPage() {
 
     const file = files[0];
 
-    // Validate file size
-    if (file.size > MAX_BYTES) {
+    if (file.size > MAX_IMAGE_BYTES) {
       setErrors((prev) => ({
         ...prev,
         images: "Image is too large. Max size is 2 MB.",
@@ -549,7 +487,6 @@ function ProductListingPage() {
       return;
     }
 
-    // Validate file type
     if (!isAllowedType(file)) {
       setErrors((prev) => ({
         ...prev,
@@ -629,9 +566,6 @@ function ProductListingPage() {
     setImages((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  // ============================================
-  // CROPPER: when preview image loads
-  // ============================================
   function handlePreviewImgLoaded() {
     if (!cropImgEl) return;
 
@@ -664,13 +598,9 @@ function ProductListingPage() {
     selectionRef.current = sel;
   }
 
-  // ============================================
-  // CROPPER: drag start / move / end
-  // ============================================
   function startDrag(e) {
     e.preventDefault();
     draggingRef.current = true;
-    // Handle both mouse and touch events
     const clientX = e.clientX ?? (e.touches?.[0]?.clientX ?? 0);
     const clientY = e.clientY ?? (e.touches?.[0]?.clientY ?? 0);
     dragStartRef.current = { x: clientX, y: clientY };
@@ -688,7 +618,6 @@ function ProductListingPage() {
     const dragStart = dragStartRef.current;
     const size = selectionRef.current.size;
 
-    // Handle both mouse and touch events
     const clientX = e.clientX ?? (e.touches?.[0]?.clientX ?? 0);
     const clientY = e.clientY ?? (e.touches?.[0]?.clientY ?? 0);
 
@@ -711,23 +640,18 @@ function ProductListingPage() {
   }
 
   function onCropMouseUp(e) {
-    // Prevent default touch behavior
     if (e) {
       e.preventDefault();
     }
     draggingRef.current = false;
   }
 
-  // ============================================
-  // CROPPER: confirm
-  // ============================================
   function handleCropConfirm() {
     if (!cropImgEl || !cropImageSrc) {
       setShowCropper(false);
       return;
     }
 
-    // Check image limit before adding cropped image
     if (images.length >= LIMITS.images) {
       setErrors((prev) => ({
         ...prev,
@@ -773,7 +697,6 @@ function ProductListingPage() {
           return;
         }
         
-        // Check image limit again before adding (in case user added images while cropping)
         if (images.length >= LIMITS.images) {
           setErrors((prev) => ({
             ...prev,
@@ -793,7 +716,6 @@ function ProductListingPage() {
 
         setImages((prev) => [...prev, { file: finalFile, url: finalUrl }]);
 
-        // Clear image error when cropped image is added
         if (errors.images) {
           setErrors((prev) => {
             const ne = { ...prev };
@@ -819,14 +741,10 @@ function ProductListingPage() {
     setPendingFileName("");
   }
 
-  // ============================================
-  // SUBMIT
-  // ============================================
   async function publishListing(e) {
     e.preventDefault();
     setServerMsg(null);
     
-    // Prevent submission if item is sold
     if (isEdit && isSold) {
       setServerMsg("Cannot edit sold items.");
       formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -834,12 +752,10 @@ function ProductListingPage() {
     }
     
     if (!validateAll()) {
-      // Scroll to top and show error banner
       formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setShowTopErrorBanner(true);
       return;
     }
-    // Hide error banner on successful validation
     setShowTopErrorBanner(false);
 
     const fd = new FormData();
@@ -879,7 +795,7 @@ function ProductListingPage() {
 
     try {
       setSubmitting(true);
-      const res = await fetch(`${API_BASE}/seller-dashboard/product_listing.php`, {
+      const res = await fetch(`${API_BASE}/seller_dashboard/product_listing.php`, {
         method: "POST",
         body: fd,
         credentials: "include",
@@ -898,25 +814,11 @@ function ProductListingPage() {
       }
 
       if (isEdit) {
-        // For edit mode, redirect back to where user came from, or dashboard
         const returnTo = location.state?.returnTo || "/app/seller-dashboard";
         navigate(returnTo);
       } else {
-        // For new listings, show success modal
         setShowSuccess(true);
-
-        // reset form
-        setTitle(defaultForm.title);
-        setCategories([]);
-        setItemLocation(defaultForm.itemLocation);
-        setCondition(defaultForm.condition);
-        setDescription(defaultForm.description);
-        setPrice(defaultForm.price);
-        setAcceptTrades(defaultForm.acceptTrades);
-        setPriceNegotiable(defaultForm.priceNegotiable);
-        setImages([]);
-        setSelectedCategory("");
-        setErrors({});
+        resetFormFields();
       }
     } catch (err) {
       setServerMsg(err?.message || "Network error.");
@@ -1619,10 +1521,8 @@ function ProductListingPage() {
                       height: `${selection.size}px`,
                       border: "2px dashed #3b82f6",
                       borderRadius: "8px",
-                      // IMPORTANT: we remove the giant shadow from pointer hit area
                       boxShadow: "0 0 0 9999px rgba(0,0,0,0.25)",
                       cursor: "move",
-                      // ensure this box can be clicked/dragged
                       pointerEvents: "auto",
                       touchAction: "none",
                     }}

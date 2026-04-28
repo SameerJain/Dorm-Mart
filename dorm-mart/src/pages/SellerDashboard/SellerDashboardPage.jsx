@@ -112,9 +112,9 @@ function SellerDashboardPage() {
     const fetchListings = useCallback(async () => {
         setLoading(true);
         try {
-            // TODO: Create manage_seller_listings.php endpoint similar to fetch-transacted-items.php
+            // TODO: Create manage_seller_listings.php endpoint similar to fetch_transacted_items.php
             // This will query transacted_items WHERE seller_user_id = current_user_id
-            const response = await fetch(`${API_BASE}/seller-dashboard/manage_seller_listings.php`, {
+            const response = await fetch(`${API_BASE}/seller_dashboard/manage_seller_listings.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -305,7 +305,7 @@ function SellerDashboardPage() {
 
     const handleDelete = async (id) => {
         try {
-            const res = await fetch(`${API_BASE}/seller-dashboard/delete_listing.php`, {
+            const res = await fetch(`${API_BASE}/seller_dashboard/delete_listing.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

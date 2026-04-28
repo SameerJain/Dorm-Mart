@@ -1,8 +1,7 @@
 START TRANSACTION;
--- 015_#279_electronic_drum_set_test_data.sql
--- Seed data for scheduled purchase feature testing - Electronic Drum Set
--- Adds an electronic drum set product listing for testuserschedulered@buffalo.edu (Luke Skywalker)
--- This makes Test 1 clearer by providing a distinct product for testing scheduled purchases
+-- Seed: Task #279 Electronic Drum Set listing.
+-- Purpose: adds a distinct scheduled-purchase test item for Luke Skywalker.
+-- Depends on: testuserschedulered@buffalo.edu.
 
 -- Capture seller user_id for linking records
 SELECT user_id INTO @seller_id
@@ -46,7 +45,6 @@ INSERT INTO INVENTORY (
 );
 
 COMMIT;
-
 
 
 

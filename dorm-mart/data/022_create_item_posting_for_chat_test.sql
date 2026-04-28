@@ -1,5 +1,7 @@
-
 START TRANSACTION;
+-- Seed: chat item-posting test listing.
+-- Purpose: creates a single listing for chat item-posting tests.
+-- Depends on: chatuser1@buffalo.edu from chat seed data.
 
 SELECT user_id INTO @seller_id
 FROM user_accounts

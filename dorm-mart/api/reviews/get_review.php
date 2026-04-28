@@ -77,7 +77,7 @@ try {
         'seller_user_id' => (int)$review['seller_user_id'],
         'rating' => (float)$review['rating'],
         'product_rating' => isset($review['product_rating']) ? (float)$review['product_rating'] : null,
-        'review_text' => $review['review_text'], // Note: No HTML encoding needed for JSON - React handles XSS protection
+        'review_text' => $review['review_text'],
         'image1_url' => $review['image1_url'] ?? null,
         'image2_url' => $review['image2_url'] ?? null,
         'image3_url' => $review['image3_url'] ?? null,

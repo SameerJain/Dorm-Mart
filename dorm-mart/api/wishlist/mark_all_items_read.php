@@ -1,24 +1,14 @@
 <?php
 declare(strict_types=1);
 
-// JSON response
-header('Content-Type: application/json; charset=utf-8');
-
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/response.php';
+require_once __DIR__ . '/../helpers/request.php';
 setSecurityHeaders();
 setSecureCORS();
 
-// Handle preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+allow_options_request();
+require_request_method('POST');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
@@ -29,17 +19,12 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Read JSON body (optional, only for CSRF)
-    $raw = file_get_contents('php://input');
-    $input = json_decode($raw, true);
-    if (!is_array($input)) $input = [];
+    $input = json_request_body();
 
     /* Conditional CSRF validation - only validate if token is provided */
     $token = $input['csrf_token'] ?? null;
     if ($token !== null && !validate_csrf_token($token)) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'CSRF token validation failed']);
-        exit;
+        json_response(['success' => false, 'error' => 'CSRF token validation failed'], 403);
     }
 
     // Reset unread_count to 0 for all products for this seller
@@ -57,12 +42,11 @@ try {
     $affected = $stmt->affected_rows;
     $stmt->close();
 
-    echo json_encode([
+    json_response([
         'success'        => true,
         'rows_affected'  => $affected,
     ]);
 } catch (Throwable $e) {
     error_log('mark_all_items_read error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

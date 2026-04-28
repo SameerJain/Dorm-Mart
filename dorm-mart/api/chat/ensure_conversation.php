@@ -197,7 +197,6 @@ try {
 
     // Add product details to conversation row for consistency with fetch_conversations.php
     if ($productRow) {
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $conversationRow['product_title'] = (string)($productRow['title'] ?? '');
         $conversationRow['product_seller_id'] = isset($productRow['seller_id']) ? (int)$productRow['seller_id'] : null;
         
@@ -242,8 +241,6 @@ try {
                 $firstImage = $publicBase . $firstImage;
             }
         }
-
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $productDetails = [
             'product_id' => (int)$productRow['product_id'],
             'title' => (string)($productRow['title'] ?? ''),
@@ -329,7 +326,6 @@ try {
             $autoMsgStmt->close();
 
             $createdIso = gmdate('Y-m-d\TH:i:s\Z');
-            // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
             $autoMessage = [
                 'message_id' => (int)$autoMsgId,
                 'conv_id' => $convId,
@@ -356,8 +352,6 @@ try {
             }
         }
     }
-
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     echo json_encode([
         'success' => true,
         'conversation' => $conversationRow,

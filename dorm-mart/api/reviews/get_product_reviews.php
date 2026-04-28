@@ -95,7 +95,7 @@ try {
             'seller_user_id' => (int)$row['seller_user_id'],
             'rating' => (float)$row['rating'],
             'product_rating' => isset($row['product_rating']) ? (float)$row['product_rating'] : null,
-            'review_text' => $row['review_text'], // Note: No HTML encoding needed for JSON - React handles XSS protection
+            'review_text' => $row['review_text'],
             'image1_url' => $row['image1_url'] ?? null,
             'image2_url' => $row['image2_url'] ?? null,
             'image3_url' => $row['image3_url'] ?? null,

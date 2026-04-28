@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
-require_once __DIR__ . '/../confirm-purchases/helpers.php';
+require_once __DIR__ . '/../confirm_purchases/helpers.php';
 
 setSecurityHeaders();
 setSecureCORS();
@@ -230,8 +230,6 @@ function fetchProductPayload(mysqli $conn, int $productId): ?array
     if ($seller === '' && !empty($row['email'])) {
         $seller = (string)$row['email'];
     }
-
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     return [
         'product_id'    => (int)$row['product_id'],
         'title'         => $row['title'] ?? 'Untitled',
@@ -250,7 +248,7 @@ function fetchProductPayload(mysqli $conn, int $productId): ?array
         'final_price'   => $row['final_price'] !== null ? (float)$row['final_price'] : null,
         'date_sold'     => $row['date_sold'] ?? null,
         'sold_to'       => isset($row['sold_to']) ? (int)$row['sold_to'] : null,
-        'seller'        => $seller !== '' ? $seller : 'Unknown Seller', // Note: No HTML encoding needed for JSON - React handles XSS protection
+        'seller'        => $seller !== '' ? $seller : 'Unknown Seller',
         'email'         => $row['email'] ?? '',
         'created_at'    => !empty($row['date_listed']) ? ($row['date_listed'] . ' 00:00:00') : null,
     ];
@@ -276,8 +274,6 @@ function buildReceiptPayload(array $confirmRow, array $scheduledRow, array $snap
 
     $negotiatedPrice = $scheduledRow['negotiated_price'] ?? ($snapshot['negotiated_price'] ?? null);
     $isTrade = isset($scheduledRow['is_trade']) ? (bool)$scheduledRow['is_trade'] : (isset($snapshot['is_trade']) ? (bool)$snapshot['is_trade'] : null);
-
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     return [
         'receipt_id' => (int)$confirmRow['confirm_request_id'],
         'inventory_product_id' => (int)$confirmRow['inventory_product_id'],

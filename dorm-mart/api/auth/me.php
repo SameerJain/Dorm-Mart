@@ -1,5 +1,5 @@
 <?php
-// api/me.php  (or route /api/me to this in your router)
+// api/auth/me.php
 declare(strict_types=1);
 
 require_once __DIR__ . '/../security/security.php';

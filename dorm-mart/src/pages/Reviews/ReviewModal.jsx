@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from "react";
 import StarRating from "./StarRating";
-import { onProductImageError, resolveProductPhotoUrl } from "../../utils/imageFallback";
+import ReviewImageGallery from "./components/ReviewImageGallery";
+import { onProductImageError } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
-
-const reviewImageUrl = (url) =>
-  resolveProductPhotoUrl(url, { apiBase: API_BASE, proxyUnknown: true });
 
 /**
  * ReviewModal Component
@@ -44,7 +42,6 @@ function ReviewModal({
   const [charCount, setCharCount] = useState(0);
   const [uploadedImages, setUploadedImages] = useState([]); // Array of {file, url, uploadedUrl}
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null); // For full-size image modal
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmCallback, setConfirmCallback] = useState(null);
@@ -79,7 +76,6 @@ function ReviewModal({
       setRating(existingReview.rating || 0);
       setProductRating(existingReview.product_rating || 0);
       setReviewText(existingReview.review_text || "");
-      setSelectedImage(null); // Reset selected image when modal opens
       // Load images with proper API base path
       if (existingReview.image1_url || existingReview.image2_url || existingReview.image3_url) {
         const images = [];
@@ -90,13 +86,6 @@ function ReviewModal({
       }
     }
   }, [isOpen, mode, existingReview]);
-
-  // Reset selectedImage when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setSelectedImage(null);
-    }
-  }, [isOpen]);
 
   // Prevent background scroll when modal is open
   useEffect(() => {
@@ -228,27 +217,6 @@ function ReviewModal({
       newImages.splice(index, 1);
       return newImages;
     });
-  };
-
-  const handleDownloadImage = async (imageUrl, filename) => {
-    try {
-      const response = await fetch(reviewImageUrl(imageUrl), {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch image');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading image:', error);
-      alert('Failed to download image. Please try again.');
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -416,7 +384,7 @@ function ReviewModal({
               <div className="mt-3 w-full h-40 max-h-40 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
                 <img
                   src={productImageUrl}
-                  alt={`${productTitle} listing photo`}
+                  alt={`${productTitle} listing`}
                   className="max-h-full max-w-full object-contain"
                   onError={onProductImageError}
                 />
@@ -647,133 +615,7 @@ function ReviewModal({
                 </div>
               </div>
 
-              {/* Review Images Display */}
-              {(existingReview?.image1_url || existingReview?.image2_url || existingReview?.image3_url) && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Images
-                  </label>
-                  {viewMode === "seller" ? (
-                    // Seller view: Full-size images with download
-                    <div className="space-y-4">
-                      {existingReview.image1_url && (
-                        <div className="relative group w-full h-96 max-h-96 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
-                          <img
-                            src={reviewImageUrl(existingReview.image1_url)}
-                            alt="Review image 1"
-                            onClick={() => setSelectedImage(existingReview.image1_url)}
-                            className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                          />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownloadImage(existingReview.image1_url, 'review-image-1.jpg');
-                            }}
-                            className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            Download
-                          </button>
-                        </div>
-                      )}
-                      {existingReview.image2_url && (
-                        <div className="relative group w-full h-96 max-h-96 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
-                          <img
-                            src={reviewImageUrl(existingReview.image2_url)}
-                            alt="Review image 2"
-                            onClick={() => setSelectedImage(existingReview.image2_url)}
-                            className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                          />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownloadImage(existingReview.image2_url, 'review-image-2.jpg');
-                            }}
-                            className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            Download
-                          </button>
-                        </div>
-                      )}
-                      {existingReview.image3_url && (
-                        <div className="relative group w-full h-96 max-h-96 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
-                          <img
-                            src={reviewImageUrl(existingReview.image3_url)}
-                            alt="Review image 3"
-                            onClick={() => setSelectedImage(existingReview.image3_url)}
-                            className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                          />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownloadImage(existingReview.image3_url, 'review-image-3.jpg');
-                            }}
-                            className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            Download
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    // Buyer view: Small thumbnails
-                    <div className="grid grid-cols-3 gap-3">
-                      {existingReview.image1_url && (
-                        <div className="h-24 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
-                          <img
-                            src={reviewImageUrl(existingReview.image1_url)}
-                            alt="Review image 1"
-                            className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90"
-                          />
-                        </div>
-                      )}
-                      {existingReview.image2_url && (
-                        <div className="h-24 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
-                          <img
-                            src={reviewImageUrl(existingReview.image2_url)}
-                            alt="Review image 2"
-                            className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90"
-                          />
-                        </div>
-                      )}
-                      {existingReview.image3_url && (
-                        <div className="h-24 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
-                          <img
-                            src={reviewImageUrl(existingReview.image3_url)}
-                            alt="Review image 3"
-                            className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Full-size image modal for seller view */}
-              {viewMode === "seller" && selectedImage && (
-                <div
-                  className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-75 p-4"
-                  onClick={() => setSelectedImage(null)}
-                >
-                  <div className="relative flex max-h-[90vh] max-w-[min(100%,90vw)] items-center justify-center">
-                    <img
-                      src={reviewImageUrl(selectedImage)}
-                      alt="Full size review image"
-                      className="max-h-[85vh] max-w-full w-auto h-auto object-contain rounded-lg"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <button
-                      onClick={() => setSelectedImage(null)}
-                      className="absolute top-4 right-4 bg-white hover:bg-gray-100 text-gray-900 rounded-full p-2 shadow-lg"
-                      aria-label="Close"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              )}
+              <ReviewImageGallery review={existingReview} viewMode={viewMode} />
 
               {existingReview?.created_at && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">

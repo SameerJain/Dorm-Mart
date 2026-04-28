@@ -1,24 +1,14 @@
 <?php
 declare(strict_types=1);
 
-// JSON response
-header('Content-Type: application/json; charset=utf-8');
-
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/response.php';
+require_once __DIR__ . '/../helpers/request.php';
 setSecurityHeaders();
 setSecureCORS();
 
-// Handle preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+allow_options_request();
+require_request_method('POST');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
@@ -29,48 +19,30 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    $raw = file_get_contents('php://input');
-    $input = json_decode($raw, true);
-    if (!is_array($input)) $input = [];
+    $input = json_request_body();
     
-    /* Conditional CSRF validation - only validate if token is provided */
     $token = $input['csrf_token'] ?? null;
     if ($token !== null && !validate_csrf_token($token)) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'CSRF token validation failed']);
-        exit;
+        json_response(['success' => false, 'error' => 'CSRF token validation failed'], 403);
     }
     
-    $productId = isset($input['product_id']) ? (int)$input['product_id'] : 0;
+    $productId = request_int($input, 'product_id');
     if ($productId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid product_id']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
     }
 
-    // ============================================================================
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // User ID and product ID are bound as parameters using bind_param().
-    // The '?' placeholders ensure user input is treated as data, not executable SQL.
-    // This prevents SQL injection attacks even if malicious values are provided.
-    // ============================================================================
     $stmt = $conn->prepare('DELETE FROM wishlist WHERE user_id = ? AND product_id = ?');
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare delete');
     }
-    $stmt->bind_param('ii', $userId, $productId);  // 'i' = integer type, safely bound as parameters
+    $stmt->bind_param('ii', $userId, $productId);
     $stmt->execute();
 
     if ($stmt->affected_rows < 1) {
-        // Not found in wishlist
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Product not in wishlist']);
-        exit;
+        json_response(['success' => false, 'error' => 'Product not in wishlist'], 404);
     }
     $stmt->close();
 
-    /** Decrement wishlisted count for this product (floor at 0) */
     $updateStmt = $conn->prepare('UPDATE INVENTORY SET wishlisted = GREATEST(wishlisted - 1, 0) WHERE product_id = ?');
     if ($updateStmt) {
         $updateStmt->bind_param('i', $productId);
@@ -78,7 +50,6 @@ try {
         $updateStmt->close();
     }
 
-    // Decrement unread_count for this product (floor at 0)
     $notifStmt = $conn->prepare(
         'UPDATE wishlist_notification
         SET unread_count = CASE
@@ -88,15 +59,13 @@ try {
         WHERE product_id = ?'
     );
     if ($notifStmt) {
-        $notifStmt->bind_param('i', $productId); // bind product id as integer
+        $notifStmt->bind_param('i', $productId);
         $notifStmt->execute();
         $notifStmt->close();
     }
 
-    echo json_encode(['success' => true, 'product_id' => $productId]);
+    json_response(['success' => true, 'product_id' => $productId]);
 } catch (Throwable $e) {
     error_log('remove_from_wishlist error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
-

@@ -43,8 +43,6 @@ try {
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $res = $stmt->get_result();
-
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $unreads = [];
     while ($row = $res->fetch_assoc()) {
         $unreads[] = [

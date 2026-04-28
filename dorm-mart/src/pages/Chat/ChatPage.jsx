@@ -1,6 +1,6 @@
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { ChatContext } from "../../context/ChatContext";
-import fmtTime from "./chat_page_utils";
+import fmtTime from "./utils/chatPageUtils";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import MessageCard from "./components/MessageCard";
 import ScheduleMessageCard from "./components/ScheduleMessageCard";
@@ -932,7 +932,7 @@ export default function ChatPage() {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE}/scheduled-purchases/check_active.php`, {
+      const res = await fetch(`${API_BASE}/scheduled_purchases/check_active.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         credentials: 'include',
@@ -961,7 +961,7 @@ export default function ChatPage() {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE}/confirm-purchases/status.php`, {
+      const res = await fetch(`${API_BASE}/confirm_purchases/status.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         credentials: 'include',

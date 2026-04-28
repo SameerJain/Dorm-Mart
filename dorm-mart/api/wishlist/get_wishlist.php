@@ -1,27 +1,43 @@
 <?php
 declare(strict_types=1);
 
-// JSON response
-header('Content-Type: application/json; charset=utf-8');
-
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/response.php';
 setSecurityHeaders();
 setSecureCORS();
 
-// Handle preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+allow_options_request();
+require_request_method('GET');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
+
+function parse_json_string_list($value): array
+{
+    if (empty($value)) {
+        return [];
+    }
+
+    $decoded = json_decode((string)$value, true);
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+        return [];
+    }
+
+    return array_values(array_filter($decoded, static fn($item) => is_string($item) && $item !== ''));
+}
+
+function wishlist_seller_name(array $row): string
+{
+    $firstName = trim((string)($row['first_name'] ?? ''));
+    $lastName = trim((string)($row['last_name'] ?? ''));
+    $name = trim($firstName . ' ' . $lastName);
+
+    if ($name !== '') {
+        return $name;
+    }
+
+    return !empty($row['email']) ? (string)$row['email'] : 'Unknown Seller';
+}
 
 try {
     $userId = require_login();
@@ -29,13 +45,6 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // ============================================================================
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // User ID is bound as parameter using bind_param().
-    // The '?' placeholder ensures user input is treated as data, not executable SQL.
-    // This prevents SQL injection attacks even if malicious values are provided.
-    // ============================================================================
     $sql = "SELECT 
                 w.wishlist_id,
                 w.product_id,
@@ -71,53 +80,21 @@ try {
 
     $items = [];
     while ($row = $result->fetch_assoc()) {
-        // Parse categories JSON
-        $categories = [];
-        if (!empty($row['categories'])) {
-            $decoded = json_decode($row['categories'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $categories = array_values(array_filter($decoded, fn($v) => is_string($v) && $v !== ''));
-            }
-        }
+        $categories = parse_json_string_list($row['categories'] ?? null);
+        $photos = parse_json_string_list($row['photos'] ?? null);
 
-        // Parse photos JSON
-        $photos = [];
-        if (!empty($row['photos'])) {
-            $decodedPhotos = json_decode($row['photos'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedPhotos)) {
-                $photos = $decodedPhotos;
-            }
-        }
-
-        // Get first image URL
-        $imageUrl = null;
-        if (!empty($photos) && is_array($photos)) {
-            $imageUrl = $photos[0] ?? null;
-        }
-
-        // Build seller name
-        $sellerName = 'Unknown Seller';
-        $firstName = trim((string)($row['first_name'] ?? ''));
-        $lastName = trim((string)($row['last_name'] ?? ''));
-        if ($firstName !== '' || $lastName !== '') {
-            $sellerName = trim($firstName . ' ' . $lastName);
-        } elseif (!empty($row['email'])) {
-            $sellerName = (string)$row['email'];
-        }
-
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $items[] = [
             'wishlist_id' => (int)$row['wishlist_id'],
             'product_id' => (int)$row['product_id'],
             'title' => (string)$row['title'],
             'price' => isset($row['listing_price']) ? (float)$row['listing_price'] : 0.0,
-            'image_url' => $imageUrl,
+            'image_url' => $photos[0] ?? null,
             'categories' => $categories,
             'tags' => $categories, // For compatibility with ItemCardNew
-            'seller' => $sellerName,
+            'seller' => wishlist_seller_name($row),
             'seller_id' => (int)$row['seller_id'],
             'item_location' => $row['item_location'] ?? '',
-            'item_condition' => $row['item_condition'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
+            'item_condition' => $row['item_condition'] ?? '',
             'status' => $row['item_status'] ?? 'Active',
             'created_at' => $row['created_at'],
             'date_listed' => $row['date_listed'],
@@ -125,10 +102,8 @@ try {
     }
     $stmt->close();
 
-    echo json_encode(['success' => true, 'data' => $items]);
+    json_response(['success' => true, 'data' => $items]);
 } catch (Throwable $e) {
     error_log('get_wishlist error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
-

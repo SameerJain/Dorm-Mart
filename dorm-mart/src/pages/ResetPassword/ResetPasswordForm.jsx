@@ -74,7 +74,7 @@ function ResetPasswordForm() {
     // Validate token with backend
     const validateToken = async () => {
       try {
-        const response = await fetch(`${API_BASE}/auth/validate-reset-token.php`, {
+        const response = await fetch(`${API_BASE}/auth/validate_reset_token.php`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -159,7 +159,7 @@ function ResetPasswordForm() {
 
     try {
       // Call the reset password API
-      const response = await fetch(`${API_BASE}/auth/reset-password.php`, {
+      const response = await fetch(`${API_BASE}/auth/reset_password.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
