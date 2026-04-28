@@ -1,17 +1,9 @@
 <?php
 
-header('Content-Type: application/json; charset=utf-8');
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require __DIR__ . '/../database/db_connect.php';
-setSecurityHeaders();
-// Ensure CORS headers are present for React dev server and local PHP server
-setSecureCORS();
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+init_json_endpoint();
 
 $conn = db();
 $conn->query("SET time_zone = '+00:00'");
@@ -19,9 +11,7 @@ $conn->query("SET time_zone = '+00:00'");
 session_start(); 
 $userId = (int)($_SESSION['user_id'] ?? 0);
 if ($userId <= 0) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
+    json_response(['success' => false, 'error' => 'Not authenticated'], 401);
 }
 
 $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
@@ -93,7 +83,6 @@ while ($row = $res->fetch_assoc()) {
             $confirmStatusStmt->close();
         }
     }
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $messages[] = $row;
 }
 $stmt->close();
@@ -142,7 +131,6 @@ if ($convId > 0) {
                 $typingRow = $typingRes->fetch_assoc();
                 $typingStatus['is_typing'] = (bool)(int)$typingRow['is_typing'];
                 if ($typingStatus['is_typing'] && !empty($typingRow['first_name'])) {
-                    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
                     $typingStatus['typing_user_first_name'] = $typingRow['first_name'];
                 }
             }
@@ -152,9 +140,9 @@ if ($convId > 0) {
     $convStmt->close();
 }
 
-echo json_encode([
+json_response([
     'success'  => true,
     'conv_id'  => $convId,
     'messages' => $messages, // array of only-new messages
     'typing_status' => $typingStatus, // typing status for other user
-], JSON_UNESCAPED_SLASHES);
+], 200, JSON_UNESCAPED_SLASHES);

@@ -1,9 +1,8 @@
 // src/components/ItemCardNew.jsx
 import { useNavigate } from "react-router-dom";
 import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../utils/imageFallback";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import { API_BASE } from "../utils/apiConfig";
+import { formatCurrency } from "../utils/formatters";
 
 export default function ItemCardNew({
   id,
@@ -151,7 +150,7 @@ export default function ItemCardNew({
         <p className="text-lg font-bold text-gray-900 dark:text-gray-50 mt-0.5">
           {typeof price === "string"
             ? price
-            : `$${price?.toFixed?.(2) ?? price ?? "0.00"}`}
+            : formatCurrency(price) ?? "$0.00"}
         </p>
       </div>
 

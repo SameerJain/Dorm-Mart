@@ -4,9 +4,8 @@ import {
   getEffectivePendingTheme,
   THEME_CACHE_KEY,
   THEME_PENDING_KEY,
-} from '../utils/load_theme.js';
-
-const API_BASE = process.env.REACT_APP_API_BASE || '/api';
+} from '../utils/loadTheme.js';
+import { API_BASE } from '../utils/apiConfig';
 
 export function useTheme() {
   const readDOM = () =>
@@ -27,7 +26,7 @@ export function useTheme() {
     } catch (_) {}
 
     try {
-      const res = await fetch(`${API_BASE}/profile/userPreferences.php`, {
+      const res = await fetch(`${API_BASE}/profile/user_preferences.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

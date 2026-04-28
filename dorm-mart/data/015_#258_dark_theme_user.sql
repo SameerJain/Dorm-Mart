@@ -1,5 +1,7 @@
 START TRANSACTION;
--- ^ Begin a transaction so the insert is all-or-nothing.
+-- Seed: Task #258 dark-theme test account.
+-- Purpose: creates testuserdark@buffalo.edu with dark theme enabled.
+-- Safe to rerun: removes and recreates only this account.
 SET SESSION foreign_key_checks = 0;
 
 DELETE FROM user_accounts

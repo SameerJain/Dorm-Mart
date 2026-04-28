@@ -2,15 +2,11 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/response.php';
 initSecurity();
 
-header('Content-Type: application/json; charset=utf-8');
-
 // Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+allow_options_request(200);
 
 try {
     require_once __DIR__ . '/../database/db_connect.php';
@@ -56,16 +52,14 @@ try {
     sort($categories, SORT_STRING | SORT_FLAG_CASE);
     
     // XSS PROTECTION: Escape user-generated content before returning in JSON
-    $escapedCategories = array_map('escapeHtml', $categories);
+    $escapedCategories = array_map('escape_html', $categories);
     
     $conn->close();
     
     // Return the array of active categories
-    echo json_encode($escapedCategories);
+    json_response($escapedCategories);
 
 } catch (Throwable $e) {
     error_log('get_active_categories error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Server error']);
+    json_response(['ok' => false, 'error' => 'Server error'], 500);
 }
-

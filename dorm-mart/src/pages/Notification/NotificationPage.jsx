@@ -1,10 +1,9 @@
 // src/pages/NotificationPage.jsx
 import { useContext, useMemo, useState, useEffect } from "react";
 import { ChatContext } from "../../context/ChatContext";
-import { onProductImageError } from "../../utils/imageFallback";
+import { onProductImageError, resolveProductPhotoUrl } from "../../utils/imageFallback";
 import { useNavigate } from "react-router-dom";
-
-const BASE = process.env.REACT_APP_API_BASE || "api";
+import { API_BASE } from "../../utils/apiConfig";
 
 export default function NotificationPage() {
   const ctx = useContext(ChatContext);
@@ -50,7 +49,7 @@ export default function NotificationPage() {
 
   async function handleMarkAllRead() {
     try {
-      const res = await fetch(`${BASE}/wishlist/mark_all_items_read.php`, {
+      const res = await fetch(`${API_BASE}/wishlist/mark_all_items_read.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -79,7 +78,7 @@ export default function NotificationPage() {
 
   async function handleMarkRead(productId) {
     try {
-      const res = await fetch(`${BASE}/wishlist/mark_item_read.php`, {
+      const res = await fetch(`${API_BASE}/wishlist/mark_item_read.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -154,7 +153,7 @@ export default function NotificationPage() {
             {localItems.map(({ productId, title, count, image_url }) => {
               const rawImg = image_url || null;
               const proxied = rawImg
-                ? `${BASE}/media/image.php?url=${encodeURIComponent(String(rawImg))}`
+                ? resolveProductPhotoUrl(rawImg, { apiBase: API_BASE, proxyUnknown: true })
                 : null;
 
               return (

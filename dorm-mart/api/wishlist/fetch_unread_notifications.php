@@ -1,25 +1,9 @@
 <?php
 declare(strict_types=1);
 
-// JSON response
-header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
-
-// Handle preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-// Enforce GET
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('GET');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
@@ -43,8 +27,6 @@ try {
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $res = $stmt->get_result();
-
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $unreads = [];
     while ($row = $res->fetch_assoc()) {
         $unreads[] = [
@@ -56,9 +38,8 @@ try {
     }
     $stmt->close();
 
-    echo json_encode(['success' => true, 'unreads' => $unreads]);
+    json_response(['success' => true, 'unreads' => $unreads]);
 } catch (Throwable $e) {
     error_log('fetch_unread_notifications error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

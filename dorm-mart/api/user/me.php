@@ -3,23 +3,9 @@ declare(strict_types=1);
 
 // api/user/me.php — landing/session profile (interested categories, etc.)
 
-// Include security headers and CORS
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
-// CORS / preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('GET', ['ok' => false, 'error' => 'Method Not Allowed']);
 
 try {
     require __DIR__ . '/../auth/auth_handle.php';
@@ -50,14 +36,13 @@ try {
     $stmt->close();
 
     if (!$row) {
-        echo json_encode([
+        json_response([
             'ok' => true,
             'id' => $userId,
             'name' => null,
             'email' => null,
             'interested_categories' => [],
         ]);
-        exit;
     }
 
     // XSS PROTECTION: Escape user-generated content before returning in JSON
@@ -65,23 +50,18 @@ try {
     $c1 = trim((string)($row['interested_category_1'] ?? ''));
     $c2 = trim((string)($row['interested_category_2'] ?? ''));
     $c3 = trim((string)($row['interested_category_3'] ?? ''));
-
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     if ($c1 !== '') $cats[] = $c1;
     if ($c2 !== '' && $c2 !== $c1) $cats[] = $c2;
     if ($c3 !== '' && $c3 !== $c1 && $c3 !== $c2) $cats[] = $c3;
 
     $cats = array_slice($cats, 0, 3);
 
-    echo json_encode([
+    json_response([
         'ok' => true,
         'interested_categories' => $cats,
     ]);
-    exit;
 
 } catch (Throwable $e) {
     error_log('me.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Server error']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Server error'], 500);
 }

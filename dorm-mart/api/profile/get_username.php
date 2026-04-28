@@ -1,35 +1,19 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/profile_helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('GET');
 
 try {
     require_login();
 
     $requestedId = isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0;
     if ($requestedId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid user_id']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid user_id'], 400);
     }
 
     $conn = db();
@@ -47,21 +31,16 @@ try {
     $conn->close();
 
     if (!$row || empty($row['email'])) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'User not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'User not found'], 404);
     }
 
     $username = derive_username((string)$row['email']);
-
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
-    echo json_encode([
+    json_response([
         'success' => true,
         'user_id' => $requestedId,
         'username' => $username,
     ]);
 } catch (Throwable $e) {
     error_log('get_username.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

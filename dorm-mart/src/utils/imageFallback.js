@@ -40,6 +40,46 @@ export function resolveStoredImageUrl(raw, apiBase) {
   return s;
 }
 
+export function resolveProductPhotoUrl(raw, { apiBase, publicBase = "", proxyUnknown = false } = {}) {
+  if (raw == null) return "";
+  const s = String(raw).trim();
+  if (!s) return "";
+  if (s.startsWith("blob:") || s.startsWith("data:")) return s;
+  if (s.includes("/media/image.php")) return s;
+
+  const base = String(apiBase || "").replace(/\/$/, "");
+  if (base && /^https?:\/\//i.test(s)) {
+    return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
+  }
+  if (base && (s.startsWith("/data/images/") || s.startsWith("/images/") || s.startsWith("/media/"))) {
+    return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
+  }
+  if (base && proxyUnknown) {
+    return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
+  }
+
+  const publicRoot = String(publicBase || "").replace(/\/$/, "");
+  return s.startsWith("/") ? `${publicRoot}${s}` : s;
+}
+
+export function resolveProductPhotoUrls(photos, options = {}) {
+  let list = [];
+  if (Array.isArray(photos)) {
+    list = photos;
+  } else if (typeof photos === "string") {
+    try {
+      const parsed = JSON.parse(photos);
+      list = Array.isArray(parsed) ? parsed : photos.split(",");
+    } catch (_) {
+      list = photos.split(",");
+    }
+  }
+
+  return list
+    .map((photo) => resolveProductPhotoUrl(photo, options))
+    .filter(Boolean);
+}
+
 export function withFallbackImage(url) {
   if (typeof url === "string" && url.trim() !== "") {
     return url;

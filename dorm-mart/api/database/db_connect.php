@@ -2,7 +2,7 @@
 
 function db(): mysqli
 {
-    // Include security utilities for escapeHtml function
+    // Include security utilities for escape_html function
     $root = dirname(__DIR__, 2);
     require_once $root . '/api/security/security.php';
     

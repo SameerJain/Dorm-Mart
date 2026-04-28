@@ -1,5 +1,4 @@
 function NextStepsMessageCard({ message }) {
-  const metadata = message.metadata || {};
   const content = message.content || '';
 
   return (
@@ -24,4 +23,3 @@ function NextStepsMessageCard({ message }) {
 }
 
 export default NextStepsMessageCard;
-

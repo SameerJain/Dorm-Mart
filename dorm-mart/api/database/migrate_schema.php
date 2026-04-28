@@ -14,7 +14,7 @@ error_reporting(E_ALL);
 header('Content-Type: application/json');
 
 try {
-    // Include security utilities for escapeHtml function
+    // Include security utilities for escape_html function
     require_once __DIR__ . '/../security/security.php';
 
     // reuse your existing env loader + $conn creation
@@ -64,7 +64,6 @@ foreach ($files as $path) {
   if (!$conn->multi_query($sql)) {
     $err = $conn->error;
     $conn->rollback();
-    // Note: No HTML encoding needed for JSON - React handles XSS protection
     echo json_encode(["success" => false, "message" => "Failed: " . $name . " — " . $err]);
     exit;
   }
@@ -86,5 +85,5 @@ foreach ($files as $path) {
 }
 
 // XSS PROTECTION: Escape filenames before outputting in JSON (defense-in-depth)
-$escapedRan = array_map('escapeHtml', $ran);
+$escapedRan = array_map('escape_html', $ran);
 echo json_encode(["success" => true, "applied" => $escapedRan]);

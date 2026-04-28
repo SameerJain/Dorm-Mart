@@ -6,37 +6,17 @@ declare(strict_types=1);
  * Persists editable profile fields such as bio, instagram URL, and profile photo reference.
  */
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/profile_helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     $userId = require_login();
-    $raw = file_get_contents('php://input');
-    $data = json_decode($raw, true);
-
-    if (!is_array($data)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
-    }
+    $data = json_request_body_or_error();
 
     $setClauses = [];
     $types      = '';
@@ -83,9 +63,7 @@ try {
     }
 
     if (empty($setClauses)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'No updatable fields were provided']);
-        exit;
+        json_response(['success' => false, 'error' => 'No updatable fields were provided'], 400);
     }
 
     $conn = db();
@@ -113,14 +91,13 @@ try {
     $updatedProfile = fetch_updated_fields($conn, $userId);
     $conn->close();
 
-    echo json_encode([
+    json_response([
         'success' => true,
         'profile' => $updatedProfile,
     ]);
 } catch (Throwable $e) {
     error_log('update_profile.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
 
 function sanitize_bio_value($value): ?string
@@ -133,10 +110,8 @@ function sanitize_bio_value($value): ?string
         return null;
     }
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (containsXSSPattern($bio)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in bio']);
-        exit;
+    if (contains_xss_pattern($bio)) {
+        json_response(['success' => false, 'error' => 'Invalid characters in bio'], 400);
     }
     $bio = mb_substr($bio, 0, 200);
     return $bio;
@@ -152,15 +127,11 @@ function sanitize_link_value($value): ?string
         return null;
     }
     if (strlen($link) > 255) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Link is too long']);
-        exit;
+        json_response(['success' => false, 'error' => 'Link is too long'], 400);
     }
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (containsXSSPattern($link)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in link']);
-        exit;
+    if (contains_xss_pattern($link)) {
+        json_response(['success' => false, 'error' => 'Invalid characters in link'], 400);
     }
     return $link;
 }
@@ -175,15 +146,11 @@ function sanitize_profile_photo_value($value): ?string
         return null;
     }
     if (strlen($url) > 255) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Profile photo URL is too long']);
-        exit;
+        json_response(['success' => false, 'error' => 'Profile photo URL is too long'], 400);
     }
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (containsXSSPattern($url)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in profile photo URL']);
-        exit;
+    if (contains_xss_pattern($url)) {
+        json_response(['success' => false, 'error' => 'Invalid characters in profile photo URL'], 400);
     }
 
     $allowedSchemes = ['http://', 'https://', '/media/', '/images/'];
@@ -195,9 +162,7 @@ function sanitize_profile_photo_value($value): ?string
         }
     }
     if (!$isAllowed) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Profile photo must reference an allowed path']);
-        exit;
+        json_response(['success' => false, 'error' => 'Profile photo must reference an allowed path'], 400);
     }
 
     return $url;
@@ -221,7 +186,7 @@ function fetch_updated_fields(mysqli $conn, int $userId): array
 
     return [
         'image_url' => format_profile_photo_url($row['profile_photo'] ?? null),
-        'bio'       => $row['bio'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
+        'bio'       => $row['bio'] ?? '',
         'instagram' => $row['instagram'] ?? '',
     ];
 }
