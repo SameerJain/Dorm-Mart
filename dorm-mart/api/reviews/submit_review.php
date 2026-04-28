@@ -2,84 +2,52 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     auth_boot_session();
     $userId = require_login();
 
-    $payload = json_decode(file_get_contents('php://input'), true);
-    if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
-    }
+    $payload = json_request_body_or_error();
 
     // Validate product_id
     $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
     if ($productId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid product_id']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
     }
 
     // Validate rating (seller rating, 0-5 in 0.5 increments)
     $rating = isset($payload['rating']) ? (float)$payload['rating'] : -1;
     if ($rating < 0 || $rating > 5) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Seller rating must be between 0 and 5']);
-        exit;
+        json_response(['success' => false, 'error' => 'Seller rating must be between 0 and 5'], 400);
     }
     // Check for 0.5 increments
     if (fmod($rating * 2, 1) !== 0.0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Seller rating must be in 0.5 increments']);
-        exit;
+        json_response(['success' => false, 'error' => 'Seller rating must be in 0.5 increments'], 400);
     }
 
     // Validate product_rating (0-5 in 0.5 increments)
     $productRating = isset($payload['product_rating']) ? (float)$payload['product_rating'] : -1;
     if ($productRating < 0 || $productRating > 5) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Product rating must be between 0 and 5']);
-        exit;
+        json_response(['success' => false, 'error' => 'Product rating must be between 0 and 5'], 400);
     }
     // Check for 0.5 increments
     if (fmod($productRating * 2, 1) !== 0.0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Product rating must be in 0.5 increments']);
-        exit;
+        json_response(['success' => false, 'error' => 'Product rating must be in 0.5 increments'], 400);
     }
 
     // Validate review_text (1-1000 chars, required)
     $reviewText = isset($payload['review_text']) ? trim((string)$payload['review_text']) : '';
     if ($reviewText === '') {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Review text is required']);
-        exit;
+        json_response(['success' => false, 'error' => 'Review text is required'], 400);
     }
     if (mb_strlen($reviewText) > 1000) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Review text must be 1000 characters or less']);
-        exit;
+        json_response(['success' => false, 'error' => 'Review text must be 1000 characters or less'], 400);
     }
 
     // Validate optional image URLs (up to 3 images)
@@ -101,10 +69,8 @@ try {
     $image3Url = $validateImageUrl($image3Url);
 
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (containsXSSPattern($reviewText)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in review text']);
-        exit;
+    if (contains_xss_pattern($reviewText)) {
+        json_response(['success' => false, 'error' => 'Invalid characters in review text'], 400);
     }
 
     $conn = db();
@@ -122,18 +88,14 @@ try {
     $stmt->close();
 
     if (!$productRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Product not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'Product not found'], 404);
     }
 
     $sellerId = (int)$productRow['seller_id'];
 
     // Prevent sellers from reviewing their own products
     if ($sellerId === $userId) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You cannot review your own product']);
-        exit;
+        json_response(['success' => false, 'error' => 'You cannot review your own product'], 403);
     }
 
     // Check if user has purchased this product
@@ -180,9 +142,7 @@ try {
     }
 
     if (!$hasPurchased) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You can only review products you have purchased']);
-        exit;
+        json_response(['success' => false, 'error' => 'You can only review products you have purchased'], 403);
     }
 
     // Check if user has already reviewed this product
@@ -197,9 +157,7 @@ try {
     $stmt->close();
 
     if ($existingReview) {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'error' => 'You have already reviewed this product']);
-        exit;
+        json_response(['success' => false, 'error' => 'You have already reviewed this product'], 409);
     }
 
     // Insert the review with optional images
@@ -241,15 +199,13 @@ try {
 
     $conn->close();
 
-    echo json_encode([
+    json_response([
         'success' => true,
         'review_id' => $reviewId,
         'message' => 'Review submitted successfully'
-    ], JSON_UNESCAPED_SLASHES);
+    ], 200, JSON_UNESCAPED_SLASHES);
 
 } catch (Throwable $e) {
     error_log('submit_review.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
-

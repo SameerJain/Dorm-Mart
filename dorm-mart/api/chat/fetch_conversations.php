@@ -1,18 +1,11 @@
 <?php
-// api/list-user-conversations.php
+// api/chat/fetch_conversations.php
 declare(strict_types=1);
-header('Content-Type: application/json; charset=utf-8');
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/inventory.php';
 require __DIR__ . '/../database/db_connect.php';
-setSecurityHeaders();
-// Ensure CORS headers are present for React dev server and local PHP server
-setSecureCORS();
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+init_json_endpoint();
 
 $conn = db();
 
@@ -33,9 +26,7 @@ session_start();
 $userId = (int)($_SESSION['user_id'] ?? 0);
 
 if ($userId <= 0) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
+    json_response(['success' => false, 'error' => 'Not authenticated'], 401);
 }
 
 $sql = "
@@ -60,9 +51,7 @@ $sql = "
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
   error_log('fetch_conversations: prepare failed: ' . $conn->error);
-  http_response_code(500);
-  echo json_encode(['success' => false, 'error' => 'Server error']);
-  exit;
+  json_response(['success' => false, 'error' => 'Server error'], 500);
 }
 
 $stmt->bind_param('ii', $userId, $userId); // 'ii' = two integers
@@ -74,21 +63,11 @@ $rows = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
 // Extract first image from photos JSON for each conversation
 // XSS PROTECTION: Escape user-generated content before returning in JSON
 foreach ($rows as &$row) {
-    $productImageUrl = null;
-    if (!empty($row['product_photos'])) {
-        $photosJson = $row['product_photos'];
-        $decoded = json_decode($photosJson, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && !empty($decoded)) {
-            $productImageUrl = $decoded[0] ?? null;
-        }
-    }
-    $row['product_image_url'] = $productImageUrl;
+    $row['product_image_url'] = inventory_first_photo($row['product_photos'] ?? null);
     unset($row['product_photos']); // Remove raw photos JSON from response
-    
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $row['user1_fname'] = $row['user1_fname'] ?? '';
     $row['user2_fname'] = $row['user2_fname'] ?? '';
     $row['product_title'] = $row['product_title'] ?? '';
 }
 
-echo json_encode(['success' => true, 'conversations' => $rows]);
+json_response(['success' => true, 'conversations' => $rows]);

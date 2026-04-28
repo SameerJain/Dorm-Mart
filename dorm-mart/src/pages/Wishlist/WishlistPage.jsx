@@ -2,9 +2,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import ItemCardNew from "../../components/ItemCardNew";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import { resolveProductPhotoUrl } from "../../utils/imageFallback";
+import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
 
 export default function WishlistPage() {
   const navigate = useNavigate();
@@ -38,9 +37,7 @@ export default function WishlistPage() {
                 : parseFloat(`${d.price}`.replace(/[^0-9.]/g, "")) || 0;
 
             const rawImg = d.image_url || null;
-            const img = rawImg
-              ? `${API_BASE}/media/image.php?url=${encodeURIComponent(rawImg)}`
-              : null;
+            const img = rawImg ? resolveProductPhotoUrl(rawImg, { apiBase: API_BASE, publicBase: PUBLIC_BASE, proxyUnknown: true }) : null;
 
             const createdAt = d.created_at || d.date_listed ? new Date(d.created_at || d.date_listed) : null;
             let status = d.status || null;
@@ -499,4 +496,3 @@ export default function WishlistPage() {
     </div>
   );
 }
-

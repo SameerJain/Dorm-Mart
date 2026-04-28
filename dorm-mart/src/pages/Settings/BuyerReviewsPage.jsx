@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import StarRating from "../Reviews/StarRating";
 import PageBackButton from "../../components/PageBackButton";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { API_BASE } from "../../utils/apiConfig";
 /**
  * BuyerReviewsPage Component
  * 
@@ -137,5 +136,4 @@ function BuyerReviewsPage() {
 }
 
 export default BuyerReviewsPage;
-
 

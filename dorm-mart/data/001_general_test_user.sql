@@ -1,5 +1,7 @@
 START TRANSACTION;
--- General test account (email is unique; user_id comes from auto-increment or existing row).
+-- Seed: general reusable Dorm Mart test account.
+-- Purpose: provides testuser@buffalo.edu for login, buyer, and review flows.
+-- Safe to rerun: UNIQUE(email) upsert preserves the row when possible.
 SET FOREIGN_KEY_CHECKS = 0;
 
 INSERT INTO user_accounts (

@@ -30,25 +30,12 @@ require_once __DIR__ . '/../security/security.php';
  * =========
  * php api/utility/reset_user_account_lockouts.php
  * 
- * WEB BROWSER USAGE:
- * ==================
- * 
- * 1. NPM START METHOD (React Dev Server):
- *    - Start React dev server: npm start
- *    - Start PHP server: C:\xampp\php\php.exe -S localhost:8080 -t .
- *    - Open browser: http://localhost:3000/api/auth/utility/reset_lockouts.php
- * 
- * 2. NPM BUILD METHOD (Production Build):
- *    - Build React app: npm run build
- *    - Start PHP server: C:\xampp\php\php.exe -S localhost:8080 -t .
- *    - Open browser: http://localhost:8080/api/auth/utility/reset_lockouts.php
- * 
  * NOTES:
  * ======
  * - This script resets failed_login_attempts to 0 and clears last_failed_attempt and lockout_until for all sessions
  * - All sessions can then attempt login without rate limiting restrictions
  * - Use this during development/testing to reset rate limits
- * - Works both from command line and web browser
+ * - CLI only; web access is intentionally blocked
  * - For resetting a single session, use reset_session_lockout.php instead
  */
 
@@ -100,7 +87,7 @@ try {
     $errorResponse = [
         'success' => false,
         'error' => 'Failed to reset lockouts',
-        'message' => escapeHtml($e->getMessage())
+        'message' => escape_html($e->getMessage())
     ];
 
     if (php_sapi_name() === 'cli') {

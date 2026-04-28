@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { decimalNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
 import PageBackButton from '../../components/PageBackButton';
-
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { API_BASE } from '../../utils/apiConfig';
+import { formatCurrency as formatSharedCurrency, formatDateTime as formatSharedDateTime } from '../../utils/formatters';
+import { MAX_LISTING_PRICE } from '../../utils/priceValidation';
+import { containsXssPattern } from '../../utils/inputValidation';
 
 // Price limits - max matches ProductListingPage and SchedulePurchasePage exactly
 const PRICE_LIMITS = {
-  max: 9999.99,
+  max: MAX_LISTING_PRICE,
 };
 
 const DEFAULT_FAILURE_REASONS = [
@@ -18,29 +20,11 @@ const DEFAULT_FAILURE_REASONS = [
 
 function formatDateTime(iso) {
   if (!iso) return 'TBD';
-  try {
-    const date = new Date(iso);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
+  return formatSharedDateTime(iso);
 }
 
 function formatCurrency(value) {
-  if (value === null || value === undefined || value === '') return '—';
-  const number = Number(value);
-  if (Number.isNaN(number)) return '—';
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(number);
+  return formatSharedCurrency(value) ?? '—';
 }
 
 export default function ConfirmPurchasePage() {
@@ -71,7 +55,7 @@ export default function ConfirmPurchasePage() {
       setLoading(true);
       setError('');
       try {
-        const res = await fetch(`${API_BASE}/confirm-purchases/prefill.php`, {
+        const res = await fetch(`${API_BASE}/confirm_purchases/prefill.php`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -130,27 +114,12 @@ export default function ConfirmPurchasePage() {
     if (!prefill) return;
     setFormError('');
 
-    // XSS PROTECTION: Check for XSS patterns in sellerNotes and failureReasonNotes
-    const xssPatterns = [
-      /<script/i,
-      /javascript:/i,
-      /onerror=/i,
-      /onload=/i,
-      /onclick=/i,
-      /<iframe/i,
-      /<object/i,
-      /<embed/i,
-      /<img[^>]*on/i,
-      /<svg[^>]*on/i,
-      /vbscript:/i
-    ];
-
-    if (sellerNotes.trim() && xssPatterns.some(pattern => pattern.test(sellerNotes))) {
+    if (sellerNotes.trim() && containsXssPattern(sellerNotes)) {
       setFormError('Invalid characters in seller notes.');
       return;
     }
 
-    if (failureReasonNotes.trim() && xssPatterns.some(pattern => pattern.test(failureReasonNotes))) {
+    if (failureReasonNotes.trim() && containsXssPattern(failureReasonNotes)) {
       setFormError('Invalid characters in failure reason notes.');
       return;
     }
@@ -185,7 +154,7 @@ export default function ConfirmPurchasePage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/confirm-purchases/create.php`, {
+      const res = await fetch(`${API_BASE}/confirm_purchases/create.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

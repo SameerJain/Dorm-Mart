@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { API_BASE } from "../../../utils/apiConfig";
 
 function ReviewPromptMessageCard({ productId, productTitle }) {
   const navigate = useNavigate();
@@ -113,4 +112,3 @@ function ReviewPromptMessageCard({ productId, productTitle }) {
 }
 
 export default ReviewPromptMessageCard;
-

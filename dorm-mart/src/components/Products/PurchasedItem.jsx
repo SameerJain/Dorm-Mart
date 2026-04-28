@@ -1,25 +1,9 @@
 import { Link } from "react-router-dom";
 import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../../utils/imageFallback";
+import { API_BASE } from "../../utils/apiConfig";
 import { useState, useEffect } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
-
-/** Match receipt / site style: short date + 12h time (not raw SQL 24h). */
-function formatPurchasedAt(value) {
-  if (value == null || value === "") return "";
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
+import { formatDateTime } from "../../utils/formatters";
 
 function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false }) {
   const productIdParam = id !== undefined && id !== null ? encodeURIComponent(id) : "";
@@ -138,7 +122,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
 
           {/* Bottom: date */}
           <p className="mt-2 sm:mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Purchased on {formatPurchasedAt(date)}
+            Purchased on {date ? formatDateTime(date) : ""}
           </p>
         </div>
 

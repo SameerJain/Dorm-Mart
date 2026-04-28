@@ -1,12 +1,11 @@
 <?php
 require_once __DIR__ . '/email_config.php';
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/response.php';
 setSecurityHeaders();
 setSecureCORS();
 
-header('Content-Type: application/json; charset=utf-8');
-
-echo json_encode([
+json_response([
     'ok' => true,
     'allowAllEmails' => ALLOW_ALL_EMAILS
 ]);

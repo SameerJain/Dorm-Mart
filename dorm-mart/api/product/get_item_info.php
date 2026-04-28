@@ -1,15 +1,9 @@
 <?php
 declare(strict_types=1);
 
-// Include security functions and set headers
-require __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+require __DIR__ . '/../helpers/api_bootstrap.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']); exit; }
+init_json_endpoint('POST', ['ok' => false, 'error' => 'Method Not Allowed']);
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
@@ -19,9 +13,7 @@ $userId = require_login();
 
 $prod_id = isset($_POST['product_id']) ? trim($_POST['product_id']) : '';
 if ($prod_id === '' || !ctype_digit($prod_id)) {
-    http_response_code(400);
-    echo json_encode(['ok'=>false,'error'=>'Invalid or missing product_id']);
-    exit;
+    json_response(['ok'=>false,'error'=>'Invalid or missing product_id'], 400);
 }
 $productId = (int)$prod_id;
 
@@ -58,18 +50,14 @@ WHERE product_id = ?";
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
     error_log('get_item_info: prepare failed: ' . $conn->error);
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Server error']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Server error'], 500);
 }
 
 $stmt->bind_param('i', $productId);
 
 if (!$stmt->execute()) {
     error_log('get_item_info: execute failed: ' . $stmt->error);
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Server error']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Server error'], 500);
 }
 
 $res = $stmt->get_result();
@@ -77,9 +65,7 @@ $row = $res->fetch_assoc();
 $stmt->close();
 
 if (!$row) {
-    http_response_code(404);
-    echo json_encode(['ok'=>false,'error'=>'Product not found']);
-    exit;
+    json_response(['ok'=>false,'error'=>'Product not found'], 404);
 }
 
 /* Decode JSON columns safely */
@@ -95,8 +81,6 @@ $row['sold_to']     = isset($row['sold_to']) ? (int)$row['sold_to'] : null;
 $row['product_id']  = (int)$row['product_id'];
 $row['listing_price']= $row['listing_price'] !== null ? (float)$row['listing_price'] : null;
 $row['final_price']  = $row['final_price'] !== null ? (float)$row['final_price'] : null;
-
-// Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
 $productOutput = [
     'product_id' => $row['product_id'],
     'title' => $row['title'] ?? 'Untitled',
@@ -116,4 +100,4 @@ $productOutput = [
     'sold_to' => $row['sold_to'],
 ];
 
-echo json_encode(['ok'=>true, 'product'=>$productOutput], JSON_UNESCAPED_SLASHES);
+json_response(['ok'=>true, 'product'=>$productOutput], 200, JSON_UNESCAPED_SLASHES);

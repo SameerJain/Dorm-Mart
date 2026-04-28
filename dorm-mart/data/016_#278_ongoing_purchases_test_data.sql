@@ -1,8 +1,7 @@
 START TRANSACTION;
--- 016_#278_ongoing_purchases_test_data.sql
--- Seed data for ongoing purchases page feature testing
--- Adds Gaming Chair and Christmas Ornament product listings for testuserschedulered@buffalo.edu (Luke Skywalker)
--- These items are used to test the Ongoing Purchases Page and scheduled purchase features
+-- Seed: Task #278 ongoing purchases page listings.
+-- Purpose: adds Gaming Chair and Christmas Ornament listings for scheduled purchase testing.
+-- Depends on: testuserschedulered@buffalo.edu.
 
 -- Capture seller user_id for linking records
 SELECT user_id INTO @seller_id
@@ -77,7 +76,6 @@ INSERT INTO INVENTORY (
 );
 
 COMMIT;
-
 
 
 

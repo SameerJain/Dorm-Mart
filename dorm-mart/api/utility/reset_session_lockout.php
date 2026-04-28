@@ -99,7 +99,7 @@ try {
     $errorResponse = [
         'success' => false,
         'error' => 'Failed to reset session lockouts',
-        'message' => escapeHtml($e->getMessage())
+        'message' => escape_html($e->getMessage())
     ];
 
     if (php_sapi_name() === 'cli') {

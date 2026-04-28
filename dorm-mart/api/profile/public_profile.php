@@ -1,41 +1,24 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/profile_helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('GET');
 
 try {
     auth_boot_session();
 
     $usernameParam = trim((string)($_GET['username'] ?? ''));
     if ($usernameParam === '') {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Username is required']);
-        exit;
+        json_response(['success' => false, 'error' => 'Username is required'], 400);
     }
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (strlen($usernameParam) > 64 || containsXSSPattern($usernameParam)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid username']);
-        exit;
+    if (strlen($usernameParam) > 64 || contains_xss_pattern($usernameParam)) {
+        json_response(['success' => false, 'error' => 'Invalid username'], 400);
     }
 
     $normalizedUsername = strtolower($usernameParam);
@@ -45,9 +28,7 @@ try {
 
     $userRow = fetch_public_profile_row($conn, $normalizedUsername);
     if (!$userRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Profile not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'Profile not found'], 404);
     }
 
     $userId = (int)$userRow['user_id'];
@@ -77,11 +58,10 @@ try {
 
     $conn->close();
 
-    echo json_encode($response);
+    json_response($response);
 } catch (Throwable $e) {
     error_log('public_profile.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
 
 function fetch_public_profile_row(mysqli $conn, string $username): ?array
@@ -139,48 +119,19 @@ function fetch_active_listings(mysqli $conn, int $userId): array
 
     $listings = [];
     while ($row = $result->fetch_assoc()) {
-        $photoUrl = extract_first_photo($row['photos'] ?? null);
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
+        $photoUrl = inventory_first_photo($row['photos'] ?? null);
         $listings[] = [
             'product_id' => (int)$row['product_id'],
             'title'      => $row['title'] ?? 'Untitled',
             'price'      => isset($row['listing_price']) ? (float)$row['listing_price'] : 0.0,
             'status'     => $row['item_status'] ?? 'AVAILABLE',
-            'image_url'  => $photoUrl,
+            'image_url'  => $photoUrl ? format_profile_photo_url($photoUrl) : null,
             'date_listed'=> $row['date_listed'] ?? null,
         ];
     }
 
     $stmt->close();
     return $listings;
-}
-
-function extract_first_photo($photos): ?string
-{
-    $candidates = [];
-    if (is_string($photos) && $photos !== '') {
-        $decoded = json_decode($photos, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            $candidates = $decoded;
-        } else {
-            $candidates = array_map('trim', explode(',', $photos));
-        }
-    } elseif (is_array($photos)) {
-        $candidates = $photos;
-    }
-
-    foreach ($candidates as $photo) {
-        if (!is_string($photo)) {
-            continue;
-        }
-        $trimmed = trim($photo);
-        if ($trimmed === '') {
-            continue;
-        }
-        return format_profile_photo_url($trimmed);
-    }
-
-    return null;
 }
 
 function fetch_reviews(mysqli $conn, int $userId): array
@@ -221,8 +172,6 @@ SQL;
         if ($buyerName === '') {
             $buyerName = derive_username((string)($row['buyer_email'] ?? '')) ?: 'Buyer #' . (int)$row['buyer_user_id'];
         }
-
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $reviews[] = [
             'review_id'         => (int)$row['review_id'],
             'product_id'        => (int)$row['product_id'],

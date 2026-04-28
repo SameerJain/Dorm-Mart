@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import { useTheme } from "../../hooks/useTheme";
 import PageBackButton from "../../components/PageBackButton";
+import { API_BASE } from "../../utils/apiConfig";
 
 function UserPreferences() {
   const navigate = useNavigate();
@@ -13,9 +14,7 @@ function UserPreferences() {
   const [selectedInterests, setSelectedInterests] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
-  const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
   const [availableCategories, setAvailableCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
@@ -43,7 +42,7 @@ function UserPreferences() {
       }
     })();
     return () => { cancelled = true; };
-  }, [API_BASE]);
+  }, []);
 
   // Enhanced interest management
   const handleInterestToggle = (interest) => {
@@ -104,7 +103,7 @@ function UserPreferences() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/profile/userPreferences.php`, { method: 'GET', credentials: 'include' });
+        const res = await fetch(`${API_BASE}/profile/user_preferences.php`, { method: 'GET', credentials: 'include' });
         if (!res.ok) return;
         const json = await res.json();
         if (!json || json.ok !== true || !json.data) return;
@@ -134,14 +133,13 @@ function UserPreferences() {
     const controller = new AbortController();
     const t = setTimeout(async () => {
       try {
-        setIsSaving(true);
         const body = {
           promoEmails: promotionalEmails,
           revealContact,
           interests: selectedInterests,
           theme: theme,
         };
-        await fetch(`${API_BASE}/profile/userPreferences.php`, {
+        await fetch(`${API_BASE}/profile/user_preferences.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -150,12 +148,10 @@ function UserPreferences() {
         });
       } catch (e) {
         if (e.name !== 'AbortError') console.warn('UserPreferences: POST failed', e);
-      } finally {
-        setIsSaving(false);
       }
     }, 400);
     return () => { controller.abort(); clearTimeout(t); };
-  }, [promotionalEmails, revealContact, selectedInterests, theme, API_BASE, themeIsLoading, preferencesLoaded]);
+  }, [promotionalEmails, revealContact, selectedInterests, theme, themeIsLoading, preferencesLoaded]);
 
   return (
     <SettingsLayout>

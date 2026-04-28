@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { API_BASE } from '../../../utils/apiConfig';
+import { formatCurrency, formatDateTime } from '../../../utils/formatters';
 
 const FAILURE_REASON_LABELS = {
   buyer_no_show: 'Buyer no showed',
@@ -8,31 +8,9 @@ const FAILURE_REASON_LABELS = {
   other: 'Other',
 };
 
-function formatDate(iso) {
+function formatMessageDate(iso) {
   if (!iso) return null;
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function formatCurrency(value) {
-  if (value === null || value === undefined || value === '') return null;
-  const num = Number(value);
-  if (Number.isNaN(num)) return null;
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(num);
+  return formatDateTime(iso);
 }
 
 export default function ConfirmMessageCard({ message, isMine, onRespond }) {
@@ -176,7 +154,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     setIsResponding(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/confirm-purchases/respond.php`, {
+      const res = await fetch(`${API_BASE}/confirm_purchases/respond.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -206,9 +184,9 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
 
   const failureReasonLabel = failureReason ? FAILURE_REASON_LABELS[failureReason] || 'Other' : null;
   const formattedPrice = formatCurrency(finalPrice);
-  const formattedMeeting = formatDate(meetingTime);
-  const formattedExpires = formatDate(expiresAt);
-  const formattedResponded = formatDate(respondedAt);
+  const formattedMeeting = formatMessageDate(meetingTime);
+  const formattedExpires = formatMessageDate(expiresAt);
+  const formattedResponded = formatMessageDate(respondedAt);
 
   // Safety fallback: Early return if critical metadata is missing - prevents empty div rendering
   // Note: Validation should happen in ChatPage.jsx before rendering, so this should rarely trigger

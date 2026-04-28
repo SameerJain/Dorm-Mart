@@ -1,125 +1,72 @@
 # Frontend Documentation
 
 ## What This Is
-A simple guide to all the frontend files in the src folder. Each file does one main thing.
 
-For other notes (including **legacy/archival** WebSocket/Ratchet material), see **[README.md](README.md)** in this folder.
+This is a quick map of the current React `src/` tree. React page/component files use `PascalCase.jsx`; hooks and utilities use `camelCase.js`.
 
----
+## Main files
 
-## 📄 **Main Files**
-The most important files that make the app work.
+- `App.jsx` - Defines app routes and route-level page composition.
+- `index.js` - Mounts the React app.
+- `index.css` - Global styles and shared utility classes.
 
-- **App.js** - Sets up all the pages and routes for the website.
-- **index.js** - Starts the React app and puts it on the webpage.
-- **index.css** - All the basic styling for the whole website.
+## components/
 
----
+Reusable UI pieces used across pages.
 
-## 📁 **assets/** - Images & Files
-Pictures and documents used on the website.
+- `DetailRow.jsx`, `PageBackButton.jsx`, `ProfileLink.jsx` - Shared small UI components.
+- `ItemCardNew.jsx`, `Products/PurchasedItem.jsx` - Listing and purchased-item cards.
+- `PreLoginBranding.jsx`, `PreLoginNavLinks.jsx` - Shared pre-login layout pieces.
+- `forms/PasswordRequirementRow.jsx` - Password policy display row.
+- `MainNav/` - Main app navigation and icon wrapper.
 
-### **icons/** - Small Pictures
-- **icons8-chat-96.png** - Chat icon for messaging features.
-- **icons8-filter-96.png** - Filter icon for search and sorting.
-- **icons8-notification-96.png** - Bell icon for notifications.
-- **icons8-search-96.png** - Magnifying glass for search.
-- **icons8-setting-96.png** - Gear icon for settings.
-- **icons8-user-icon-96.png** - Person icon for user accounts.
-- **puppy.jpg** - Test picture.
+## context/, hooks/, constants/, utils/
 
-### **images/** - Background Pictures
-- **login-page-left-side-background.jpg** - Background for the login page.
+Shared frontend logic.
 
-### **pdfs/** - Documents
-- **privacy.pdf** - Privacy policy document.
-- **terms&conditions.pdf** - Terms and conditions document.
+- `context/ChatContext.jsx`, `context/chatContextUtils.js` - Chat state provider and API helpers.
+- `hooks/useTheme.js`, `hooks/useEmailPolicy.js` - Shared app hooks.
+- `constants/meetLocations.js` - Scheduled purchase meet-location constants.
+- `utils/apiConfig.js` - `PUBLIC_URL` and `REACT_APP_API_BASE` helpers.
+- `utils/formatters.js`, `utils/productDetails.js`, `utils/imageFallback.js` - Display, product, and media helpers.
+- `utils/handleAuth.js`, `utils/loadTheme.js` - Auth and theme helpers.
+- `utils/inputValidation.js`, `utils/passwordPolicy.js`, `utils/priceValidation.js`, `utils/numericInputKeyHandlers.js` - Form validation helpers.
 
-### **product-images/** - Product Pictures
-- **keyboard.jpg** - Picture of a keyboard.
-- **smallcarpet.png** - Picture of a carpet.
-- **wireless-mouse.jpg** - Picture of a wireless mouse.
+## pages/
 
----
+Top-level user-facing page areas.
 
-## 📁 **components/** - Reusable Parts
-Small pieces that can be used on multiple pages.
+- `AccountCreation/AccountCreationPage.jsx` - Create account flow.
+- `ForgotPasswordPage.jsx`, `ResetPassword/` - Forgot/reset password flow.
+- `LoginPage.jsx`, `WelcomePage.jsx` - Pre-login entry pages.
+- `RootLayout.jsx` - Main authenticated app shell.
+- `Home/LandingPage.jsx` - Authenticated landing page.
+- `Search/SearchResultsPage.jsx` - Listing search and filters.
+- `ItemForms/ProductListingPage.jsx` - Create/edit listings.
+- `ItemDetails/` - Product and receipt detail pages with local `components/`, `hooks/`, and `utils/`.
+- `Chat/` - Conversation UI, message cards, scheduling/confirmation/review prompt cards, and local chat utilities.
+- `SellerDashboard/` - Seller listing dashboard and buyer-rating modal.
+- `ScheduledPurchases/` - Schedule, confirm, ongoing, completed, and report-issue pages.
+- `PurchaseHistory/` - Purchase history layout, list, and detail page.
+- `Wishlist/WishlistPage.jsx`, `Notification/NotificationPage.jsx` - Wishlist and notification views.
+- `Settings/` - Profile, password, preferences, and buyer reviews.
+- `PublicProfile/PublicProfilePage.jsx` - Public user profile.
+- `Reviews/` - Review modal, star rating, and review image gallery.
+- `FAQ/` - FAQ page and modal sections.
 
-- **ItemCardNew.jsx** - Product card used on the landing page, wishlist, and similar lists.
+## assets/
 
-### **MainNav/** - Navigation Bar
-- **Icon.jsx** - Makes icons that can be used anywhere.
-- **MainNav.jsx** - The main navigation bar at the top of the website.
+Static images used by the app and README screenshots.
 
-### **Products/** - Product Stuff
-- **PurchasedItem.jsx** - Shows items that users bought.
-- **YearSelect.jsx** - Dropdown to pick a year for filtering.
+- `icons/` - Navigation and UI icon images.
+- `images/` - General image assets.
+- `product-images/` - Sample product images.
+- `readme-images/` - Documentation screenshots.
 
----
+## Routing Notes
 
-## 📁 **pages/** - Main Pages
-The big pages that users see.
+- User-facing React routes intentionally keep existing kebab/camel route paths such as `/app/seller-dashboard`, `/app/purchase-history`, and `/app/viewProduct/:id`.
+- Backend API endpoint URLs use snake_case paths such as `/api/seller_dashboard/product_listing.php`.
+- Build base paths come from `PUBLIC_URL` in the target environment file or platform environment, not from hardcoded package scripts.
 
-### **AccountCreation/** - Sign Up
-- **index.jsx** - Page where new users create accounts.
-
-- **ForgotPasswordPage.js** - Page where users request password reset emails.
-
-### **HomePage/** - Main Page
-- **LandingPage.jsx** - The main homepage with featured products.
-
-- **LoginPage.js** - Page where users enter username and password.
-
-### **ItemForms/** - Seller Tools
-- **ProductListingPage.jsx** - Page where sellers add and edit their products.
-
-### **PurchaseHistory/** - Shopping History
-- **ItemDetailPage.js** - Shows details of one purchased item.
-- **PurchaseHistoryLayout.js** - Wrapper for all purchase history pages.
-- **PurchaseHistoryPage.js** - Shows list of all items a user bought.
-
-### **ResetPassword/** - Password Reset
-- **ForgotPasswordConfirmation.jsx** - Page shown after requesting password reset.
-- **ResetPasswordConfirmation.jsx** - Page shown after successfully resetting password.
-- **ResetPasswordError.jsx** - Error page when reset links don't work.
-- **ResetPasswordForm.jsx** - Form where users enter their new password.
-
-### **SellerDashboard/** - Seller Tools
-- **SellerDashboardPage.jsx** - Main page for sellers to manage their listings.
-
-### **Settings/** - User Settings
-- **ChangePassword.jsx** - Page where users change their password.
-- **SettingsLayout.jsx** - Wrapper for all settings pages.
-- **UserPreferences.jsx** - Page where users set their interests and preferences.
-
-- **RootLayout.js** - Main layout for all pages after login.
-
----
-
-## 📁 **utils/** - Helper Functions
-Small functions that help other files work.
-
-- **auth.js** - Helper functions for login and user sessions.
-
----
-
-## 🎨 **How The Website Works**
-
-- **Pages**: Each page does one main thing (login, signup, etc.)
-- **Components**: Small reusable pieces used on multiple pages
-- **Assets**: Pictures and files used throughout the website
-- **Utils**: Helper functions that make things work
-
----
-
-## 🔧 **Main Features**
-
-- **Login System**: Users can login, logout, and reset passwords
-- **Product Management**: Sellers can add and manage their products
-- **Purchase History**: Users can see what they bought
-- **Settings**: Users can change their preferences and password
-- **Security**: Password protection and rate limiting
-
----
-
-*Last updated: aligned with current components (removed stale asset reference).*
+*Last updated: environment-backed frontend build configuration.*

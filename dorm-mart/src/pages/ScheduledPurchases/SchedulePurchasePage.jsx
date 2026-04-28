@@ -2,21 +2,14 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MEET_LOCATION_OPTIONS, MEET_LOCATION_OTHER_VALUE } from '../../constants/meetLocations';
 import { decimalNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
-
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { API_BASE } from '../../utils/apiConfig';
+import { MAX_LISTING_PRICE, containsMemePrice } from '../../utils/priceValidation';
+import { containsXssPattern } from '../../utils/inputValidation';
 
 // Price limits - max matches ProductListingPage exactly
 const PRICE_LIMITS = {
-    max: 9999.99,
+    max: MAX_LISTING_PRICE,
 };
-
-// Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
-function containsMemePrice(priceString) {
-    if (!priceString) return false;
-    const priceStr = String(priceString);
-    const memeNumbers = ['666', '67', '420', '69', '80085', '8008', '5318008', '1488', '42069', '6969', '42042', '66666'];
-    return memeNumbers.some(meme => priceStr.includes(meme));
-}
 
 function SchedulePurchasePage() {
     const location = useLocation();
@@ -84,7 +77,7 @@ function SchedulePurchasePage() {
         async function loadListings() {
             setError('');
             try {
-                const res = await fetch(`${API_BASE}/seller-dashboard/manage_seller_listings.php`, {
+                const res = await fetch(`${API_BASE}/seller_dashboard/manage_seller_listings.php`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -403,34 +396,19 @@ function SchedulePurchasePage() {
             return;
         }
 
-        // XSS PROTECTION: Check for XSS patterns in description, customMeetLocation, and tradeItemDescription
-        const xssPatterns = [
-            /<script/i,
-            /javascript:/i,
-            /onerror=/i,
-            /onload=/i,
-            /onclick=/i,
-            /<iframe/i,
-            /<object/i,
-            /<embed/i,
-            /<img[^>]*on/i,
-            /<svg[^>]*on/i,
-            /vbscript:/i
-        ];
-
-        if (description.trim() && xssPatterns.some(pattern => pattern.test(description))) {
+        if (description.trim() && containsXssPattern(description)) {
             setFormError('Invalid characters in description.');
             setIsSubmitting(false);
             return;
         }
 
-        if (customMeetLocation.trim() && xssPatterns.some(pattern => pattern.test(customMeetLocation))) {
+        if (customMeetLocation.trim() && containsXssPattern(customMeetLocation)) {
             setFormError('Invalid characters in meet location.');
             setIsSubmitting(false);
             return;
         }
 
-        if (isTrade && tradeItemDescription.trim() && xssPatterns.some(pattern => pattern.test(tradeItemDescription))) {
+        if (isTrade && tradeItemDescription.trim() && containsXssPattern(tradeItemDescription)) {
             setFormError('Invalid characters in trade item description.');
             setIsSubmitting(false);
             return;
@@ -445,7 +423,7 @@ function SchedulePurchasePage() {
                     setIsSubmitting(false);
                     return;
                 }
-                if (containsMemePrice(negotiatedPrice)) {
+                if (containsMemePrice(negotiatedPrice, { digitsOnly: false })) {
                     setFormError('The price has a meme input in it. Please try a different price.');
                     setIsSubmitting(false);
                     return;
@@ -462,7 +440,7 @@ function SchedulePurchasePage() {
                 }
             }
 
-            const res = await fetch(`${API_BASE}/scheduled-purchases/create.php`, {
+            const res = await fetch(`${API_BASE}/scheduled_purchases/create.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -899,6 +877,3 @@ function SchedulePurchasePage() {
 }
 
 export default SchedulePurchasePage;
-
-
-

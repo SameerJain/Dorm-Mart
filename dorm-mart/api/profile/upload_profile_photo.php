@@ -1,33 +1,18 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../helpers/image_upload.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     $userId = require_login();
 
     $file = extract_upload();
     if ($file === null) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Image file is required']);
-        exit;
+        json_response(['success' => false, 'error' => 'Image file is required'], 400);
     }
 
     $uploadError = $file['error'] ?? UPLOAD_ERR_NO_FILE;
@@ -55,45 +40,26 @@ try {
                 $errorMsg = 'File upload was stopped by a PHP extension.';
                 break;
         }
-        echo json_encode(['success' => false, 'error' => $errorMsg]);
-        exit;
+        json_response(['success' => false, 'error' => $errorMsg], 400);
     }
 
     if (!is_uploaded_file($file['tmp_name'])) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid upload source']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid upload source'], 400);
     }
 
-    $sizeBytes = filesize($file['tmp_name']);
     $maxBytes  = 10 * 1024 * 1024; // 10 MB - reasonable limit for profile photos
-    if ($sizeBytes === false) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Unable to determine file size']);
-        exit;
-    }
-    if ($sizeBytes > $maxBytes) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Profile photo must be 10 MB or smaller']);
-        exit;
-    }
-
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mime  = $finfo ? finfo_file($finfo, $file['tmp_name']) : null;
-    if ($finfo) {
-        finfo_close($finfo);
-    }
-
     $allowed = [
         'image/jpeg' => 'jpg',
         'image/png'  => 'png',
         'image/webp' => 'webp',
         // Note: GIF removed to match frontend restrictions - profile photos don't need animation
     ];
-    if (!isset($allowed[$mime ?? ''])) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Unsupported image format']);
-        exit;
+    $imageInfo = uploaded_image_info($file, $maxBytes, $allowed);
+    if (!$imageInfo['ok']) {
+        $message = $imageInfo['error'] === 'image_too_large'
+            ? 'Profile photo must be 10 MB or smaller'
+            : 'Unsupported image format';
+        json_response(['success' => false, 'error' => $message], $imageInfo['status']);
     }
 
     $apiRoot      = dirname(__DIR__);          // /api
@@ -107,29 +73,26 @@ try {
         throw new RuntimeException('Unable to create images directory');
     }
 
-    $filename   = sprintf('profile_%d_%s.%s', $userId, bin2hex(random_bytes(8)), $allowed[$mime]);
+    $filename   = sprintf('profile_%d_%s.%s', $userId, bin2hex(random_bytes(8)), $imageInfo['extension']);
     $destPath   = $imageDirFs . $filename;
     $publicPath = $imageBaseUrl . '/' . $filename;
 
     // Process and compress image if GD is available
-    $processed = processProfileImage($file['tmp_name'], $mime, $destPath);
+    $processed = processProfileImage($imageInfo['tmp_name'], $imageInfo['mime'], $destPath);
     if (!$processed) {
         // Fallback: if processing fails, just move the file
-        if (!@move_uploaded_file($file['tmp_name'], $destPath)) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => 'Could not save uploaded photo']);
-            exit;
+        if (!@move_uploaded_file($imageInfo['tmp_name'], $destPath)) {
+            json_response(['success' => false, 'error' => 'Could not save uploaded photo'], 500);
         }
     }
 
-    echo json_encode([
+    json_response([
         'success'   => true,
         'image_url' => $publicPath,
     ]);
 } catch (Throwable $e) {
     error_log('upload_profile_photo.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
 
 function extract_upload(): ?array
