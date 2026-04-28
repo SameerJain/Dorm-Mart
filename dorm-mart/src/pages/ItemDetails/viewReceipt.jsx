@@ -1,12 +1,13 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChatContext } from "../../context/ChatContext";
-import { FALLBACK_IMAGE_URL, onProductImageError } from "../../utils/imageFallback";
+import { onProductImageError } from "../../utils/imageFallback";
+import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
+import { coerceBoolean, coerceNumber, formatCurrency, formatDate, formatDateTime, humanizeStatus, parseDateValue } from "../../utils/formatters";
+import { normalizeProductDetail } from "../../utils/productDetails";
 import ProfileLink from "../../components/ProfileLink";
 import PageBackButton from "../../components/PageBackButton";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import DetailRow from "../../components/DetailRow";
 
 const FAILURE_REASON_LABELS = {
   buyer_no_show: "Buyer no showed",
@@ -147,93 +148,7 @@ export default function ViewReceipt() {
   }, [productId]);
 
   const normalized = useMemo(() => {
-    if (!productData) return null;
-    const d = productData;
-    const title = d.title || d.product_title || "Untitled";
-    const description = d.description || d.product_description || "";
-
-    const priceRaw = d.listing_price ?? d.price ?? null;
-    const price = typeof priceRaw === "number"
-      ? priceRaw
-      : priceRaw != null
-      ? parseFloat(String(priceRaw).replace(/[^0-9.]/g, "")) || 0
-      : 0;
-
-    let photos = [];
-    if (Array.isArray(d.photos)) photos = d.photos;
-    else if (typeof d.photos === "string") {
-      try {
-        const maybeJson = JSON.parse(d.photos);
-        if (Array.isArray(maybeJson)) photos = maybeJson;
-        else photos = d.photos.split(",").map((s) => s.trim());
-      } catch (_) {
-        photos = d.photos.split(",").map((s) => s.trim());
-      }
-    }
-    photos = (photos || []).filter(Boolean);
-
-    const photoUrls = photos.map((p) => {
-      const raw = String(p);
-      if (/^https?:\/\//i.test(raw)) {
-        return `${API_BASE}/media/image.php?url=${encodeURIComponent(raw)}`;
-      }
-      if (raw.startsWith("/data/images/") || raw.startsWith("/images/")) {
-        return `${API_BASE}/media/image.php?url=${encodeURIComponent(raw)}`;
-      }
-      return raw.startsWith("/") ? `${PUBLIC_BASE}${raw}` : raw;
-    });
-    const normalizedPhotoUrls = photoUrls.length ? photoUrls : [FALLBACK_IMAGE_URL];
-
-    let tags = [];
-    if (Array.isArray(d.tags)) tags = d.tags;
-    else if (typeof d.tags === "string") {
-      try {
-        const maybeJson = JSON.parse(d.tags);
-        if (Array.isArray(maybeJson)) tags = maybeJson;
-        else tags = d.tags.split(",").map((t) => t.trim()).filter(Boolean);
-      } catch (_) {
-        tags = d.tags.split(",").map((t) => t.trim()).filter(Boolean);
-      }
-    }
-
-    const itemLocation = d.item_location || d.meet_location || d.location || null;
-    const itemCondition = d.item_condition || d.condition || null;
-    const trades = typeof d.trades === "boolean" ? d.trades : String(d.trades || "").toLowerCase() === "1" || String(d.trades || "").toLowerCase() === "true";
-    const priceNego = typeof d.price_nego === "boolean" ? d.price_nego : String(d.price_nego || "").toLowerCase() === "1" || String(d.price_nego || "").toLowerCase() === "true";
-    const sold = typeof d.sold === "boolean" ? d.sold : String(d.sold || "").toLowerCase() === "1" || String(d.sold || "").toLowerCase() === "true";
-
-    const sellerId = d.seller_id ?? null;
-    const sellerName = d.seller || (sellerId != null ? `Seller #${sellerId}` : "Unknown Seller");
-    const sellerEmail = d.email || null;
-    const sellerUsername = d.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null);
-    const soldTo = d.sold_to ?? null;
-
-    const dateListedStr = d.date_listed || d.created_at || null;
-    const dateSoldStr = d.date_sold || null;
-    const dateListed = dateListedStr ? new Date(dateListedStr) : null;
-    const dateSold = dateSoldStr ? new Date(dateSoldStr) : null;
-
-    return {
-      productId: d.product_id ?? d.id ?? null,
-      title,
-      description,
-      price,
-      photoUrls: normalizedPhotoUrls,
-      tags,
-      itemLocation,
-      itemCondition,
-      trades,
-      priceNego,
-      sold,
-      sellerId,
-      sellerName,
-      sellerUsername,
-      soldTo,
-      sellerEmail,
-      dateListed,
-      dateSold,
-      finalPrice: d.final_price ?? null,
-    };
+    return normalizeProductDetail(productData, { apiBase: API_BASE, publicBase: PUBLIC_BASE });
   }, [productData]);
 
   useEffect(() => {
@@ -691,14 +606,14 @@ export default function ViewReceipt() {
                 ) : null}
 
                 <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 p-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-                  <Detail label="Location" value={normalized.itemLocation || "—"} />
-                  <Detail label="Condition" value={normalized.itemCondition || "—"} />
-                  <Detail label="Negotiable" value={normalized.priceNego ? "Yes" : "No"} />
-                  <Detail label="Trades" value={normalized.trades ? "Yes" : "No"} />
-                  <Detail label="Listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : "—"} />
-                  {normalized.sold && <Detail label="Date sold" value={normalized.dateSold ? formatDate(normalized.dateSold) : "—"} />}
+                  <DetailRow align="start" label="Location" value={normalized.itemLocation || "—"} />
+                  <DetailRow align="start" label="Condition" value={normalized.itemCondition || "—"} />
+                  <DetailRow align="start" label="Negotiable" value={normalized.priceNego ? "Yes" : "No"} />
+                  <DetailRow align="start" label="Trades" value={normalized.trades ? "Yes" : "No"} />
+                  <DetailRow align="start" label="Listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : "—"} />
+                  {normalized.sold && <DetailRow align="start" label="Date sold" value={normalized.dateSold ? formatDate(normalized.dateSold) : "—"} />}
                   {normalized.sellerEmail && (
-                    <Detail label="Email" value={normalized.sellerEmail} suppressContactDetection />
+                    <DetailRow align="start" label="Email" value={normalized.sellerEmail} suppressContactDetection />
                   )}
                 </div>
               </section>
@@ -706,32 +621,6 @@ export default function ViewReceipt() {
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-function Detail({ label, value, suppressContactDetection = false }) {
-  const inner = (
-    <div className="flex items-start gap-2">
-      <span className={`text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 pt-0.5 flex-shrink-0 ${suppressContactDetection ? "no-underline" : ""}`}>{label}</span>
-      <span className={`text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1 truncate ${suppressContactDetection ? "plain-contact-text no-underline" : ""}`}>{value ?? "—"}</span>
-    </div>
-  );
-  if (suppressContactDetection) {
-    return (
-      <div x-apple-data-detectors="false" data-detectors="false" className="plain-contact-text min-w-0">
-        {inner}
-      </div>
-    );
-  }
-  return inner;
-}
-
-function ReceiptDetail({ label, value }) {
-  return (
-    <div className="flex items-start gap-2">
-      <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide pt-0.5 flex-shrink-0">{label}</span>
-      <span className="text-sm text-gray-800 dark:text-gray-200 font-medium break-words">{value ?? "—"}</span>
     </div>
   );
 }
@@ -744,93 +633,6 @@ function NoteBlock({ title, text }) {
       <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">{text}</p>
     </div>
   );
-}
-
-function formatDate(d) {
-  try {
-    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  } catch (_) {
-    return String(d);
-  }
-}
-
-function formatDateTime(d) {
-  try {
-    return d.toLocaleString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  } catch (_) {
-    return String(d);
-  }
-}
-
-function formatCurrency(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const num = typeof value === "number" ? value : Number(value);
-  if (Number.isNaN(num)) return null;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(num);
-}
-
-function parseDateValue(value) {
-  if (!value && value !== 0) return null;
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
-  }
-  if (typeof value === "number" && Number.isFinite(value)) {
-    const dateFromNumber = new Date(value);
-    return Number.isNaN(dateFromNumber.getTime()) ? null : dateFromNumber;
-  }
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const normalized = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
-    let attempt = new Date(normalized);
-    if (Number.isNaN(attempt.getTime())) {
-      attempt = new Date(`${trimmed}Z`);
-    }
-    return Number.isNaN(attempt.getTime()) ? null : attempt;
-  }
-  return null;
-}
-
-function coerceNumber(value) {
-  if (value === null || value === undefined || value === "") return null;
-  if (typeof value === "number" && !Number.isNaN(value)) return value;
-  if (typeof value === "string") {
-    const cleaned = value.replace(/[^0-9.-]/g, "");
-    if (!cleaned) return null;
-    const num = Number(cleaned);
-    return Number.isNaN(num) ? null : num;
-  }
-  return null;
-}
-
-function coerceBoolean(value) {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value !== 0;
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (!normalized) return null;
-    if (["1", "true", "yes", "y", "completed", "success", "successful"].includes(normalized)) return true;
-    if (["0", "false", "no", "n", "failed"].includes(normalized)) return false;
-  }
-  return null;
-}
-
-function humanizeStatus(input) {
-  if (!input && input !== 0) return "";
-  const raw = String(input).replace(/[_-]+/g, " ").trim();
-  if (!raw) return "";
-  return raw.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function buildPurchaseRows(details) {

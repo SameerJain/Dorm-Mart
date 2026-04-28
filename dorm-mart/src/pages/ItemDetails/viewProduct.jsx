@@ -1,12 +1,13 @@
 import { useContext, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChatContext } from "../../context/ChatContext";
-import { FALLBACK_IMAGE_URL, onProductImageError } from "../../utils/imageFallback";
+import { onProductImageError } from "../../utils/imageFallback";
+import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
+import { formatCurrency, formatDate } from "../../utils/formatters";
+import { normalizeProductDetail } from "../../utils/productDetails";
 import ProfileLink from "../../components/ProfileLink";
 import PageBackButton from "../../components/PageBackButton";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import Detail from "../../components/DetailRow";
 
 function useQuery() {
   const { search } = useLocation();
@@ -130,98 +131,7 @@ export default function ViewProduct() {
   }, [productId, myId]);
 
   const normalized = useMemo(() => {
-    if (!data) return null;
-
-    const d = data;
-    const title = d.title || d.product_title || "Untitled";
-    const description = d.description || d.product_description || "";
-
-    const priceRaw = d.listing_price ?? d.price ?? null;
-    const price = typeof priceRaw === "number"
-      ? priceRaw
-      : priceRaw != null
-      ? parseFloat(String(priceRaw).replace(/[^0-9.]/g, "")) || 0
-      : 0;
-
-    // photos can be JSON array or comma-separated string
-    let photos = [];
-    if (Array.isArray(d.photos)) photos = d.photos;
-    else if (typeof d.photos === "string") {
-      try {
-        const maybeJson = JSON.parse(d.photos);
-        if (Array.isArray(maybeJson)) photos = maybeJson;
-        else photos = d.photos.split(",").map((s) => s.trim());
-      } catch (_) {
-        photos = d.photos.split(",").map((s) => s.trim());
-      }
-    }
-    photos = (photos || []).filter(Boolean);
-
-    // proxy remote images and /data/images/ paths through image.php if present
-    const photoUrls = photos.map((p) => {
-      const raw = String(p);
-      if (/^https?:\/\//i.test(raw)) {
-        return `${API_BASE}/media/image.php?url=${encodeURIComponent(raw)}`;
-      }
-      // Route /data/images/ and /images/ paths through image.php proxy (like other components)
-      if (raw.startsWith('/data/images/') || raw.startsWith('/images/')) {
-        return `${API_BASE}/media/image.php?url=${encodeURIComponent(raw)}`;
-      }
-      return raw.startsWith("/") ? `${PUBLIC_BASE}${raw}` : raw;
-    });
-    const normalizedPhotoUrls = photoUrls.length ? photoUrls : [FALLBACK_IMAGE_URL];
-
-    // tags can be JSON array or comma-separated string
-    let tags = [];
-    if (Array.isArray(d.tags)) tags = d.tags;
-    else if (typeof d.tags === "string") {
-      try {
-        const maybeJson = JSON.parse(d.tags);
-        if (Array.isArray(maybeJson)) tags = maybeJson;
-        else tags = d.tags.split(",").map((t) => t.trim()).filter(Boolean);
-      } catch (_) {
-        tags = d.tags.split(",").map((t) => t.trim()).filter(Boolean);
-      }
-    }
-
-    const itemLocation = d.item_location || d.meet_location || d.location || null;
-    const itemCondition = d.item_condition || d.condition || null;
-    const trades = typeof d.trades === "boolean" ? d.trades : String(d.trades || "").toLowerCase() === "1" || String(d.trades || "").toLowerCase() === "true";
-    const priceNego = typeof d.price_nego === "boolean" ? d.price_nego : String(d.price_nego || "").toLowerCase() === "1" || String(d.price_nego || "").toLowerCase() === "true";
-    const sold = typeof d.sold === "boolean" ? d.sold : String(d.sold || "").toLowerCase() === "1" || String(d.sold || "").toLowerCase() === "true";
-
-    const sellerId = d.seller_id ?? null;
-    const sellerName = d.seller || (sellerId != null ? `Seller #${sellerId}` : "Unknown Seller");
-    const sellerEmail = d.email || null;
-    const sellerUsername = d.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null);
-    const soldTo = d.sold_to ?? null;
-
-    const dateListedStr = d.date_listed || d.created_at || null;
-    const dateSoldStr = d.date_sold || null;
-    const dateListed = dateListedStr ? new Date(dateListedStr) : null;
-    const dateSold = dateSoldStr ? new Date(dateSoldStr) : null;
-
-    return {
-      productId: d.product_id ?? d.id ?? null,
-      title,
-      description,
-      price,
-      photoUrls: normalizedPhotoUrls,
-      tags,
-      itemLocation,
-      itemCondition,
-      trades,
-      priceNego,
-      sold,
-      sellerId,
-      sellerName,
-      sellerUsername,
-      soldTo,
-      sellerEmail,
-      dateListed,
-      dateSold,
-      finalPrice: d.final_price ?? null,
-    };
+    return normalizeProductDetail(data, { apiBase: API_BASE, publicBase: PUBLIC_BASE });
   }, [data]);
 
   useEffect(() => {
@@ -601,7 +511,7 @@ export default function ViewProduct() {
                     <Detail label="Date sold" value={normalized.dateSold ? formatDate(normalized.dateSold) : '—'} />
                   ) : null}
                   {normalized.sold && normalized.finalPrice != null ? (
-                    <Detail label="Final price" value={`$${Number(normalized.finalPrice).toFixed(2)}`} />
+                    <Detail label="Final price" value={formatCurrency(normalized.finalPrice) ?? `$${Number(normalized.finalPrice).toFixed(2)}`} />
                   ) : null}
                 </div>
               </div>
@@ -612,29 +522,4 @@ export default function ViewProduct() {
       </div>
     </div>
   );
-}
-
-function Detail({ label, value, suppressContactDetection = false }) {
-  const inner = (
-    <div className="flex items-center gap-2">
-      <span className={`text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 flex-shrink-0 ${suppressContactDetection ? "no-underline" : ""}`}>{label}</span>
-      <span className={`text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1 truncate ${suppressContactDetection ? "plain-contact-text no-underline" : ""}`}>{value}</span>
-    </div>
-  );
-  if (suppressContactDetection) {
-    return (
-      <div x-apple-data-detectors="false" data-detectors="false" className="plain-contact-text min-w-0">
-        {inner}
-      </div>
-    );
-  }
-  return inner;
-}
-
-function formatDate(d) {
-  try {
-    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  } catch (_) {
-    return String(d);
-  }
 }

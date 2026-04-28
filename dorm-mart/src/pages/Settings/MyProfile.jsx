@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef, useState, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import { withFallbackImage, FALLBACK_IMAGE_URL, resolveStoredImageUrl, onProductImageError } from "../../utils/imageFallback";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { API_BASE } from "../../utils/apiConfig";
 
 /** Primary actions: match home / landing square-ish CTAs (rounded-lg, not pill). */
 const primaryActionButtonClass =

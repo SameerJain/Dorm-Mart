@@ -1,8 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withFallbackImage, onProductImageError } from '../../utils/imageFallback';
-
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { API_BASE } from '../../utils/apiConfig';
 
 /** Grace period after scheduled meet time before the card moves to Past */
 const ACTIVE_AFTER_MEETING_MS = 30 * 60 * 1000;
@@ -485,7 +484,6 @@ function OngoingPurchasesPage() {
         const isExpired = req.status === 'expired';
         const isCompleted = req.has_completed_confirm === true;
         const isInactive = isCancelled || isDeclined || isExpired || isCompleted;
-        const isAccepted = req.status === 'accepted';
         const canCancel = (req.status === 'pending' || req.status === 'accepted') && !isInactive;
         const isNegativeTerminal = isCancelled || isDeclined || isExpired;
 

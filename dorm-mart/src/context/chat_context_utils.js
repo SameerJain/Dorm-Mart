@@ -1,7 +1,7 @@
-const BASE =  process.env.REACT_APP_API_BASE || "/api";
+import { API_BASE } from "../utils/apiConfig";
 
 export async function fetch_me(signal) {
-  const r = await fetch(`${BASE}/auth/me.php`, {
+  const r = await fetch(`${API_BASE}/auth/me.php`, {
     method: 'GET',
     credentials: 'include', // send cookies (PHP session) with the request
     headers: { 'Accept': 'application/json' },
@@ -13,7 +13,7 @@ export async function fetch_me(signal) {
 
 export async function fetch_conversations(signal) {
   // returns: { success: true, conversations: [{ conv_id, user_1, user_2, ... }] }
-  const r = await fetch(`${BASE}/chat/fetch_conversations.php`, {
+  const r = await fetch(`${API_BASE}/chat/fetch_conversations.php`, {
     method: "GET",
     headers: { Accept: "application/json" },
     credentials: "include",
@@ -25,7 +25,7 @@ export async function fetch_conversations(signal) {
 
 export async function fetch_conversation(convId, signal) {
   // returns: { success: true, messages: [{ message_id, sender_id, content, created_at, ... }] }
-  const r = await fetch(`${BASE}/chat/fetch_conversation.php?conv_id=${convId}`, {
+  const r = await fetch(`${API_BASE}/chat/fetch_conversation.php?conv_id=${convId}`, {
     method: "GET",
     headers: { Accept: "application/json" },
     credentials: "include", // session-based auth
@@ -36,7 +36,7 @@ export async function fetch_conversation(convId, signal) {
 }
 
 export async function fetch_new_messages(activeConvId, ts, signal) {
-  const r = await fetch(`${BASE}/chat/fetch_new_messages.php?conv_id=${activeConvId}&ts=${ts}`, {
+  const r = await fetch(`${API_BASE}/chat/fetch_new_messages.php?conv_id=${activeConvId}&ts=${ts}`, {
     method: "GET",
     headers: { Accept: "application/json" },
     credentials: "include", // session-based auth
@@ -94,7 +94,7 @@ export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, sign
 }
 
 export async function fetch_unread_messages(signal) {
-  const r = await fetch(`${BASE}/chat/fetch_unread_messages.php`, {
+  const r = await fetch(`${API_BASE}/chat/fetch_unread_messages.php`, {
     method: "GET",
     headers: { Accept: "application/json" },
     credentials: "include", // session-based auth
@@ -123,7 +123,7 @@ export async function tick_fetch_unread_messages(signal) {
 }
 
 export async function fetch_unread_notifications(signal) {
-    const r = await fetch(`${BASE}/wishlist/fetch_unread_notifications.php`, {
+    const r = await fetch(`${API_BASE}/wishlist/fetch_unread_notifications.php`, {
     method: "GET",
     headers: { Accept: "application/json" },
     credentials: "include", // session-based auth
@@ -165,7 +165,7 @@ export async function create_message({ receiverId, convId, content, signal }) {
   if (convId) {
     body.conv_id = convId;
   }
-  const r = await fetch(`${BASE}/chat/create_message.php`, {
+  const r = await fetch(`${API_BASE}/chat/create_message.php`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json", // tells PHP we're sending JSON
@@ -187,7 +187,7 @@ export async function create_image_message({ receiverId, convId, content, image,
   form.append("content", content ?? "");             // optional caption
   form.append("image", image, image.name);           // PHP: $_FILES['image']
 
-  const r = await fetch(`${BASE}/chat/create_image_message.php`, {
+  const r = await fetch(`${API_BASE}/chat/create_image_message.php`, {
     method: "POST",
     body: form,                                      // DO NOT set Content-Type manually
     credentials: "include",

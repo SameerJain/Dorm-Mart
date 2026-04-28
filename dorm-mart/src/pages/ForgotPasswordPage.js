@@ -1,8 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import PreLoginBranding from "../components/PreLoginBranding";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { API_BASE } from "../utils/apiConfig";
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();

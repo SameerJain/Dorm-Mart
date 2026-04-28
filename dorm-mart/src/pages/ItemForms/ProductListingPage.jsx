@@ -3,18 +3,20 @@ import { useState, useRef, useEffect } from "react";
 import { useParams, useMatch, useNavigate, useLocation } from "react-router-dom";
 import { MEET_LOCATION_OPTIONS } from "../../constants/meetLocations";
 import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
+import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
+import { resolveProductPhotoUrl } from "../../utils/imageFallback";
+import { MAX_LISTING_PRICE, containsMemePrice } from "../../utils/priceValidation";
 
-// Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
-function containsMemePrice(priceString) {
-  if (!priceString) return false;
-  // Extract all digits from the price string (remove dollar signs, spaces, decimal points, etc.)
-  const digitsOnly = String(priceString).replace(/[^\d]/g, '');
-  if (!digitsOnly) return false;
-  
-  const memeNumbers = ['666', '67', '420', '69', '80085', '8008', '5318008', '1488', '42069', '6969', '42042', '66666'];
-  // Check if any meme number sequence appears anywhere in the digit string
-  return memeNumbers.some(meme => digitsOnly.includes(meme));
-}
+const CATEGORIES_MAX = 3;
+
+const LIMITS = {
+  title: 50,
+  description: 1000,
+  price: MAX_LISTING_PRICE,
+  priceMin: 0.01,
+  images: 6,
+  maxActiveListings: 25,
+};
 
 function ProductListingPage() {
   const { id } = useParams();
@@ -72,26 +74,11 @@ function ProductListingPage() {
   // success modal
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // API base URL (respects .env)
-  const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-  const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
-
   // categories dropdown state
   const [availableCategories, setAvailableCategories] = useState([]);
   const [catFetchError, setCatFetchError] = useState(null);
   const [catLoading, setCatLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
-
-  const CATEGORIES_MAX = 3;
-
-  const LIMITS = {
-    title: 50,
-    description: 1000,
-    price: 9999.99,
-    priceMin: 0.01,
-    images: 6,
-    maxActiveListings: 25,
-  };
 
   // File type restrictions (same as chat)
   const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -210,7 +197,7 @@ function ProductListingPage() {
     }
     checkActiveListingCap();
     return () => { ignore = true; };
-  }, [isNew, API_BASE]);
+  }, [isNew]);
 
   // ============================================
   // FETCH CATEGORIES
@@ -245,7 +232,7 @@ function ProductListingPage() {
     return () => {
       ignore = true;
     };
-  }, [API_BASE]);
+  }, []);
 
   // ============================================
   // FETCH EXISTING LISTING (EDIT MODE)
@@ -337,20 +324,9 @@ function ProductListingPage() {
         // Convert existing photo URLs to image objects for display
         // Store original URLs separately so we can send them back
         const imageObjects = existingPhotos.map(url => {
-          // Proxy images through image.php if needed (same logic as viewProduct)
-          const raw = String(url);
-          let proxiedUrl = url;
-          if (/^https?:\/\//i.test(raw)) {
-            proxiedUrl = `${API_BASE}/media/image.php?url=${encodeURIComponent(raw)}`;
-          } else if (raw.startsWith('/data/images/') || raw.startsWith('/images/')) {
-            proxiedUrl = `${API_BASE}/media/image.php?url=${encodeURIComponent(raw)}`;
-          } else if (raw.startsWith("/")) {
-            proxiedUrl = `${PUBLIC_BASE}${raw}`;
-          }
-          
           return {
             file: null, // No file object for existing images
-            url: proxiedUrl,
+            url: resolveProductPhotoUrl(url, { apiBase: API_BASE, publicBase: PUBLIC_BASE }),
             originalUrl: url, // Store original URL for submission
           };
         });
@@ -375,7 +351,7 @@ function ProductListingPage() {
     return () => {
       ignore = true;
     };
-  }, [id, isEdit, API_BASE, PUBLIC_BASE]);
+  }, [id, isEdit, navigate]);
 
   // ============================================
   // MODE-AWARE RESET (NEW MODE)
@@ -921,8 +897,6 @@ function ProductListingPage() {
         return;
       }
 
-      const pid = data?.prod_id ?? data?.product_id ?? null;
-      
       if (isEdit) {
         // For edit mode, redirect back to where user came from, or dashboard
         const returnTo = location.state?.returnTo || "/app/seller-dashboard";

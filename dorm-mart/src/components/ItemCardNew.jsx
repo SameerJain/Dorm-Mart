@@ -1,9 +1,7 @@
 // src/components/ItemCardNew.jsx
 import { useNavigate } from "react-router-dom";
 import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../utils/imageFallback";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import { API_BASE } from "../utils/apiConfig";
 
 export default function ItemCardNew({
   id,

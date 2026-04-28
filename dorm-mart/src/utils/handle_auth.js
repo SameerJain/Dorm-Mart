@@ -1,6 +1,5 @@
 import { applyThemeToDOM, THEME_CACHE_KEY, THEME_PENDING_KEY } from "./load_theme.js";
-
-const BASE = process.env.REACT_APP_API_BASE || "http://localhost/api";
+import { API_BASE } from "./apiConfig";
 
 // Logout function - calls backend to clear auth token
 export async function logout() {
@@ -15,7 +14,7 @@ export async function logout() {
       // User not authenticated
     }
 
-    const response = await fetch(`${BASE}/auth/logout.php`, {
+    const response = await fetch(`${API_BASE}/auth/logout.php`, {
       method: "POST",
       credentials: "include", // Important: include cookies
       headers: {
@@ -51,7 +50,7 @@ export async function logout() {
 
 // if user authenticated, return {"success": true, 'user_id': user_id}
 export async function fetch_me(signal) {
-  const r = await fetch(`${BASE}/auth/me.php`, {
+  const r = await fetch(`${API_BASE}/auth/me.php`, {
     method: 'GET',
     credentials: 'include', // send cookies (PHP session) with the request
     headers: { 'Accept': 'application/json' },
@@ -60,6 +59,5 @@ export async function fetch_me(signal) {
   if (!r.ok) throw new Error(`not authenticated`);
   return r.json();
 }
-
 
 

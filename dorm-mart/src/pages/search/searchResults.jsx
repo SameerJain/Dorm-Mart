@@ -2,11 +2,10 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
-import { withFallbackImage, onProductImageError } from "../../utils/imageFallback";
+import { withFallbackImage, onProductImageError, resolveProductPhotoUrl } from "../../utils/imageFallback";
+import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
+import { formatDate } from "../../utils/formatters";
 import PageBackButton from "../../components/PageBackButton";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 
 function useQuery() {
   const { search } = useLocation();
@@ -115,9 +114,7 @@ export default function SearchResults() {
             : 0;
 
           const rawImg = d.image || d.image_url || d.photo || null;
-          const img = rawImg
-            ? `${API_BASE}/media/image.php?url=${encodeURIComponent(String(rawImg))}`
-            : null;
+          const img = rawImg ? resolveProductPhotoUrl(rawImg, { apiBase: API_BASE, publicBase: PUBLIC_BASE, proxyUnknown: true }) : null;
 
           const seller = d.seller || d.seller_name || d.sold_by || (d.seller_id != null ? `Seller #${d.seller_id}` : "Unknown Seller");
           const createdAt = d.created_at || d.date_listed || null;
@@ -173,11 +170,6 @@ export default function SearchResults() {
     if (payload.category) parts.push(`${payload.category}`);
     return parts.length ? `Results for ${parts.join(" ")}` : "All Listings";
   }, [payload]);
-
-  const formatDate = (d) => {
-    if (!(d instanceof Date) || isNaN(d)) return "";
-    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 relative">
@@ -363,8 +355,6 @@ function FiltersSidebar({
 
   // Fetch categories once
   useEffect(() => {
-    const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-    const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
     (async () => {
       try {
         const r = await fetch(`${API_BASE}/utility/get_active_categories.php`);
@@ -379,7 +369,6 @@ function FiltersSidebar({
   // Hydrate state from URL params. Reset when search term changes.
   useEffect(() => {
     const searchTerm = query.get("q") || query.get("search") || "";
-    const prev = lastSearchRef.current;
     lastSearchRef.current = searchTerm;
 
     // Always reflect current URL (which will be clean when user typed new search in nav)
@@ -694,4 +683,3 @@ function FiltersSidebar({
     </aside>
   );
 }
-

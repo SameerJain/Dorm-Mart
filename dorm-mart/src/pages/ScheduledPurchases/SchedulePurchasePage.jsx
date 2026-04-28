@@ -2,21 +2,13 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MEET_LOCATION_OPTIONS, MEET_LOCATION_OTHER_VALUE } from '../../constants/meetLocations';
 import { decimalNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
-
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { API_BASE } from '../../utils/apiConfig';
+import { MAX_LISTING_PRICE, containsMemePrice } from '../../utils/priceValidation';
 
 // Price limits - max matches ProductListingPage exactly
 const PRICE_LIMITS = {
-    max: 9999.99,
+    max: MAX_LISTING_PRICE,
 };
-
-// Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
-function containsMemePrice(priceString) {
-    if (!priceString) return false;
-    const priceStr = String(priceString);
-    const memeNumbers = ['666', '67', '420', '69', '80085', '8008', '5318008', '1488', '42069', '6969', '42042', '66666'];
-    return memeNumbers.some(meme => priceStr.includes(meme));
-}
 
 function SchedulePurchasePage() {
     const location = useLocation();
@@ -445,7 +437,7 @@ function SchedulePurchasePage() {
                     setIsSubmitting(false);
                     return;
                 }
-                if (containsMemePrice(negotiatedPrice)) {
+                if (containsMemePrice(negotiatedPrice, { digitsOnly: false })) {
                     setFormError('The price has a meme input in it. Please try a different price.');
                     setIsSubmitting(false);
                     return;
@@ -899,6 +891,3 @@ function SchedulePurchasePage() {
 }
 
 export default SchedulePurchasePage;
-
-
-

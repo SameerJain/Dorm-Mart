@@ -2,22 +2,10 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SettingsLayout from "./SettingsLayout";
 import PageBackButton from "../../components/PageBackButton";
+import PasswordRequirementRow from "../../components/forms/PasswordRequirementRow";
+import { buildPasswordPolicy, hasDigit, hasLower, hasSpecial, hasUpper, MAX_PASSWORD_LEN } from "../../utils/passwordPolicy";
 
-const MAX_LEN = 64;
-
-const hasLower = (s) => /[a-z]/.test(s);
-const hasUpper = (s) => /[A-Z]/.test(s);
-const hasDigit = (s) => /\d/.test(s);
-const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
-
-function RequirementRow({ ok, text }) {
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }} />
-      <span className={ok ? "text-green-700" : "text-red-700"}>{text}</span>
-    </div>
-  );
-}
+const MAX_LEN = MAX_PASSWORD_LEN;
 
 function Field({ id, label, type = "password", value, onChange, placeholder }) {
   return (
@@ -85,17 +73,7 @@ function ChangePasswordPage() {
     };
   }, [showNotice]);
 
-  const policy = useMemo(
-    () => ({
-      minLen: nextPw.length >= 8,
-      lower: hasLower(nextPw),
-      upper: hasUpper(nextPw),
-      digit: hasDigit(nextPw),
-      special: hasSpecial(nextPw),
-      notTooLong: nextPw.length <= MAX_LEN,
-    }),
-    [nextPw]
-  );
+  const policy = useMemo(() => buildPasswordPolicy(nextPw), [nextPw]);
 
   const enforceMax = (setter) => (e) => {
     const v = e.target.value;
@@ -241,12 +219,12 @@ function ChangePasswordPage() {
             Password must contain:
           </h2>
           <div className="flex flex-col gap-2">
-            <RequirementRow ok={policy.lower} text="At least 1 lowercase character" />
-            <RequirementRow ok={policy.upper} text="At least 1 uppercase character" />
-            <RequirementRow ok={policy.minLen} text="At least 8 characters" />
-            <RequirementRow ok={policy.special} text="At least 1 special character" />
-            <RequirementRow ok={policy.digit} text="At least 1 digit" />
-            <RequirementRow ok={policy.notTooLong} text="No more than 64 characters" />
+            <PasswordRequirementRow ok={policy.lower} text="At least 1 lowercase character" />
+            <PasswordRequirementRow ok={policy.upper} text="At least 1 uppercase character" />
+            <PasswordRequirementRow ok={policy.minLen} text="At least 8 characters" />
+            <PasswordRequirementRow ok={policy.special} text="At least 1 special character" />
+            <PasswordRequirementRow ok={policy.digit} text="At least 1 digit" />
+            <PasswordRequirementRow ok={policy.notTooLong} text="No more than 64 characters" />
           </div>
         </section>
       </div>

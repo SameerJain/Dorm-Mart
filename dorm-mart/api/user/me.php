@@ -5,21 +5,13 @@ declare(strict_types=1);
 
 // Include security headers and CORS
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/response.php';
 setSecurityHeaders();
 setSecureCORS();
 
-header('Content-Type: application/json; charset=utf-8');
-
 // CORS / preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+allow_options_request();
+require_request_method('GET', ['ok' => false, 'error' => 'Method Not Allowed']);
 
 try {
     require __DIR__ . '/../auth/auth_handle.php';
@@ -50,14 +42,13 @@ try {
     $stmt->close();
 
     if (!$row) {
-        echo json_encode([
+        json_response([
             'ok' => true,
             'id' => $userId,
             'name' => null,
             'email' => null,
             'interested_categories' => [],
         ]);
-        exit;
     }
 
     // XSS PROTECTION: Escape user-generated content before returning in JSON
@@ -73,15 +64,12 @@ try {
 
     $cats = array_slice($cats, 0, 3);
 
-    echo json_encode([
+    json_response([
         'ok' => true,
         'interested_categories' => $cats,
     ]);
-    exit;
 
 } catch (Throwable $e) {
     error_log('me.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Server error']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Server error'], 500);
 }

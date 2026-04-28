@@ -1,11 +1,11 @@
 import PurchasedItem from "../../components/Products/PurchasedItem";
 import { Outlet, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { API_BASE } from "../../utils/apiConfig";
 
 async function fetchPurchasedItems(filters, signal) {
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
   const r = await fetch(
-    `${BASE}/purchase-history/purchase_history.php`,
+    `${API_BASE}/purchase-history/purchase_history.php`,
     {
       method: "POST",
       headers: {
@@ -25,7 +25,7 @@ function PurchaseHistoryPage() {
   const [purchasedItems, setPurchasedItems] = useState([]);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // Filter states
   const [selectedSort, setSelectedSort] = useState('Newest First');

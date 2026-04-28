@@ -1,3 +1,5 @@
+import { API_BASE } from './apiConfig';
+
 export const THEME_CACHE_KEY = 'dm_last_theme';
 export const THEME_PENDING_KEY = 'dm_theme_pending';
 
@@ -48,8 +50,6 @@ export function getEffectivePendingTheme() {
  * Called by RootLayout after authentication, with the userId already known.
  */
 export const loadUserTheme = async (userId) => {
-  const API_BASE = (process.env.REACT_APP_API_BASE || '/api').replace(/\/$/, '');
-
   const pendingFirst = getEffectivePendingTheme();
   if (pendingFirst) {
     applyThemeToDOM(pendingFirst);

@@ -2,10 +2,9 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import PreLoginBranding from '../../components/PreLoginBranding';
 import { integerNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
+import { API_BASE, PUBLIC_BASE } from '../../utils/apiConfig';
 
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 // Stable URLs (no webpack content hash) so the PDF viewer shows clean filenames
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const termsPdf = `${PUBLIC_BASE}/pdfs/terms-and-conditions.pdf`;
 const privacyPdf = `${PUBLIC_BASE}/pdfs/privacy.pdf`;
 
