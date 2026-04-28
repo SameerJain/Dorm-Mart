@@ -37,9 +37,18 @@ export default function WishlistPage() {
                 : parseFloat(`${d.price}`.replace(/[^0-9.]/g, "")) || 0;
 
             const rawImg = d.image_url || null;
-            const img = rawImg ? resolveProductPhotoUrl(rawImg, { apiBase: API_BASE, publicBase: PUBLIC_BASE, proxyUnknown: true }) : null;
+            const img = rawImg
+              ? resolveProductPhotoUrl(rawImg, {
+                  apiBase: API_BASE,
+                  publicBase: PUBLIC_BASE,
+                  proxyUnknown: true,
+                })
+              : null;
 
-            const createdAt = d.created_at || d.date_listed ? new Date(d.created_at || d.date_listed) : null;
+            const createdAt =
+              d.created_at || d.date_listed
+                ? new Date(d.created_at || d.date_listed)
+                : null;
             let status = d.status || null;
             if (!status && createdAt instanceof Date && !isNaN(createdAt)) {
               const hours = (Date.now() - createdAt.getTime()) / 36e5;
@@ -49,13 +58,18 @@ export default function WishlistPage() {
             const tags = Array.isArray(d.tags)
               ? d.tags
               : Array.isArray(d.categories)
-              ? d.categories
-              : typeof d.tags === "string"
-              ? d.tags.split(",").map((t) => t.trim()).filter(Boolean)
-              : [];
+                ? d.categories
+                : typeof d.tags === "string"
+                  ? d.tags
+                      .split(",")
+                      .map((t) => t.trim())
+                      .filter(Boolean)
+                  : [];
 
             const sellerEmail = d.email || d.seller_email || null;
-            const sellerUsername = d.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null);
+            const sellerUsername =
+              d.seller_username ||
+              (sellerEmail ? sellerEmail.split("@")[0] : null);
             return {
               id: d.product_id,
               title: d.title || "Untitled",
@@ -94,7 +108,7 @@ export default function WishlistPage() {
     allItems.forEach((item) => {
       if (Array.isArray(item.tags)) {
         item.tags.forEach((tag) => {
-          if (tag && typeof tag === 'string') {
+          if (tag && typeof tag === "string") {
             categoriesSet.add(tag);
           }
         });
@@ -107,7 +121,9 @@ export default function WishlistPage() {
   const filteredItems = useMemo(() => {
     if (!selectedCategory) return allItems;
     return allItems.filter((item) => {
-      const itemTags = Array.isArray(item.tags) ? item.tags.map((t) => String(t).toLowerCase()) : [];
+      const itemTags = Array.isArray(item.tags)
+        ? item.tags.map((t) => String(t).toLowerCase())
+        : [];
       return itemTags.includes(selectedCategory.toLowerCase());
     });
   }, [allItems, selectedCategory]);
@@ -122,17 +138,17 @@ export default function WishlistPage() {
     if (showMobileFilters) {
       // Save current scroll position
       const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
+      document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      
+      document.body.style.width = "100%";
+      document.body.style.overflow = "hidden";
+
       return () => {
         // Restore scroll position when closing
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        document.body.style.overflow = "";
         window.scrollTo(0, scrollY);
       };
     }
@@ -170,20 +186,22 @@ export default function WishlistPage() {
         // Remove item from local state
         setAllItems((prev) => {
           const updated = prev.filter((item) => item.id !== confirmRemove.id);
-          
+
           // Check if we need to reset the filter to "All"
           if (selectedCategory) {
             const remainingInCategory = updated.filter((item) => {
-              const itemTags = Array.isArray(item.tags) ? item.tags.map((t) => String(t).toLowerCase()) : [];
+              const itemTags = Array.isArray(item.tags)
+                ? item.tags.map((t) => String(t).toLowerCase())
+                : [];
               return itemTags.includes(selectedCategory.toLowerCase());
             });
-            
+
             // If no items remain in the selected category, reset to "All"
             if (remainingInCategory.length === 0) {
               setSelectedCategory(null);
             }
           }
-          
+
           return updated;
         });
         setItems((prev) => prev.filter((item) => item.id !== confirmRemove.id));
@@ -278,10 +296,11 @@ export default function WishlistPage() {
                 )}
               </div>
               <p className="text-gray-600 dark:text-gray-300">
-                {selectedCategory 
+                {selectedCategory
                   ? `Items in ${selectedCategory}`
                   : "Items you've saved for later"}
-                {selectedCategory && ` (${items.length} ${items.length === 1 ? 'item' : 'items'})`}
+                {selectedCategory &&
+                  ` (${items.length} ${items.length === 1 ? "item" : "items"})`}
               </p>
             </div>
           </div>
@@ -303,7 +322,7 @@ export default function WishlistPage() {
                 />
               </svg>
               <p className="text-gray-500 dark:text-gray-400 text-lg mb-2">
-                {selectedCategory 
+                {selectedCategory
                   ? `No items in ${selectedCategory}`
                   : "Your wishlist is empty"}
               </p>
@@ -337,11 +356,15 @@ export default function WishlistPage() {
               {loading ? (
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-500 dark:text-gray-400 text-lg">Loading wishlist...</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-lg">
+                    Loading wishlist...
+                  </p>
                 </div>
               ) : error ? (
                 <div className="text-center py-12">
-                  <p className="text-red-600 dark:text-red-400 text-lg">{error}</p>
+                  <p className="text-red-600 dark:text-red-400 text-lg">
+                    {error}
+                  </p>
                   <button
                     onClick={() => window.location.reload()}
                     className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

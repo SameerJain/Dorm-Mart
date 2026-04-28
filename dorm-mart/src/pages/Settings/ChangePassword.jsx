@@ -4,14 +4,24 @@ import SettingsLayout from "./SettingsLayout";
 import PageBackButton from "../../components/PageBackButton";
 import PasswordRequirementRow from "../../components/forms/PasswordRequirementRow";
 import { API_BASE } from "../../utils/apiConfig";
-import { buildPasswordPolicy, hasDigit, hasLower, hasSpecial, hasUpper, MAX_PASSWORD_LEN } from "../../utils/passwordPolicy";
+import {
+  buildPasswordPolicy,
+  hasDigit,
+  hasLower,
+  hasSpecial,
+  hasUpper,
+  MAX_PASSWORD_LEN,
+} from "../../utils/passwordPolicy";
 
 const MAX_LEN = MAX_PASSWORD_LEN;
 
 function Field({ id, label, type = "password", value, onChange, placeholder }) {
   return (
     <div className="mb-6">
-      <label htmlFor={id} className="mb-2 block text-base font-medium text-slate-700">
+      <label
+        htmlFor={id}
+        className="mb-2 block text-base font-medium text-slate-700"
+      >
         {label}
       </label>
       <input
@@ -49,28 +59,28 @@ function ChangePasswordPage() {
   useEffect(() => {
     if (showNotice) {
       const scrollY = window.scrollY;
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
+      document.body.style.width = "100%";
     } else {
       const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
       if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+        window.scrollTo(0, parseInt(scrollY || "0") * -1);
       }
     }
     return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
     };
   }, [showNotice]);
 
@@ -78,7 +88,8 @@ function ChangePasswordPage() {
 
   const enforceMax = (setter) => (e) => {
     const v = e.target.value;
-    if (v.length > MAX_LEN) alert("Entered password is too long. Maximum length is 64 characters.");
+    if (v.length > MAX_LEN)
+      alert("Entered password is too long. Maximum length is 64 characters.");
     setter(v);
   };
 
@@ -126,10 +137,16 @@ function ChangePasswordPage() {
       return;
     }
     if (nextPw !== confirmPw) {
-      alert("The new password that was entered is different from the re-entry of the password.");
+      alert(
+        "The new password that was entered is different from the re-entry of the password.",
+      );
       return;
     }
-    if (current.length > MAX_LEN || nextPw.length > MAX_LEN || confirmPw.length > MAX_LEN) {
+    if (
+      current.length > MAX_LEN ||
+      nextPw.length > MAX_LEN ||
+      confirmPw.length > MAX_LEN
+    ) {
       alert("Entered password is too long. Maximum length is 64 characters.");
       return;
     }
@@ -220,12 +237,27 @@ function ChangePasswordPage() {
             Password must contain:
           </h2>
           <div className="flex flex-col gap-2">
-            <PasswordRequirementRow ok={policy.lower} text="At least 1 lowercase character" />
-            <PasswordRequirementRow ok={policy.upper} text="At least 1 uppercase character" />
-            <PasswordRequirementRow ok={policy.minLen} text="At least 8 characters" />
-            <PasswordRequirementRow ok={policy.special} text="At least 1 special character" />
+            <PasswordRequirementRow
+              ok={policy.lower}
+              text="At least 1 lowercase character"
+            />
+            <PasswordRequirementRow
+              ok={policy.upper}
+              text="At least 1 uppercase character"
+            />
+            <PasswordRequirementRow
+              ok={policy.minLen}
+              text="At least 8 characters"
+            />
+            <PasswordRequirementRow
+              ok={policy.special}
+              text="At least 1 special character"
+            />
             <PasswordRequirementRow ok={policy.digit} text="At least 1 digit" />
-            <PasswordRequirementRow ok={policy.notTooLong} text="No more than 64 characters" />
+            <PasswordRequirementRow
+              ok={policy.notTooLong}
+              text="No more than 64 characters"
+            />
           </div>
         </section>
       </div>
@@ -233,7 +265,10 @@ function ChangePasswordPage() {
       {/* Success Notice Modal */}
       {showNotice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm" aria-hidden />
+          <div
+            className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm"
+            aria-hidden
+          />
           <div
             className="relative z-10 mx-4 w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-2xl ring-1 ring-black/5 dark:border-gray-700 dark:bg-gray-800 dark:ring-white/10"
             role="dialog"
@@ -251,7 +286,10 @@ function ChangePasswordPage() {
                 Your password was changed successfully.
                 <br />
                 You will be taken to our log in page in{" "}
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{countdown}</span> seconds.
+                <span className="font-semibold text-gray-900 dark:text-gray-100">
+                  {countdown}
+                </span>{" "}
+                seconds.
               </p>
             </div>
           </div>

@@ -32,7 +32,8 @@ export default function useMessageSeller({
 
     try {
       const payload = {
-        product_id: normalized?.productId ?? (productId ? Number(productId) : undefined),
+        product_id:
+          normalized?.productId ?? (productId ? Number(productId) : undefined),
         seller_user_id: normalized?.sellerId ?? undefined,
       };
 
@@ -48,7 +49,8 @@ export default function useMessageSeller({
 
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.success) {
-        const message = result?.error || `Failed to start chat (${response.status})`;
+        const message =
+          result?.error || `Failed to start chat (${response.status})`;
         throw new Error(message);
       }
 

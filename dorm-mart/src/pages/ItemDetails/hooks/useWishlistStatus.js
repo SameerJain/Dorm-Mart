@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
 
-export default function useWishlistStatus({ productId, myId, disabled = false }) {
+export default function useWishlistStatus({
+  productId,
+  myId,
+  disabled = false,
+}) {
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistError, setWishlistError] = useState(null);
@@ -20,7 +24,7 @@ export default function useWishlistStatus({ productId, myId, disabled = false })
           {
             signal: controller.signal,
             credentials: "include",
-          }
+          },
         );
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 

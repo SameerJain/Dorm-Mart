@@ -62,7 +62,7 @@ echo "  Last Attempt: " . ($lastAttempt ?: 'Never') . "\n";
 
 if ($lastAttempt) {
     $timeSince = time() - strtotime($lastAttempt);
-    echo "  Time Since Last Attempt: " . formatTime($timeSince) . "\n";
+    echo "  Time Since Last Attempt: " . format_time($timeSince) . "\n";
     echo "  Decay Cycles (every 10s): " . floor($timeSince / 10) . "\n";
     echo "  Expected Attempts After Decay: " . max(0, $attempts - floor($timeSince / 10)) . "\n";
     echo "  🔄  Decay reduces attempts by 1 every 10 seconds\n";
@@ -94,7 +94,7 @@ if ($attempts > 0 && $lastAttempt) {
     
     echo "  Current Time: " . date('Y-m-d H:i:s', $currentTime) . "\n";
     echo "  Last Attempt: " . date('Y-m-d H:i:s', $lastAttemptTime) . "\n";
-    echo "  Time Elapsed: " . formatTime($timeSince) . "\n";
+    echo "  Time Elapsed: " . format_time($timeSince) . "\n";
     
     $decayCycles = floor($timeSince / 10);
     $expectedAttempts = max(0, $attempts - $decayCycles);
@@ -111,7 +111,7 @@ if ($attempts > 0 && $lastAttempt) {
     if ($attempts > 0) {
         $secondsToComplete = ($attempts * 10) - $timeSince;
         if ($secondsToComplete > 0) {
-            echo "  ⏳ Time Until All Decay: " . formatTime($secondsToComplete) . "\n";
+            echo "  ⏳ Time Until All Decay: " . format_time($secondsToComplete) . "\n";
         } else {
             echo "  ✅ All decay would be complete!\n";
         }
@@ -130,7 +130,7 @@ if ($lockoutUntil) {
     echo "  Lockout Until: " . date('Y-m-d H:i:s', $lockoutExpiry) . "\n";
     
     if ($remainingLockout > 0) {
-        echo "  Remaining Lockout: " . formatTime($remainingLockout) . "\n";
+        echo "  Remaining Lockout: " . format_time($remainingLockout) . "\n";
     } else {
         echo "  ✅ Lockout has expired!\n";
     }
@@ -142,7 +142,7 @@ echo "💡 TIP: Run this script again to see updated status after decay\n";
 /**
  * Format seconds into human-readable time
  */
-function formatTime($seconds) {
+function format_time($seconds) {
     if ($seconds < 60) {
         return "$seconds seconds";
     } elseif ($seconds < 3600) {

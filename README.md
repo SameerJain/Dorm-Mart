@@ -4,11 +4,12 @@ This repository contains the "Dorm Mart" web application, built with a React fro
 
 _Created for CSE-442: Software Engineering Concepts, The University at Buffalo._
 
-## Production Release: 
+## Production Release:
 
 **https://dormmart.me/**
 
 ## For users without a UB account wanting to demo the site:
+
 **Username:** `testuser@buffalo.edu`
 
 **Password:** `1234!`
@@ -68,8 +69,6 @@ workflow in one place!
 **Email:** PHPMailer  
 **Dev Server:** XAMPP (Apache + MySQL)
 
-
-
 ## Key Folders
 
 - `dorm-mart/src/` — React frontend (pages, components, context)
@@ -79,7 +78,6 @@ workflow in one place!
 - `dorm-mart/migrations/` — Database construction files
 
 For detailed setup instructions, deployment guides, and production build steps, see `README.project_setup.md`.
-
 
 # Development Team
 

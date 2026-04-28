@@ -4,19 +4,16 @@ import { useEffect, useState } from "react";
 import { API_BASE } from "../../utils/apiConfig";
 
 async function fetchPurchasedItems(filters, signal) {
-  const r = await fetch(
-    `${API_BASE}/purchase_history/purchase_history.php`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify(filters),
-      signal: signal,
-    }
-  );
+  const r = await fetch(`${API_BASE}/purchase_history/purchase_history.php`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify(filters),
+    signal: signal,
+  });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return await r.json();
 }
@@ -28,11 +25,11 @@ function PurchaseHistoryPage() {
   const [searchParams] = useSearchParams();
 
   // Filter states
-  const [selectedSort, setSelectedSort] = useState('Newest First');
-  const [dateRange, setDateRange] = useState('All Time');
+  const [selectedSort, setSelectedSort] = useState("Newest First");
+  const [dateRange, setDateRange] = useState("All Time");
 
   // Get review product ID from URL parameter
-  const reviewProductId = searchParams.get('review');
+  const reviewProductId = searchParams.get("review");
 
   useEffect(() => {
     setIsFetching(true);
@@ -70,25 +67,25 @@ function PurchaseHistoryPage() {
   const getSortedItems = () => {
     const filtered = purchasedItems;
     switch (selectedSort) {
-      case 'Newest First':
+      case "Newest First":
         return [...filtered].sort((a, b) => {
           const dateA = new Date(a.transacted_at || 0);
           const dateB = new Date(b.transacted_at || 0);
           return dateB - dateA;
         });
-      case 'Oldest First':
+      case "Oldest First":
         return [...filtered].sort((a, b) => {
           const dateA = new Date(a.transacted_at || 0);
           const dateB = new Date(b.transacted_at || 0);
           return dateA - dateB;
         });
-      case 'Price: Low to High':
+      case "Price: Low to High":
         return [...filtered].sort((a, b) => {
           const priceA = a.price || 0;
           const priceB = b.price || 0;
           return priceA - priceB;
         });
-      case 'Price: High to Low':
+      case "Price: High to Low":
         return [...filtered].sort((a, b) => {
           const priceA = a.price || 0;
           const priceB = b.price || 0;
@@ -109,7 +106,9 @@ function PurchaseHistoryPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
               <div className="flex items-center w-full sm:w-auto">
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Date Range</label>
+                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                  Date Range
+                </label>
                 <div className="relative ml-1 flex-1 sm:flex-none">
                   <select
                     value={dateRange}
@@ -122,15 +121,27 @@ function PurchaseHistoryPage() {
                     <option value="Last Year">Last Year</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center w-full sm:w-auto">
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Sort By</label>
+                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                  Sort By
+                </label>
                 <div className="relative ml-1 flex-1 sm:flex-none">
                   <select
                     value={selectedSort}
@@ -139,12 +150,26 @@ function PurchaseHistoryPage() {
                   >
                     <option value="Newest First">Newest First</option>
                     <option value="Oldest First">Oldest First</option>
-                    <option value="Price: Low to High">Price: Low to High</option>
-                    <option value="Price: High to Low">Price: High to Low</option>
+                    <option value="Price: Low to High">
+                      Price: Low to High
+                    </option>
+                    <option value="Price: High to Low">
+                      Price: High to Low
+                    </option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </div>
                 </div>
@@ -162,19 +187,25 @@ function PurchaseHistoryPage() {
           {isFetching && (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-500 dark:text-gray-400 text-lg">Loading purchase history...</p>
+              <p className="text-gray-500 dark:text-gray-400 text-lg">
+                Loading purchase history...
+              </p>
             </div>
           )}
 
           {!error && !isFetching && sortedItems.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400 text-lg">No purchase history found.</p>
+              <p className="text-gray-500 dark:text-gray-400 text-lg">
+                No purchase history found.
+              </p>
             </div>
           )}
 
           {error && sortedItems.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-red-500 dark:text-red-400 text-lg">Failed to retrieve purchase history.</p>
+              <p className="text-red-500 dark:text-red-400 text-lg">
+                Failed to retrieve purchase history.
+              </p>
             </div>
           )}
 
@@ -189,7 +220,10 @@ function PurchaseHistoryPage() {
                   seller={item.sold_by}
                   date={item.transacted_at}
                   image={item.image_url}
-                  autoOpenReview={reviewProductId && String(item.item_id) === String(reviewProductId)}
+                  autoOpenReview={
+                    reviewProductId &&
+                    String(item.item_id) === String(reviewProductId)
+                  }
                 />
               ))}
             </ul>

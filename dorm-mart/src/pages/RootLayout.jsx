@@ -1,7 +1,7 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState, useContext } from "react";
 import MainNav from "../components/MainNav/MainNav";
-import { fetch_me } from "../utils/handleAuth.js";
+import { fetchMe } from "../utils/handleAuth.js";
 import { loadUserTheme } from "../utils/loadTheme.js";
 import { ChatContext } from "../context/ChatContext.jsx";
 import FAQModal from "./FAQ/FAQModal.jsx";
@@ -34,7 +34,7 @@ function RootLayout() {
 
     const checkAuth = async () => {
       try {
-        const user = await fetch_me(controller.signal);
+        const user = await fetchMe(controller.signal);
         setIsAuthenticated(true);
         setIsChecking(false);
         loadUserTheme(user?.user_id);
@@ -82,7 +82,9 @@ function RootLayout() {
   return (
     <>
       {/* Show navbar on mobile for chat list, hide for individual conversations */}
-      <div className={isChatPage && isViewingConversation ? "hidden md:block" : ""}>
+      <div
+        className={isChatPage && isViewingConversation ? "hidden md:block" : ""}
+      >
         <MainNav />
       </div>
       <Outlet />
@@ -106,7 +108,10 @@ function RootLayout() {
           "
           aria-label="FAQ"
         >
-          <span className="text-xl font-normal leading-none select-none" aria-hidden>
+          <span
+            className="text-xl font-normal leading-none select-none"
+            aria-hidden
+          >
             ?
           </span>
         </button>

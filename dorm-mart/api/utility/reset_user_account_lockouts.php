@@ -21,17 +21,14 @@ require_once __DIR__ . '/../security/security.php';
  * This script resets all sessions, not individual user accounts.
  * 
  * COMMAND LINE USAGE:
- * ===================
  * 
  * Reset all lockouts (command line):
  *   php api/utility/reset_user_account_lockouts.php
  * 
  * EXAMPLES:
- * =========
  * php api/utility/reset_user_account_lockouts.php
  * 
  * NOTES:
- * ======
  * - This script resets failed_login_attempts to 0 and clears last_failed_attempt and lockout_until for all sessions
  * - All sessions can then attempt login without rate limiting restrictions
  * - Use this during development/testing to reset rate limits

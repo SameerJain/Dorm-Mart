@@ -7,8 +7,8 @@ require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 
-setSecurityHeaders();    // your existing security headers
-setSecureCORS();         // your existing CORS (same-site is fine for images)
+set_security_headers();    // your existing security headers
+set_secure_cors();         // your existing CORS (same-site is fine for images)
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 

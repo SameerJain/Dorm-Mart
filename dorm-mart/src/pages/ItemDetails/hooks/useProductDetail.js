@@ -20,7 +20,7 @@ export default function useProductDetail(productId) {
           {
             signal: controller.signal,
             credentials: "include",
-          }
+          },
         );
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
@@ -40,7 +40,10 @@ export default function useProductDetail(productId) {
   }, [productId]);
 
   const normalized = useMemo(() => {
-    return normalizeProductDetail(data, { apiBase: API_BASE, publicBase: PUBLIC_BASE });
+    return normalizeProductDetail(data, {
+      apiBase: API_BASE,
+      publicBase: PUBLIC_BASE,
+    });
   }, [data]);
 
   return { loading, error, normalized };

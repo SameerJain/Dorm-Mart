@@ -71,4 +71,4 @@ Manual and integration-style scripts that call real endpoints. Use `API_TEST_BAS
 - CORS uses `CORS_ALLOWED_ORIGINS`; deployment-specific origins should not be hardcoded in endpoints.
 - Developer/admin utility scripts should stay CLI-only unless explicitly designed for browser use.
 
-*Last updated: environment-backed API configuration.*
+_Last updated: environment-backed API configuration._

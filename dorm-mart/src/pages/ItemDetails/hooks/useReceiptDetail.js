@@ -3,7 +3,8 @@ import { API_BASE, PUBLIC_BASE } from "../../../utils/apiConfig";
 import { normalizeProductDetail } from "../../../utils/productDetails";
 
 function getReceiptPayloads(payload) {
-  const productPayload = payload?.product ?? payload?.product_details ?? payload?.item ?? payload;
+  const productPayload =
+    payload?.product ?? payload?.product_details ?? payload?.item ?? payload;
   const receiptPayload =
     payload?.receipt ??
     payload?.receipt_details ??
@@ -66,7 +67,7 @@ export default function useReceiptDetail(productId) {
           {
             signal: controller.signal,
             credentials: "include",
-          }
+          },
         );
 
         if (!response.ok) {
@@ -96,7 +97,10 @@ export default function useReceiptDetail(productId) {
   }, [productId]);
 
   const normalized = useMemo(() => {
-    return normalizeProductDetail(productData, { apiBase: API_BASE, publicBase: PUBLIC_BASE });
+    return normalizeProductDetail(productData, {
+      apiBase: API_BASE,
+      publicBase: PUBLIC_BASE,
+    });
   }, [productData]);
 
   return { loading, error, receiptData, normalized };

@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams } from "react-router-dom";
 
 function ReportIssuePage() {
   const { requestId } = useParams();
@@ -18,4 +18,3 @@ function ReportIssuePage() {
 }
 
 export default ReportIssuePage;
-

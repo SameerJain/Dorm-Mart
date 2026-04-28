@@ -10,7 +10,7 @@ require_once __DIR__ . '/../security/security.php';
 require __DIR__ . '/../utility/load_env.php';
 
 load_env(); // must set getenv/$_ENV
-initSecurity();
+init_security();
 
 header('Content-Type: application/json');
 

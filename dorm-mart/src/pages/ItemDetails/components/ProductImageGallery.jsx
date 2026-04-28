@@ -46,7 +46,9 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
         {hasMultiplePhotos ? (
           <>
             <button
-              onClick={() => hasPrev && setActiveIdx((idx) => Math.max(0, idx - 1))}
+              onClick={() =>
+                hasPrev && setActiveIdx((idx) => Math.max(0, idx - 1))
+              }
               disabled={!hasPrev}
               className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full h-9 w-9 flex items-center justify-center disabled:opacity-40"
               aria-label="Previous image"
@@ -54,7 +56,10 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
               &lsaquo;
             </button>
             <button
-              onClick={() => hasNext && setActiveIdx((idx) => Math.min(photoUrls.length - 1, idx + 1))}
+              onClick={() =>
+                hasNext &&
+                setActiveIdx((idx) => Math.min(photoUrls.length - 1, idx + 1))
+              }
               disabled={!hasNext}
               className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full h-9 w-9 flex items-center justify-center disabled:opacity-40"
               aria-label="Next image"

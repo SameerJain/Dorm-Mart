@@ -7,8 +7,8 @@ require_once __DIR__ . '/response.php';
 if (!function_exists('init_json_endpoint')) {
     function init_json_endpoint(?string $method = null, array $methodErrorPayload = ['success' => false, 'error' => 'Method Not Allowed']): void
     {
-        setSecurityHeaders();
-        setSecureCORS();
+        set_security_headers();
+        set_secure_cors();
 
         if (!headers_sent()) {
             header('Content-Type: application/json; charset=utf-8');

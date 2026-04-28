@@ -9,15 +9,13 @@
 
 require_once __DIR__ . '/../config/app_config.php';
 
-// ============================================================================
 // SECURITY HEADERS
-// ============================================================================
 
 /**
  * Set comprehensive security headers for all API endpoints
  * This function should be called at the start of every API endpoint
  */
-function setSecurityHeaders() {
+function set_security_headers() {
     // Content Security Policy - unsafe-eval removed; production React bundles don't need it
     header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' wss:; frame-ancestors 'none';");
 
@@ -44,15 +42,13 @@ function setSecurityHeaders() {
     header_remove('X-Powered-By');
 }
 
-// ============================================================================
 // CORS CONFIGURATION
-// ============================================================================
 
 /**
  * Set secure CORS headers for trusted origins only
  * This prevents unauthorized cross-origin requests
  */
-function setSecureCORS() {
+function set_secure_cors() {
     // Skip CORS for CLI requests
     if (php_sapi_name() === 'cli') {
         return;
@@ -79,9 +75,7 @@ function setSecureCORS() {
     header('Access-Control-Max-Age: 86400');
 }
 
-// ============================================================================
 // INPUT SANITIZATION & VALIDATION
-// ============================================================================
 
 /**
  * Normalize string input before validation or storage.
@@ -150,9 +144,7 @@ function sanitize_number($input, $min = 0, $max = PHP_INT_MAX) {
     return max($min, min($max, $number));
 }
 
-// ============================================================================
 // UTILITY FUNCTIONS
-// ============================================================================
 
 /**
  * Escape values for HTML output.
@@ -224,9 +216,7 @@ function contains_xss_pattern($input) {
     return false;
 }
 
-// ============================================================================
 // RATE LIMITING FUNCTIONS
-// ============================================================================
 
 /**
  * Check if session has exceeded rate limit for login attempts
@@ -440,9 +430,7 @@ function get_remaining_lockout_minutes($lockoutUntil) {
     return max(0, ceil($remainingSeconds / 60));
 }
 
-// ============================================================================
 // PASSWORD SECURITY
-// ============================================================================
 
 /**
  * Hash password securely using bcrypt
@@ -454,17 +442,15 @@ function hash_password($password) {
     return password_hash($password, PASSWORD_BCRYPT);
 }
 
-// ============================================================================
 // INITIALIZATION
-// ============================================================================
 
 /**
  * Initialize security for API endpoints
  * Call this function at the start of every API endpoint
  */
-function initSecurity() {
-    setSecurityHeaders();
-    setSecureCORS();
+function init_security() {
+    set_security_headers();
+    set_secure_cors();
 }
 
 ?>

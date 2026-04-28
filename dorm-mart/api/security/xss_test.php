@@ -8,7 +8,7 @@
 require __DIR__ . '/security.php';
 
 // Set security headers
-setSecurityHeaders();
+set_security_headers();
 
 header('Content-Type: text/html; charset=utf-8');
 

@@ -79,13 +79,7 @@ try {
         }
     }
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // Product ID and user ID are bound as parameters using bind_param().
-    // The '?' placeholders ensure user input is treated as data, not executable SQL.
-    // This prevents SQL injection attacks even if malicious values are provided.
-    // ============================================================================
     $stmt = $conn->prepare('DELETE FROM INVENTORY WHERE product_id = ? AND seller_id = ?');
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare delete');

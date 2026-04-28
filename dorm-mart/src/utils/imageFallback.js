@@ -33,14 +33,21 @@ export function resolveStoredImageUrl(raw, apiBase) {
     return s;
   }
 
-  if (s.startsWith("/data/images/") || s.startsWith("/images/") || s.startsWith("/media/")) {
+  if (
+    s.startsWith("/data/images/") ||
+    s.startsWith("/images/") ||
+    s.startsWith("/media/")
+  ) {
     return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
   }
 
   return s;
 }
 
-export function resolveProductPhotoUrl(raw, { apiBase, publicBase = "", proxyUnknown = false } = {}) {
+export function resolveProductPhotoUrl(
+  raw,
+  { apiBase, publicBase = "", proxyUnknown = false } = {},
+) {
   if (raw == null) return "";
   const s = String(raw).trim();
   if (!s) return "";
@@ -51,7 +58,12 @@ export function resolveProductPhotoUrl(raw, { apiBase, publicBase = "", proxyUnk
   if (base && /^https?:\/\//i.test(s)) {
     return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
   }
-  if (base && (s.startsWith("/data/images/") || s.startsWith("/images/") || s.startsWith("/media/"))) {
+  if (
+    base &&
+    (s.startsWith("/data/images/") ||
+      s.startsWith("/images/") ||
+      s.startsWith("/media/"))
+  ) {
     return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
   }
   if (base && proxyUnknown) {

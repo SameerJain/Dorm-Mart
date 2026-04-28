@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 // Include security headers for XSS protection
 require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
+set_security_headers();
 // Ensure CORS headers are present for React dev server and local PHP server
-setSecureCORS();
+set_secure_cors();
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -66,7 +66,6 @@ if (strpos($ct, 'application/json') !== false) {
 }
 
 // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-// Note: SQL injection prevented by prepared statements
 if (contains_xss_pattern($emailRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
@@ -127,14 +126,7 @@ try {
 
     $conn = db();
     
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // Using mysqli prepared statements with parameter binding (bind_param) to prevent SQL injection.
-    // The '?' placeholder ensures user input ($email) is treated as data, not executable SQL.
-    // Even if malicious SQL is in $email, it cannot execute because it's bound as a string parameter.
-    // This is the industry-standard defense against SQL injection attacks.
-    // ============================================================================
     $stmt = $conn->prepare('SELECT user_id, hash_pass FROM user_accounts WHERE email = ? LIMIT 1');
     $stmt->bind_param('s', $email);  // 's' = string type, $email is safely bound as parameter
     $stmt->execute();
@@ -155,9 +147,7 @@ try {
     $row = $res->fetch_assoc();
     $stmt->close();
 
-    // SECURITY NOTE: password_verify() safely checks the submitted
-    // plaintext against the STORED salted hash from password_hash(). The salt is
-    // inside the hash; we never store or handle it separately.
+    // SECURITY NOTE: password_verify() safely checks the submitted password.
     if (!password_verify($password, (string)$row['hash_pass'])) {
         $conn->close();
         

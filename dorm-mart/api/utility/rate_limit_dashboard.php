@@ -48,7 +48,7 @@ while ($row = $result->fetch_assoc()) {
     
     if ($lastAttempt) {
         $timeSince = time() - strtotime($lastAttempt);
-        echo "   Time Since: " . formatTime($timeSince) . "\n";
+        echo "   Time Since: " . format_time($timeSince) . "\n";
         echo "   Decay Cycles: " . floor($timeSince / 10) . "\n";
         echo "   Expected After Decay: " . max(0, $attempts - floor($timeSince / 10)) . "\n";
         echo "   🔄  Decay reduces attempts by 1 every 10 seconds\n";
@@ -99,7 +99,7 @@ echo "ℹ️  NOTE: Rate limiting is now session-based (PHPSESSID) instead of em
 /**
  * Format seconds into human-readable time
  */
-function formatTime($seconds) {
+function format_time($seconds) {
     if ($seconds < 60) {
         return "$seconds seconds";
     } elseif ($seconds < 3600) {

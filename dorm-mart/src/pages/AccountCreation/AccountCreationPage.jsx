@@ -1,11 +1,11 @@
-import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import PreLoginBranding from '../../components/PreLoginBranding';
-import PreLoginNavLinks from '../../components/PreLoginNavLinks';
-import { integerNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
-import { API_BASE, PUBLIC_BASE } from '../../utils/apiConfig';
-import { useEmailPolicy } from '../../hooks/useEmailPolicy';
-import { containsXssPattern } from '../../utils/inputValidation';
+import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import PreLoginBranding from "../../components/PreLoginBranding";
+import PreLoginNavLinks from "../../components/PreLoginNavLinks";
+import { integerNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
+import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
+import { useEmailPolicy } from "../../hooks/useEmailPolicy";
+import { containsXssPattern } from "../../utils/inputValidation";
 
 // Stable URLs (no webpack content hash) so the PDF viewer shows clean filenames
 const termsPdf = `${PUBLIC_BASE}/pdfs/terms-and-conditions.pdf`;
@@ -14,7 +14,9 @@ const privacyPdf = `${PUBLIC_BASE}/pdfs/privacy.pdf`;
 function FieldError({ children, className = "" }) {
   if (!children) return null;
   return (
-    <p className={`mt-0.5 text-[11px] font-medium leading-tight text-red-500 sm:text-xs ${className}`.trim()}>
+    <p
+      className={`mt-0.5 text-[11px] font-medium leading-tight text-red-500 sm:text-xs ${className}`.trim()}
+    >
       {children}
     </p>
   );
@@ -40,28 +42,28 @@ function CreateAccountPage() {
   useEffect(() => {
     if (showNotice) {
       const scrollY = window.scrollY;
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
+      document.body.style.width = "100%";
     } else {
       const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
       if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+        window.scrollTo(0, parseInt(scrollY || "0") * -1);
       }
     }
     return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
     };
   }, [showNotice]);
 
@@ -73,7 +75,7 @@ function CreateAccountPage() {
     if (name === "firstName" || name === "lastName") {
       // Only allow letters (including spaces and hyphens for names like "Mary-Jane" or "Van Der Berg")
       // Remove any non-letter characters except spaces and hyphens
-      nextValue = String(nextValue).replace(/[^a-zA-Z\s-]/g, '');
+      nextValue = String(nextValue).replace(/[^a-zA-Z\s-]/g, "");
       nextValue = nextValue.slice(0, 30);
     }
     if (name === "email") {
@@ -86,9 +88,9 @@ function CreateAccountPage() {
       nextValue = String(nextValue).replace(/\D/g, "").slice(0, 4);
     }
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: nextValue
+      [name]: nextValue,
     }));
   };
 
@@ -102,20 +104,20 @@ function CreateAccountPage() {
     if (!first) newErrors.firstName = "First name is required";
     else if (containsXssPattern(first)) {
       newErrors.firstName = "Invalid characters in first name";
-    }
-    else if (!/^[a-zA-Z\s-]+$/.test(first)) {
-      newErrors.firstName = "First name can only contain letters, spaces, and hyphens";
-    }
-    else if (first.length > 30) newErrors.firstName = "First name must be 30 characters or fewer";
+    } else if (!/^[a-zA-Z\s-]+$/.test(first)) {
+      newErrors.firstName =
+        "First name can only contain letters, spaces, and hyphens";
+    } else if (first.length > 30)
+      newErrors.firstName = "First name must be 30 characters or fewer";
 
     if (!last) newErrors.lastName = "Last name is required";
     else if (containsXssPattern(last)) {
       newErrors.lastName = "Invalid characters in last name";
-    }
-    else if (!/^[a-zA-Z\s-]+$/.test(last)) {
-      newErrors.lastName = "Last name can only contain letters, spaces, and hyphens";
-    }
-    else if (last.length > 30) newErrors.lastName = "Last name must be 30 characters or fewer";
+    } else if (!/^[a-zA-Z\s-]+$/.test(last)) {
+      newErrors.lastName =
+        "Last name can only contain letters, spaces, and hyphens";
+    } else if (last.length > 30)
+      newErrors.lastName = "Last name must be 30 characters or fewer";
 
     if (!formData.gradMonth || !formData.gradYear) {
       newErrors.gradDate = "Graduation month and year are required";
@@ -132,8 +134,10 @@ function CreateAccountPage() {
         now.setHours(0, 0, 0, 0);
         const gradDate = new Date(year, month - 1, 1);
         const maxDate = new Date(now.getFullYear() + 8, now.getMonth(), 1);
-        if (gradDate < new Date(now.getFullYear(), now.getMonth(), 1)) newErrors.gradDate = "Graduation date cannot be in the past";
-        if (gradDate > maxDate) newErrors.gradDate = "Graduation date must be within 8 years";
+        if (gradDate < new Date(now.getFullYear(), now.getMonth(), 1))
+          newErrors.gradDate = "Graduation date cannot be in the past";
+        if (gradDate > maxDate)
+          newErrors.gradDate = "Graduation date must be within 8 years";
       }
     }
 
@@ -167,15 +171,15 @@ function CreateAccountPage() {
     setLoading(true);
     try {
       await fetch(`${API_BASE}/auth/create_account.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),
           gradMonth: formData.gradMonth,
           gradYear: formData.gradYear,
           email: formData.email.trim(),
-          promos: formData.promos
+          promos: formData.promos,
         }),
       });
       setShowNotice(true);
@@ -197,7 +201,9 @@ function CreateAccountPage() {
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
           </h1>
-          <h2 className="text-xl sm:text-2xl md:text-4xl font-light text-gray-600 opacity-90 leading-relaxed">Wastage, who?</h2>
+          <h2 className="text-xl sm:text-2xl md:text-4xl font-light text-gray-600 opacity-90 leading-relaxed">
+            Wastage, who?
+          </h2>
         </div>
         <div className="w-full max-w-sm sm:max-w-md md:max-w-xl lg:max-w-md relative z-10">
           <div className="px-4 sm:px-6 md:px-8 lg:px-6 py-2.5 sm:py-4 md:py-6 lg:py-3 rounded-lg relative bg-blue-600">
@@ -205,7 +211,8 @@ function CreateAccountPage() {
             <div
               className="absolute inset-0 rounded-lg bg-blue-600"
               style={{
-                clipPath: 'polygon(0 0, 100% 0, 100% 85%, 95% 90%, 100% 95%, 100% 100%, 0 100%)'
+                clipPath:
+                  "polygon(0 0, 100% 0, 100% 85%, 95% 90%, 100% 95%, 100% 100%, 0 100%)",
               }}
             />
 
@@ -213,19 +220,25 @@ function CreateAccountPage() {
               {/* Header with dot */}
               <div className="text-center mb-2.5 sm:mb-4 md:mb-5 lg:mb-2.5">
                 <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 bg-black rounded-full mx-auto mb-2 sm:mb-3 md:mb-3" />
-                <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-3xl font-serif text-white leading-tight">Create Account</h2>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-3xl font-serif text-white leading-tight">
+                  Create Account
+                </h2>
               </div>
 
               {/* Form - Improved spacing and touch targets */}
               <form
                 onSubmit={handleSubmit}
-                className={Object.keys(errors).length > 0
-                  ? "space-y-1.5 sm:space-y-2 md:space-y-2 lg:space-y-1 xl:space-y-1.5"
-                  : "space-y-3 sm:space-y-4 md:space-y-4 lg:space-y-2.5 xl:space-y-3"}
+                className={
+                  Object.keys(errors).length > 0
+                    ? "space-y-1.5 sm:space-y-2 md:space-y-2 lg:space-y-1 xl:space-y-1.5"
+                    : "space-y-3 sm:space-y-4 md:space-y-4 lg:space-y-2.5 xl:space-y-3"
+                }
               >
                 {/* First Name */}
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">First Name</label>
+                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
+                    First Name
+                  </label>
                   <input
                     type="text"
                     name="firstName"
@@ -239,7 +252,9 @@ function CreateAccountPage() {
 
                 {/* Last Name */}
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">Last Name</label>
+                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
+                    Last Name
+                  </label>
                   <input
                     type="text"
                     name="lastName"
@@ -253,7 +268,9 @@ function CreateAccountPage() {
 
                 {/* Graduation Date */}
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">Graduation Date (Month / Year)</label>
+                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
+                    Graduation Date (Month / Year)
+                  </label>
                   <div className="flex gap-3 sm:gap-4 md:gap-3">
                     <input
                       type="text"
@@ -285,7 +302,9 @@ function CreateAccountPage() {
 
                 {/* Email */}
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">University Email Address</label>
+                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
+                    University Email Address
+                  </label>
                   <input
                     type="email"
                     name="email"
@@ -351,12 +370,16 @@ function CreateAccountPage() {
                   type="submit"
                   disabled={loading}
                   className={`w-full min-h-[44px] text-white py-3 sm:py-3.5 md:py-5 lg:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 font-medium text-base sm:text-lg md:text-xl lg:text-base active:scale-95
-                    ${loading ? 'bg-sky-300 cursor-not-allowed' : 'bg-sky-500 hover:bg-sky-600 hover:scale-105 hover:shadow-lg'}
+                    ${loading ? "bg-sky-300 cursor-not-allowed" : "bg-sky-500 hover:bg-sky-600 hover:scale-105 hover:shadow-lg"}
                   `}
                 >
-                  <span>{loading ? 'Submitting…' : 'Confirm'}</span>
+                  <span>{loading ? "Submitting…" : "Confirm"}</span>
                   {!loading && (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg
+                      className="w-5 h-5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
@@ -373,8 +396,8 @@ function CreateAccountPage() {
                   className="text-sm sm:text-base md:text-lg lg:text-base"
                   hoverClassName="hover:text-blue-300"
                   links={[
-                    { label: 'Already Have An Account? Log In', to: '/login' },
-                    { label: 'Forgot Password?', to: '/forgot-password' },
+                    { label: "Already Have An Account? Log In", to: "/login" },
+                    { label: "Forgot Password?", to: "/forgot-password" },
                   ]}
                 />
               </div>
@@ -394,13 +417,19 @@ function CreateAccountPage() {
           {/* card */}
           <div className="relative z-10 w-full max-w-lg rounded-xl shadow-2xl border border-white/10 bg-blue-600">
             <div className="p-6 sm:p-8">
-              <h3 className="text-2xl sm:text-3xl font-serif text-white mb-4 sm:mb-5 text-center leading-tight">Check Your Email</h3>
+              <h3 className="text-2xl sm:text-3xl font-serif text-white mb-4 sm:mb-5 text-center leading-tight">
+                Check Your Email
+              </h3>
               <p className="text-white/90 text-center leading-relaxed text-sm sm:text-base mb-6 sm:mb-8">
-                If an account using the email does not already exist, a temporary password has been sent to the email.
+                If an account using the email does not already exist, a
+                temporary password has been sent to the email.
               </p>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4">
                 <button
-                  onClick={() => { setShowNotice(false); navigate('/login'); }}
+                  onClick={() => {
+                    setShowNotice(false);
+                    navigate("/login");
+                  }}
                   className="min-h-[44px] px-6 py-3 sm:py-3.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white transition-colors font-medium text-base sm:text-lg active:scale-95"
                 >
                   Go to Login

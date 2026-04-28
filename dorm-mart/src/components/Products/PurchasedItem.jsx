@@ -1,14 +1,28 @@
 import { Link } from "react-router-dom";
-import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../../utils/imageFallback";
+import {
+  withFallbackImage,
+  onProductImageError,
+  resolveStoredImageUrl,
+} from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
 import { useState, useEffect } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
 import { formatDateTime } from "../../utils/formatters";
 
-function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false }) {
-  const productIdParam = id !== undefined && id !== null ? encodeURIComponent(id) : "";
+function PurchasedItem({
+  id,
+  title,
+  seller,
+  date,
+  image,
+  autoOpenReview = false,
+}) {
+  const productIdParam =
+    id !== undefined && id !== null ? encodeURIComponent(id) : "";
   const detailPath = `/app/viewReceipt?id=${productIdParam}`;
-  const displayImage = withFallbackImage(resolveStoredImageUrl(image, API_BASE));
+  const displayImage = withFallbackImage(
+    resolveStoredImageUrl(image, API_BASE),
+  );
   const detailState = { id, title, seller, date, image: displayImage };
 
   const [hasReview, setHasReview] = useState(false);
@@ -28,7 +42,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
           {
             method: "GET",
             credentials: "include",
-          }
+          },
         );
 
         if (response.ok) {
@@ -73,7 +87,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
         {
           method: "GET",
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -91,11 +105,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
     <>
       <li className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 shadow">
         {/* Left: image */}
-        <Link
-          to={detailPath}
-          state={detailState}
-          className="block"
-        >
+        <Link to={detailPath} state={detailState} className="block">
           <img
             src={displayImage}
             alt="Item"
@@ -117,7 +127,9 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
                 {title}
               </Link>
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">Sold by {seller}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+              Sold by {seller}
+            </p>
           </div>
 
           {/* Bottom: date */}
