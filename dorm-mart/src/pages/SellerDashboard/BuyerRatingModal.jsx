@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import StarRating from "../Reviews/StarRating";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { API_BASE } from "../../utils/apiConfig";
 
 /**
  * BuyerRatingModal Component
@@ -486,4 +485,3 @@ function BuyerRatingModal({
 }
 
 export default BuyerRatingModal;
-

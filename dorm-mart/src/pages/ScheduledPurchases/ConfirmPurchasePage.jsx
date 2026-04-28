@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { decimalNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
 import PageBackButton from '../../components/PageBackButton';
-
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { API_BASE } from '../../utils/apiConfig';
+import { formatDateTime as formatSharedDateTime } from '../../utils/formatters';
+import { MAX_LISTING_PRICE } from '../../utils/priceValidation';
 
 // Price limits - max matches ProductListingPage and SchedulePurchasePage exactly
 const PRICE_LIMITS = {
-  max: 9999.99,
+  max: MAX_LISTING_PRICE,
 };
 
 const DEFAULT_FAILURE_REASONS = [
@@ -18,18 +19,7 @@ const DEFAULT_FAILURE_REASONS = [
 
 function formatDateTime(iso) {
   if (!iso) return 'TBD';
-  try {
-    const date = new Date(iso);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
+  return formatSharedDateTime(iso);
 }
 
 function formatCurrency(value) {

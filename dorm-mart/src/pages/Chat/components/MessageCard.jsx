@@ -1,9 +1,7 @@
 import { memo, useCallback, useMemo } from "react";
 import { onProductImageError, resolveStoredImageUrl } from "../../../utils/imageFallback";
 import { useNavigate } from "react-router-dom";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import { API_BASE } from "../../../utils/apiConfig";
 
 const MessageCard = memo(function MessageCard({ message, isMine }) {
   const navigate = useNavigate();
@@ -77,4 +75,3 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
 });
 
 export default MessageCard;
-

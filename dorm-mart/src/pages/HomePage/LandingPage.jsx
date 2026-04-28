@@ -4,10 +4,8 @@ import { useNavigate } from "react-router-dom";
 import ItemCardNew from "../../components/ItemCardNew";
 import keyboard from "../../assets/product-images/keyboard.jpg";
 import mouse from "../../assets/product-images/wireless-mouse.jpg";
-import { withFallbackImage } from "../../utils/imageFallback";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import { resolveProductPhotoUrl, withFallbackImage } from "../../utils/imageFallback";
+import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
 const carpetUrl = `${PUBLIC_BASE}/assets/product-images/smallcarpet.png`;
 
 /** Session-only: after dismiss, tap "For You" again to reopen (never auto-opens on login) */
@@ -84,7 +82,6 @@ const FALLBACK_ITEMS = [
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
   const [interests, setInterests] = useState([]);
   const [allItems, setAllItems] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
@@ -176,10 +173,6 @@ export default function LandingPage() {
       ];
   const [bannerIdx, setBannerIdx] = useState(0);
 
-  // correct URLs
-  const LIST_ITEM_URL = "/dorm-mart/#/app/product-listing/new";
-  const MANAGE_INTERESTS_URL = "/dorm-mart/#/app/setting/user-preferences";
-
   const openExternalRoute = (url) => {
     window.location.href = url;
   };
@@ -255,13 +248,11 @@ export default function LandingPage() {
           cats = [c1, c2, c3].filter(Boolean);
         }
 
-        setUser(data || null);
         setInterests(cats);
         setErrorUser(false);
       } catch (e) {
         if (e.name !== "AbortError") {
           console.error("me.php failed:", e);
-          setUser(null);
           setInterests([]);
           setErrorUser(true);
         }
@@ -299,9 +290,7 @@ export default function LandingPage() {
               : parseFloat(`${d.price}`.replace(/[^0-9.]/g, "")) || 0;
 
           const rawImg = d.image || d.image_url || null;
-          const img = rawImg
-            ? `${API_BASE}/media/image.php?url=${encodeURIComponent(rawImg)}`
-            : null;
+          const img = rawImg ? resolveProductPhotoUrl(rawImg, { apiBase: API_BASE, publicBase: PUBLIC_BASE, proxyUnknown: true }) : null;
 
           const createdAt = d.created_at ? new Date(d.created_at) : null;
           let status = d.status || null;

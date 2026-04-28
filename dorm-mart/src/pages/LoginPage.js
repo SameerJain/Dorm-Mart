@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PreLoginBranding from "../components/PreLoginBranding";
 import { THEME_CACHE_KEY, THEME_PENDING_KEY } from "../utils/load_theme.js";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { API_BASE } from "../utils/apiConfig";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -105,7 +104,7 @@ function LoginPage() {
     try {
       // Call backend login API
       const response = await fetch(
-        `${process.env.REACT_APP_API_BASE}/auth/login.php`,
+        `${API_BASE}/auth/login.php`,
         {
           method: "POST",
           credentials: "include", // Important: allows cookies to be set

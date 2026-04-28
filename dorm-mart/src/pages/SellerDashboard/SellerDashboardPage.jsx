@@ -1,12 +1,10 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
-import { withFallbackImage, onProductImageError } from '../../utils/imageFallback';
+import { withFallbackImage, onProductImageError, resolveProductPhotoUrl } from '../../utils/imageFallback';
+import { API_BASE } from '../../utils/apiConfig';
 import ReviewModal from '../Reviews/ReviewModal';
 import StarRating from '../Reviews/StarRating';
 import BuyerRatingModal from './BuyerRatingModal';
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 
 /** Truncate product title to max length (default 50 characters) */
 function truncateProductTitle(title, maxLength = 50) {
@@ -114,10 +112,9 @@ function SellerDashboardPage() {
     const fetchListings = useCallback(async () => {
         setLoading(true);
         try {
-            const BASE = (process.env.REACT_APP_API_BASE || "api");
             // TODO: Create manage_seller_listings.php endpoint similar to fetch-transacted-items.php
             // This will query transacted_items WHERE seller_user_id = current_user_id
-            const response = await fetch(`${BASE}/seller-dashboard/manage_seller_listings.php`, {
+            const response = await fetch(`${API_BASE}/seller-dashboard/manage_seller_listings.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -147,9 +144,7 @@ function SellerDashboardPage() {
                 // Transform backend data to match frontend expectations
                 const transformedListings = dataArray.map(item => {
                     const rawImg = item.image_url || item.image || null;
-                    const proxied = rawImg
-                        ? `${API_BASE}/media/image.php?url=${encodeURIComponent(String(rawImg))}`
-                        : null;
+                    const proxied = resolveProductPhotoUrl(rawImg, { apiBase: API_BASE, proxyUnknown: true }) || null;
                     return {
                         id: item.id,
                         title: item.title,
@@ -310,8 +305,7 @@ function SellerDashboardPage() {
 
     const handleDelete = async (id) => {
         try {
-            const BASE = (process.env.REACT_APP_API_BASE || "api");
-            const res = await fetch(`${BASE}/seller-dashboard/delete_listing.php`, {
+            const res = await fetch(`${API_BASE}/seller-dashboard/delete_listing.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

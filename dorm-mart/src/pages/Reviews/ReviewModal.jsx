@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import StarRating from "./StarRating";
-import { onProductImageError } from "../../utils/imageFallback";
+import { onProductImageError, resolveProductPhotoUrl } from "../../utils/imageFallback";
+import { API_BASE } from "../../utils/apiConfig";
 
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+const reviewImageUrl = (url) =>
+  resolveProductPhotoUrl(url, { apiBase: API_BASE, proxyUnknown: true });
 
 /**
  * ReviewModal Component
@@ -230,7 +232,7 @@ function ReviewModal({
 
   const handleDownloadImage = async (imageUrl, filename) => {
     try {
-      const response = await fetch(`${API_BASE}/media/image.php?url=${encodeURIComponent(imageUrl)}`, {
+      const response = await fetch(reviewImageUrl(imageUrl), {
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch image');
@@ -657,7 +659,7 @@ function ReviewModal({
                       {existingReview.image1_url && (
                         <div className="relative group w-full h-96 max-h-96 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
                           <img
-                            src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
+                            src={reviewImageUrl(existingReview.image1_url)}
                             alt="Review image 1"
                             onClick={() => setSelectedImage(existingReview.image1_url)}
                             className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
@@ -676,7 +678,7 @@ function ReviewModal({
                       {existingReview.image2_url && (
                         <div className="relative group w-full h-96 max-h-96 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
                           <img
-                            src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
+                            src={reviewImageUrl(existingReview.image2_url)}
                             alt="Review image 2"
                             onClick={() => setSelectedImage(existingReview.image2_url)}
                             className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
@@ -695,7 +697,7 @@ function ReviewModal({
                       {existingReview.image3_url && (
                         <div className="relative group w-full h-96 max-h-96 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
                           <img
-                            src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
+                            src={reviewImageUrl(existingReview.image3_url)}
                             alt="Review image 3"
                             onClick={() => setSelectedImage(existingReview.image3_url)}
                             className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
@@ -718,7 +720,7 @@ function ReviewModal({
                       {existingReview.image1_url && (
                         <div className="h-24 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
                           <img
-                            src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
+                            src={reviewImageUrl(existingReview.image1_url)}
                             alt="Review image 1"
                             className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90"
                           />
@@ -727,7 +729,7 @@ function ReviewModal({
                       {existingReview.image2_url && (
                         <div className="h-24 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
                           <img
-                            src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
+                            src={reviewImageUrl(existingReview.image2_url)}
                             alt="Review image 2"
                             className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90"
                           />
@@ -736,7 +738,7 @@ function ReviewModal({
                       {existingReview.image3_url && (
                         <div className="h-24 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden">
                           <img
-                            src={`${API_BASE}/media/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
+                            src={reviewImageUrl(existingReview.image3_url)}
                             alt="Review image 3"
                             className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90"
                           />
@@ -755,7 +757,7 @@ function ReviewModal({
                 >
                   <div className="relative flex max-h-[90vh] max-w-[min(100%,90vw)] items-center justify-center">
                     <img
-                      src={`${API_BASE}/media/image.php?url=${encodeURIComponent(selectedImage)}`}
+                      src={reviewImageUrl(selectedImage)}
                       alt="Full size review image"
                       className="max-h-[85vh] max-w-full w-auto h-auto object-contain rounded-lg"
                       onClick={(e) => e.stopPropagation()}
@@ -865,4 +867,3 @@ function ReviewModal({
 }
 
 export default ReviewModal;
-

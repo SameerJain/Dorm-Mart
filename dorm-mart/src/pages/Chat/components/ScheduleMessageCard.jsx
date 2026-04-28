@@ -1,6 +1,6 @@
 import { useState } from "react";
-
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { API_BASE } from "../../../utils/apiConfig";
+import { formatCurrency, formatDateTime } from "../../../utils/formatters";
 
 function ScheduleMessageCard({ message, isMine, onRespond }) {
   const metadata = message.metadata || {};
@@ -65,23 +65,6 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const handleAccept = () => handleAction('accept');
   const handleDeny = () => handleAction('decline');
 
-  // Format meeting date/time
-  const formatMeetingTime = (isoString) => {
-    if (!isoString) return '';
-    try {
-      const date = new Date(isoString);
-      return date.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-      });
-    } catch {
-      return isoString;
-    }
-  };
-
   // Use consistent styling matching site's design system
   // Light backgrounds, solid borders, text matching border color
   // schedule_request always stays blue regardless of response status
@@ -92,12 +75,13 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
       // Check if buyer has already responded (from metadata or local state)
       const scheduledStatus = metadata.scheduled_purchase_status;
       const buyerResponseAt = metadata.buyer_response_at;
-      const hasResponded = localResponseStatus !== null || 
-                          scheduledStatus === 'accepted' || 
+      const hasBuyerResponse = buyerResponseAt !== null && buyerResponseAt !== undefined;
+      const hasResponded = localResponseStatus !== null ||
+                          scheduledStatus === 'accepted' ||
                           scheduledStatus === 'declined' ||
                           scheduledStatus === 'cancelled' ||
                           scheduledStatus === 'expired' ||
-                          buyerResponseAt !== null && buyerResponseAt !== undefined;
+                          hasBuyerResponse;
       
       return {
         bgColor: 'bg-blue-50 dark:bg-blue-900/30',
@@ -160,7 +144,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   };
 
   const config = getMessageConfig();
-  const meetingAt = metadata.meeting_at ? formatMeetingTime(metadata.meeting_at) : null;
+  const meetingAt = metadata.meeting_at ? formatDateTime(metadata.meeting_at) : null;
   const meetLocation = metadata.meet_location || null;
   const originalMeetLocation = metadata.original_meet_location || metadata.listing_meet_location || null;
   const description = metadata.description || null;
@@ -182,10 +166,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const hasLocationChange = meetLocation && originalMeetLocation && meetLocation.trim() !== originalMeetLocation.trim();
   
   // Format price for display
-  const formatPrice = (price) => {
-    if (price === null || price === undefined || isNaN(price)) return null;
-    return `$${price.toFixed(2)}`;
-  };
+  const formatPrice = (price) => formatCurrency(price);
 
   // Conditionally format message content for seller perspective
   const getDisplayMessage = () => {
@@ -324,4 +305,3 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
 }
 
 export default ScheduleMessageCard;
-

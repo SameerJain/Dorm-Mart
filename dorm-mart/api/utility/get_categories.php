@@ -2,27 +2,21 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/response.php';
 initSecurity();
 
-header('Content-Type: application/json; charset=utf-8');
-
 // Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+allow_options_request(200);
 
 try {
     // Full path to categories.json in this same directory
     $filePath = __DIR__ . '/categories.json';
 
     if (!file_exists($filePath)) {
-        http_response_code(404);
-        echo json_encode([
+        json_response([
             'ok'    => false,
             'error' => 'categories.json file not found'
-        ]);
-        exit;
+        ], 404);
     }
 
     $json = file_get_contents($filePath);
@@ -62,10 +56,9 @@ try {
     }
 
     // ✅ success: just return the array
-    echo json_encode($data);
+    json_response($data);
 
 } catch (Throwable $e) {
     error_log('get_categories error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Server error']);
+    json_response(['ok' => false, 'error' => 'Server error'], 500);
 }

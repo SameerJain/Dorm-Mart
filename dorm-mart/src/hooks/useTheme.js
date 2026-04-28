@@ -5,8 +5,7 @@ import {
   THEME_CACHE_KEY,
   THEME_PENDING_KEY,
 } from '../utils/load_theme.js';
-
-const API_BASE = process.env.REACT_APP_API_BASE || '/api';
+import { API_BASE } from '../utils/apiConfig';
 
 export function useTheme() {
   const readDOM = () =>

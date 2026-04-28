@@ -1,22 +1,18 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import PreLoginBranding from "../../components/PreLoginBranding";
+import PasswordRequirementRow from "../../components/forms/PasswordRequirementRow";
+import { API_BASE } from "../../utils/apiConfig";
+import { buildPasswordPolicy, hasDigit, hasLower, hasSpecial, hasUpper, MAX_PASSWORD_LEN } from "../../utils/passwordPolicy";
 
-const MAX_LEN = 64;
+const MAX_LEN = MAX_PASSWORD_LEN;
 
-const hasLower = (s) => /[a-z]/.test(s);
-const hasUpper = (s) => /[A-Z]/.test(s);
-const hasDigit = (s) => /\d/.test(s);
-const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
-
-function RequirementRow({ ok, text }) {
-  return (
-    <div className="flex items-center gap-3 text-sm sm:text-base">
-      <span className="inline-flex h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }} />
-      <span className={ok ? "text-green-200" : "text-red-200"}>{text}</span>
-    </div>
-  );
-}
+const RESET_REQUIREMENT_ROW_PROPS = {
+  className: "flex items-center gap-3 text-sm sm:text-base",
+  dotClassName: "inline-flex h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full flex-shrink-0",
+  okTextClassName: "text-green-200",
+  missingTextClassName: "text-red-200",
+};
 
 function Field({ id, label, type = "password", value, onChange, placeholder, disabled = false }) {
   return (
@@ -59,17 +55,7 @@ function ResetPasswordForm() {
   const [submitError, setSubmitError] = useState("");
   const [passwordMismatchError, setPasswordMismatchError] = useState("");
 
-  const policy = useMemo(
-    () => ({
-      minLen: newPassword.length >= 8,
-      lower: hasLower(newPassword),
-      upper: hasUpper(newPassword),
-      digit: hasDigit(newPassword),
-      special: hasSpecial(newPassword),
-      notTooLong: newPassword.length <= MAX_LEN,
-    }),
-    [newPassword]
-  );
+  const policy = useMemo(() => buildPasswordPolicy(newPassword), [newPassword]);
 
   const enforceMax = (setter) => (e) => {
     const v = e.target.value;
@@ -88,7 +74,7 @@ function ResetPasswordForm() {
     // Validate token with backend
     const validateToken = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/validate-reset-token.php`, {
+        const response = await fetch(`${API_BASE}/auth/validate-reset-token.php`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -173,7 +159,7 @@ function ResetPasswordForm() {
 
     try {
       // Call the reset password API
-      const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/reset-password.php`, {
+      const response = await fetch(`${API_BASE}/auth/reset-password.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -352,12 +338,36 @@ function ResetPasswordForm() {
                     Password Requirements:
                   </h2>
                   <div className="flex flex-col gap-3 sm:gap-4">
-                    <RequirementRow ok={policy.lower} text="At least 1 lowercase character" />
-                    <RequirementRow ok={policy.upper} text="At least 1 uppercase character" />
-                    <RequirementRow ok={policy.minLen} text="At least 8 characters" />
-                    <RequirementRow ok={policy.special} text="At least 1 special character" />
-                    <RequirementRow ok={policy.digit} text="At least 1 digit" />
-                    <RequirementRow ok={policy.notTooLong} text="No more than 64 characters" />
+                    <PasswordRequirementRow
+                      ok={policy.lower}
+                      text="At least 1 lowercase character"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
+                    <PasswordRequirementRow
+                      ok={policy.upper}
+                      text="At least 1 uppercase character"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
+                    <PasswordRequirementRow
+                      ok={policy.minLen}
+                      text="At least 8 characters"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
+                    <PasswordRequirementRow
+                      ok={policy.special}
+                      text="At least 1 special character"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
+                    <PasswordRequirementRow
+                      ok={policy.digit}
+                      text="At least 1 digit"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
+                    <PasswordRequirementRow
+                      ok={policy.notTooLong}
+                      text="No more than 64 characters"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
                   </div>
                 </section>
               </div>
