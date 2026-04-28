@@ -139,7 +139,7 @@ try {
             try {
                 // More direct approach: find and delete the message in one query if possible
                 // First, find the message ID
-                $findStmt = $conn->prepare('SELECT msg_id, metadata FROM messages WHERE conv_id = ? ORDER BY msg_id DESC');
+                $findStmt = $conn->prepare('SELECT message_id, metadata FROM messages WHERE conv_id = ? ORDER BY message_id DESC');
                 if ($findStmt) {
                     $findStmt->bind_param('i', $conversationId);
                     if ($findStmt->execute()) {
@@ -153,7 +153,7 @@ try {
                             if (is_array($msgMetadata) && 
                                 ($msgMetadata['type'] ?? '') === 'confirm_request' &&
                                 ($msgMetadata['confirm_request_id'] ?? 0) === $confirmRequestId) {
-                                $originalMsgId = (int)$msgRow['msg_id'];
+                            $originalMsgId = (int)$msgRow['message_id'];
                                 break; // Found it, stop searching
                             }
                         }
@@ -161,7 +161,7 @@ try {
                         
                         // Delete the message if found
                         if ($originalMsgId !== null) {
-                            $deleteStmt = $conn->prepare('DELETE FROM messages WHERE msg_id = ? LIMIT 1');
+                            $deleteStmt = $conn->prepare('DELETE FROM messages WHERE message_id = ? LIMIT 1');
                             if ($deleteStmt) {
                                 $deleteStmt->bind_param('i', $originalMsgId);
                                 if ($deleteStmt->execute()) {
