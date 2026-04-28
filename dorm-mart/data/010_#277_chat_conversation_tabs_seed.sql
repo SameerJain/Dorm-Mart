@@ -1,6 +1,6 @@
--- 006_#277_chat_conversation_tabs_seed.sql
--- Seed data for testing separate chat conversations per product
--- Creates two products: Blue Water Bottle (Kylo Ren) and White and Blue Backpack (Po Dameron)
+-- Seed: Task #277 chat conversation tabs data.
+-- Purpose: creates two products so the same users can have separate product conversations.
+-- Depends on: 005_#276_chat_feature_seed.sql for the chat seed accounts.
 
 START TRANSACTION;
 
@@ -87,4 +87,3 @@ INSERT INTO INVENTORY (
 );
 
 COMMIT;
-

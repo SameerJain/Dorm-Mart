@@ -53,8 +53,6 @@ try {
     }
 
     $username = derive_username((string)$row['email']);
-
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     echo json_encode([
         'success' => true,
         'user_id' => $requestedId,

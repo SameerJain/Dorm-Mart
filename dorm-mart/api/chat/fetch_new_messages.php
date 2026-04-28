@@ -93,7 +93,6 @@ while ($row = $res->fetch_assoc()) {
             $confirmStatusStmt->close();
         }
     }
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $messages[] = $row;
 }
 $stmt->close();
@@ -142,7 +141,6 @@ if ($convId > 0) {
                 $typingRow = $typingRes->fetch_assoc();
                 $typingStatus['is_typing'] = (bool)(int)$typingRow['is_typing'];
                 if ($typingStatus['is_typing'] && !empty($typingRow['first_name'])) {
-                    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
                     $typingStatus['typing_user_first_name'] = $typingRow['first_name'];
                 }
             }

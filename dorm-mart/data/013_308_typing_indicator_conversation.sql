@@ -1,9 +1,7 @@
 START TRANSACTION;
--- 013_308_typing_indicator_conversation.sql
--- Seed data for typing indicator feature testing
--- Creates product listing: Anker Portable Charger by testuserschedulered@buffalo.edu
--- Creates conversation between testuser@buffalo.edu and testuserschedulered@buffalo.edu for this item
--- This simulates testuser@buffalo.edu clicking "Message Seller" for the Anker Portable Charger
+-- Seed: Task #308 typing indicator conversation.
+-- Purpose: creates an Anker Portable Charger listing and active chat conversation.
+-- Depends on: testuser@buffalo.edu and testuserschedulered@buffalo.edu.
 
 -- Get user IDs for seller and buyer
 SELECT user_id INTO @seller_id
@@ -183,4 +181,3 @@ WHERE conv_id = @conversation_id
   AND @auto_message_id IS NOT NULL;
 
 COMMIT;
-

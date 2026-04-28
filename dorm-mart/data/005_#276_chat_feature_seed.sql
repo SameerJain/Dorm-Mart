@@ -1,5 +1,7 @@
 START TRANSACTION;
--- Seed data to support chat feature QA scenario (Task 276)
+-- Seed: Task #276 chat feature QA scenario.
+-- Purpose: creates chat buyer/seller accounts plus one chat-ready listing.
+-- Safe to rerun: cleans only records tied to these chat seed accounts/items.
 
 -- First, get the user IDs if they exist (for cleanup)
 SELECT user_id INTO @existing_buyer_id
@@ -179,5 +181,4 @@ INSERT INTO INVENTORY (
 );
 
 COMMIT;
-
 

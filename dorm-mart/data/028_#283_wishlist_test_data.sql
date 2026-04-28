@@ -1,8 +1,7 @@
 START TRANSACTION;
--- 017_#283_wishlist_test_data.sql
--- Seed data for wishlist feature testing
--- Adds Britta Filter Box and TECKNET Red Mouse product listings for testuserschedulered@buffalo.edu (Luke Skywalker)
--- These items are used to test the Wishlist Frontend and Backend features
+-- Seed: Task #283 wishlist listings.
+-- Purpose: adds Britta Filter Box and TECKNET Red Mouse listings for wishlist testing.
+-- Depends on: testuserschedulered@buffalo.edu.
 
 -- Capture seller user_id for linking records
 SELECT user_id INTO @seller_id
@@ -77,7 +76,6 @@ INSERT INTO INVENTORY (
 );
 
 COMMIT;
-
 
 
 

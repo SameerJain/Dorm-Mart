@@ -47,7 +47,6 @@ try {
     $username = derive_username($email);
 
     // XSS PROTECTION: Escape user-generated content before returning in JSON
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $response = [
         'success'     => true,
         'profile'     => [
@@ -157,8 +156,6 @@ SQL;
         if ($buyerName === '') {
             $buyerName = derive_username((string)($row['buyer_email'] ?? '')) ?: 'Buyer #' . (int)$row['buyer_user_id'];
         }
-
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $reviews[] = [
             'review_id'      => (int)$row['review_id'],
             'product_id'     => (int)$row['product_id'],

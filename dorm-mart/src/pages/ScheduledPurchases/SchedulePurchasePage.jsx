@@ -4,6 +4,7 @@ import { MEET_LOCATION_OPTIONS, MEET_LOCATION_OTHER_VALUE } from '../../constant
 import { decimalNumericKeyDownHandler } from '../../utils/numericInputKeyHandlers';
 import { API_BASE } from '../../utils/apiConfig';
 import { MAX_LISTING_PRICE, containsMemePrice } from '../../utils/priceValidation';
+import { containsXssPattern } from '../../utils/inputValidation';
 
 // Price limits - max matches ProductListingPage exactly
 const PRICE_LIMITS = {
@@ -76,7 +77,7 @@ function SchedulePurchasePage() {
         async function loadListings() {
             setError('');
             try {
-                const res = await fetch(`${API_BASE}/seller-dashboard/manage_seller_listings.php`, {
+                const res = await fetch(`${API_BASE}/seller_dashboard/manage_seller_listings.php`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -395,34 +396,19 @@ function SchedulePurchasePage() {
             return;
         }
 
-        // XSS PROTECTION: Check for XSS patterns in description, customMeetLocation, and tradeItemDescription
-        const xssPatterns = [
-            /<script/i,
-            /javascript:/i,
-            /onerror=/i,
-            /onload=/i,
-            /onclick=/i,
-            /<iframe/i,
-            /<object/i,
-            /<embed/i,
-            /<img[^>]*on/i,
-            /<svg[^>]*on/i,
-            /vbscript:/i
-        ];
-
-        if (description.trim() && xssPatterns.some(pattern => pattern.test(description))) {
+        if (description.trim() && containsXssPattern(description)) {
             setFormError('Invalid characters in description.');
             setIsSubmitting(false);
             return;
         }
 
-        if (customMeetLocation.trim() && xssPatterns.some(pattern => pattern.test(customMeetLocation))) {
+        if (customMeetLocation.trim() && containsXssPattern(customMeetLocation)) {
             setFormError('Invalid characters in meet location.');
             setIsSubmitting(false);
             return;
         }
 
-        if (isTrade && tradeItemDescription.trim() && xssPatterns.some(pattern => pattern.test(tradeItemDescription))) {
+        if (isTrade && tradeItemDescription.trim() && containsXssPattern(tradeItemDescription)) {
             setFormError('Invalid characters in trade item description.');
             setIsSubmitting(false);
             return;
@@ -454,7 +440,7 @@ function SchedulePurchasePage() {
                 }
             }
 
-            const res = await fetch(`${API_BASE}/scheduled-purchases/create.php`, {
+            const res = await fetch(`${API_BASE}/scheduled_purchases/create.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

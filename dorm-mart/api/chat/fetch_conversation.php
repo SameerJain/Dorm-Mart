@@ -26,7 +26,7 @@ if ($userId <= 0) {
 }
 
 // --- input: conv_id must come from the query string ---
-// e.g. GET /api/read_chat.php?conv_id=123
+// e.g. GET /api/chat/fetch_conversation.php?conv_id=123
 $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
 if ($convId <= 0) {
     http_response_code(400);
@@ -99,7 +99,6 @@ while ($row = $res->fetch_assoc()) {
             $confirmStatusStmt->close();
         }
     }
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $messages[] = $row;
 }
 $stmt->close();

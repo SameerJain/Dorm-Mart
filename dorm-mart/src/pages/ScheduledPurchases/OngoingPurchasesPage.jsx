@@ -163,13 +163,13 @@ function OngoingPurchasesPage() {
             try {
                 // Load both buyer and seller requests
                 const [buyerRes, sellerRes] = await Promise.all([
-                    fetch(`${API_BASE}/scheduled-purchases/list_buyer.php`, {
+                    fetch(`${API_BASE}/scheduled_purchases/list_buyer.php`, {
                         method: 'GET',
                         headers: { 'Accept': 'application/json' },
                         credentials: 'include',
                         signal: abort.signal,
                     }),
-                    fetch(`${API_BASE}/scheduled-purchases/list_seller.php`, {
+                    fetch(`${API_BASE}/scheduled_purchases/list_seller.php`, {
                         method: 'GET',
                         headers: { 'Accept': 'application/json' },
                         credentials: 'include',
@@ -208,12 +208,12 @@ function OngoingPurchasesPage() {
         setError('');
         try {
             const [buyerRes, sellerRes] = await Promise.all([
-                fetch(`${API_BASE}/scheduled-purchases/list_buyer.php`, {
+                fetch(`${API_BASE}/scheduled_purchases/list_buyer.php`, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' },
                     credentials: 'include',
                 }),
-                fetch(`${API_BASE}/scheduled-purchases/list_seller.php`, {
+                fetch(`${API_BASE}/scheduled_purchases/list_seller.php`, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' },
                     credentials: 'include',
@@ -245,7 +245,7 @@ function OngoingPurchasesPage() {
         setActionMessage('');
         setActionError('');
         try {
-            const res = await fetch(`${API_BASE}/scheduled-purchases/respond.php`, {
+            const res = await fetch(`${API_BASE}/scheduled_purchases/respond.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -281,7 +281,7 @@ function OngoingPurchasesPage() {
                 };
             }));
             // Also refresh seller requests to get updated status
-            const sellerRes = await fetch(`${API_BASE}/scheduled-purchases/list_seller.php`, {
+            const sellerRes = await fetch(`${API_BASE}/scheduled_purchases/list_seller.php`, {
                 method: 'GET',
                 headers: { 'Accept': 'application/json' },
                 credentials: 'include',
@@ -819,7 +819,7 @@ function OngoingPurchasesPage() {
                                             setBusyRequestId(pendingCancelRequestId);
                                             setActionError('');
                                             try {
-                                                const res = await fetch(`${API_BASE}/scheduled-purchases/cancel.php`, {
+                                                const res = await fetch(`${API_BASE}/scheduled_purchases/cancel.php`, {
                                                     method: 'POST',
                                                     headers: {
                                                         'Content-Type': 'application/json',

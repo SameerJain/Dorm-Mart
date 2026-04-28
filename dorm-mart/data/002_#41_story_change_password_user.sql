@@ -1,5 +1,7 @@
 START TRANSACTION;
--- ^ Begin a transaction so the insert is all-or-nothing.
+-- Seed: Story #41 change-password test account.
+-- Purpose: creates test-change-password@buffalo.edu for password-change QA.
+-- Safe to rerun: removes and recreates only this account.
 SET SESSION foreign_key_checks = 0;
 
 DELETE FROM user_accounts
@@ -31,5 +33,4 @@ INSERT INTO user_accounts (
 
 SET SESSION foreign_key_checks = 1;
 COMMIT;
-
 

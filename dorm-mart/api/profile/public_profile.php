@@ -140,7 +140,6 @@ function fetch_active_listings(mysqli $conn, int $userId): array
     $listings = [];
     while ($row = $result->fetch_assoc()) {
         $photoUrl = extract_first_photo($row['photos'] ?? null);
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $listings[] = [
             'product_id' => (int)$row['product_id'],
             'title'      => $row['title'] ?? 'Untitled',
@@ -221,8 +220,6 @@ SQL;
         if ($buyerName === '') {
             $buyerName = derive_username((string)($row['buyer_email'] ?? '')) ?: 'Buyer #' . (int)$row['buyer_user_id'];
         }
-
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $reviews[] = [
             'review_id'         => (int)$row['review_id'],
             'product_id'        => (int)$row['product_id'],

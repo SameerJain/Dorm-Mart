@@ -95,8 +95,6 @@ $row['sold_to']     = isset($row['sold_to']) ? (int)$row['sold_to'] : null;
 $row['product_id']  = (int)$row['product_id'];
 $row['listing_price']= $row['listing_price'] !== null ? (float)$row['listing_price'] : null;
 $row['final_price']  = $row['final_price'] !== null ? (float)$row['final_price'] : null;
-
-// Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
 $productOutput = [
     'product_id' => $row['product_id'],
     'title' => $row['title'] ?? 'Untitled',

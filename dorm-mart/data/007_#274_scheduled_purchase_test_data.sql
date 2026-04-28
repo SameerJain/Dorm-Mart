@@ -1,9 +1,7 @@
 START TRANSACTION;
--- 007_#274_scheduled_purchase_test_data.sql
--- Seed data for scheduled purchase feature testing
--- Creates test users: Luke Skywalker (seller) and Han Solo (buyer)
--- Creates test items: Scrub Daddy, Air Fryer (price negotiable), Pim Plushie (accepts trades)
--- Note: Conversations are created via "Message Seller" button in UI, not in this migration
+-- Seed: Task #274 scheduled purchase test data.
+-- Purpose: creates Luke Skywalker (seller), Han Solo (buyer), and three listings.
+-- Notes: conversations are created through "Message Seller" in the UI, not here.
 
 -- First, get the user IDs if they exist (for cleanup)
 SELECT user_id INTO @existing_seller_id
@@ -251,4 +249,3 @@ INSERT INTO INVENTORY (
 -- The test flow requires users to click "Message Seller" which will create conversations through the API
 
 COMMIT;
-

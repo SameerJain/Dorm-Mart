@@ -56,8 +56,6 @@ try {
     $c1 = trim((string)($row['interested_category_1'] ?? ''));
     $c2 = trim((string)($row['interested_category_2'] ?? ''));
     $c3 = trim((string)($row['interested_category_3'] ?? ''));
-
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     if ($c1 !== '') $cats[] = $c1;
     if ($c2 !== '' && $c2 !== $c1) $cats[] = $c2;
     if ($c3 !== '' && $c3 !== $c1 && $c3 !== $c2) $cats[] = $c3;

@@ -1,9 +1,7 @@
 START TRANSACTION;
--- 019_#275_scheduled_purchase_test_data.sql
--- Seed data for scheduled purchase feature testing
--- Adds Laundry Bag, House Plant, and Small Heater product listings for testuserschedulered@buffalo.edu (Luke Skywalker)
--- These items are used to test the scheduled purchase functionality
--- Note: Conversations are created via "Message Seller" button in UI, not in this migration
+-- Seed: Task #275 scheduled purchase listings.
+-- Purpose: adds Laundry Bag, House Plant, and Small Heater listings.
+-- Notes: conversations are created through "Message Seller" in the UI, not here.
 
 -- Capture seller user_id for linking records
 SELECT user_id INTO @seller_id
@@ -109,7 +107,6 @@ INSERT INTO INVENTORY (
 );
 
 COMMIT;
-
 
 
 

@@ -1,5 +1,7 @@
 START TRANSACTION;
--- ^ Begin a transaction so the insert is all-or-nothing.
+-- Seed: Story #60 seller and buyer accounts.
+-- Purpose: creates paired test-buyer@ and test-seller@ users for purchase flows.
+-- Safe to rerun: removes and recreates only these two accounts.
 SET SESSION foreign_key_checks = 0;
 
 DELETE FROM user_accounts
@@ -58,5 +60,4 @@ INSERT INTO user_accounts (
 
 SET SESSION foreign_key_checks = 1;
 COMMIT;
-
 

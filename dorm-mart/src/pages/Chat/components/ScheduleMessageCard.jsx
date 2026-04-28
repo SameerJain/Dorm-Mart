@@ -28,7 +28,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     if (!requestId || isResponding || localResponseStatus !== null) return;
     setIsResponding(true);
     try {
-      const res = await fetch(`${API_BASE}/scheduled-purchases/respond.php`, {
+      const res = await fetch(`${API_BASE}/scheduled_purchases/respond.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
