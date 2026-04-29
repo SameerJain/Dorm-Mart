@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import StarRating from "../Reviews/StarRating";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 
 /**
  * BuyerRatingModal Component
@@ -184,7 +185,7 @@ function BuyerRatingModal({
     setError(null);
 
     try {
-      const response = await fetch(
+      const response = await csrfFetch(
         `${API_BASE}/reviews/submit_buyer_rating.php`,
         {
           method: "POST",

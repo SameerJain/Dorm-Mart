@@ -3,6 +3,7 @@
 // Include security utilities
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/auth_handle.php';
+dm_enforce_https();
 set_security_headers();
 set_secure_cors();
 

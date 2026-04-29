@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
+import { csrfFetch } from "../../../utils/csrfFetch";
 import { formatCurrency, formatDateTime } from "../../../utils/formatters";
 
 const FAILURE_REASON_LABELS = {
@@ -245,7 +246,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     setIsResponding(true);
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/confirm_purchases/respond.php`, {
+      const res = await csrfFetch(`${API_BASE}/confirm_purchases/respond.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

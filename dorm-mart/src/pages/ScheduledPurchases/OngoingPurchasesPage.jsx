@@ -6,6 +6,7 @@ import {
   resolveProductPhotoUrl,
 } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 import { formatCurrency } from "../../utils/formatters";
 
 /** Grace period after scheduled meet time before the card moves to Past */
@@ -286,7 +287,7 @@ function OngoingPurchasesPage() {
     setActionMessage("");
     setActionError("");
     try {
-      const res = await fetch(`${API_BASE}/scheduled_purchases/respond.php`, {
+      const res = await csrfFetch(`${API_BASE}/scheduled_purchases/respond.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1139,7 +1140,7 @@ function OngoingPurchasesPage() {
                       setBusyRequestId(pendingCancelRequestId);
                       setActionError("");
                       try {
-                        const res = await fetch(
+                        const res = await csrfFetch(
                           `${API_BASE}/scheduled_purchases/cancel.php`,
                           {
                             method: "POST",

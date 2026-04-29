@@ -12,7 +12,7 @@ function auth_boot_session(): void
   ini_set('session.use_strict_mode', '1');
   ini_set('session.cookie_httponly', '1');
 
-  $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+  $secure = auth_is_https_request();
 
   session_set_cookie_params([
     'lifetime' => 0,
@@ -32,6 +32,12 @@ function regenerate_session_on_login(): void
   session_regenerate_id(true);
 }
 
+function auth_is_https_request(): bool
+{
+  return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+}
+
 /* ---------- Persistent login ("remember me") ---------- */
 
 function issue_remember_cookie(int $userId): void
@@ -47,7 +53,7 @@ function issue_remember_cookie(int $userId): void
   $stmt->close();
   $conn->close();
 
-  $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+  $secure = auth_is_https_request();
   setcookie(REMEMBER_COOKIE, $userId . ':' . $token, [
     'expires'  => time() + REMEMBER_TTL_DAYS * 24 * 60 * 60,
     'path'     => '/',
@@ -73,7 +79,7 @@ function clear_remember_cookie(?int $userId = null): void
   setcookie(REMEMBER_COOKIE, '', [
     'expires'  => time() - 3600,
     'path'     => '/',
-    'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    'secure'   => auth_is_https_request(),
     'httponly' => true,
     'samesite' => 'Lax',
   ]);
@@ -127,7 +133,7 @@ function ensure_session(): void
   $upd->close();
   $conn->close();
 
-  $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+  $secure = auth_is_https_request();
   setcookie(REMEMBER_COOKIE, $uid . ':' . $newToken, [
     'expires'  => time() + REMEMBER_TTL_DAYS * 24 * 60 * 60,
     'path'     => '/',
@@ -199,4 +205,13 @@ function validate_csrf_token(string $token): bool {
   }
   
   return hash_equals($_SESSION['csrf_token'], $token);
+}
+
+function require_csrf_token(?string $token): void {
+  if (!is_string($token) || $token === '' || !validate_csrf_token($token)) {
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'success' => false, 'error' => 'CSRF token validation failed']);
+    exit;
+  }
 }

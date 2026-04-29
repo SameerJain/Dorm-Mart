@@ -1,4 +1,5 @@
 import { API_BASE } from "../utils/apiConfig";
+import { csrfFetch } from "../utils/csrfFetch";
 
 export async function fetchMe(signal) {
   const r = await fetch(`${API_BASE}/auth/me.php`, {
@@ -190,7 +191,7 @@ export async function createMessageApi({
   if (convId) {
     body.conv_id = convId;
   }
-  const r = await fetch(`${API_BASE}/chat/create_message.php`, {
+  const r = await csrfFetch(`${API_BASE}/chat/create_message.php`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json", // tells PHP we're sending JSON
@@ -218,7 +219,7 @@ export async function createImageMessageApi({
   form.append("content", content ?? ""); // optional caption
   form.append("image", image, image.name); // PHP: $_FILES['image']
 
-  const r = await fetch(`${API_BASE}/chat/create_image_message.php`, {
+  const r = await csrfFetch(`${API_BASE}/chat/create_image_message.php`, {
     method: "POST",
     body: form, // DO NOT set Content-Type manually
     credentials: "include",

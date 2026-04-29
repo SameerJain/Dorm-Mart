@@ -15,6 +15,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
     $payload = json_request_body_or_error();
+    require_csrf_token($payload['csrf_token'] ?? null);
 
     $convId = isset($payload['conv_id']) ? (int)$payload['conv_id'] : 0;
     if ($convId <= 0) {

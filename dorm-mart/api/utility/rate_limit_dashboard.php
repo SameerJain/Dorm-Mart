@@ -11,6 +11,8 @@
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../security/security.php';
 
+require_local_or_cli_access();
+
 echo "=== RATE LIMITING DASHBOARD ===\n";
 echo "Time: " . date('Y-m-d H:i:s') . "\n";
 echo str_repeat("=", 80) . "\n\n";

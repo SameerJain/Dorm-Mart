@@ -4,6 +4,7 @@ import {
   THEME_PENDING_KEY,
 } from "./loadTheme.js";
 import { API_BASE } from "./apiConfig";
+import { csrfFetch } from "./csrfFetch";
 
 // Logout function - calls backend to clear auth token
 export async function logout() {
@@ -17,7 +18,7 @@ export async function logout() {
       // User not authenticated
     }
 
-    const response = await fetch(`${API_BASE}/auth/logout.php`, {
+    const response = await csrfFetch(`${API_BASE}/auth/logout.php`, {
       method: "POST",
       credentials: "include", // Important: include cookies
       headers: {

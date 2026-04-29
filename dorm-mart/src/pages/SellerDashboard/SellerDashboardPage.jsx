@@ -6,6 +6,7 @@ import {
   resolveProductPhotoUrl,
 } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 import ReviewModal from "../Reviews/ReviewModal";
 import StarRating from "../Reviews/StarRating";
 import BuyerRatingModal from "./BuyerRatingModal";
@@ -339,7 +340,7 @@ function SellerDashboardPage() {
 
   const handleDelete = async (id) => {
     try {
-      const res = await fetch(
+      const res = await csrfFetch(
         `${API_BASE}/seller_dashboard/delete_listing.php`,
         {
           method: "POST",

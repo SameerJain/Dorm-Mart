@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChatContext } from "../../../context/ChatContext";
 import { API_BASE } from "../../../utils/apiConfig";
+import { csrfFetch } from "../../../utils/csrfFetch";
 
 export default function useMessageSeller({
   productId,
@@ -37,7 +38,7 @@ export default function useMessageSeller({
         seller_user_id: normalized?.sellerId ?? undefined,
       };
 
-      const response = await fetch(`${API_BASE}/chat/ensure_conversation.php`, {
+      const response = await csrfFetch(`${API_BASE}/chat/ensure_conversation.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

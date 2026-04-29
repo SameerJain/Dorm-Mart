@@ -39,6 +39,7 @@ import ChatPage from "./pages/Chat/ChatPage.jsx";
 import NotificationPage from "./pages/Notification/NotificationPage.jsx";
 // FAQ
 import FAQPage from "./pages/FAQ/FAQPage.jsx";
+import NotFoundPage from "./pages/NotFoundPage.jsx";
 
 export const router = createHashRouter([
   // Welcome page
@@ -150,27 +151,18 @@ export const router = createHashRouter([
           { path: "buyer-reviews", element: <BuyerReviewsPage /> },
           // User Preferences
           { path: "user-preferences", element: <UserPreferences /> },
-          // Stubs for yet-to-be-implemented pages (intentionally 404)
-          {
-            path: "personal-information",
-            loader: () => {
-              throw new Response("Not Found", { status: 404 });
-            },
-          },
-          {
-            path: "security-options",
-            loader: () => {
-              throw new Response("Not Found", { status: 404 });
-            },
-          },
+          { path: "personal-information", element: <NotFoundPage /> },
+          { path: "security-options", element: <NotFoundPage /> },
         ],
       },
       {
         path: "faq",
         element: <FAQPage />,
       },
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
+  { path: "*", element: <NotFoundPage /> },
 ]);
 
 function App() {

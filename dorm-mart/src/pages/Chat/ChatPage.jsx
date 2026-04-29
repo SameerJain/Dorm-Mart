@@ -16,6 +16,7 @@ import DeleteConversationModal from "./components/DeleteConversationModal";
 import MessageList from "./components/MessageList";
 import useChatConversationStatus from "./hooks/useChatConversationStatus";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 
 /** Root Chat page: wires context, sidebar, messages, and composer together */
 export default function ChatPage() {
@@ -434,7 +435,7 @@ export default function ChatPage() {
     const requestTimestamp = Date.now();
 
     try {
-      const response = await fetch(`${API_BASE}/chat/typing_status.php`, {
+      const response = await csrfFetch(`${API_BASE}/chat/typing_status.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -681,7 +682,7 @@ export default function ChatPage() {
     setDeleteError("");
 
     try {
-      const res = await fetch(`${API_BASE}/chat/delete_conversation.php`, {
+      const res = await csrfFetch(`${API_BASE}/chat/delete_conversation.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

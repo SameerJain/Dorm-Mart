@@ -14,6 +14,7 @@ try {
     $userId = require_login();
 
     $payload = json_request_body_or_error();
+    require_csrf_token($payload['csrf_token'] ?? null);
 
     // Validate product_id
     $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;

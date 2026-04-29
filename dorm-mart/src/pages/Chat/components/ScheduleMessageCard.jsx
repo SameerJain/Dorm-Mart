@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
+import { csrfFetch } from "../../../utils/csrfFetch";
 import { formatCurrency, formatDateTime } from "../../../utils/formatters";
 
 function ScheduleMessageCard({ message, isMine, onRespond }) {
@@ -34,7 +35,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     if (!requestId || isResponding || localResponseStatus !== null) return;
     setIsResponding(true);
     try {
-      const res = await fetch(`${API_BASE}/scheduled_purchases/respond.php`, {
+      const res = await csrfFetch(`${API_BASE}/scheduled_purchases/respond.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

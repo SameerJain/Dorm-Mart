@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
 import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 import {
   formatCurrency as formatSharedCurrency,
   formatDateTime as formatSharedDateTime,
@@ -169,7 +170,7 @@ export default function ConfirmPurchasePage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/confirm_purchases/create.php`, {
+      const res = await csrfFetch(`${API_BASE}/confirm_purchases/create.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

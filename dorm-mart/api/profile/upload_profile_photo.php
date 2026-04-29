@@ -9,6 +9,7 @@ init_json_endpoint('POST');
 
 try {
     $userId = require_login();
+    require_csrf_token($_POST['csrf_token'] ?? null);
 
     $file = extract_upload();
     if ($file === null) {

@@ -7,6 +7,17 @@
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $requestPath = parse_url($requestUri, PHP_URL_PATH);
 
+function router_is_https_request(): bool
+{
+    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+}
+
+function router_csp_header(): string
+{
+    return "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' wss:; frame-ancestors 'none';";
+}
+
 // Route API requests to PHP files
 if (strpos($requestPath, '/api/') === 0) {
     // Remove /api prefix and route to actual PHP file
@@ -68,15 +79,13 @@ if ($requestPath === '/' || $requestPath === '') {
 }
 
 // Shared security headers for all static responses
-$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-    || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
-
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+header('Cross-Origin-Opener-Policy: same-origin');
 header_remove('X-Powered-By');
-if ($isHttps) {
+if (router_is_https_request()) {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 }
 
@@ -108,7 +117,7 @@ if (file_exists($buildPath) && is_file($buildPath)) {
 
     // CSP on HTML responses; JS/CSS/fonts get cache headers instead
     if ($extLower === 'html') {
-        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' wss:; frame-ancestors 'none';");
+        header('Content-Security-Policy: ' . router_csp_header());
     } elseif (in_array($extLower, ['js', 'css', 'woff2', 'woff', 'ttf'], true)) {
         header('Cache-Control: public, max-age=31536000, immutable');
     }
@@ -126,7 +135,7 @@ if (file_exists($buildPath) && is_file($buildPath)) {
 $indexPath = __DIR__ . '/build/index.html';
 if (file_exists($indexPath)) {
     header('Content-Type: text/html');
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' wss:; frame-ancestors 'none';");
+    header('Content-Security-Policy: ' . router_csp_header());
     readfile($indexPath);
     exit;
 }
