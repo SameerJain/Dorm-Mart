@@ -1,4 +1,8 @@
-import { formatCurrency, formatDateTime, humanizeStatus } from "../../../utils/formatters";
+import {
+  formatCurrency,
+  formatDateTime,
+  humanizeStatus,
+} from "../../../utils/formatters";
 
 export default function ReceiptDetailsPanel({ purchaseDetails, purchaseRows }) {
   if (!purchaseDetails) return null;
@@ -21,7 +25,8 @@ export default function ReceiptDetailsPanel({ purchaseDetails, purchaseRows }) {
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         {purchaseDetails.finalPrice != null && (
           <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {formatCurrency(purchaseDetails.finalPrice) ?? `$${Number(purchaseDetails.finalPrice).toFixed(2)}`}
+            {formatCurrency(purchaseDetails.finalPrice) ??
+              `$${Number(purchaseDetails.finalPrice).toFixed(2)}`}
           </span>
         )}
         {purchaseDetails.negotiatedPrice != null &&
@@ -43,7 +48,9 @@ export default function ReceiptDetailsPanel({ purchaseDetails, purchaseRows }) {
             <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide pt-0.5 flex-shrink-0">
               {row.label}
             </span>
-            <span className="text-gray-800 dark:text-gray-200 font-medium truncate">{row.value ?? "\u2014"}</span>
+            <span className="text-gray-800 dark:text-gray-200 font-medium truncate">
+              {row.value ?? "\u2014"}
+            </span>
           </div>
         ))}
       </div>
@@ -54,7 +61,8 @@ export default function ReceiptDetailsPanel({ purchaseDetails, purchaseRows }) {
             Failure Reason
           </p>
           <p className="text-sm font-semibold text-red-800 dark:text-red-200">
-            {purchaseDetails.failureReasonLabel || humanizeStatus(purchaseDetails.failureReason)}
+            {purchaseDetails.failureReasonLabel ||
+              humanizeStatus(purchaseDetails.failureReason)}
           </p>
           {purchaseDetails.failureReasonNotes && (
             <p className="text-sm text-red-700 dark:text-red-300 whitespace-pre-wrap mt-1">
@@ -64,9 +72,18 @@ export default function ReceiptDetailsPanel({ purchaseDetails, purchaseRows }) {
         </div>
       )}
 
-      {purchaseDetails.sellerNotes ? <NoteBlock title="Seller notes" text={purchaseDetails.sellerNotes} /> : null}
-      {purchaseDetails.buyerNotes ? <NoteBlock title="Buyer comments" text={purchaseDetails.buyerNotes} /> : null}
-      {purchaseDetails.comments ? <NoteBlock title="Additional comments" text={purchaseDetails.comments} /> : null}
+      {purchaseDetails.sellerNotes ? (
+        <NoteBlock title="Seller notes" text={purchaseDetails.sellerNotes} />
+      ) : null}
+      {purchaseDetails.buyerNotes ? (
+        <NoteBlock title="Buyer comments" text={purchaseDetails.buyerNotes} />
+      ) : null}
+      {purchaseDetails.comments ? (
+        <NoteBlock
+          title="Additional comments"
+          text={purchaseDetails.comments}
+        />
+      ) : null}
     </div>
   );
 }
@@ -76,8 +93,12 @@ function NoteBlock({ title, text }) {
 
   return (
     <div className="bg-gray-50 dark:bg-gray-700/40 rounded-md p-3">
-      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{title}</p>
-      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">{text}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+        {title}
+      </p>
+      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
+        {text}
+      </p>
     </div>
   );
 }

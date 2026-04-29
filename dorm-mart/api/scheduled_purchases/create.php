@@ -13,6 +13,7 @@ try {
     $sellerId = require_login();
 
     $payload = json_request_body_or_error();
+    require_csrf_token($payload['csrf_token'] ?? null);
 
     $inventoryId = isset($payload['inventory_product_id']) ? (int)$payload['inventory_product_id'] : 0;
     $conversationId = isset($payload['conversation_id']) ? (int)$payload['conversation_id'] : 0;
@@ -163,7 +164,7 @@ try {
     }
 
     // Generate unique 4-character verification code for buyer-seller meetup confirmation
-    $verificationCode = generateUniqueCode($conn);
+    $verificationCode = generate_unique_code($conn);
 
     // Validation: Ensure negotiated price is only allowed for price-negotiable items
     if ($negotiatedPrice !== null && !$snapshotPriceNego) {
@@ -348,7 +349,7 @@ try {
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
 
-function generateUniqueCode(mysqli $conn): string
+function generate_unique_code(mysqli $conn): string
 {
     $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     $length = strlen($alphabet) - 1;

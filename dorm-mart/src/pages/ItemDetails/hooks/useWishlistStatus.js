@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
+import { csrfFetch } from "../../../utils/csrfFetch";
 
-export default function useWishlistStatus({ productId, myId, disabled = false }) {
+export default function useWishlistStatus({
+  productId,
+  myId,
+  disabled = false,
+}) {
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistError, setWishlistError] = useState(null);
@@ -20,7 +25,7 @@ export default function useWishlistStatus({ productId, myId, disabled = false })
           {
             signal: controller.signal,
             credentials: "include",
-          }
+          },
         );
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
@@ -49,7 +54,7 @@ export default function useWishlistStatus({ productId, myId, disabled = false })
         ? `${API_BASE}/wishlist/remove_from_wishlist.php`
         : `${API_BASE}/wishlist/add_to_wishlist.php`;
 
-      const response = await fetch(endpoint, {
+      const response = await csrfFetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

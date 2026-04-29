@@ -4,11 +4,10 @@ declare(strict_types=1);
 /** Max simultaneous Active listings per seller (create + activate paths must match). */
 const MAX_ACTIVE_LISTINGS_PER_SELLER = 25;
 
-// --- Optional debug: .../product_listing.php?debug=1 ---
-$DEBUG = true;
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+// Keep diagnostics in server logs; never display PHP errors from this API.
+$DEBUG = false;
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
 
 // Always return JSON
 header('Content-Type: application/json; charset=utf-8');
@@ -19,7 +18,7 @@ try {
 
   // Security
   require $API_ROOT . '/security/security.php';
-  initSecurity();
+  init_security();
 
   // CORS / method
   if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
@@ -36,13 +35,7 @@ try {
   auth_boot_session();
   $userId = require_login();
 
-  /* Conditional CSRF validation - only validate if token is provided */
-  $token = $_POST['csrf_token'] ?? null;
-  if ($token !== null && !validate_csrf_token($token)) {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
-    exit;
-  }
+  require_csrf_token($_POST['csrf_token'] ?? null);
 
   mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
   $conn = db();
@@ -70,7 +63,6 @@ try {
   $descriptionRaw = (($t = $_POST['description'] ?? '') !== '') ? trim((string)$t) : null;
 
   // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-  // Note: SQL injection prevented by prepared statements
   if ($titleRaw !== '' && contains_xss_pattern($titleRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid characters in title']);
@@ -221,13 +213,7 @@ try {
       exit;
     }
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // All user input (title, description, itemLocation, etc.) is bound as parameters.
-    // The '?' placeholders ensure user input is treated as data, not executable SQL.
-    // This prevents SQL injection attacks even if malicious SQL code is in any field.
-    // ============================================================================
     $sql = "UPDATE INVENTORY
                SET title=?,
                    categories=?,
@@ -296,13 +282,7 @@ try {
   }
 
   // INSERT
-  // ============================================================================
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  // ============================================================================
-  // All user input is inserted using prepared statement with parameter binding.
-  // The '?' placeholders ensure user input is treated as data, not executable SQL.
-  // This prevents SQL injection attacks even if malicious SQL code is in any field.
-  // ============================================================================
   $sql = "INSERT INTO INVENTORY
             (title, categories, item_location, item_condition, description, photos, listing_price, item_status, trades, price_nego, seller_id)
           VALUES
@@ -347,8 +327,6 @@ try {
   // SECURITY: In production, consider removing detailed error fields to prevent information disclosure
   echo json_encode([
     'ok'    => false,
-    'error' => $DEBUG ? escape_html($e->getMessage()) : 'Internal Server Error',
-    'type'  => $DEBUG ? escape_html(get_class($e)) : null,
-    'trace' => $DEBUG ? escape_html($e->getTraceAsString()) : null,
+    'error' => 'Internal Server Error',
   ]);
 }

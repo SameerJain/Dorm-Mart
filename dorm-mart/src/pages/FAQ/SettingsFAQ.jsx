@@ -7,7 +7,7 @@ const SETTINGS_FAQ_ITEMS = [
   {
     question: "How do I set my interested categories?",
     answer:
-      "Go to Settings \u2192 User Preferences. Select up to 3 categories and save. These power the \"For You\" feed.",
+      'Go to Settings \u2192 User Preferences. Select up to 3 categories and save. These power the "For You" feed.',
   },
   {
     question: "How do I switch between light and dark mode?",
@@ -22,7 +22,7 @@ const SETTINGS_FAQ_ITEMS = [
   {
     question: "Let's say I forget my password. What do I do?",
     answer:
-      "Click \"Forgot Password\" on the login page. Enter your email and follow the link sent to your inbox.",
+      'Click "Forgot Password" on the login page. Enter your email and follow the link sent to your inbox.',
   },
 ];
 

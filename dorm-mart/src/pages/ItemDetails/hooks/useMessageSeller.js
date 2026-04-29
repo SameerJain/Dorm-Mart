@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChatContext } from "../../../context/ChatContext";
 import { API_BASE } from "../../../utils/apiConfig";
+import { csrfFetch } from "../../../utils/csrfFetch";
 
 export default function useMessageSeller({
   productId,
@@ -32,11 +33,12 @@ export default function useMessageSeller({
 
     try {
       const payload = {
-        product_id: normalized?.productId ?? (productId ? Number(productId) : undefined),
+        product_id:
+          normalized?.productId ?? (productId ? Number(productId) : undefined),
         seller_user_id: normalized?.sellerId ?? undefined,
       };
 
-      const response = await fetch(`${API_BASE}/chat/ensure_conversation.php`, {
+      const response = await csrfFetch(`${API_BASE}/chat/ensure_conversation.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -48,7 +50,8 @@ export default function useMessageSeller({
 
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.success) {
-        const message = result?.error || `Failed to start chat (${response.status})`;
+        const message =
+          result?.error || `Failed to start chat (${response.status})`;
         throw new Error(message);
       }
 

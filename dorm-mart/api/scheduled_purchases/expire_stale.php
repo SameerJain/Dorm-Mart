@@ -9,9 +9,9 @@ declare(strict_types=1);
  * Also inserts a chat message for each expired request so both parties
  * are notified in their conversation thread.
  *
- * Call expireStaleRequests($conn) before fetching list data.
+ * Call expire_stale_requests($conn) before fetching list data.
  */
-function expireStaleRequests(mysqli $conn): void
+function expire_stale_requests(mysqli $conn): void
 {
     $selectSql = <<<SQL
         SELECT

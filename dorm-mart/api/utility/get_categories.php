@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../helpers/response.php';
-initSecurity();
+init_security();
 
 // Handle preflight OPTIONS request
 allow_options_request(200);

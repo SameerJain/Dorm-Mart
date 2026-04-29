@@ -12,6 +12,7 @@ auth_boot_session();
 
 // Require a logged-in user
 $userId = require_login();
+require_csrf_token($_POST['csrf_token'] ?? null);
 
 // This endpoint expects multipart/form-data with an image file
 require_multipart_formdata();

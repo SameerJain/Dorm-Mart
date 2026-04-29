@@ -14,6 +14,7 @@ try {
     $sellerId = require_login();
 
     $payload = json_request_body_or_error();
+    require_csrf_token($payload['csrf_token'] ?? null);
 
     $scheduledRequestId = isset($payload['scheduled_request_id']) ? (int)$payload['scheduled_request_id'] : 0;
     $conversationId = isset($payload['conversation_id']) ? (int)$payload['conversation_id'] : 0;

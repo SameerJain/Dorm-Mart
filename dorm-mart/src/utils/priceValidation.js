@@ -17,7 +17,9 @@ const MEME_PRICE_SEQUENCES = [
 
 export function containsMemePrice(priceString, { digitsOnly = true } = {}) {
   if (!priceString) return false;
-  const value = digitsOnly ? String(priceString).replace(/[^\d]/g, "") : String(priceString);
+  const value = digitsOnly
+    ? String(priceString).replace(/[^\d]/g, "")
+    : String(priceString);
   if (!value) return false;
   return MEME_PRICE_SEQUENCES.some((sequence) => value.includes(sequence));
 }

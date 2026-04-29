@@ -19,14 +19,7 @@ try {
     mysqli_report(MYSQLI_REPORT_OFF);
     $mysqli = db();
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Safe Query (No User Input)
-    // ============================================================================
-    // This query contains no user input - it uses only hardcoded values (0, NULL, 40).
-    // There are no WHERE clause parameters from user input, so SQL injection is not possible.
-    // If this query were to accept user input (e.g., filtering by search terms), we would
-    // need to use prepared statements with parameter binding.
-    // ============================================================================
     $sql = "
         SELECT 
             i.product_id,

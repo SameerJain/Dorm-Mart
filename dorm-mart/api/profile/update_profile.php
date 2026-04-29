@@ -17,6 +17,7 @@ init_json_endpoint('POST');
 try {
     $userId = require_login();
     $data = json_request_body_or_error();
+    require_csrf_token($data['csrf_token'] ?? null);
 
     $setClauses = [];
     $types      = '';

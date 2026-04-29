@@ -10,6 +10,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/app_config.php';
 
+if (php_sapi_name() !== 'cli' && !dm_is_local_host((string)($_SERVER['HTTP_HOST'] ?? ''))) {
+    http_response_code(404);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'error' => 'Not found']);
+    exit;
+}
+
 /**
  * Base URL of the api/ directory (no trailing slash).
  */

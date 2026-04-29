@@ -3,8 +3,9 @@ declare(strict_types=1);
 
 // Include security headers for XSS protection
 require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+dm_enforce_https();
+set_security_headers();
+set_secure_cors();
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -70,13 +71,7 @@ if (
 try {
     $conn = db();
     
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement (No User Input in Query)
-    // ============================================================================
-    // This query contains no user input - it checks all reset tokens and uses
-    // password_verify() to validate the token. The token comparison happens
-    // in PHP using password_verify(), not in SQL, so SQL injection is not possible.
-    // ============================================================================
     $stmt = $conn->prepare('
         SELECT user_id, hash_auth, reset_token_expires 
         FROM user_accounts 
@@ -108,13 +103,7 @@ try {
     // Hash the new password
     $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // The password hash and user_id are bound as parameters using bind_param().
-    // Even if malicious SQL were somehow in the hash or user_id, it cannot execute
-    // because it's bound as a parameter, not concatenated into SQL.
-    // ============================================================================
     $stmt = $conn->prepare('
         UPDATE user_accounts 
         SET hash_pass = ?, hash_auth = NULL, reset_token_expires = NULL 

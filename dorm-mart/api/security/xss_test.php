@@ -7,8 +7,10 @@
 // Include security headers and functions
 require __DIR__ . '/security.php';
 
+require_local_or_cli_access();
+
 // Set security headers
-setSecurityHeaders();
+set_security_headers();
 
 header('Content-Type: text/html; charset=utf-8');
 

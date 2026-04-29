@@ -3,6 +3,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
@@ -10,15 +11,12 @@ init_json_endpoint();
 $conn = db();
 $conn->set_charset('utf8mb4');
 
-session_start();
-$userId = (int)($_SESSION['user_id'] ?? 0);
-if ($userId <= 0) {
-    json_response(['success' => false, 'error' => 'Not authenticated'], 401);
-}
+$userId = require_login();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Update typing status
     $body = json_request_body_or_error(['success' => false, 'error' => 'Invalid JSON']);
+    require_csrf_token($body['csrf_token'] ?? null);
 
     $conversationId = isset($body['conversation_id']) ? (int)$body['conversation_id'] : 0;
     $isTyping = isset($body['is_typing']) ? (bool)$body['is_typing'] : false;

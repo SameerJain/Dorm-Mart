@@ -54,15 +54,26 @@ export default function ProductActionsPanel({
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
                 </svg>
                 <div>
                   <p className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
                     Buyer's Perspective View
                   </p>
                   <p className="text-base text-yellow-700 dark:text-yellow-300">
-                    You're viewing your listing from a buyer's perspective. This helps you see how your item appears to potential buyers.
+                    You're viewing your listing from a buyer's perspective. This
+                    helps you see how your item appears to potential buyers.
                   </p>
                 </div>
               </div>
@@ -83,7 +94,11 @@ export default function ProductActionsPanel({
             >
               {msgLoading ? "Opening chat..." : "Message Seller"}
             </button>
-            {msgError ? <p className="text-xs text-red-600 dark:text-red-400">{msgError}</p> : null}
+            {msgError ? (
+              <p className="text-xs text-red-600 dark:text-red-400">
+                {msgError}
+              </p>
+            ) : null}
           </>
         )}
       </div>
@@ -101,7 +116,13 @@ function WishlistButton({ isInWishlist, loading, disabled, onClick }) {
           ? "bg-purple-600 dark:bg-purple-700 hover:bg-purple-700 dark:hover:bg-purple-600 text-white"
           : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"
       } disabled:opacity-50 transition-colors`}
-      title={loading ? "Loading..." : isInWishlist ? "Saved to Wishlist" : "Add to Wishlist"}
+      title={
+        loading
+          ? "Loading..."
+          : isInWishlist
+            ? "Saved to Wishlist"
+            : "Add to Wishlist"
+      }
     >
       <svg
         className={`w-4 h-4 ${isInWishlist ? "fill-current" : ""}`}

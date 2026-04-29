@@ -22,7 +22,7 @@
     pointer-events: none !important;
     cursor: default !important;
   }
-  
+
   /* Pre-login right side background - subtle blue gradient */
   .pre-login-bg {
     background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%);
@@ -35,7 +35,12 @@
    * (e.g. theme cache applies before navigate away from /login).
    */
   html.dark .login-page-right-column.pre-login-bg {
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%) !important;
+    background: linear-gradient(
+      135deg,
+      #dbeafe 0%,
+      #bfdbfe 50%,
+      #93c5fd 100%
+    ) !important;
     color: #111827;
   }
   html.dark .login-page-right-column .text-gray-800 {
@@ -44,7 +49,7 @@
   html.dark .login-page-right-column .text-gray-600 {
     color: #4b5563 !important;
   }
-  
+
   .review-text-rounded {
     border-radius: 0.5rem !important;
     -webkit-border-radius: 0.5rem !important;
@@ -52,7 +57,7 @@
     overflow: hidden !important;
     isolation: isolate !important;
   }
-  
+
   #review-text {
     border-radius: 0.5rem !important;
     -webkit-border-radius: 0.5rem !important;
@@ -70,47 +75,57 @@
     -moz-border-radius-bottomleft: 0.5rem !important;
     -moz-border-radius-bottomright: 0.5rem !important;
   }
-  
+
   #review-text::-webkit-scrollbar {
     width: 8px;
   }
-  
+
   #review-text::-webkit-scrollbar-track {
     background: transparent;
     border-radius: 0 0.5rem 0.5rem 0;
   }
-  
+
   #review-text::-webkit-scrollbar-thumb {
     background: rgba(156, 163, 175, 0.5);
     border-radius: 0 0.5rem 0.5rem 0;
   }
-  
+
   #review-text::-webkit-scrollbar-thumb:hover {
     background: rgba(156, 163, 175, 0.7);
   }
 }
 
-html, body, #root {
+html,
+body,
+#root {
   min-height: 100vh;
   overflow-x: hidden;
   overflow-y: auto; /* allow vertical scrolling */
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* Dark mode base styles */
-html.dark, html.dark body, html.dark #root {
+html.dark,
+html.dark body,
+html.dark #root {
   background-color: #111827; /* gray-900 */
   color: #f3f4f6; /* gray-100 */
 }
 
 /* Ensure input fields are always visible */
-input, textarea, select {
+input,
+textarea,
+select {
   background-color: white !important;
   color: #1f2937 !important; /* gray-800 */
   border-color: #d1d5db !important; /* gray-300 */
 }
 
-html.dark input, html.dark textarea, html.dark select {
+html.dark input,
+html.dark textarea,
+html.dark select {
   background-color: white !important;
   color: #1f2937 !important; /* gray-800 */
   border-color: #d1d5db !important; /* gray-300 */
@@ -162,7 +177,12 @@ html.dark .focus-visible\:ring-blue-600:focus-visible {
  * html.dark from their in-app preference.
  */
 html.dark .pre-login-bg {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%) !important;
+  background: linear-gradient(
+    135deg,
+    #dbeafe 0%,
+    #bfdbfe 50%,
+    #93c5fd 100%
+  ) !important;
   color: #111827;
   color-scheme: light;
 }
@@ -236,50 +256,85 @@ html.dark .pre-login-bg .focus-visible\:ring-blue-600:focus-visible {
 
 /* --- animations (unchanged) --- */
 @keyframes image-glow {
-  0% { opacity: 0; animation-timing-function: cubic-bezier(0.74, 0.25, 0.76, 1); }
-  10% { opacity: 0.7; animation-timing-function: cubic-bezier(0.12, 0.01, 0.08, 0.99); }
-  to  { opacity: 0.4; }
+  0% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.74, 0.25, 0.76, 1);
+  }
+  10% {
+    opacity: 0.7;
+    animation-timing-function: cubic-bezier(0.12, 0.01, 0.08, 0.99);
+  }
+  to {
+    opacity: 0.4;
+  }
 }
 
 @keyframes fade-in {
-  0% { opacity: 0; transform: translateY(-10px); }
-  to  { opacity: 1; transform: none; }
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes fade-up {
-  0% { opacity: 0; transform: translateY(20px); }
-  to  { opacity: 1; transform: none; }
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes shimmer {
-  0%, 90%, to { background-position: calc(-100% - var(--shimmer-width)) 0; }
-  30%, 60%    { background-position: calc(100% + var(--shimmer-width)) 0; }
+  0%,
+  90%,
+  to {
+    background-position: calc(-100% - var(--shimmer-width)) 0;
+  }
+  30%,
+  60% {
+    background-position: calc(100% + var(--shimmer-width)) 0;
+  }
 }
 
 @keyframes marquee {
-  0% { transform: translate(0); }
-  to { transform: translateX(calc(-100% - var(--gap))); }
+  0% {
+    transform: translate(0);
+  }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+  }
 }
 
 @keyframes marquee-vertical {
-  0% { transform: translateY(0); }
-  to { transform: translateY(calc(-100% - var(--gap))); }
+  0% {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+  }
 }
 
 /* QnA button: bounce in "z-axis" (scale in/out) on hover */
 @keyframes qna-bounce-z {
   0% {
-    transform: translateZ(0) scale(1);     /* start at normal size */
+    transform: translateZ(0) scale(1); /* start at normal size */
   }
   40% {
-    transform: translateZ(0) scale(1.12);  /* quickly pop out a bit */
+    transform: translateZ(0) scale(1.12); /* quickly pop out a bit */
   }
   100% {
-    transform: translateZ(0) scale(1);     /* return to normal */
+    transform: translateZ(0) scale(1); /* return to normal */
   }
 }
 
 /* Apply the animation only while the element is hovered */
 .qna-bounce-z:hover {
-  animation: qna-bounce-z 220ms ease-out;  /* short pop animation */
+  animation: qna-bounce-z 220ms ease-out; /* short pop animation */
 }

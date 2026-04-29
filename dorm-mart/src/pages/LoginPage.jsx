@@ -19,17 +19,21 @@ function LoginPage() {
 
   // Handle URL parameters
   useEffect(() => {
-    const urlError = searchParams.get('error');
-    const urlMessage = searchParams.get('message');
-    
-    if (urlError === 'reset_link_expired') {
+    const urlError = searchParams.get("error");
+    const urlMessage = searchParams.get("message");
+
+    if (urlError === "reset_link_expired") {
       setError("Password reset link has expired. Please request a new one.");
-    } else if (urlError === 'invalid_reset_link') {
-      setError("Invalid password reset link. Please use the link from your email.");
+    } else if (urlError === "invalid_reset_link") {
+      setError(
+        "Invalid password reset link. Please use the link from your email.",
+      );
     }
-    
-    if (urlMessage === 'password_reset_success') {
-      setSuccess("Password has been reset successfully. You can now log in with your new password.");
+
+    if (urlMessage === "password_reset_success") {
+      setSuccess(
+        "Password has been reset successfully. You can now log in with your new password.",
+      );
     }
   }, [searchParams]);
 
@@ -66,7 +70,11 @@ function LoginPage() {
     }
 
     // Email validation based on ALLOW_ALL_EMAILS flag (for UX, but backend accepts any valid email)
-    if (!emailPolicyLoading && !allowAllEmails && !emailTrimmed.toLowerCase().endsWith("@buffalo.edu")) {
+    if (
+      !emailPolicyLoading &&
+      !allowAllEmails &&
+      !emailTrimmed.toLowerCase().endsWith("@buffalo.edu")
+    ) {
       setError("Email must be a buffalo.edu address");
       setLoading(false);
       return;
@@ -90,20 +98,17 @@ function LoginPage() {
 
     try {
       // Call backend login API
-      const response = await fetch(
-        `${API_BASE}/auth/login.php`,
-        {
-          method: "POST",
-          credentials: "include", // Important: allows cookies to be set
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-            password: password,
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE}/auth/login.php`, {
+        method: "POST",
+        credentials: "include", // Important: allows cookies to be set
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+        }),
+      });
 
       // Check if response is ok before parsing JSON
       if (!response.ok) {
@@ -125,11 +130,11 @@ function LoginPage() {
 
       if (data.ok) {
         // Auth token is now set server-side as httpOnly cookie
-        
+
         // Cache theme only — do not call applyThemeToDOM here, or the pre-login layout
         // (e.g. left branding card) flashes dark for a moment before navigate("/app").
         // RootLayout's loadUserTheme applies class/meta once the app shell mounts.
-        if (data.theme === 'dark' || data.theme === 'light') {
+        if (data.theme === "dark" || data.theme === "light") {
           try {
             localStorage.removeItem(THEME_PENDING_KEY);
           } catch (_) {}
@@ -154,23 +159,24 @@ function LoginPage() {
             // User not authenticated or error - continue anyway
           }
         }
-        
+
         // Navigate to the main app
         navigate("/app");
       } else {
         // Show error from backend, with improved messaging
         const backendError = data.error || "Login failed";
         let userFriendlyError = backendError;
-        
+
         // Map backend errors to more user-friendly messages
         if (backendError === "Invalid email format") {
           userFriendlyError = "Please enter a valid email address";
         } else if (backendError === "Invalid credentials") {
           userFriendlyError = "Invalid email or password. Please try again.";
         } else if (backendError.includes("too large")) {
-          userFriendlyError = "Email or password is too long. Please check your input.";
+          userFriendlyError =
+            "Email or password is too long. Please check your input.";
         }
-        
+
         setError(userFriendlyError);
       }
     } catch (error) {
@@ -212,21 +218,19 @@ function LoginPage() {
 
       {/* Right side - Login form (full width on mobile, 50% on desktop).
           login-page-right-column: stay visually light even if html.dark (global CSS + brief theme flash). */}
-      <div
-        className="login-page-se-mobile-col login-page-right-column w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden [color-scheme:light]"
-      >
+      <div className="login-page-se-mobile-col login-page-right-column w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden [color-scheme:light]">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="login-page-se-branding lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
-          <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">Dorm Mart</h1>
+          <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
+            Dorm Mart
+          </h1>
           <h2 className="text-xl sm:text-2xl md:text-4xl font-light text-gray-600 opacity-90 leading-relaxed">
             Wastage, who?
           </h2>
         </div>
 
         <div className="w-full max-w-md md:max-w-xl relative z-10">
-          <div
-            className="p-4 sm:p-6 md:p-10 rounded-lg relative bg-[#2563eb]"
-          >
+          <div className="p-4 sm:p-6 md:p-10 rounded-lg relative bg-[#2563eb]">
             {/* Torn paper effect — hex blue avoids html.dark .bg-blue-600 global remap */}
             <div
               className="absolute inset-0 rounded-lg bg-[#2563eb]"
@@ -248,14 +252,18 @@ function LoginPage() {
               {/* Success message display */}
               {success && (
                 <div className="mb-4 p-3 sm:p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-                  <p className="text-sm sm:text-base leading-relaxed">{success}</p>
+                  <p className="text-sm sm:text-base leading-relaxed">
+                    {success}
+                  </p>
                 </div>
               )}
 
               {/* Error message display */}
               {error && (
                 <div className="mb-4 p-3 sm:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                  <p className="text-sm sm:text-base leading-relaxed">{error}</p>
+                  <p className="text-sm sm:text-base leading-relaxed">
+                    {error}
+                  </p>
                 </div>
               )}
 
@@ -286,10 +294,12 @@ function LoginPage() {
                     onPaste={(e) => {
                       // Always handle paste ourselves to ensure full email is captured
                       e.preventDefault();
-                      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                      const pastedText = (
+                        e.clipboardData || window.clipboardData
+                      ).getData("text");
                       let cleanedText = pastedText.trim();
                       // Remove '-- ' prefix if present (SQL comment marker)
-                      if (cleanedText.startsWith('-- ')) {
+                      if (cleanedText.startsWith("-- ")) {
                         cleanedText = cleanedText.substring(3).trim();
                       }
                       // Limit to exactly 255 characters to match database limit
@@ -350,10 +360,11 @@ function LoginPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Tagline - Mobile only, outside login card */}
           <p className="login-page-se-tagline lg:hidden mt-6 sm:mt-8 md:mt-10 text-base sm:text-lg md:text-2xl text-gray-600 opacity-80 max-w-sm md:max-w-lg mx-auto leading-relaxed text-center px-4">
-            Your campus marketplace for buying and selling. Connect with fellow students and save money.
+            Your campus marketplace for buying and selling. Connect with fellow
+            students and save money.
           </p>
         </div>
       </div>

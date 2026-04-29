@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 // Include security headers for XSS protection
 require __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+dm_enforce_https();
+set_security_headers();
+set_secure_cors();
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -21,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require __DIR__ . '/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 auth_boot_session();
 $userId = require_login();
@@ -36,10 +38,12 @@ if (strpos($ct, 'application/json') !== false) {
   // Passwords must remain raw - they're hashed, not displayed
   $current = isset($data['currentPassword']) ? (string)$data['currentPassword'] : '';
   $next    = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
+  require_csrf_token($data['csrf_token'] ?? null);
 } else {
   // Passwords must remain raw - they're hashed, not displayed
   $current = isset($_POST['currentPassword']) ? (string)$_POST['currentPassword'] : '';
   $next    = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
+  require_csrf_token($_POST['csrf_token'] ?? null);
 }
 
 /* Validate inputs */
@@ -69,13 +73,7 @@ if (
 try {
   $conn = db();
 
-  // ============================================================================
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  // ============================================================================
-  // Using prepared statement with '?' placeholder and bind_param() to safely
-  // handle $userId. Even if malicious SQL is in $userId, it cannot execute
-  // because it's bound as an integer parameter, not concatenated into SQL.
-  // ============================================================================
   $stmt = $conn->prepare('SELECT hash_pass, email FROM user_accounts WHERE user_id = ? LIMIT 1');
   $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
@@ -96,11 +94,7 @@ try {
   $userEmail = (string)($row['email'] ?? '');
   $isTestUser = ($userEmail === 'testuser@buffalo.edu');
 
-  /* Verify current password
-   * SECURITY NOTE: password_verify() compares the user-provided
-   * plaintext to the STORED salted hash. The salt and algorithm params are
-   * embedded inside the hash created by password_hash() when the user/account
-   * was created or changed. We never compare against or store plaintext. */
+  // SECURITY NOTE: password_verify() safely checks the submitted password.
   if (!password_verify($current, (string)$row['hash_pass'])) {
     $conn->close();
     http_response_code(401);
@@ -124,17 +118,10 @@ try {
     exit;
   }
 
-  /* Update password; also clear any persisted token column if present
-   * SECURITY NOTE: password_hash() automatically generates a random SALT and
-   * returns a salted bcrypt hash. Only the hash is stored in the DB. */
+  // SECURITY NOTE: password_hash() stores only the salted bcrypt hash.
   $newHash = password_hash($next, PASSWORD_BCRYPT);
   
-  // ============================================================================
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  // ============================================================================
-  // The password hash and user_id are bound as parameters using bind_param().
-  // This prevents SQL injection even if malicious SQL were in these values.
-  // ============================================================================
   $upd = $conn->prepare('UPDATE user_accounts SET hash_pass = ?, hash_auth = NULL WHERE user_id = ?');
   $upd->bind_param('si', $newHash, $userId);  // 's' = string, 'i' = integer
   $upd->execute();
@@ -148,7 +135,7 @@ try {
       'expires'  => time() - 3600,
       'path'     => '/',
       'httponly' => true,
-      'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+      'secure'   => auth_is_https_request(),
       'samesite' => 'Lax'
     ]);
   }

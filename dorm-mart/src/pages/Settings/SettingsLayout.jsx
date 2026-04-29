@@ -11,28 +11,28 @@ function SettingsLayout({ children }) {
   useEffect(() => {
     if (showMobileMenu) {
       const scrollY = window.scrollY;
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
+      document.body.style.width = "100%";
     } else {
       const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
       if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+        window.scrollTo(0, parseInt(scrollY || "0") * -1);
       }
     }
     return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
     };
   }, [showMobileMenu]);
 
@@ -59,8 +59,18 @@ function SettingsLayout({ children }) {
           onClick={() => setShowMobileMenu(!showMobileMenu)}
           className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
           </svg>
           <span className="text-lg font-medium">Settings</span>
         </button>
@@ -69,13 +79,14 @@ function SettingsLayout({ children }) {
       {/* Full-width grid that also stretches to full height */}
       <div className="grid flex-1 w-full grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 px-6 pt-6 pb-8 min-h-0">
         {/* Desktop Sidebar (hidden on mobile) */}
-        <aside
-          className="hidden h-full rounded-xl p-0 text-white shadow bg-blue-600 dark:bg-blue-800 dark:shadow-lg dark:shadow-black/25 dark:ring-1 dark:ring-white/10 lg:block"
-        >
+        <aside className="hidden h-full rounded-xl p-0 text-white shadow bg-blue-600 dark:bg-blue-800 dark:shadow-lg dark:shadow-black/25 dark:ring-1 dark:ring-white/10 lg:block">
           <div className="px-4 py-3">
             <h2 className="text-xl font-serif font-semibold">Settings</h2>
           </div>
-          <div className="h-px w-full" style={{ background: "rgba(255,255,255,0.25)" }} />
+          <div
+            className="h-px w-full"
+            style={{ background: "rgba(255,255,255,0.25)" }}
+          />
           <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2">
             {links.map((l) => (
               <NavLink
@@ -106,7 +117,9 @@ function SettingsLayout({ children }) {
         {/* Mobile Sidebar Overlay – now FIXED so it covers nav bar too */}
         <div
           className={`lg:hidden fixed inset-0 z-40 flex transition-opacity duration-300 ${
-            showMobileMenu ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+            showMobileMenu
+              ? "opacity-100 pointer-events-auto"
+              : "opacity-0 pointer-events-none"
           }`}
         >
           {/* Backdrop */}
@@ -127,12 +140,25 @@ function SettingsLayout({ children }) {
                 onClick={() => setShowMobileMenu(false)}
                 className="text-white hover:text-gray-300"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
-            <div className="h-px w-full" style={{ background: "rgba(255,255,255,0.25)" }} />
+            <div
+              className="h-px w-full"
+              style={{ background: "rgba(255,255,255,0.25)" }}
+            />
             <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2">
               {links.map((l) => (
                 <NavLink
@@ -166,7 +192,13 @@ function SettingsLayout({ children }) {
         </div>
 
         {/* Content (stretch to bottom) */}
-        <main className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 pb-10 sm:pb-12 shadow overflow-auto min-h-0" style={{ overscrollBehaviorY: "contain", WebkitOverflowScrolling: "touch" }}>
+        <main
+          className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 pb-10 sm:pb-12 shadow overflow-auto min-h-0"
+          style={{
+            overscrollBehaviorY: "contain",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           {children}
         </main>
       </div>

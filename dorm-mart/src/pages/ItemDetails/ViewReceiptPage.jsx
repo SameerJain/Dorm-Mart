@@ -11,7 +11,10 @@ import useCurrentUserId from "./hooks/useCurrentUserId";
 import useItemProductId from "./hooks/useItemProductId";
 import useMessageSeller from "./hooks/useMessageSeller";
 import useReceiptDetail from "./hooks/useReceiptDetail";
-import { buildPurchaseRows, normalizeReceiptDetails } from "./utils/receiptDetails";
+import {
+  buildPurchaseRows,
+  normalizeReceiptDetails,
+} from "./utils/receiptDetails";
 
 export default function ViewReceipt() {
   const navigate = useNavigate();
@@ -19,16 +22,22 @@ export default function ViewReceipt() {
   const productId = useItemProductId();
   const returnTo = location.state?.returnTo;
   const myId = useCurrentUserId();
-  const { loading, error, receiptData, normalized } = useReceiptDetail(productId);
+  const { loading, error, receiptData, normalized } =
+    useReceiptDetail(productId);
 
   const isSellerViewingOwnProduct =
-    myId && normalized?.sellerId && Number(myId) === Number(normalized.sellerId);
+    myId &&
+    normalized?.sellerId &&
+    Number(myId) === Number(normalized.sellerId);
 
   const purchaseDetails = useMemo(() => {
     return normalizeReceiptDetails(receiptData, normalized);
   }, [receiptData, normalized]);
 
-  const purchaseRows = useMemo(() => buildPurchaseRows(purchaseDetails), [purchaseDetails]);
+  const purchaseRows = useMemo(
+    () => buildPurchaseRows(purchaseDetails),
+    [purchaseDetails],
+  );
 
   const displayedPrice = useMemo(() => {
     if (!normalized) return null;
@@ -40,7 +49,8 @@ export default function ViewReceipt() {
 
   const displayPriceText =
     displayedPrice != null
-      ? formatCurrency(displayedPrice) ?? `$${Number(displayedPrice).toFixed(2)}`
+      ? (formatCurrency(displayedPrice) ??
+        `$${Number(displayedPrice).toFixed(2)}`)
       : "\u2014";
 
   const isSuccessful = !purchaseDetails?.failureReason;
@@ -72,16 +82,22 @@ export default function ViewReceipt() {
 
       <div className="w-full px-2 md:px-4 py-4">
         {loading ? (
-          <p className="text-center text-sm text-gray-400 dark:text-gray-500">Loading receipt...</p>
+          <p className="text-center text-sm text-gray-400 dark:text-gray-500">
+            Loading receipt...
+          </p>
         ) : error ? (
           <ReceiptError error={error} />
         ) : !normalized ? (
-          <p className="text-center text-sm text-gray-400 dark:text-gray-500">No product found.</p>
+          <p className="text-center text-sm text-gray-400 dark:text-gray-500">
+            No product found.
+          </p>
         ) : (
           <>
             {isSellerViewingOwnProduct && (
               <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">You are the seller of this item.</p>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  You are the seller of this item.
+                </p>
               </div>
             )}
 
@@ -94,7 +110,9 @@ export default function ViewReceipt() {
                       : "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300"
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${isSuccessful ? "bg-green-500" : "bg-red-500"}`} />
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${isSuccessful ? "bg-green-500" : "bg-red-500"}`}
+                  />
                   {transactionStatus}
                 </span>
                 {purchaseDetails.receiptId && (
@@ -106,7 +124,10 @@ export default function ViewReceipt() {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-4 items-start">
-              <ProductImageGallery photoUrls={normalized.photoUrls} title={normalized.title} />
+              <ProductImageGallery
+                photoUrls={normalized.photoUrls}
+                title={normalized.title}
+              />
 
               <section className="flex flex-col gap-3 min-w-0">
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words overflow-hidden">
@@ -115,7 +136,10 @@ export default function ViewReceipt() {
 
                 <SellerMetaRow normalized={normalized} />
 
-                <ReceiptDetailsPanel purchaseDetails={purchaseDetails} purchaseRows={purchaseRows} />
+                <ReceiptDetailsPanel
+                  purchaseDetails={purchaseDetails}
+                  purchaseRows={purchaseRows}
+                />
 
                 {!purchaseDetails && (
                   <ReceiptPricePanel
@@ -152,12 +176,18 @@ export default function ViewReceipt() {
 function ReceiptError({ error }) {
   return (
     <div className="text-center">
-      <p className="text-sm text-red-500 dark:text-red-400 font-medium mb-2">Couldn't load receipt.</p>
+      <p className="text-sm text-red-500 dark:text-red-400 font-medium mb-2">
+        Couldn't load receipt.
+      </p>
       {error.message && !error.message.startsWith("HTTP ") && (
-        <p className="text-xs text-red-400 dark:text-red-500">{error.message}</p>
+        <p className="text-xs text-red-400 dark:text-red-500">
+          {error.message}
+        </p>
       )}
       {error.message && error.message.startsWith("HTTP ") && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Error code: {error.message}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          Error code: {error.message}
+        </p>
       )}
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
         Please check your connection and try again.

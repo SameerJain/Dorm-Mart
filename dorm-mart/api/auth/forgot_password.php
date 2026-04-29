@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 // Include security headers for XSS protection
 require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
+dm_enforce_https();
+set_security_headers();
 
 header('Content-Type: application/json; charset=utf-8');
 
 // SECURE CORS Configuration
-setSecureCORS();
+set_secure_cors();
 
 // Include PHPMailer setup (reuse from create_account.php)
 $PROJECT_ROOT = dirname(__DIR__, 2);
@@ -30,7 +31,7 @@ require_once __DIR__ . '/../config/app_config.php';
 /**
  * Send password reset email via SendGrid REST API (for Railway)
  */
-function sendPasswordResetEmailViaSendGrid(array $user, string $resetLink, string $apiKey): array
+function send_password_reset_email_via_sendgrid(array $user, string $resetLink, string $apiKey): array
 {
     global $PROJECT_ROOT;
     
@@ -77,13 +78,13 @@ function sendPasswordResetEmailViaSendGrid(array $user, string $resetLink, strin
             return ['success' => false, 'error' => 'Failed to send email via SendGrid'];
         }
     } catch (Exception $e) {
-        error_log("SendGrid exception in sendPasswordResetEmailViaSendGrid: " . $e->getMessage());
+        error_log("SendGrid exception in send_password_reset_email_via_sendgrid: " . $e->getMessage());
         return ['success' => false, 'error' => $e->getMessage()];
     }
 }
 
 // Use the EXACT same email sending logic as create_account.php for maximum speed
-function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel = 'Local'): array
+function send_password_reset_email(array $user, string $resetLink, string $envLabel = 'Local'): array
 {
     global $PROJECT_ROOT;
 
@@ -93,7 +94,7 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
     if (!empty($sendgridApiKey)) {
         // Use SendGrid REST API for Railway
         error_log("DEBUG: Using SendGrid for password reset email to: " . $user['email']);
-        return sendPasswordResetEmailViaSendGrid($user, $resetLink, $sendgridApiKey);
+        return send_password_reset_email_via_sendgrid($user, $resetLink, $sendgridApiKey);
     }
     error_log("DEBUG: SendGrid API key not found, falling back to PHPMailer");
 
@@ -112,7 +113,7 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
         
         // Debug: Log if credentials are missing
         if (empty($gmailUsername) || empty($gmailPassword)) {
-            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set in sendPasswordResetEmail");
+            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set in send_password_reset_email");
             return ['success' => false, 'error' => 'Email configuration missing'];
         }
         
@@ -188,7 +189,6 @@ if (strpos($ct, 'application/json') !== false) {
 require_once __DIR__ . '/../config/email_config.php';
 
 // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-// Note: SQL injection prevented by prepared statements
 if ($emailRaw !== '' && contains_xss_pattern($emailRaw)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Invalid input format']);
@@ -217,13 +217,7 @@ if (ALLOW_ALL_EMAILS) {
 try {
     $conn = db();
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // Using prepared statement with '?' placeholder and bind_param() to safely
-    // handle $email. Even if malicious SQL is in $email, it cannot execute
-    // because it's bound as a string parameter, not concatenated into SQL.
-    // ============================================================================
     $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email, last_reset_request FROM user_accounts WHERE email = ?');
     $stmt->bind_param('s', $email);  // 's' = string type, safely bound as parameter
     $stmt->execute();
@@ -276,7 +270,7 @@ try {
 
     // Send email using the same function as create_account.php
     $emailStartTime = microtime(true);
-    $emailResult = sendPasswordResetEmail($user, $resetLink, $envLabel);
+    $emailResult = send_password_reset_email($user, $resetLink, $envLabel);
     $emailEndTime = microtime(true);
     $emailDuration = round(($emailEndTime - $emailStartTime) * 1000, 2); // milliseconds
     

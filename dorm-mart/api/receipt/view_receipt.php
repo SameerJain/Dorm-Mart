@@ -27,7 +27,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    [$confirmRow, $resolvedProductId, $isAuthorized] = fetchConfirmRow($conn, $userId, $productId, $confirmRequestId);
+    [$confirmRow, $resolvedProductId, $isAuthorized] = fetch_confirm_row($conn, $userId, $productId, $confirmRequestId);
     if (!$confirmRow) {
         json_response(['success' => false, 'error' => 'Receipt not found for this listing','product_id' => $productId, 'confirm_request_id' => $confirmRequestId], 404);
     }
@@ -38,12 +38,12 @@ try {
     // Auto finalize if the request expired without a response.
     $confirmRow = auto_finalize_confirm_request($conn, $confirmRow) ?? $confirmRow;
 
-    $scheduledRow = fetchScheduledRequest($conn, (int)$confirmRow['scheduled_request_id']);
+    $scheduledRow = fetch_scheduled_request($conn, (int)$confirmRow['scheduled_request_id']);
     if (!$scheduledRow) {
         json_response(['success' => false, 'error' => 'Scheduled purchase details not found'], 500);
     }
 
-    $productPayload = fetchProductPayload($conn, $resolvedProductId);
+    $productPayload = fetch_product_payload($conn, $resolvedProductId);
     if (!$productPayload) {
         json_response(['success' => false, 'error' => 'Product not found for this receipt'], 404);
     }
@@ -54,7 +54,7 @@ try {
         $finalPrice = (float)$confirmRow['final_price'];
     }
 
-    $receiptPayload = buildReceiptPayload($confirmRow, $scheduledRow, $snapshot, $finalPrice);
+    $receiptPayload = build_receipt_payload($confirmRow, $scheduledRow, $snapshot, $finalPrice);
 
     json_response([
         'success' => true,
@@ -73,7 +73,7 @@ try {
  *
  * @return array{0: ?array, 1: int} Returns the row and resolved product id.
  */
-function fetchConfirmRow(mysqli $conn, int $userId, int $productId, int $confirmId): array
+function fetch_confirm_row(mysqli $conn, int $userId, int $productId, int $confirmId): array
 {
     if ($confirmId > 0) {
         $sql = 'SELECT * FROM confirm_purchase_requests WHERE confirm_request_id = ?';
@@ -115,7 +115,7 @@ function fetchConfirmRow(mysqli $conn, int $userId, int $productId, int $confirm
     return [$row, $resolvedProductId, $isAuthorized];
 }
 
-function fetchScheduledRequest(mysqli $conn, int $requestId): ?array
+function fetch_scheduled_request(mysqli $conn, int $requestId): ?array
 {
     $sql = '
         SELECT spr.*,
@@ -143,7 +143,7 @@ function fetchScheduledRequest(mysqli $conn, int $requestId): ?array
     return $row ?: null;
 }
 
-function fetchProductPayload(mysqli $conn, int $productId): ?array
+function fetch_product_payload(mysqli $conn, int $productId): ?array
 {
     $sql = "
         SELECT 
@@ -190,13 +190,13 @@ function fetchProductPayload(mysqli $conn, int $productId): ?array
     return inventory_product_payload($row, $fallback, false);
 }
 
-function buildReceiptPayload(array $confirmRow, array $scheduledRow, array $snapshot, ?float $finalPrice): array
+function build_receipt_payload(array $confirmRow, array $scheduledRow, array $snapshot, ?float $finalPrice): array
 {
     $meetingAt = $scheduledRow['meeting_at'] ?? ($snapshot['meeting_at'] ?? null);
     $meetLocation = $scheduledRow['meet_location']
         ?? ($snapshot['meet_location'] ?? ($snapshot['snapshot_meet_location'] ?? null));
 
-    $purchaseDateIso = formatDateTimeValue(
+    $purchaseDateIso = format_datetime_value(
         $confirmRow['buyer_response_at']
         ?? $confirmRow['auto_processed_at']
         ?? $confirmRow['updated_at']
@@ -205,8 +205,8 @@ function buildReceiptPayload(array $confirmRow, array $scheduledRow, array $snap
         ?? null
     );
 
-    $sellerName = formatDisplayName($scheduledRow['seller_first'] ?? '', $scheduledRow['seller_last'] ?? '', 'Seller #' . $confirmRow['seller_user_id']);
-    $buyerName = formatDisplayName($scheduledRow['buyer_first'] ?? '', $scheduledRow['buyer_last'] ?? '', 'Buyer #' . $confirmRow['buyer_user_id']);
+    $sellerName = format_display_name($scheduledRow['seller_first'] ?? '', $scheduledRow['seller_last'] ?? '', 'Seller #' . $confirmRow['seller_user_id']);
+    $buyerName = format_display_name($scheduledRow['buyer_first'] ?? '', $scheduledRow['buyer_last'] ?? '', 'Buyer #' . $confirmRow['buyer_user_id']);
 
     $negotiatedPrice = $scheduledRow['negotiated_price'] ?? ($snapshot['negotiated_price'] ?? null);
     $isTrade = isset($scheduledRow['is_trade']) ? (bool)$scheduledRow['is_trade'] : (isset($snapshot['is_trade']) ? (bool)$snapshot['is_trade'] : null);
@@ -220,7 +220,7 @@ function buildReceiptPayload(array $confirmRow, array $scheduledRow, array $snap
         'failure_reason_notes' => $confirmRow['failure_reason_notes'] ?? '',
         'purchase_date' => $purchaseDateIso,
         'meet_location' => $meetLocation ?? '',
-        'negotiated_price' => coerceFloat($negotiatedPrice),
+        'negotiated_price' => coerce_float($negotiatedPrice),
         'trade_item_description' => $scheduledRow['trade_item_description'] ?? ($snapshot['trade_item_description'] ?? ''),
         'is_trade' => $isTrade,
         'comments' => $scheduledRow['description'] ?? '',
@@ -235,7 +235,7 @@ function buildReceiptPayload(array $confirmRow, array $scheduledRow, array $snap
     ];
 }
 
-function formatDateTimeValue($value): ?string
+function format_datetime_value($value): ?string
 {
     if ($value === null || $value === '') {
         return null;
@@ -255,7 +255,7 @@ function formatDateTimeValue($value): ?string
     return $dt ? $dt->format(DateTime::ATOM) : null;
 }
 
-function coerceFloat($value): ?float
+function coerce_float($value): ?float
 {
     if ($value === null || $value === '') {
         return null;
@@ -266,7 +266,7 @@ function coerceFloat($value): ?float
     return null;
 }
 
-function formatDisplayName($first, $last, $fallback): string
+function format_display_name($first, $last, $fallback): string
 {
     $first = trim((string)$first);
     $last = trim((string)$last);

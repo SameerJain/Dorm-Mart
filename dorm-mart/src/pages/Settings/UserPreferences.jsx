@@ -4,10 +4,16 @@ import SettingsLayout from "./SettingsLayout";
 import { useTheme } from "../../hooks/useTheme";
 import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 
 function UserPreferences() {
   const navigate = useNavigate();
-  const { theme, updateTheme, syncFromServerIfNoPending, isLoading: themeIsLoading } = useTheme();
+  const {
+    theme,
+    updateTheme,
+    syncFromServerIfNoPending,
+    isLoading: themeIsLoading,
+  } = useTheme();
   const [promotionalEmails, setPromotionalEmails] = useState(false);
   const [revealContact, setRevealContact] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,29 +34,31 @@ function UserPreferences() {
         setCategoriesLoading(true);
         setCategoriesError(null);
         const res = await fetch(`${API_BASE}/utility/get_categories.php`);
-        if (!res.ok) throw new Error('Failed to load categories');
+        if (!res.ok) throw new Error("Failed to load categories");
         const data = await res.json();
-        if (!Array.isArray(data)) throw new Error('Invalid categories format');
+        if (!Array.isArray(data)) throw new Error("Invalid categories format");
         if (!cancelled) setAvailableCategories(data);
       } catch (e) {
         if (!cancelled) {
-          console.error('Failed to load categories:', e);
+          console.error("Failed to load categories:", e);
           setCategoriesError(e.message);
         }
       } finally {
         if (!cancelled) setCategoriesLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Enhanced interest management
   const handleInterestToggle = (interest) => {
     setIsLoading(true);
     setTimeout(() => {
-      setSelectedInterests(prev => {
+      setSelectedInterests((prev) => {
         if (prev.includes(interest)) {
-          return prev.filter(item => item !== interest);
+          return prev.filter((item) => item !== interest);
         }
         // Enforce maximum of 3 categories
         if (prev.length >= 3) {
@@ -65,7 +73,7 @@ function UserPreferences() {
   const handleInterestRemove = (interest) => {
     setIsLoading(true);
     setTimeout(() => {
-      setSelectedInterests(prev => prev.filter(item => item !== interest));
+      setSelectedInterests((prev) => prev.filter((item) => item !== interest));
       setIsLoading(false);
     }, 200);
   };
@@ -77,16 +85,17 @@ function UserPreferences() {
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       // Don't allow custom interests - only select from existing categories
     }
   };
 
   // Filter categories based on search
-  const filteredCategories = availableCategories.filter(category =>
-    category.toLowerCase().includes(searchQuery.toLowerCase()) &&
-    !selectedInterests.includes(category)
+  const filteredCategories = availableCategories.filter(
+    (category) =>
+      category.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !selectedInterests.includes(category),
   );
 
   // Show/hide suggestions based on search
@@ -103,25 +112,35 @@ function UserPreferences() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/profile/user_preferences.php`, { method: 'GET', credentials: 'include' });
+        const res = await fetch(`${API_BASE}/profile/user_preferences.php`, {
+          method: "GET",
+          credentials: "include",
+        });
         if (!res.ok) return;
         const json = await res.json();
         if (!json || json.ok !== true || !json.data) return;
-        const { promoEmails, revealContact, interests, theme: serverTheme } = json.data;
+        const {
+          promoEmails,
+          revealContact,
+          interests,
+          theme: serverTheme,
+        } = json.data;
         if (cancelled) return;
         setPromotionalEmails(!!promoEmails);
         setRevealContact(!!revealContact);
         if (Array.isArray(interests)) setSelectedInterests(interests);
-        if (serverTheme === 'dark' || serverTheme === 'light') {
+        if (serverTheme === "dark" || serverTheme === "light") {
           syncFromServerIfNoPending(serverTheme);
         }
         setPreferencesLoaded(true);
       } catch (e) {
-        console.warn('UserPreferences: GET failed', e);
+        console.warn("UserPreferences: GET failed", e);
         if (!cancelled) setPreferencesLoaded(true);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -139,19 +158,30 @@ function UserPreferences() {
           interests: selectedInterests,
           theme: theme,
         };
-        await fetch(`${API_BASE}/profile/user_preferences.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+        await csrfFetch(`${API_BASE}/profile/user_preferences.php`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify(body),
           signal: controller.signal,
         });
       } catch (e) {
-        if (e.name !== 'AbortError') console.warn('UserPreferences: POST failed', e);
+        if (e.name !== "AbortError")
+          console.warn("UserPreferences: POST failed", e);
       }
     }, 400);
-    return () => { controller.abort(); clearTimeout(t); };
-  }, [promotionalEmails, revealContact, selectedInterests, theme, themeIsLoading, preferencesLoaded]);
+    return () => {
+      controller.abort();
+      clearTimeout(t);
+    };
+  }, [
+    promotionalEmails,
+    revealContact,
+    selectedInterests,
+    theme,
+    themeIsLoading,
+    preferencesLoaded,
+  ]);
 
   return (
     <SettingsLayout>
@@ -165,7 +195,9 @@ function UserPreferences() {
       <div className="space-y-8">
         {/* Notification Settings */}
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">Notification Settings</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
+            Notification Settings
+          </h2>
           <div className="flex items-center space-x-3">
             <input
               type="checkbox"
@@ -174,7 +206,10 @@ function UserPreferences() {
               onChange={(e) => setPromotionalEmails(e.target.checked)}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
             />
-            <label htmlFor="promotional-emails" className="text-sm text-slate-700 dark:text-gray-300">
+            <label
+              htmlFor="promotional-emails"
+              className="text-sm text-slate-700 dark:text-gray-300"
+            >
               I would like to receive emails regarding promotional content
             </label>
           </div>
@@ -182,13 +217,25 @@ function UserPreferences() {
 
         {/* My Interests */}
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">My Interests</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
+            My Interests
+          </h2>
 
           {/* Search Bar with Enhanced Functionality */}
           <div className="relative mb-4">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                className="h-4 w-4 text-gray-400 dark:text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </div>
             <input
@@ -219,8 +266,9 @@ function UserPreferences() {
                 {selectedInterests.map((interest, index) => (
                   <span
                     key={interest}
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm transition-all duration-200 ${isLoading ? 'opacity-50' : 'opacity-100'
-                      } bg-blue-100 text-blue-800 border border-blue-200`}
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm transition-all duration-200 ${
+                      isLoading ? "opacity-50" : "opacity-100"
+                    } bg-blue-100 text-blue-800 border border-blue-200`}
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
                     {interest}
@@ -229,8 +277,18 @@ function UserPreferences() {
                       className="ml-2 text-blue-600 hover:text-blue-800 transition-colors"
                       disabled={isLoading}
                     >
-                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        className="h-3 w-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   </span>
@@ -246,7 +304,9 @@ function UserPreferences() {
                 {filteredCategories.length > 0 ? (
                   <>
                     <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-                      <p className="text-xs font-medium text-gray-600">Suggested Categories</p>
+                      <p className="text-xs font-medium text-gray-600">
+                        Suggested Categories
+                      </p>
                     </div>
                     <div className="p-2">
                       {filteredCategories.slice(0, 8).map((category) => (
@@ -260,8 +320,18 @@ function UserPreferences() {
                           className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 rounded-md transition-colors"
                         >
                           <span className="flex items-center">
-                            <svg className="h-4 w-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            <svg
+                              className="h-4 w-4 mr-2 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                              />
                             </svg>
                             {category}
                           </span>
@@ -271,8 +341,12 @@ function UserPreferences() {
                   </>
                 ) : (
                   <div className="px-3 py-4 text-center">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No matching categories found</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Only predefined categories are available</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No matching categories found
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      Only predefined categories are available
+                    </p>
                   </div>
                 )}
               </div>
@@ -282,32 +356,46 @@ function UserPreferences() {
           {/* Popular Categories */}
           {!searchQuery && (
             <div className="space-y-3">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Popular Categories</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Popular Categories
+              </p>
               {categoriesLoading ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">Loading categories...</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Loading categories...
+                </p>
               ) : categoriesError ? (
                 <div className="space-y-2">
-                  <p className="text-sm text-red-500 dark:text-red-400">Failed to load categories: {categoriesError}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Please refresh the page or check your connection.</p>
+                  <p className="text-sm text-red-500 dark:text-red-400">
+                    Failed to load categories: {categoriesError}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Please refresh the page or check your connection.
+                  </p>
                 </div>
               ) : availableCategories.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">No categories available</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No categories available
+                </p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {availableCategories.map((category) => (
                     <button
                       key={category}
                       onClick={() => handleInterestToggle(category)}
-                      disabled={selectedInterests.length >= 3 && !selectedInterests.includes(category)}
+                      disabled={
+                        selectedInterests.length >= 3 &&
+                        !selectedInterests.includes(category)
+                      }
                       className={`px-3 py-1 text-sm rounded-full border transition-all duration-200 ${
                         selectedInterests.includes(category)
-                          ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-700 cursor-not-allowed'
+                          ? "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-700 cursor-not-allowed"
                           : selectedInterests.length >= 3
-                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-600 cursor-not-allowed'
-                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                            ? "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-600 cursor-not-allowed"
+                            : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
                       }`}
                     >
-                      {selectedInterests.includes(category) ? '✓ ' : '+ '}{category}
+                      {selectedInterests.includes(category) ? "✓ " : "+ "}
+                      {category}
                     </button>
                   ))}
                 </div>
@@ -336,7 +424,9 @@ function UserPreferences() {
 
         {/* Theme */}
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">Theme</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
+            Theme
+          </h2>
 
           {/* Theme Toggle */}
           <div className="flex items-center space-x-4 mb-4">
@@ -350,8 +440,17 @@ function UserPreferences() {
                     : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
                 }`}
               >
-                <svg className="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
-                  <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+                <svg
+                  className="h-4 w-4 shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  aria-hidden
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 <span className="text-sm font-medium">Light</span>
               </button>
@@ -364,7 +463,12 @@ function UserPreferences() {
                     : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
                 }`}
               >
-                <svg className="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
+                <svg
+                  className="h-4 w-4 shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  aria-hidden
+                >
                   <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
                 </svg>
                 <span className="text-sm font-medium">Dark</span>

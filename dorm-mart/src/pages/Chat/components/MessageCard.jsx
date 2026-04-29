@@ -1,5 +1,8 @@
 import { memo, useCallback, useMemo } from "react";
-import { onProductImageError, resolveStoredImageUrl } from "../../../utils/imageFallback";
+import {
+  onProductImageError,
+  resolveStoredImageUrl,
+} from "../../../utils/imageFallback";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../../../utils/apiConfig";
 
@@ -10,7 +13,7 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
   const previewText = message.content || "";
   const rawImageUrl = product.image_url;
   const productId = product.product_id;
-  
+
   const imageUrl = useMemo(() => {
     if (!rawImageUrl) return null;
     const resolved = resolveStoredImageUrl(rawImageUrl, API_BASE);
@@ -49,8 +52,18 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
       ) : null}
       <div className="p-4 space-y-3 overflow-hidden">
         <div className="flex items-center gap-2 min-w-0">
-          <svg className="h-5 w-5 flex-shrink-0 text-blue-100 dark:text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          <svg
+            className="h-5 w-5 flex-shrink-0 text-blue-100 dark:text-blue-200"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+            />
           </svg>
           <p className="min-w-0 flex-1 break-words text-lg font-bold leading-tight text-white">
             {product.title || "Listing"}
