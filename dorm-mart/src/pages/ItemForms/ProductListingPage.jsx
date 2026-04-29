@@ -6,6 +6,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 import { resolveProductPhotoUrl } from "../../utils/imageFallback";
 import { containsMemePrice } from "../../utils/priceValidation";
 import { containsXssPattern } from "../../utils/inputValidation";
@@ -780,7 +781,7 @@ function ProductListingPage() {
 
     try {
       setSubmitting(true);
-      const res = await fetch(
+      const res = await csrfFetch(
         `${API_BASE}/seller_dashboard/product_listing.php`,
         {
           method: "POST",

@@ -10,23 +10,7 @@ set_secure_cors();
 
 header('Content-Type: application/json; charset=utf-8');
 
-$host = $_SERVER['HTTP_HOST'] ?? '';
-
-// Check if request is HTTPS (check both direct HTTPS and proxy headers)
-$isHttps = (
-    (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-    (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-    (!empty($_SERVER['X-Forwarded-Proto']) && $_SERVER['X-Forwarded-Proto'] === 'https')
-);
-
-if (!dm_is_local_host($host) && !$isHttps) {
-    // Validate host against allowlist before using in redirect to prevent Host header injection
-    if (dm_is_allowed_redirect_host($host)) {
-        $httpsUrl = 'https://' . $host . ($_SERVER['REQUEST_URI'] ?? '');
-        header("Location: $httpsUrl", true, 301);
-    }
-    exit;
-}
+dm_enforce_https();
 
 require __DIR__ . '/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
@@ -191,6 +175,7 @@ try {
 
     echo json_encode(['ok' => true, 'theme' => $theme]);
 } catch (Throwable $e) {
+    error_log('login error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Server error']);
 }

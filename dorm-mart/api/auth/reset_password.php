@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 // Include security headers for XSS protection
 require_once __DIR__ . '/../security/security.php';
+dm_enforce_https();
 set_security_headers();
 set_secure_cors();
 

@@ -6,6 +6,7 @@ import {
 } from "../../constants/meetLocations";
 import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 import {
   MAX_LISTING_PRICE,
   containsMemePrice,
@@ -502,7 +503,7 @@ function SchedulePurchasePage() {
         }
       }
 
-      const res = await fetch(`${API_BASE}/scheduled_purchases/create.php`, {
+      const res = await csrfFetch(`${API_BASE}/scheduled_purchases/create.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

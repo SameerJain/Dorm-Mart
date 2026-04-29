@@ -3,6 +3,7 @@ import StarRating from "./StarRating";
 import ReviewImageGallery from "./components/ReviewImageGallery";
 import { onProductImageError } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 
 /**
  * ReviewModal Component
@@ -193,7 +194,7 @@ function ReviewModal({
         const formData = new FormData();
         formData.append("image", file);
 
-        const response = await fetch(
+        const response = await csrfFetch(
           `${API_BASE}/reviews/upload_review_image.php`,
           {
             method: "POST",
@@ -301,7 +302,7 @@ function ReviewModal({
         image3_url: uploadedImages[2]?.uploadedUrl || null,
       };
 
-      const response = await fetch(`${API_BASE}/reviews/submit_review.php`, {
+      const response = await csrfFetch(`${API_BASE}/reviews/submit_review.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

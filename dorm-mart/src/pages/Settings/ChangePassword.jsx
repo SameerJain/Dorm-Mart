@@ -4,6 +4,7 @@ import SettingsLayout from "./SettingsLayout";
 import PageBackButton from "../../components/PageBackButton";
 import PasswordRequirementRow from "../../components/forms/PasswordRequirementRow";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 import {
   buildPasswordPolicy,
   hasDigit,
@@ -172,7 +173,7 @@ function ChangePasswordPage() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/auth/change_password.php`, {
+      const res = await csrfFetch(`${API_BASE}/auth/change_password.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

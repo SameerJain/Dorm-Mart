@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
+import { csrfFetch } from "../../../utils/csrfFetch";
 
 export default function useWishlistStatus({
   productId,
@@ -53,7 +54,7 @@ export default function useWishlistStatus({
         ? `${API_BASE}/wishlist/remove_from_wishlist.php`
         : `${API_BASE}/wishlist/add_to_wishlist.php`;
 
-      const response = await fetch(endpoint, {
+      const response = await csrfFetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

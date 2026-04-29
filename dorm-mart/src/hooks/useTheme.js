@@ -6,6 +6,7 @@ import {
   THEME_PENDING_KEY,
 } from "../utils/loadTheme.js";
 import { API_BASE } from "../utils/apiConfig";
+import { csrfFetch } from "../utils/csrfFetch";
 
 export function useTheme() {
   const readDOM = () =>
@@ -27,7 +28,7 @@ export function useTheme() {
     } catch (_) {}
 
     try {
-      const res = await fetch(`${API_BASE}/profile/user_preferences.php`, {
+      const res = await csrfFetch(`${API_BASE}/profile/user_preferences.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

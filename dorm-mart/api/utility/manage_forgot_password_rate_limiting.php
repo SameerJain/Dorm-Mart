@@ -90,6 +90,13 @@ function get_forgot_password_rate_limit_minutes(): int
 
 // Standalone script to clear forgot password rate limits
 if (basename(__FILE__) === basename($_SERVER['SCRIPT_NAME'])) {
+    if (php_sapi_name() !== 'cli') {
+        http_response_code(404);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => false, 'error' => 'Not found']);
+        exit;
+    }
+
     require_once __DIR__ . '/../database/db_connect.php';
 
     $conn = db();

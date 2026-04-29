@@ -9,7 +9,7 @@ import {
   resolveProductPhotoUrl,
   withFallbackImage,
 } from "../../utils/imageFallback";
-import { API_BASE } from "../../utils/apiConfig";
+import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
 
 /** Session-only: after dismiss, tap "For You" again to reopen (never auto-opens on login) */
 const FOR_YOU_HINT_SESSION_KEY = "dm_for_you_feed_hint_dismissed";

@@ -13,6 +13,7 @@ try {
     $sellerId = require_login();
 
     $payload = json_request_body_or_error();
+    require_csrf_token($payload['csrf_token'] ?? null);
 
     $inventoryId = isset($payload['inventory_product_id']) ? (int)$payload['inventory_product_id'] : 0;
     $conversationId = isset($payload['conversation_id']) ? (int)$payload['conversation_id'] : 0;

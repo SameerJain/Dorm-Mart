@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // Include security headers for XSS protection
 require __DIR__ . '/../security/security.php';
+dm_enforce_https();
 set_security_headers();
 set_secure_cors();
 
@@ -21,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require __DIR__ . '/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 auth_boot_session();
 $userId = require_login();
@@ -36,10 +38,12 @@ if (strpos($ct, 'application/json') !== false) {
   // Passwords must remain raw - they're hashed, not displayed
   $current = isset($data['currentPassword']) ? (string)$data['currentPassword'] : '';
   $next    = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
+  require_csrf_token($data['csrf_token'] ?? null);
 } else {
   // Passwords must remain raw - they're hashed, not displayed
   $current = isset($_POST['currentPassword']) ? (string)$_POST['currentPassword'] : '';
   $next    = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
+  require_csrf_token($_POST['csrf_token'] ?? null);
 }
 
 /* Validate inputs */
@@ -131,7 +135,7 @@ try {
       'expires'  => time() - 3600,
       'path'     => '/',
       'httponly' => true,
-      'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+      'secure'   => auth_is_https_request(),
       'samesite' => 'Lax'
     ]);
   }

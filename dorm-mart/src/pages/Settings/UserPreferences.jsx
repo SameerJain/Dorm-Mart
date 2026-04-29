@@ -4,6 +4,7 @@ import SettingsLayout from "./SettingsLayout";
 import { useTheme } from "../../hooks/useTheme";
 import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 
 function UserPreferences() {
   const navigate = useNavigate();
@@ -157,7 +158,7 @@ function UserPreferences() {
           interests: selectedInterests,
           theme: theme,
         };
-        await fetch(`${API_BASE}/profile/user_preferences.php`, {
+        await csrfFetch(`${API_BASE}/profile/user_preferences.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

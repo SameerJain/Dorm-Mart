@@ -202,12 +202,7 @@ try {
 
   if ($method === 'POST') {
     $body = json_request_body();
-
-    /* Conditional CSRF validation - only validate if token is provided */
-    $token = $body['csrf_token'] ?? null;
-    if ($token !== null && !validate_csrf_token($token)) {
-        json_response(['ok' => false, 'error' => 'CSRF token validation failed'], 403);
-    }
+    require_csrf_token($body['csrf_token'] ?? null);
 
     $promo = isset($body['promoEmails']) ? (int)!!$body['promoEmails'] : 0;
     $reveal = isset($body['revealContact']) ? (int)!!$body['revealContact'] : 0;

@@ -8,6 +8,7 @@ import {
   onProductImageError,
 } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 
 /** Primary actions: match home / landing square-ish CTAs (rounded-lg, not pill). */
 const primaryActionButtonClass =
@@ -64,7 +65,7 @@ async function fetchSettingsProfile(apiBase = API_BASE) {
 }
 
 async function saveProfileFields(payload, apiBase = API_BASE) {
-  const response = await fetch(`${apiBase}/profile/update_profile.php`, {
+  const response = await csrfFetch(`${apiBase}/profile/update_profile.php`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -91,7 +92,7 @@ async function uploadProfilePhoto(file, apiBase = API_BASE) {
   const formData = new FormData();
   formData.append("photo", file);
 
-  const response = await fetch(`${apiBase}/profile/upload_profile_photo.php`, {
+  const response = await csrfFetch(`${apiBase}/profile/upload_profile_photo.php`, {
     method: "POST",
     body: formData,
     credentials: "include",

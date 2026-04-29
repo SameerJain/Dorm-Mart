@@ -20,11 +20,7 @@ $userId = require_login();
 $sender = $userId;
 $body = json_request_body();
 
-/* Conditional CSRF validation - only validate if token is provided */
-$token = $body['csrf_token'] ?? null;
-if ($token !== null && !validate_csrf_token($token)) {
-    json_response(['success' => false, 'error' => 'CSRF token validation failed'], 403);
-}
+require_csrf_token($body['csrf_token'] ?? null);
 
 $receiver = isset($body['receiver_id']) ? trim((string)$body['receiver_id']) : '';
 $contentRaw  = isset($body['content'])     ? trim((string)$body['content'])     : '';

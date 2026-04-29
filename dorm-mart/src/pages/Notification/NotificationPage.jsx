@@ -7,6 +7,7 @@ import {
 } from "../../utils/imageFallback";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 
 export default function NotificationPage() {
   const ctx = useContext(ChatContext);
@@ -52,7 +53,7 @@ export default function NotificationPage() {
 
   async function handleMarkAllRead() {
     try {
-      const res = await fetch(`${API_BASE}/wishlist/mark_all_items_read.php`, {
+      const res = await csrfFetch(`${API_BASE}/wishlist/mark_all_items_read.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -81,7 +82,7 @@ export default function NotificationPage() {
 
   async function handleMarkRead(productId) {
     try {
-      const res = await fetch(`${API_BASE}/wishlist/mark_item_read.php`, {
+      const res = await csrfFetch(`${API_BASE}/wishlist/mark_item_read.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

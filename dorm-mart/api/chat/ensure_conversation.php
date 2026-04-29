@@ -14,6 +14,7 @@ try {
     $buyerId = require_login();
 
     $payload = json_request_body_or_error();
+    require_csrf_token($payload['csrf_token'] ?? null);
 
     $productId = isset($payload['product_id']) ? (int) $payload['product_id'] : 0;
     $sellerId = isset($payload['seller_user_id']) ? (int) $payload['seller_user_id'] : 0;

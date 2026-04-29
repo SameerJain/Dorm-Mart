@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import ItemCardNew from "../../components/ItemCardNew";
 import { resolveProductPhotoUrl } from "../../utils/imageFallback";
 import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 
 export default function WishlistPage() {
   const navigate = useNavigate();
@@ -164,7 +165,7 @@ export default function WishlistPage() {
 
     setRemoving(true);
     try {
-      const r = await fetch(`${API_BASE}/wishlist/remove_from_wishlist.php`, {
+      const r = await csrfFetch(`${API_BASE}/wishlist/remove_from_wishlist.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
