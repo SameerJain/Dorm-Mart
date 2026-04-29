@@ -6,7 +6,7 @@ import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
 /**
  * BuyerReviewsPage Component
- * 
+ *
  * Page for displaying seller ratings (ratings that sellers gave to buyers)
  * Shows how sellers have rated the logged-in user as a buyer
  * Only accessible to the logged-in user viewing their own ratings
@@ -32,7 +32,7 @@ function BuyerReviewsPage() {
         {
           method: "GET",
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -47,7 +47,9 @@ function BuyerReviewsPage() {
       }
     } catch (err) {
       console.error("Error fetching seller ratings:", err);
-      setError(err.message || "Failed to load seller ratings. Please try again.");
+      setError(
+        err.message || "Failed to load seller ratings. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -70,7 +72,9 @@ function BuyerReviewsPage() {
       <div className="flex flex-col gap-6">
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <p className="text-gray-600 dark:text-gray-400">Loading ratings...</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              Loading ratings...
+            </p>
           </div>
         ) : error ? (
           <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -78,7 +82,10 @@ function BuyerReviewsPage() {
           </div>
         ) : reviews.length === 0 ? (
           <div className="flex items-center justify-center py-8">
-            <p className="text-gray-600 dark:text-gray-400">No seller ratings yet. Sellers will be able to rate you after completed purchases.</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              No seller ratings yet. Sellers will be able to rate you after
+              completed purchases.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-6 min-w-0">
@@ -97,23 +104,33 @@ function BuyerReviewsPage() {
                     </p>
                   </div>
                   <div className="flex-shrink-0">
-                    <StarRating rating={review.rating} readOnly={true} size={24} />
+                    <StarRating
+                      rating={review.rating}
+                      readOnly={true}
+                      size={24}
+                    />
                   </div>
                 </div>
-                
+
                 {/* Review Text */}
                 {review.review_text && (
                   <div className="mb-3 min-w-0">
-                    <div 
+                    <div
                       className="p-4 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 min-w-0 overflow-hidden"
                       style={{
-                        borderRadius: '0.5rem',
-                        WebkitBorderRadius: '0.5rem',
-                        MozBorderRadius: '0.5rem',
-                        overflow: 'hidden'
+                        borderRadius: "0.5rem",
+                        WebkitBorderRadius: "0.5rem",
+                        MozBorderRadius: "0.5rem",
+                        overflow: "hidden",
                       }}
                     >
-                      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all overflow-wrap-anywhere" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
+                      <p
+                        className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all overflow-wrap-anywhere"
+                        style={{
+                          wordBreak: "break-all",
+                          overflowWrap: "anywhere",
+                        }}
+                      >
                         {review.review_text}
                       </p>
                     </div>
@@ -136,4 +153,3 @@ function BuyerReviewsPage() {
 }
 
 export default BuyerReviewsPage;
-

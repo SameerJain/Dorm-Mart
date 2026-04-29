@@ -26,7 +26,7 @@ export function buildProfileUsername({ username, email, fallback } = {}) {
 
 export function buildProfilePath(options) {
   const username = buildProfileUsername(
-    typeof options === "string" ? { fallback: options } : options
+    typeof options === "string" ? { fallback: options } : options,
   );
   if (!username) return null;
   return `/app/profile?username=${encodeURIComponent(username)}`;

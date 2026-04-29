@@ -25,13 +25,7 @@ $receiver    = isset($_POST['receiver_id']) ? trim((string)$_POST['receiver_id']
 $contentRaw  = isset($_POST['content'])     ? trim((string)$_POST['content'])     : ''; // optional caption
 $convIdParam = isset($_POST['conv_id'])     ? (int)$_POST['conv_id']              : null;
 
-/* Optional CSRF token support (if you include one in FormData) */
-$token = $_POST['csrf_token'] ?? null;
-if ($token !== null && !validate_csrf_token($token)) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'CSRF token validation failed']);
-    exit;
-}
+require_csrf_token($_POST['csrf_token'] ?? null);
 
 /* Validate presence of receiver and the uploaded image.
    Caption (contentRaw) is allowed to be empty for image-only messages. */

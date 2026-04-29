@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
-import PreLoginBranding from '../../components/PreLoginBranding';
+import { useNavigate } from "react-router-dom";
+import PreLoginBranding from "../../components/PreLoginBranding";
 
 function ResetPasswordConfirmation() {
   const navigate = useNavigate();
@@ -9,9 +9,7 @@ function ResetPasswordConfirmation() {
       <PreLoginBranding />
 
       {/* Right side - Confirmation message (full width on mobile, 50% on desktop) */}
-      <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 h-screen pre-login-bg relative overflow-hidden"
-      >
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 h-screen pre-login-bg relative overflow-hidden">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
@@ -23,9 +21,7 @@ function ResetPasswordConfirmation() {
         </div>
 
         <div className="w-full max-w-md relative z-10">
-          <div
-            className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600"
-          >
+          <div className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600">
             {/* Torn paper effect */}
             <div
               className="absolute inset-0 rounded-lg bg-blue-600"
@@ -45,12 +41,15 @@ function ResetPasswordConfirmation() {
               </div>
 
               <p className="text-base sm:text-lg text-white/90 text-center leading-relaxed mb-8 sm:mb-10">
-                If an account using the email does not already exist, a temporary password has been sent to the email.
+                If an account using the email does not already exist, a
+                temporary password has been sent to the email.
               </p>
 
               <div className="flex items-center justify-center">
                 <button
-                  onClick={() => { navigate('/login'); }}
+                  onClick={() => {
+                    navigate("/login");
+                  }}
                   className="w-full min-h-[44px] bg-sky-500 hover:bg-sky-600 text-white py-3 sm:py-3.5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium text-base sm:text-lg active:scale-95"
                 >
                   <span>Go to Login</span>
@@ -76,5 +75,3 @@ function ResetPasswordConfirmation() {
 }
 
 export default ResetPasswordConfirmation;
-
-

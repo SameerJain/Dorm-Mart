@@ -17,11 +17,7 @@ try {
 
     $input = json_request_body();
 
-    /* Conditional CSRF validation - only validate if token is provided */
-    $token = $input['csrf_token'] ?? null;
-    if ($token !== null && !validate_csrf_token($token)) {
-        json_response(['success' => false, 'error' => 'CSRF token validation failed'], 403);
-    }
+    require_csrf_token($input['csrf_token'] ?? null);
 
     $productId = request_int($input, 'product_id');
     if ($productId <= 0) {

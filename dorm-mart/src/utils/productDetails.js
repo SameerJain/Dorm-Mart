@@ -4,7 +4,8 @@ import { coerceNumber, parseListField } from "./formatters";
 function coerceProductBoolean(value) {
   return typeof value === "boolean"
     ? value
-    : String(value || "").toLowerCase() === "1" || String(value || "").toLowerCase() === "true";
+    : String(value || "").toLowerCase() === "1" ||
+        String(value || "").toLowerCase() === "true";
 }
 
 export function normalizeProductDetail(data, { apiBase, publicBase } = {}) {
@@ -15,7 +16,10 @@ export function normalizeProductDetail(data, { apiBase, publicBase } = {}) {
   const sellerEmail = data.email || null;
   const dateListedStr = data.date_listed || data.created_at || null;
   const dateSoldStr = data.date_sold || null;
-  const photoUrls = resolveProductPhotoUrls(data.photos, { apiBase, publicBase });
+  const photoUrls = resolveProductPhotoUrls(data.photos, {
+    apiBase,
+    publicBase,
+  });
 
   return {
     productId: data.product_id ?? data.id ?? null,
@@ -24,14 +28,18 @@ export function normalizeProductDetail(data, { apiBase, publicBase } = {}) {
     price,
     photoUrls: photoUrls.length ? photoUrls : [FALLBACK_IMAGE_URL],
     tags: parseListField(data.tags),
-    itemLocation: data.item_location || data.meet_location || data.location || null,
+    itemLocation:
+      data.item_location || data.meet_location || data.location || null,
     itemCondition: data.item_condition || data.condition || null,
     trades: coerceProductBoolean(data.trades),
     priceNego: coerceProductBoolean(data.price_nego),
     sold: coerceProductBoolean(data.sold),
     sellerId,
-    sellerName: data.seller || (sellerId != null ? `Seller #${sellerId}` : "Unknown Seller"),
-    sellerUsername: data.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null),
+    sellerName:
+      data.seller ||
+      (sellerId != null ? `Seller #${sellerId}` : "Unknown Seller"),
+    sellerUsername:
+      data.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null),
     soldTo: data.sold_to ?? null,
     sellerEmail,
     dateListed: dateListedStr ? new Date(dateListedStr) : null,

@@ -14,6 +14,7 @@ try {
     $buyerId = require_login();
 
     $payload = json_request_body_or_error();
+    require_csrf_token($payload['csrf_token'] ?? null);
 
     $requestId = isset($payload['request_id']) ? (int)$payload['request_id'] : 0;
     $action = isset($payload['action']) ? strtolower(trim((string)$payload['action'])) : '';
@@ -25,7 +26,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    expireStaleRequests($conn);
+    expire_stale_requests($conn);
 
     $selectSql = <<<SQL
         SELECT

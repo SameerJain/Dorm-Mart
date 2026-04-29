@@ -29,7 +29,12 @@ function db(): mysqli
     }
 
     // db connection
-    $conn = new mysqli($servername, $username, $password);
+    try {
+        $conn = new mysqli($servername, $username, $password);
+    } catch (mysqli_sql_exception $e) {
+        error_log('db_connect: Connection failed: ' . $e->getMessage());
+        die(json_encode(["success" => false, "message" => "Database connection error"]));
+    }
 
     // check if db connected successfully
     if ($conn->connect_error) {

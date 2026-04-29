@@ -12,7 +12,9 @@ const thumbnailFrameClass =
   "h-24 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center overflow-hidden";
 
 function getReviewImages(review) {
-  return [review?.image1_url, review?.image2_url, review?.image3_url].filter(Boolean);
+  return [review?.image1_url, review?.image2_url, review?.image3_url].filter(
+    Boolean,
+  );
 }
 
 export default function ReviewImageGallery({ review, viewMode }) {
@@ -51,10 +53,7 @@ export default function ReviewImageGallery({ review, viewMode }) {
       {viewMode === "seller" ? (
         <div className="space-y-4">
           {images.map((imageUrl, index) => (
-            <div
-              key={imageUrl}
-              className={sellerImageFrameClass}
-            >
+            <div key={imageUrl} className={sellerImageFrameClass}>
               <img
                 src={reviewImageUrl(imageUrl)}
                 alt={`Review attachment ${index + 1}`}
@@ -65,7 +64,10 @@ export default function ReviewImageGallery({ review, viewMode }) {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDownloadImage(imageUrl, `review-image-${index + 1}.jpg`);
+                  handleDownloadImage(
+                    imageUrl,
+                    `review-image-${index + 1}.jpg`,
+                  );
                 }}
                 className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity"
               >
@@ -77,10 +79,7 @@ export default function ReviewImageGallery({ review, viewMode }) {
       ) : (
         <div className="grid grid-cols-3 gap-3">
           {images.map((imageUrl, index) => (
-            <div
-              key={imageUrl}
-              className={thumbnailFrameClass}
-            >
+            <div key={imageUrl} className={thumbnailFrameClass}>
               <img
                 src={reviewImageUrl(imageUrl)}
                 alt={`Review attachment ${index + 1}`}
@@ -109,8 +108,18 @@ export default function ReviewImageGallery({ review, viewMode }) {
               className="absolute top-4 right-4 bg-white hover:bg-gray-100 text-gray-900 rounded-full p-2 shadow-lg"
               aria-label="Close"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>

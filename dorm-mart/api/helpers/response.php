@@ -7,6 +7,7 @@ if (!function_exists('json_response')) {
         http_response_code($statusCode);
         if (!headers_sent()) {
             header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store');
         }
         echo json_encode($payload, $flags);
         exit;

@@ -7,4 +7,3 @@ export const MEET_LOCATION_OPTIONS = [
 ];
 
 export const MEET_LOCATION_OTHER_VALUE = "Other";
-

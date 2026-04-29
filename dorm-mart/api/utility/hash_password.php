@@ -3,7 +3,6 @@
  * Password Hash Generator - Command Line Tool
  * 
  * COMMAND LINE USAGE:
- * ===================
  * 
  * Hash single password:
  *   php api/utility/hash_password.php "your_password_here"
@@ -18,13 +17,11 @@
  *   (then enter passwords one by one, press Ctrl+C to exit)
  * 
  * EXAMPLES:
- * =========
  * php api/utility/hash_password.php "mypassword123"
  * php api/utility/hash_password.php "admin123" "user456"
  * php api/utility/hash_password.php
  * 
  * NOTES:
- * ======
  * - Passwords are hashed using bcrypt (PHP's PASSWORD_BCRYPT)
  * - Salt is automatically generated and embedded in the hash
  * - Use quotes around passwords with special characters

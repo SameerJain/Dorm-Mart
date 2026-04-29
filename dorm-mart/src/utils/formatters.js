@@ -9,7 +9,10 @@ export function parseListField(value) {
     // Fall through to comma-separated parsing.
   }
 
-  return value.split(",").map((item) => item.trim()).filter(Boolean);
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 export function coerceNumber(value) {
@@ -30,7 +33,12 @@ export function coerceBoolean(value) {
   if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
     if (!normalized) return null;
-    if (["1", "true", "yes", "y", "completed", "success", "successful"].includes(normalized)) return true;
+    if (
+      ["1", "true", "yes", "y", "completed", "success", "successful"].includes(
+        normalized,
+      )
+    )
+      return true;
     if (["0", "false", "no", "n", "failed"].includes(normalized)) return false;
   }
   return null;
@@ -48,7 +56,9 @@ export function parseDateValue(value) {
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) return null;
-    const normalized = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
+    const normalized = trimmed.includes("T")
+      ? trimmed
+      : trimmed.replace(" ", "T");
     let attempt = new Date(normalized);
     if (Number.isNaN(attempt.getTime())) {
       attempt = new Date(`${trimmed}Z`);

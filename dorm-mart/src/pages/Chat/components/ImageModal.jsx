@@ -6,8 +6,8 @@ export default function ImageModal({
   onSelect,
   title = "Add image",
 }) {
-  const closeBtnRef   = useRef(null);
-  const fileInputRef  = useRef(null);
+  const closeBtnRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -37,28 +37,28 @@ export default function ImageModal({
   useEffect(() => {
     if (open) {
       const scrollY = window.scrollY;
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
+      document.body.style.width = "100%";
     } else {
       const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
       if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+        window.scrollTo(0, parseInt(scrollY || "0") * -1);
       }
     }
     return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
     };
   }, [open]);
 
@@ -66,7 +66,9 @@ export default function ImageModal({
     if (!open) return;
     closeBtnRef.current?.focus();
 
-    const onKeyDown = (e) => { if (e.key === "Escape") handleClose(); };
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") handleClose();
+    };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, handleClose]);
@@ -85,7 +87,7 @@ export default function ImageModal({
 
     const name = (f.name || "").toLowerCase();
     const ext = ALLOWED_EXTS.has(
-      name.slice(name.lastIndexOf(".")) // includes dot
+      name.slice(name.lastIndexOf(".")), // includes dot
     );
     return ext;
   }
@@ -98,7 +100,10 @@ export default function ImageModal({
     if (f.size > MAX_BYTES) {
       setErrorMsg("Image is too large. Max size is 2 MB.");
       setFile(null);
-      setPreviewUrl((old) => { if (old) URL.revokeObjectURL(old); return null; });
+      setPreviewUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return null;
+      });
       return;
     }
 
@@ -106,7 +111,10 @@ export default function ImageModal({
     if (!isAllowedType(f)) {
       setErrorMsg("Only JPG/JPEG, PNG, and WEBP images are allowed.");
       setFile(null);
-      setPreviewUrl((old) => { if (old) URL.revokeObjectURL(old); return null; });
+      setPreviewUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return null;
+      });
       return;
     }
 
@@ -141,7 +149,10 @@ export default function ImageModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h3 id={labelledBy} className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <h3
+            id={labelledBy}
+            className="text-sm font-semibold text-gray-900 dark:text-gray-100"
+          >
             {title}
           </h3>
           <button
@@ -150,7 +161,14 @@ export default function ImageModal({
             aria-label="Close"
             className="rounded-md p-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg
+              viewBox="0 0 24 24"
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -168,14 +186,23 @@ export default function ImageModal({
 
           <div className="h-56 sm:h-72 max-h-[65vh] rounded-lg border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-900/30">
             {previewUrl ? (
-              <img src={previewUrl} alt="Selected preview" className="h-full w-full object-contain" />
+              <img
+                src={previewUrl}
+                alt="Selected preview"
+                className="h-full w-full object-contain"
+              />
             ) : (
-              <span className="text-xs text-gray-500 dark:text-gray-400">No image selected</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                No image selected
+              </span>
             )}
           </div>
 
           {errorMsg && (
-            <p className="text-xs text-red-600 dark:text-red-400" aria-live="polite">
+            <p
+              className="text-xs text-red-600 dark:text-red-400"
+              aria-live="polite"
+            >
               {errorMsg}
             </p>
           )}

@@ -12,7 +12,7 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
     try {
       const response = await fetch(
         `${API_BASE}/reviews/get_buyer_rating.php?product_id=${productId}`,
-        { method: "GET", credentials: "include" }
+        { method: "GET", credentials: "include" },
       );
       if (response.ok) {
         const result = await response.json();
@@ -40,7 +40,8 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
   }, [productId, fetchRatingStatus]);
 
   const handleRatingClick = () => {
@@ -87,12 +88,32 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
         <div className="p-4">
           <div className="flex items-start gap-2 min-w-0">
             {hasRating ? (
-              <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className={iconClasses}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             ) : (
-              <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className={iconClasses}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             )}
             <div className="flex-1 min-w-0 max-w-full overflow-hidden">
@@ -104,10 +125,7 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
                   ? `Thank you for rating the buyer for ${productTitle || "this item"}! You can view or edit your rating anytime.`
                   : `Your purchase has been completed! Help other sellers by rating the buyer for ${productTitle || "this item"}.`}
               </p>
-              <button
-                onClick={handleRatingClick}
-                className={buttonClasses}
-              >
+              <button onClick={handleRatingClick} className={buttonClasses}>
                 {hasRating ? "View Rating" : "Rate Buyer"}
               </button>
             </div>

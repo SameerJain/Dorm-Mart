@@ -17,11 +17,7 @@ try {
 
     $input = json_request_body();
     
-    /* Conditional CSRF validation - only validate if token is provided */
-    $token = $input['csrf_token'] ?? null;
-    if ($token !== null && !validate_csrf_token($token)) {
-        json_response(['success' => false, 'error' => 'CSRF token validation failed'], 403);
-    }
+    require_csrf_token($input['csrf_token'] ?? null);
     
     $id = isset($input['id']) ? (int)$input['id'] : 0;
     if ($id <= 0) {
@@ -79,13 +75,7 @@ try {
         }
     }
 
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // Product ID and user ID are bound as parameters using bind_param().
-    // The '?' placeholders ensure user input is treated as data, not executable SQL.
-    // This prevents SQL injection attacks even if malicious values are provided.
-    // ============================================================================
     $stmt = $conn->prepare('DELETE FROM INVENTORY WHERE product_id = ? AND seller_id = ?');
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare delete');

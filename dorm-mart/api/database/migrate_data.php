@@ -1,4 +1,13 @@
 <?php
+
+// Migration runner is CLI-only.
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'error' => 'Forbidden']);
+    exit;
+}
+
 header('Content-Type: application/json');                      // Return JSON to the client
 
 // Include security utilities for escape_html function

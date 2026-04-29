@@ -30,18 +30,16 @@ export default function ViewProduct() {
   }, [productId]);
 
   const isSellerViewingOwnProduct =
-    myId && normalized?.sellerId && Number(myId) === Number(normalized.sellerId);
+    myId &&
+    normalized?.sellerId &&
+    Number(myId) === Number(normalized.sellerId);
 
-  const {
-    isInWishlist,
-    wishlistLoading,
-    wishlistError,
-    handleWishlistToggle,
-  } = useWishlistStatus({
-    productId,
-    myId,
-    disabled: isSellerViewingOwnProduct,
-  });
+  const { isInWishlist, wishlistLoading, wishlistError, handleWishlistToggle } =
+    useWishlistStatus({
+      productId,
+      myId,
+      disabled: isSellerViewingOwnProduct,
+    });
 
   const { msgLoading, msgError, handleMessageSeller } = useMessageSeller({
     productId,
@@ -70,23 +68,33 @@ export default function ViewProduct() {
         title="Product Details"
         onBack={handleBack}
         onDashboard={() => navigate("/app/seller-dashboard")}
-        showDashboardLink={isSellerViewingOwnProduct && !location.state?.fromDashboard}
+        showDashboardLink={
+          isSellerViewingOwnProduct && !location.state?.fromDashboard
+        }
         compactDashboardLabel
       />
 
       {wishlistError && normalized && (
         <div className="w-full px-2 md:px-4 py-1">
-          <p className="text-xs text-red-600 dark:text-red-400">{wishlistError}</p>
+          <p className="text-xs text-red-600 dark:text-red-400">
+            {wishlistError}
+          </p>
         </div>
       )}
 
       <div className="w-full px-2 md:px-4 py-4">
         {loading ? (
-          <p className="text-center text-sm text-gray-400 dark:text-gray-500">Loading product...</p>
+          <p className="text-center text-sm text-gray-400 dark:text-gray-500">
+            Loading product...
+          </p>
         ) : error ? (
-          <p className="text-center text-sm text-red-500 dark:text-red-400">Couldn't load product.</p>
+          <p className="text-center text-sm text-red-500 dark:text-red-400">
+            Couldn't load product.
+          </p>
         ) : !normalized ? (
-          <p className="text-center text-sm text-gray-400 dark:text-gray-500">No product found.</p>
+          <p className="text-center text-sm text-gray-400 dark:text-gray-500">
+            No product found.
+          </p>
         ) : (
           <>
             {isSellerViewingOwnProduct && (
@@ -98,7 +106,10 @@ export default function ViewProduct() {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-3 lg:gap-4 items-start">
-              <ProductImageGallery photoUrls={normalized.photoUrls} title={normalized.title} />
+              <ProductImageGallery
+                photoUrls={normalized.photoUrls}
+                title={normalized.title}
+              />
 
               <section className="flex flex-col gap-4 min-w-0">
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words overflow-hidden">

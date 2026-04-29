@@ -14,6 +14,7 @@ try {
     $buyerId = require_login();
 
     $payload = json_request_body_or_error();
+    require_csrf_token($payload['csrf_token'] ?? null);
 
     $confirmRequestId = isset($payload['confirm_request_id']) ? (int)$payload['confirm_request_id'] : 0;
     $action = isset($payload['action']) ? strtolower(trim((string)$payload['action'])) : '';

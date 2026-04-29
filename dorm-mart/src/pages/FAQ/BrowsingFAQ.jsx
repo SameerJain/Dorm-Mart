@@ -4,11 +4,13 @@ const BROWSING_SECTIONS = [
     items: [
       {
         question: "How do I search for an item?",
-        answer: "Type a keyword into the search bar at the top of any page and press Enter.",
+        answer:
+          "Type a keyword into the search bar at the top of any page and press Enter.",
       },
       {
         question: "What filters are available?",
-        answer: "You can filter by category, price range, and item condition, and sort by date or price.",
+        answer:
+          "You can filter by category, price range, and item condition, and sort by date or price.",
       },
     ],
   },
@@ -17,15 +19,18 @@ const BROWSING_SECTIONS = [
     items: [
       {
         question: "How do I save an item?",
-        answer: "Click the heart icon on any item card or detail page. It will appear in your wishlist.",
+        answer:
+          "Click the heart icon on any item card or detail page. It will appear in your wishlist.",
       },
       {
         question: "Where is my wishlist?",
-        answer: "Open the navigation menu and select \"My Wishlist.\"",
+        answer: 'Open the navigation menu and select "My Wishlist."',
       },
       {
-        question: "I'm a seller: what does the wishlist count on my listing mean?",
-        answer: "It shows how many users saved your item to their wishlist. The count is hidden once the item is sold.",
+        question:
+          "I'm a seller: what does the wishlist count on my listing mean?",
+        answer:
+          "It shows how many users saved your item to their wishlist. The count is hidden once the item is sold.",
       },
     ],
   },
@@ -34,15 +39,18 @@ const BROWSING_SECTIONS = [
     items: [
       {
         question: "How do I contact a seller?",
-        answer: "Open the item detail page and click \"Message Seller\" to start a chat.",
+        answer:
+          'Open the item detail page and click "Message Seller" to start a chat.',
       },
       {
-        question: "What does \"Price Negotiable\" mean?",
-        answer: "The seller is open to offers. Message them to discuss a different price.",
+        question: 'What does "Price Negotiable" mean?',
+        answer:
+          "The seller is open to offers. Message them to discuss a different price.",
       },
       {
-        question: "What does \"Open to Trades\" mean?",
-        answer: "The seller may accept an item swap instead of cash. Reach out via chat to propose a trade.",
+        question: 'What does "Open to Trades" mean?',
+        answer:
+          "The seller may accept an item swap instead of cash. Reach out via chat to propose a trade.",
       },
     ],
   },

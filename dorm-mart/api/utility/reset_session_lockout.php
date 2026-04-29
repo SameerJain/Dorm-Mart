@@ -21,17 +21,14 @@ require_once __DIR__ . '/../auth/auth_handle.php';
  * Run this script whenever you need to clear all lockouts during testing.
  * 
  * COMMAND LINE USAGE:
- * ===================
  * 
  * Reset all session lockouts (command line):
  *   php api/utility/reset_session_lockout.php
  * 
  * EXAMPLES:
- * =========
  * php api/utility/reset_session_lockout.php
  * 
  * WEB BROWSER USAGE:
- * ==================
  * 
  * 1. NPM START METHOD (React Dev Server):
  *    - Start React dev server: npm start
@@ -44,7 +41,6 @@ require_once __DIR__ . '/../auth/auth_handle.php';
  *    - Open browser: http://localhost:8080/api/utility/reset_session_lockout.php
  * 
  * NOTES:
- * ======
  * - This script resets failed_login_attempts to 0 and clears last_failed_attempt and lockout_until for ALL sessions
  * - All sessions can then attempt login without rate limiting restrictions
  * - Use this during development/testing to reset rate limits

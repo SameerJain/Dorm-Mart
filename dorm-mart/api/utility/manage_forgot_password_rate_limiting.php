@@ -4,17 +4,14 @@
  * Prevents spam and abuse of the password reset functionality
  * 
  * COMMAND LINE USAGE:
- * ===================
  * 
  * Clear all forgot password rate limits:
  *   php api/utility/manage_forgot_password_rate_limiting.php
  * 
  * EXAMPLES:
- * =========
  * php api/utility/manage_forgot_password_rate_limiting.php
  * 
  * NOTES:
- * ======
  * - This script clears the last_reset_request timestamp for all users
  * - Users can then request new password reset emails immediately
  * - Rate limit is 10 minutes between requests for all environments
@@ -93,6 +90,13 @@ function get_forgot_password_rate_limit_minutes(): int
 
 // Standalone script to clear forgot password rate limits
 if (basename(__FILE__) === basename($_SERVER['SCRIPT_NAME'])) {
+    if (php_sapi_name() !== 'cli') {
+        http_response_code(404);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => false, 'error' => 'Not found']);
+        exit;
+    }
+
     require_once __DIR__ . '/../database/db_connect.php';
 
     $conn = db();
