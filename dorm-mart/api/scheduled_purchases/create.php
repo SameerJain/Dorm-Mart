@@ -36,6 +36,9 @@ try {
     if ($tradeItemDescription !== null && $tradeItemDescription !== '' && contains_xss_pattern($tradeItemDescription)) {
         json_response(['success' => false, 'error' => 'Invalid characters in trade item description'], 400);
     }
+    if ($tradeItemDescription !== null && mb_strlen($tradeItemDescription) > 100) {
+        json_response(['success' => false, 'error' => 'Trade item description cannot exceed 100 characters'], 400);
+    }
 
     $meetLocationChoice = isset($payload['meet_location_choice'])
         ? trim((string)$payload['meet_location_choice'])
@@ -194,8 +197,12 @@ try {
         if ($negotiatedPrice > 9999.99) {
             json_response(['success' => false, 'error' => 'Negotiated price must be $9999.99 or less'], 400);
         }
-        // Allow 0 as a valid price (free item)
-        // But convert empty/whitespace to null for consistency
+        $priceDigitsOnly = preg_replace('/[^0-9]/', '', (string)$negotiatedPrice);
+        foreach (['80085','8008','5318008','42069','66666','6969','42042','1488','420','666','69','67'] as $_m) {
+            if (strpos($priceDigitsOnly, $_m) !== false) {
+                json_response(['success' => false, 'error' => 'Invalid price value'], 400);
+            }
+        }
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding

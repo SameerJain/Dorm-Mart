@@ -93,20 +93,46 @@ try {
 
   // --- Validation ---
   $errors = [];
-  if ($title === '')                                     { $errors['title'] = 'Title is required.'; }
-  if ($description === null || $description === '')      { $errors['description'] = 'Description is required.'; }
-  if ($priceStr === '' || !is_numeric($priceStr) || $price <= 0.0) {
-    $errors['price'] = 'Price must be a positive number.';
+  if ($title === '')                        { $errors['title'] = 'Title is required.'; }
+  elseif (mb_strlen($title) > 50)          { $errors['title'] = 'Title cannot exceed 50 characters.'; }
+
+  if ($description === null || $description === '') {
+    $errors['description'] = 'Description is required.';
+  } elseif (mb_strlen($description) > 1000) {
+    $errors['description'] = 'Description cannot exceed 1000 characters.';
   }
-  if ($price > 9999.99) {
+
+  if ($priceStr === '' || !is_numeric($priceStr) || $price < 0.01) {
+    $errors['price'] = 'Price must be at least $0.01.';
+  } elseif ($price > 9999.99) {
     $errors['price'] = 'Price must be $9999.99 or less.';
+  } else {
+    $priceDigitsOnly = preg_replace('/[^0-9]/', '', $priceStr);
+    foreach (['80085','8008','5318008','42069','66666','6969','42042','1488','420','666','69','67'] as $_m) {
+      if (strpos($priceDigitsOnly, $_m) !== false) { $errors['price'] = 'Invalid price value.'; break; }
+    }
   }
-  if (empty($catsArr))                                   { $errors['categories'] = 'Select at least one category.'; }
+
+  if (empty($catsArr)) {
+    $errors['categories'] = 'Select at least one category.';
+  } else {
+    foreach ($catsArr as $_cat) {
+      if (mb_strlen($_cat) > 100) { $errors['categories'] = 'Category name is too long.'; break; }
+    }
+  }
+
+  $allowedLocations = ['North Campus', 'South Campus', 'Ellicott', 'Other'];
   if ($itemLocation === null || $itemLocation === '' || $itemLocation === '<Select Option>') {
     $errors['itemLocation'] = 'Select an item location.';
+  } elseif (!in_array($itemLocation, $allowedLocations, true)) {
+    $errors['itemLocation'] = 'Invalid item location.';
   }
+
+  $allowedConditions = ['Like New', 'Excellent', 'Good', 'Fair', 'For Parts'];
   if ($itemCondition === null || $itemCondition === '' || $itemCondition === '<Select Option>') {
     $errors['condition'] = 'Select an item condition.';
+  } elseif (!in_array($itemCondition, $allowedConditions, true)) {
+    $errors['condition'] = 'Invalid item condition.';
   }
 
   if (!empty($errors)) {
@@ -143,8 +169,8 @@ try {
   $newImageUrls = [];
   if (!empty($_FILES['images']) && is_array($_FILES['images']['tmp_name'])) {
     $maxFiles   = 6;
-    $maxSizeB   = 5 * 1024 * 1024; // 5MB
-    $allowedExt = ['jpg','jpeg','png','webp','gif'];
+    $maxSizeB   = 2 * 1024 * 1024; // 2MB
+    $allowedExt = ['jpg','jpeg','png','webp'];
     $cnt = 0;
 
     foreach ($_FILES['images']['tmp_name'] as $i => $tmpPath) {
@@ -171,6 +197,12 @@ try {
   $imageUrls = array_merge($existingPhotos, $newImageUrls);
   if (count($imageUrls) > 6) {
     $imageUrls = array_slice($imageUrls, 0, 6);
+  }
+
+  if (empty($imageUrls)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Validation failed', 'errors' => ['images' => 'At least one image is required.']]);
+    exit;
   }
 
   // --- JSON columns ---

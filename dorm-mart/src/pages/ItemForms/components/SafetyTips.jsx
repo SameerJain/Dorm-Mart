@@ -7,7 +7,7 @@ export default function SafetyTips() {
       <ul className="text-sm text-blue-800 dark:text-blue-100 space-y-3">
         <li className="flex items-start gap-2">
           <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">
-            â€¢
+            &bull;
           </span>
           <span>
             Consider bringing a friend, especially for high value items.
@@ -15,27 +15,27 @@ export default function SafetyTips() {
         </li>
         <li className="flex items-start gap-2">
           <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">
-            â€¢
+            &bull;
           </span>
           <span>Report suspicious messages or behavior.</span>
         </li>
         <li className="flex items-start gap-2">
           <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">
-            â€¢
+            &bull;
           </span>
           <span>Trust your gut. Don't proceed if something feels off.</span>
         </li>
         <li className="flex items-start gap-2">
           <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">
-            â€¢
+            &bull;
           </span>
           <span>Keep receipts or transaction records.</span>
         </li>
         <li className="flex items-start gap-2">
           <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">
-            â€¢
+            &bull;
           </span>
-          <span>Use secure payment methods (cash, Venmo, Zelle).</span>
+          <span>Use secure payment methods (Cash, Venmo, Zelle).</span>
         </li>
       </ul>
     </div>
