@@ -206,7 +206,10 @@ try {
 
     $promo = isset($body['promoEmails']) ? (int)!!$body['promoEmails'] : 0;
     $reveal = isset($body['revealContact']) ? (int)!!$body['revealContact'] : 0;
-    $interests = isset($body['interests']) && is_array($body['interests']) ? array_slice($body['interests'], 0, 3) : [];
+    $ALLOWED_CATS = ['Textbooks', 'Electronics', 'Clothing', 'Furniture', 'Food', 'Services', 'Other'];
+    $interests = isset($body['interests']) && is_array($body['interests'])
+        ? array_slice(array_values(array_filter($body['interests'], fn($c) => in_array($c, $ALLOWED_CATS, true))), 0, 3)
+        : [];
     $theme = (isset($body['theme']) && $body['theme'] === 'dark') ? 1 : 0;
     
     // Prepare the 3 category values

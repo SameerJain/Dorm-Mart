@@ -38,6 +38,9 @@ try {
     }
     
     $q = $qRaw;
+    if (mb_strlen($q) > 200) {
+        json_response(['ok' => false, 'error' => 'Search query too long'], 400);
+    }
     // Optional multiple categories support
     $categories = [];
     if (isset($body['categories'])) {
@@ -56,6 +59,14 @@ try {
     }
     $condition = isset($body['condition']) ? trim((string)$body['condition']) : '';
     $location  = isset($body['location']) ? trim((string)$body['location']) : '';
+    $ALLOWED_CONDITIONS = ['Like New', 'Excellent', 'Good', 'Fair', 'For Parts'];
+    $ALLOWED_LOCATIONS  = ['North Campus', 'South Campus', 'Ellicott', 'Other'];
+    if ($condition !== '' && !in_array($condition, $ALLOWED_CONDITIONS, true)) {
+        json_response(['ok' => false, 'error' => 'Invalid condition value'], 400);
+    }
+    if ($location !== '' && !in_array($location, $ALLOWED_LOCATIONS, true)) {
+        json_response(['ok' => false, 'error' => 'Invalid location value'], 400);
+    }
     $status    = isset($body['status']) ? strtoupper(trim((string)$body['status'])) : '';
     $minPrice  = isset($body['minPrice']) ? (float)$body['minPrice'] : null;
     $maxPrice  = isset($body['maxPrice']) ? (float)$body['maxPrice'] : null;

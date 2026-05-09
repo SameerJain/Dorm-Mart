@@ -374,8 +374,8 @@ if (contains_xss_pattern($firstNameRaw) || contains_xss_pattern($lastNameRaw)) {
 require_once __DIR__ . '/../config/email_config.php';
 
 // XSS PROTECTION: Input validation with regex patterns to prevent XSS attacks
-$firstName = validate_input($firstNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
-$lastName = validate_input($lastNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
+$firstName = validate_input($firstNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
+$lastName = validate_input($lastNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
 $gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
 $gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
 $promos    = !empty($data['promos']);
@@ -402,6 +402,13 @@ if (ALLOW_ALL_EMAILS) {
 if ($firstName === false || $lastName === false || $email === false) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
+    exit;
+}
+
+$emailLocalPart = explode('@', $email)[0] ?? '';
+if (preg_match('/^\d+$/', $emailLocalPart)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
     exit;
 }
 

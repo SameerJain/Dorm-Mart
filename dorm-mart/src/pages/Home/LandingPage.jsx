@@ -225,6 +225,20 @@ export default function LandingPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (showForYouHintOverlay) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [showForYouHintOverlay]);
+
   // fetch user
   useEffect(() => {
     const controller = new AbortController();
