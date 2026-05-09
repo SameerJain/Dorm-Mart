@@ -214,6 +214,13 @@ if (ALLOW_ALL_EMAILS) {
     }
 }
 
+$emailLocalPart = explode('@', $email)[0] ?? '';
+if (preg_match('/^\d+$/', $emailLocalPart)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Invalid email format']);
+    exit;
+}
+
 try {
     $conn = db();
 

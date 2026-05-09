@@ -178,8 +178,9 @@ function ReviewModal({
 
     for (const file of files) {
       // Validate file type
-      if (!file.type.startsWith("image/")) {
-        setError("Please select only image files");
+      const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+      if (!allowedTypes.has(file.type)) {
+        setError("Only JPEG, PNG, and WebP images are allowed");
         continue;
       }
 

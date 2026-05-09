@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 export default function ListingSuccessModal({
   isEdit,
   location,
@@ -5,6 +7,20 @@ export default function ListingSuccessModal({
   setShowSuccess,
   showSuccess,
 }) {
+  useEffect(() => {
+    if (showSuccess && !isEdit) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [showSuccess, isEdit]);
+
   if (!showSuccess || isEdit) return null;
 
   return (

@@ -143,6 +143,7 @@ export default function WishlistPage() {
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = "100%";
       document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
 
       return () => {
         // Restore scroll position when closing
@@ -150,10 +151,25 @@ export default function WishlistPage() {
         document.body.style.top = "";
         document.body.style.width = "";
         document.body.style.overflow = "";
+        document.documentElement.style.overflow = "";
         window.scrollTo(0, scrollY);
       };
     }
   }, [showMobileFilters]);
+
+  useEffect(() => {
+    if (confirmRemove) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [confirmRemove]);
 
   // Handle remove from wishlist
   const handleRemoveFromWishlist = (itemId, itemTitle) => {

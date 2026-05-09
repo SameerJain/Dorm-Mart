@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
 import { resolveProductPhotoUrl } from "../../../utils/imageFallback";
 
@@ -20,6 +20,20 @@ function getReviewImages(review) {
 export default function ReviewImageGallery({ review, viewMode }) {
   const images = getReviewImages(review);
   const [selectedImage, setSelectedImage] = useState(null);
+
+  useEffect(() => {
+    if (selectedImage) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [selectedImage]);
 
   if (images.length === 0) return null;
 
