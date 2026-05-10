@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
 import { csrfFetch } from "../../../utils/csrfFetch";
+import logger from "../../../utils/logger";
 
 export default function useWishlistStatus({
   productId,

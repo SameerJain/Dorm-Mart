@@ -20,6 +20,9 @@ try {
     $meetingAtRaw = isset($payload['meeting_at']) ? trim((string)$payload['meeting_at']) : '';
     $description = isset($payload['description']) ? trim((string)$payload['description']) : '';
     
+    if (mb_strlen($description) > 1000) {
+        json_response(['success' => false, 'error' => 'Description cannot exceed 1000 characters'], 400);
+    }
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if ($description !== '' && contains_xss_pattern($description)) {
         json_response(['success' => false, 'error' => 'Invalid characters in description'], 400);

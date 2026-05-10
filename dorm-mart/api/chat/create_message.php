@@ -49,6 +49,9 @@ if ($len > 500) {
 
 $senderId   = (int)$sender;
 $receiverId = (int)$receiver;
+if ($senderId === $receiverId) {
+    json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
+}
 $u1 = min($senderId, $receiverId);
 $u2 = max($senderId, $receiverId);
 $lockKey = "conv:$u1:$u2"; // used for advisory lock

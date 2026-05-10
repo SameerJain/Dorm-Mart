@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import StarRating from "../Reviews/StarRating";
 import PageBackButton from "../../components/PageBackButton";
+import logger from "../../utils/logger";
 import { API_BASE } from "../../utils/apiConfig";
 /**
  * BuyerReviewsPage Component

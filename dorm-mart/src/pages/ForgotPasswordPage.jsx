@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import logger from "../utils/logger";
 import PreLoginBranding from "../components/PreLoginBranding";
 import PreLoginNavLinks from "../components/PreLoginNavLinks";
 import { API_BASE } from "../utils/apiConfig";

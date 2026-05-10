@@ -40,7 +40,7 @@ try {
 
     // Validate review_text (optional, max 250 chars if provided)
     $reviewText = isset($payload['review_text']) ? trim((string)$payload['review_text']) : '';
-    if (strlen($reviewText) > 250) {
+    if (mb_strlen($reviewText) > 250) {
         json_response(['success' => false, 'error' => 'Review text must be 250 characters or less'], 400);
     }
     

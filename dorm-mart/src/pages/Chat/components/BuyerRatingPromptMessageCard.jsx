@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../../../utils/apiConfig";
+import logger from "../../../utils/logger";
 
 function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
   const navigate = useNavigate();

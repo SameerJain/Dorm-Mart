@@ -70,7 +70,17 @@ try {
     $status    = isset($body['status']) ? strtoupper(trim((string)$body['status'])) : '';
     $minPrice  = isset($body['minPrice']) ? (float)$body['minPrice'] : null;
     $maxPrice  = isset($body['maxPrice']) ? (float)$body['maxPrice'] : null;
+    if ($minPrice !== null && $minPrice < 0) {
+        json_response(['ok' => false, 'error' => 'Minimum price cannot be negative'], 400);
+    }
+    if ($maxPrice !== null && $maxPrice > 9999.99) {
+        json_response(['ok' => false, 'error' => 'Maximum price cannot exceed $9999.99'], 400);
+    }
     $sort      = isset($body['sort']) ? strtolower(trim((string)$body['sort'])) : '';
+    $ALLOWED_SORTS = ['', 'best', 'best_match', 'relevance', 'new', 'newest', 'old', 'oldest', 'price_asc', 'price_desc'];
+    if (!in_array($sort, $ALLOWED_SORTS, true)) {
+        json_response(['ok' => false, 'error' => 'Invalid sort value'], 400);
+    }
     // Optional: include description in search when true
     $includeDesc = false;
     if (isset($body['includeDescription'])) {

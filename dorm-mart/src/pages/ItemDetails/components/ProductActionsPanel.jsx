@@ -92,7 +92,7 @@ export default function ProductActionsPanel({
               disabled={!normalized.sellerId || msgLoading}
               className="w-full max-w-xs rounded-full font-medium py-2 px-3 bg-blue-600 dark:bg-blue-800 hover:bg-blue-700 dark:hover:bg-blue-900 disabled:opacity-50 text-white"
             >
-              {msgLoading ? "Opening chat..." : "Message Seller"}
+              Message Seller
             </button>
             {msgError ? (
               <p className="text-xs text-red-600 dark:text-red-400">

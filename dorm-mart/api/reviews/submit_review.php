@@ -60,7 +60,10 @@ try {
     $validateImageUrl = function($url) {
         if ($url === null || $url === '') return null;
         if (!str_starts_with($url, '/media/review-images/')) {
-            return null; // reject invalid paths
+            return null;
+        }
+        if (mb_strlen($url) > 500) {
+            return null;
         }
         return $url;
     };

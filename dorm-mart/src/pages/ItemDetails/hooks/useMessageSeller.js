@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ChatContext } from "../../../context/ChatContext";
 import { API_BASE } from "../../../utils/apiConfig";
 import { csrfFetch } from "../../../utils/csrfFetch";
+import logger from "../../../utils/logger";
 
 export default function useMessageSeller({
   productId,
@@ -75,7 +76,6 @@ export default function useMessageSeller({
     } catch (error) {
       console.error("Message seller error", error);
       setMsgError(error?.message || "Unable to open chat.");
-    } finally {
       setMsgLoading(false);
     }
   };

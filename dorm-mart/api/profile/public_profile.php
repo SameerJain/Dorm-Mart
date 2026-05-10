@@ -176,7 +176,6 @@ SQL;
             'review_id'         => (int)$row['review_id'],
             'product_id'        => (int)$row['product_id'],
             'reviewer_name'     => $buyerName,
-            'reviewer_email'    => $row['buyer_email'] ?? '',
             'reviewer_username' => derive_username((string)($row['buyer_email'] ?? '')),
             'product_title'     => $row['product_title'] ?? 'Untitled product',
             'review'            => $row['review_text'] ?? '',

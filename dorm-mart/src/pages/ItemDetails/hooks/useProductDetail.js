@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE, PUBLIC_BASE } from "../../../utils/apiConfig";
 import { normalizeProductDetail } from "../../../utils/productDetails";
+import logger from "../../../utils/logger";
 
 export default function useProductDetail(productId) {
   const [loading, setLoading] = useState(false);

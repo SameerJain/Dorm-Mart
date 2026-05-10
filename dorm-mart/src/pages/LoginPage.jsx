@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import logger from "../utils/logger";
 import PreLoginBranding from "../components/PreLoginBranding";
 import PreLoginNavLinks from "../components/PreLoginNavLinks";
 import { THEME_CACHE_KEY, THEME_PENDING_KEY } from "../utils/loadTheme.js";

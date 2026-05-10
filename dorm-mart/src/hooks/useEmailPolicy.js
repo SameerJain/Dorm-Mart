@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../utils/apiConfig";
+import logger from "../utils/logger";
 
 export function useEmailPolicy() {
   const [allowAllEmails, setAllowAllEmails] = useState(false);

@@ -74,27 +74,28 @@ if (isset($_GET['url']) && $_GET['url'] !== '') {
     }
     // Handle /media/review-images/ paths
     elseif (strpos($url, '/media/review-images/') === 0) {
-        $file = substr($url, strlen('/media/review-images/'));
-        $file = basename($file);
-        $mediaPath = $projectRoot . '/media/review-images/' . $file;
-        if (file_exists($mediaPath)) {
+        $file = basename(substr($url, strlen('/media/review-images/')));
+        $mediaRoot = realpath($projectRoot . '/media/review-images');
+        $mediaPath = $mediaRoot !== false ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
+        if ($mediaRoot !== false && $mediaPath !== false && strpos($mediaPath, $mediaRoot) === 0 && is_file($mediaPath)) {
             $path = $mediaPath;
         }
     }
     // Handle /media/chat-images/ paths
     elseif (strpos($url, '/media/chat-images/') === 0) {
-        $file = substr($url, strlen('/media/chat-images/'));
-        $file = basename($file);
-        $mediaPath = $projectRoot . '/media/chat-images/' . $file;
-        if (file_exists($mediaPath)) {
+        $file = basename(substr($url, strlen('/media/chat-images/')));
+        $mediaRoot = realpath($projectRoot . '/media/chat-images');
+        $mediaPath = $mediaRoot !== false ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
+        if ($mediaRoot !== false && $mediaPath !== false && strpos($mediaPath, $mediaRoot) === 0 && is_file($mediaPath)) {
             $path = $mediaPath;
         }
     }
-    // Handle other /media/ paths — use basename() to prevent path traversal
+    // Handle other /media/ paths — basename() prevents traversal, realpath() prevents symlink escape
     elseif (strpos($url, '/media/') === 0) {
         $file = basename(substr($url, strlen('/media/')));
-        $mediaPath = $projectRoot . '/media/' . $file;
-        if (file_exists($mediaPath)) {
+        $mediaRoot = realpath($projectRoot . '/media');
+        $mediaPath = $mediaRoot !== false ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
+        if ($mediaRoot !== false && $mediaPath !== false && strpos($mediaPath, $mediaRoot) === 0 && is_file($mediaPath)) {
             $path = $mediaPath;
         }
     }

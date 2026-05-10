@@ -24,7 +24,7 @@ try {
         json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
     }
 
-    $checkStmt = $conn->prepare('SELECT product_id FROM INVENTORY WHERE product_id = ?');
+    $checkStmt = $conn->prepare('SELECT product_id, seller_id FROM INVENTORY WHERE product_id = ?');
     if (!$checkStmt) {
         throw new RuntimeException('Failed to prepare product check');
     }
@@ -34,7 +34,11 @@ try {
     if ($result->num_rows === 0) {
         json_response(['success' => false, 'error' => 'Product not found'], 404);
     }
+    $product = $result->fetch_assoc();
     $checkStmt->close();
+    if ((int)$product['seller_id'] === $userId) {
+        json_response(['success' => false, 'error' => 'Cannot add your own listing to wishlist'], 400);
+    }
 
     $checkWishlistStmt = $conn->prepare('SELECT wishlist_id FROM wishlist WHERE user_id = ? AND product_id = ?');
     if (!$checkWishlistStmt) {
