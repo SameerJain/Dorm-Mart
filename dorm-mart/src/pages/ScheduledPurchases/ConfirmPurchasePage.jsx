@@ -62,7 +62,7 @@ export default function ConfirmPurchasePage() {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch(`${API_BASE}/confirm_purchases/prefill.php`, {
+        const res = await csrfFetch(`${API_BASE}/confirm_purchases/prefill.php`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -408,6 +408,9 @@ export default function ConfirmPurchasePage() {
                   placeholder="Share anything else you'd like the buyer to know."
                   maxLength={2000}
                 />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 text-right">
+                  {sellerNotes.length}/2000
+                </p>
               </label>
 
               {!isSuccessful && (
@@ -439,6 +442,9 @@ export default function ConfirmPurchasePage() {
                       placeholder="Extra context helps the buyer understand what happened."
                       maxLength={1000}
                     />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 text-right">
+                      {failureReasonNotes.length}/1000
+                    </p>
                   </label>
                 </div>
               )}

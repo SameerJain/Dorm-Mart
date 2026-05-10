@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import logger from "../utils/logger";
 import {
   applyThemeToDOM,
   getEffectivePendingTheme,

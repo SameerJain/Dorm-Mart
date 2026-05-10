@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
 import { csrfFetch } from "../../../utils/csrfFetch";
+import logger from "../../../utils/logger";
 import { formatCurrency, formatDateTime } from "../../../utils/formatters";
 
 function ScheduleMessageCard({ message, isMine, onRespond }) {

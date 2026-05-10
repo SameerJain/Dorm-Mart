@@ -29,7 +29,7 @@ require_csrf_token($_POST['csrf_token'] ?? null);
 
 /* Validate presence of receiver and the uploaded image.
    Caption (contentRaw) is allowed to be empty for image-only messages. */
-if ($receiver === '') {
+if ($receiver === '' || !ctype_digit($receiver) || (int)$receiver <= 0) {
     json_response(['success' => false, 'error' => 'missing_receiver'], 400);
 }
 if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
@@ -104,6 +104,11 @@ $imageRelUrl = '/media/chat-images/' . $fname;
 
 /* --- Conversation plumbing (same as create_message.php) --- */
 $receiverId = (int)$receiver;
+
+if ($senderId === $receiverId) {
+    json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
+}
+
 $u1 = min($senderId, $receiverId);
 $u2 = max($senderId, $receiverId);
 $lockKey = "conv:$u1:$u2";

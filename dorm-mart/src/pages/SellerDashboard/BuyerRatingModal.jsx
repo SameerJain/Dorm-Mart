@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import StarRating from "../Reviews/StarRating";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
+import logger from "../../utils/logger";
 
 /**
  * BuyerRatingModal Component

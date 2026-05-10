@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   MEET_LOCATION_OPTIONS,
@@ -38,7 +38,12 @@ function SchedulePurchasePage() {
   const [formError, setFormError] = useState("");
   const [meetLocationChoice, setMeetLocationChoice] = useState("");
   const [customMeetLocation, setCustomMeetLocation] = useState("");
-  const [meetingDate, setMeetingDate] = useState("");
+  const [meetingMonth, setMeetingMonth] = useState("");
+  const [meetingDay, setMeetingDay] = useState("");
+  const [meetingYear, setMeetingYear] = useState("");
+  const monthInputRef = useRef(null);
+  const dayInputRef = useRef(null);
+  const yearInputRef = useRef(null);
   const [meetingHour, setMeetingHour] = useState("");
   const [meetingMinute, setMeetingMinute] = useState("");
   const [meetingAmPm, setMeetingAmPm] = useState("");
@@ -82,12 +87,42 @@ function SchedulePurchasePage() {
   const [tradeItemDescription, setTradeItemDescription] = useState("");
   const [selectedListing, setSelectedListing] = useState(null);
 
+  // Real-time date range feedback once both month and day are complete
+  useEffect(() => {
+    if (!meetingMonth || meetingMonth.length < 2 || !meetingDay || meetingDay.length < 2 || !meetingYear || meetingYear.length < 4) {
+      setDateTimeError("");
+      return;
+    }
+    const now = new Date();
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    });
+    const parts = fmt.formatToParts(now);
+    const cy = parseInt(parts.find((p) => p.type === "year").value);
+    const cm = parseInt(parts.find((p) => p.type === "month").value);
+    const cd = parseInt(parts.find((p) => p.type === "day").value);
+    const m = parseInt(meetingMonth);
+    const d = parseInt(meetingDay);
+    const year = parseInt(meetingYear);
+    const today = new Date(cy, cm - 1, cd);
+    const selected = new Date(year, m - 1, d);
+    const maxDate = new Date(cy, cm - 1 + 3, cd);
+    if (selected < today) {
+      setDateTimeError("Meeting date cannot be in the past.");
+    } else if (selected > maxDate) {
+      setDateTimeError("Meeting date cannot be more than 3 months in advance.");
+    } else {
+      setDateTimeError("");
+    }
+  }, [meetingMonth, meetingDay, meetingYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const abort = new AbortController();
     async function loadListings() {
       setError("");
       try {
-        const res = await fetch(
+        const res = await csrfFetch(
           `${API_BASE}/seller_dashboard/manage_seller_listings.php`,
           {
             method: "POST",
@@ -226,13 +261,22 @@ function SchedulePurchasePage() {
     return `${year}-${month}-${day}`;
   };
 
+  // Derive the year from month+day: current year unless that date already passed, then next year
+  const getDerivedYear = (month, day) => {
+    const easternNow = getEasternTime();
+    const currentYear = easternNow.getFullYear();
+    const today = new Date(currentYear, easternNow.getMonth(), easternNow.getDate());
+    const thisYearDate = new Date(currentYear, parseInt(month) - 1, parseInt(day));
+    return thisYearDate >= today ? currentYear : currentYear + 1;
+  };
+
   // Validate date and time (using Eastern Time)
   const validateDateTime = () => {
     setDateTimeError("");
 
     // Check each field individually and provide specific error messages
     const missingFields = [];
-    if (!meetingDate) missingFields.push("meeting date");
+    if (!meetingMonth || !meetingDay || !meetingYear || meetingYear.length < 4) missingFields.push("meeting date");
     if (!meetingHour) missingFields.push("meeting hour");
     if (!meetingMinute) missingFields.push("meeting minute");
     if (!meetingAmPm) missingFields.push("AM/PM");
@@ -262,7 +306,9 @@ function SchedulePurchasePage() {
     const easternMinute = easternNow.getMinutes();
 
     // Parse selected date (treat as Eastern Time)
-    const [year, month, day] = meetingDate.split("-").map(Number);
+    const year = parseInt(meetingYear);
+    const month = parseInt(meetingMonth);
+    const day = parseInt(meetingDay);
     const selectedHour24 = convertTo24Hour(meetingHour, meetingAmPm);
     const selectedMinute = parseInt(meetingMinute);
 
@@ -313,14 +359,16 @@ function SchedulePurchasePage() {
 
   // Convert separate fields to ISO datetime string (treats input as Eastern Time, converts to UTC)
   const combineDateTime = () => {
-    if (!meetingDate || !meetingHour || !meetingMinute || !meetingAmPm) {
+    if (!meetingMonth || !meetingDay || !meetingYear || meetingYear.length < 4 || !meetingHour || !meetingMinute || !meetingAmPm) {
       return null;
     }
 
     const hour24 = convertTo24Hour(meetingHour, meetingAmPm);
 
     // Parse date and create datetime (treat as Eastern Time)
-    const [year, month, day] = meetingDate.split("-").map(Number);
+    const year = parseInt(meetingYear);
+    const month = parseInt(meetingMonth);
+    const day = parseInt(meetingDay);
 
     // Create date string in Eastern Time format
     const dateTimeString = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T${String(hour24).padStart(2, "0")}:${meetingMinute}:00`;
@@ -674,17 +722,96 @@ function SchedulePurchasePage() {
                   <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
                     Date
                   </label>
-                  <input
-                    type="date"
-                    value={meetingDate}
-                    onChange={(e) => {
-                      setMeetingDate(e.target.value);
-                      setDateTimeError("");
-                    }}
-                    min={getTodayDate()}
-                    max={getMaxDate()}
-                    className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex items-center w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+                    <input
+                      ref={monthInputRef}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="MM"
+                      value={meetingMonth}
+                      maxLength={2}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
+                        if (raw === "") { setMeetingMonth(""); setDateTimeError(""); return; }
+                        const first = parseInt(raw[0]);
+                        if (raw.length === 1) {
+                          if (first > 1) {
+                            setMeetingMonth("0" + raw);
+                            setDateTimeError("");
+                            dayInputRef.current?.focus();
+                            dayInputRef.current?.select();
+                          } else {
+                            setMeetingMonth(raw);
+                            setDateTimeError("");
+                          }
+                        } else {
+                          const val = parseInt(raw);
+                          if (val >= 1 && val <= 12) {
+                            setMeetingMonth(raw);
+                            setDateTimeError("");
+                            dayInputRef.current?.focus();
+                            dayInputRef.current?.select();
+                          }
+                        }
+                      }}
+                      className="w-7 bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-600"
+                    />
+                    <span className="text-gray-400 dark:text-gray-500 select-none">/</span>
+                    <input
+                      ref={dayInputRef}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="DD"
+                      value={meetingDay}
+                      maxLength={2}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
+                        if (raw === "") { setMeetingDay(""); setDateTimeError(""); return; }
+                        const maxDay = meetingMonth
+                          ? new Date(getEasternTime().getFullYear(), parseInt(meetingMonth), 0).getDate()
+                          : 31;
+                        const first = parseInt(raw[0]);
+                        if (raw.length === 1) {
+                          if (first > 3) {
+                            const padded = "0" + raw;
+                            if (parseInt(padded) <= maxDay) {
+                              setMeetingDay(padded);
+                              setDateTimeError("");
+                              yearInputRef.current?.focus();
+                              yearInputRef.current?.select();
+                            }
+                          } else {
+                            setMeetingDay(raw);
+                            setDateTimeError("");
+                          }
+                        } else {
+                          const val = parseInt(raw);
+                          if (val >= 1 && val <= maxDay) {
+                            setMeetingDay(raw);
+                            setDateTimeError("");
+                            yearInputRef.current?.focus();
+                            yearInputRef.current?.select();
+                          }
+                        }
+                      }}
+                      className="w-7 bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-600"
+                    />
+                    <span className="text-gray-400 dark:text-gray-500 select-none">/</span>
+                    <input
+                      ref={yearInputRef}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="YYYY"
+                      value={meetingYear}
+                      maxLength={4}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
+                        setMeetingYear(digits);
+                        setDateTimeError("");
+                      }}
+                      className="w-10 bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-600"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">

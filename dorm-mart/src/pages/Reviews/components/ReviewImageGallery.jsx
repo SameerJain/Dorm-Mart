@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
 import { resolveProductPhotoUrl } from "../../../utils/imageFallback";
+import logger from "../../../utils/logger";
 
 const reviewImageUrl = (url) =>
   resolveProductPhotoUrl(url, { apiBase: API_BASE, proxyUnknown: true });

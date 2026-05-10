@@ -1,5 +1,6 @@
 import { API_BASE } from "../utils/apiConfig";
 import { csrfFetch } from "../utils/csrfFetch";
+import logger from "../utils/logger";
 
 export async function fetchMe(signal) {
   const r = await fetch(`${API_BASE}/auth/me.php`, {

@@ -3,6 +3,7 @@ import {
   THEME_CACHE_KEY,
   THEME_PENDING_KEY,
 } from "./loadTheme.js";
+import logger from "./logger";
 import { API_BASE } from "./apiConfig";
 import { csrfFetch } from "./csrfFetch";
 

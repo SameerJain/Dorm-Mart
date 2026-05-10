@@ -17,6 +17,17 @@ if ($userId <= 0) {
 $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
 $tsSec  = isset($_GET['ts']) ? (int)$_GET['ts'] : 0;
 
+// AUTHORIZATION: verify the authenticated user is a participant in this conversation
+if ($convId > 0) {
+    $authStmt = $conn->prepare('SELECT conv_id FROM conversations WHERE conv_id = ? AND (user1_id = ? OR user2_id = ?) LIMIT 1');
+    $authStmt->bind_param('iii', $convId, $userId, $userId);
+    $authStmt->execute();
+    if ($authStmt->get_result()->num_rows === 0) {
+        json_response(['success' => false, 'error' => 'Unauthorized'], 403);
+    }
+    $authStmt->close();
+}
+
 $stmt = $conn->prepare(
   'SELECT
        message_id, conv_id, sender_id, receiver_id, content, image_url, metadata,

@@ -43,7 +43,11 @@ try {
             json_response(['success' => false, 'error' => 'Product not found'], 404);
         }
 
-        $sellerId = (int) $productRow['seller_id'];
+        $fetchedSellerId = (int) $productRow['seller_id'];
+        if ($sellerId > 0 && $sellerId !== $fetchedSellerId) {
+            json_response(['success' => false, 'error' => 'Seller does not own this product'], 400);
+        }
+        $sellerId = $fetchedSellerId;
     }
 
     if ($sellerId <= 0) {

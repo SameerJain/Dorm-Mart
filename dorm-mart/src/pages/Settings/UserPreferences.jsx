@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import { useTheme } from "../../hooks/useTheme";
 import PageBackButton from "../../components/PageBackButton";
+import logger from "../../utils/logger";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
 

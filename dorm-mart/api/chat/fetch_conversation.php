@@ -22,6 +22,15 @@ if ($convId <= 0) {
     json_response(['success' => false, 'error' => 'conv_id is required'], 400);
 }
 
+// AUTHORIZATION: verify the authenticated user is a participant in this conversation
+$authStmt = $conn->prepare('SELECT conv_id FROM conversations WHERE conv_id = ? AND (user1_id = ? OR user2_id = ?) LIMIT 1');
+$authStmt->bind_param('iii', $convId, $userId, $userId);
+$authStmt->execute();
+if ($authStmt->get_result()->num_rows === 0) {
+    json_response(['success' => false, 'error' => 'Unauthorized'], 403);
+}
+$authStmt->close();
+
 // --- fetch all messages for this conversation (oldest first) ---
 $stmt = $conn->prepare(
     'SELECT

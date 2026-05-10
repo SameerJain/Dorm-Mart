@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
+import logger from "../../../utils/logger";
 
 export default function useChatConversationStatus({
   activeConvId,
