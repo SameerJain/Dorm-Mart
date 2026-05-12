@@ -7,16 +7,13 @@ import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
 import {
   buildPasswordPolicy,
-  hasDigit,
-  hasLower,
-  hasSpecial,
-  hasUpper,
   MAX_PASSWORD_LEN,
 } from "../../utils/passwordPolicy";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
 const MAX_LEN = MAX_PASSWORD_LEN;
 
-function Field({ id, label, type = "password", value, onChange, placeholder }) {
+function Field({ id, label, type = "password", value, onChange, placeholder, maxLength }) {
   return (
     <div className="mb-6">
       <label
@@ -31,6 +28,7 @@ function Field({ id, label, type = "password", value, onChange, placeholder }) {
         value={value}
         placeholder={placeholder}
         onChange={onChange}
+        maxLength={maxLength}
         className="h-11 w-full rounded-xl border border-slate-300 bg-slate-100 px-4 text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:focus:bg-gray-800"
       />
     </div>
@@ -56,43 +54,9 @@ function ChangePasswordPage() {
   const [countdown, setCountdown] = useState(5);
   const timerRef = useRef(null);
 
-  // Prevent body scroll when success modal is open
-  useEffect(() => {
-    if (showNotice) {
-      const scrollY = window.scrollY;
-      document.documentElement.style.overflow = "hidden";
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = "100%";
-    } else {
-      const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || "0") * -1);
-      }
-    }
-    return () => {
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-    };
-  }, [showNotice]);
+  useBodyScrollLock(showNotice);
 
   const policy = useMemo(() => buildPasswordPolicy(nextPw), [nextPw]);
-
-  const enforceMax = (setter) => (e) => {
-    const v = e.target.value;
-    if (v.length > MAX_LEN)
-      alert("Entered password is too long. Maximum length is 64 characters.");
-    setter(v);
-  };
 
   useEffect(() => {
     const onKey = (e) => {
@@ -104,7 +68,6 @@ function ChangePasswordPage() {
 
   const LOGIN_ROUTE = "/";
 
-  // Start 5s countdown only after success modal shows
   useEffect(() => {
     if (!showNotice) return;
     setCountdown(5);
@@ -129,48 +92,23 @@ function ChangePasswordPage() {
   }, [showNotice, navigate]);
 
   const handleSubmit = async () => {
-    if (!current && !nextPw && !confirmPw) {
-      alert("The new password text box must have an entry put into it.");
-      return;
-    }
-    if (!current || !nextPw || !confirmPw) {
-      alert("Please fill in all required fields.");
+    if (!current.trim() || !nextPw.trim() || !confirmPw.trim()) {
+      alert("Please fill in all password fields.");
       return;
     }
     if (nextPw !== confirmPw) {
-      alert(
-        "The new password that was entered is different from the re-entry of the password.",
-      );
+      alert("The new password that was entered is different from the re-entry of the password.");
       return;
     }
-    if (
-      current.length > MAX_LEN ||
-      nextPw.length > MAX_LEN ||
-      confirmPw.length > MAX_LEN
-    ) {
-      alert("Entered password is too long. Maximum length is 64 characters.");
-      return;
-    }
-    if (nextPw.length < 8) {
-      alert("The new password must have at least 8 characters.");
-      return;
-    }
-    if (!hasLower(nextPw)) {
-      alert("The new password must have at least 1 lowercase letter.");
-      return;
-    }
-    if (!hasUpper(nextPw)) {
-      alert("The new password must have at least 1 uppercase letter.");
-      return;
-    }
-    if (!hasDigit(nextPw)) {
-      alert("The new password must have at least 1 digit.");
-      return;
-    }
-    if (!hasSpecial(nextPw)) {
-      alert("The new password must have at least 1 special character.");
-      return;
-    }
+    const policyChecks = [
+      [!policy.minLen,  "The new password must have at least 8 characters."],
+      [!policy.lower,   "The new password must have at least 1 lowercase letter."],
+      [!policy.upper,   "The new password must have at least 1 uppercase letter."],
+      [!policy.digit,   "The new password must have at least 1 digit."],
+      [!policy.special, "The new password must have at least 1 special character."],
+    ];
+    const failed = policyChecks.find(([bad]) => bad);
+    if (failed) { alert(failed[1]); return; }
 
     try {
       const res = await csrfFetch(`${API_BASE}/auth/change_password.php`, {
@@ -206,22 +144,25 @@ function ChangePasswordPage() {
             id="currentPassword"
             label="Current Password"
             value={current}
-            onChange={enforceMax(setCurrent)}
+            onChange={(e) => setCurrent(e.target.value)}
             placeholder="Enter current password"
+            maxLength={MAX_LEN}
           />
           <Field
             id="newPassword"
             label="New Password"
             value={nextPw}
-            onChange={enforceMax(setNextPw)}
+            onChange={(e) => setNextPw(e.target.value)}
             placeholder="Enter new password"
+            maxLength={MAX_LEN}
           />
           <Field
             id="confirmPassword"
             label="Re-enter New Password"
             value={confirmPw}
-            onChange={enforceMax(setConfirmPw)}
+            onChange={(e) => setConfirmPw(e.target.value)}
             placeholder="Re-enter new password"
+            maxLength={MAX_LEN}
           />
 
           <button
@@ -263,7 +204,6 @@ function ChangePasswordPage() {
         </section>
       </div>
 
-      {/* Success Notice Modal */}
       {showNotice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div

@@ -58,13 +58,7 @@ if (strlen($current) > $MAX_LEN || strlen($next) > $MAX_LEN) {
   echo json_encode(['ok' => false, 'error' => 'Entered password is too long']);
   exit;
 }
-if (
-  strlen($next) < 8
-  || !preg_match('/[a-z]/', $next)
-  || !preg_match('/[A-Z]/', $next)
-  || !preg_match('/\d/', $next)
-  || !preg_match('/[^A-Za-z0-9]/', $next)
-) {
+if (!validate_password_policy($next)) {
   http_response_code(400);
   echo json_encode(['ok' => false, 'error' => 'Password does not meet policy']);
   exit;

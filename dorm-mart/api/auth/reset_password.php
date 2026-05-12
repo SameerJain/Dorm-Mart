@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 // Get request data
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
@@ -56,13 +57,7 @@ if (strlen($newPassword) > $MAX_LEN) {
     exit;
 }
 
-if (
-    strlen($newPassword) < 8
-    || !preg_match('/[a-z]/', $newPassword)
-    || !preg_match('/[A-Z]/', $newPassword)
-    || !preg_match('/\d/', $newPassword)
-    || !preg_match('/[^A-Za-z0-9]/', $newPassword)
-) {
+if (!validate_password_policy($newPassword)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Password does not meet policy requirements']);
     exit;

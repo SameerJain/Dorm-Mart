@@ -9,6 +9,7 @@ import {
 } from "react";
 import { ChatContext } from "../../context/ChatContext";
 import logger from "../../utils/logger";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import ChatComposer from "./components/ChatComposer";
 import ChatHeader from "./components/ChatHeader";
@@ -59,34 +60,7 @@ export default function ChatPage() {
   const pendingTypingFalseTimeoutRef = useRef(null); // Track pending typing=false timeout
   const typingStartedAtRef = useRef(null); // Track when current typing session started (for 30s timeout)
 
-  // Prevent body scroll when delete confirmation modal is open
-  useEffect(() => {
-    if (deleteConfirmOpen) {
-      const scrollY = window.scrollY;
-      document.documentElement.style.overflow = "hidden";
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = "100%";
-    } else {
-      const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || "0") * -1);
-      }
-    }
-    return () => {
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-    };
-  }, [deleteConfirmOpen]);
+  useBodyScrollLock(deleteConfirmOpen);
   const [attachedImage, setAttachedImage] = useState(null);
   const [usernameMap, setUsernameMap] = useState({});
   const usernameCacheRef = useRef({});
