@@ -12,7 +12,7 @@ export function useEmailPolicy() {
 
     async function loadEmailPolicy() {
       try {
-        const response = await fetch(`${API_BASE}/config/email_policy.php`, {
+        const response = await fetch(`${API_BASE}/email_policy.php`, {
           credentials: "include",
           signal: controller.signal,
         });

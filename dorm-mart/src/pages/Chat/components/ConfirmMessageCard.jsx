@@ -98,7 +98,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     if (messageType === "confirm_request" && localStatus === "declined")
       return { label: "Response sent", tone: "danger" };
     if (messageType === "confirm_request" && isMine)
-      return { label: "Waiting for buyer", tone: "info" };
+      return { label: "Waiting for buyer", tone: "warning" };
     if (messageType === "confirm_request" && !isMine)
       return { label: "Action required", tone: "warning" };
     // Fallback to ensure we always return a valid object
@@ -223,6 +223,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
         </svg>
       );
     }
+    if (messageType === "confirm_request") return null;
     // Default info icon
     return (
       <svg
