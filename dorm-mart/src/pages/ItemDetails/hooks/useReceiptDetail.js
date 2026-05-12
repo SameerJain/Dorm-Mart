@@ -28,17 +28,17 @@ async function readReceiptError(response) {
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
       const errorJson = await response.json();
-      console.error("[ViewReceipt] API error response:", errorJson);
+      logger.error("[ViewReceipt] API error response:", errorJson);
       return errorJson?.error || errorJson?.message || errorMessage;
     }
 
     const text = await response.text();
-    console.error("[ViewReceipt] Non-JSON error response:", text);
+    logger.error("[ViewReceipt] Non-JSON error response:", text);
     if (text) {
       errorMessage = text.substring(0, 200);
     }
   } catch (parseError) {
-    console.error("[ViewReceipt] Failed to parse error response:", parseError);
+    logger.error("[ViewReceipt] Failed to parse error response:", parseError);
   }
 
   return errorMessage;
@@ -86,7 +86,7 @@ export default function useReceiptDetail(productId) {
         setReceiptData(nextPayloads.receiptData);
       } catch (error) {
         if (error.name !== "AbortError") {
-          console.error("viewReceipt fetch failed:", error);
+          logger.error("viewReceipt fetch failed:", error);
           setError(error);
         }
       } finally {

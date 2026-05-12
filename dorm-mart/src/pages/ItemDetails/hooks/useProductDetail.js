@@ -29,7 +29,7 @@ export default function useProductDetail(productId) {
         setData(json || null);
       } catch (error) {
         if (error.name !== "AbortError") {
-          console.error("view_product fetch failed:", error);
+          logger.error("view_product fetch failed:", error);
           setError(error);
         }
       } finally {

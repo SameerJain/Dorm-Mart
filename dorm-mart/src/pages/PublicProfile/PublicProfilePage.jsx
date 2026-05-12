@@ -323,12 +323,6 @@ function PublicProfilePage() {
                 >
                   @{profile.username}
                 </p>
-                <p
-                  className="text-sm text-slate-500 dark:text-gray-400 truncate"
-                  title={profile.email}
-                >
-                  {profile.email}
-                </p>
                 {profile.instagram && (
                   <a
                     href={profile.instagram}

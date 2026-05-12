@@ -7,6 +7,7 @@ import {
 } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
+import logger from "../../utils/logger";
 import ReviewModal from "../Reviews/ReviewModal";
 import StarRating from "../Reviews/StarRating";
 import BuyerRatingModal from "./BuyerRatingModal";
@@ -141,7 +142,7 @@ function SellerDashboardPage() {
         } catch (e) {
           errorResult = { error: `HTTP ${response.status}` };
         }
-        console.error("API Error Response:", errorResult);
+        logger.error("API Error Response:", errorResult);
         throw new Error(errorResult.error || `HTTP ${response.status}`);
       }
       const result = await response.json();
@@ -180,7 +181,7 @@ function SellerDashboardPage() {
         const metrics = calculateSummaryMetrics(transformedListings);
         setSummaryMetrics(metrics);
       } else {
-        console.error("Unexpected API response format:", result);
+        logger.error("Unexpected API response format:", result);
         setListings([]);
         setSummaryMetrics({
           activeListings: 0,
@@ -191,7 +192,7 @@ function SellerDashboardPage() {
         });
       }
     } catch (error) {
-      console.error("Error fetching listings:", error);
+      logger.error("Error fetching listings:", error);
       setListings([]);
       setSummaryMetrics({
         activeListings: 0,
@@ -238,14 +239,14 @@ function SellerDashboardPage() {
             const errorResult = await response
               .json()
               .catch(() => ({ error: "Failed to parse error" }));
-            console.error(
+            logger.error(
               `[Review Fetch] Failed to fetch reviews for product ${listing.id}:`,
               response.status,
               errorResult,
             );
           }
         } catch (error) {
-          console.error(
+          logger.error(
             `[Review Fetch] Error fetching reviews for product ${listing.id}:`,
             error,
           );
@@ -286,7 +287,7 @@ function SellerDashboardPage() {
             }
           }
         } catch (error) {
-          console.error(
+          logger.error(
             `Error fetching buyer rating for product ${listing.id}:`,
             error,
           );
@@ -365,7 +366,7 @@ function SellerDashboardPage() {
       setConfirmOpen(false);
       setPendingDeleteId(null);
     } catch (e) {
-      console.error("Delete error:", e);
+      logger.error("Delete error:", e);
       // minimal alert
       alert("Failed to delete listing.");
     }

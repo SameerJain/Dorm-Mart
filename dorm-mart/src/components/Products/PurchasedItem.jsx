@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import logger from "../../utils/logger";
 import {
   withFallbackImage,
   onProductImageError,
@@ -53,7 +54,7 @@ function PurchasedItem({
           }
         }
       } catch (error) {
-        console.error("Error fetching review status:", error);
+        logger.error("Error fetching review status:", error);
       } finally {
         setIsLoadingReview(false);
       }
@@ -97,7 +98,7 @@ function PurchasedItem({
         }
       }
     } catch (error) {
-      console.error("Error fetching review after submit:", error);
+      logger.error("Error fetching review after submit:", error);
     }
   };
 

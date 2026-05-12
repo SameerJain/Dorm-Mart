@@ -61,6 +61,13 @@ try {
     $location  = isset($body['location']) ? trim((string)$body['location']) : '';
     $ALLOWED_CONDITIONS = ['Like New', 'Excellent', 'Good', 'Fair', 'For Parts'];
     $ALLOWED_LOCATIONS  = ['North Campus', 'South Campus', 'Ellicott', 'Other'];
+    $ALLOWED_CATEGORIES = [
+        'Electronics', 'Outdoors', 'Digital', 'Hearing', 'Gaming', 'Office',
+        'School', 'Utility', 'Bathroom', 'Bed', 'Clothing', 'Stationary',
+        'Games', 'Food', 'Kitchen', 'Furniture', 'Books', 'Decor',
+        'Dorm Essentials', 'Health', 'Misc.',
+    ];
+    $categories = array_values(array_filter($categories, fn($c) => in_array($c, $ALLOWED_CATEGORIES, true)));
     if ($condition !== '' && !in_array($condition, $ALLOWED_CONDITIONS, true)) {
         json_response(['ok' => false, 'error' => 'Invalid condition value'], 400);
     }

@@ -8,6 +8,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
+import logger from "../../utils/logger";
 
 export default function NotificationPage() {
   const ctx = useContext(ChatContext);
@@ -75,7 +76,7 @@ export default function NotificationPage() {
         markAllNotificationsReadLocal();
       }
     } catch (e) {
-      console.error("Failed to mark all notifications as read:", e);
+      logger.error("Failed to mark all notifications as read:", e);
       alert("Failed to mark all as read. Please try again.");
     }
   }
@@ -106,7 +107,7 @@ export default function NotificationPage() {
         markNotificationReadLocal(productId);
       }
     } catch (e) {
-      console.error("Failed to mark notification as read:", e);
+      logger.error("Failed to mark notification as read:", e);
       alert("Failed to mark as read. Please try again.");
     }
   }

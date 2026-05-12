@@ -924,18 +924,6 @@ function OngoingPurchasesPage() {
               </>
             )}
 
-            {/* Always visible action buttons - disabled if not accepted */}
-            {/* Report an Issue button - Commented out: Feature not fully implemented yet
-                        <button
-                            type="button"
-                            onClick={() => navigate(`/app/scheduled-purchases/report-issue/${req.request_id}`)}
-                            disabled={!canUseActionButtons}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-lg border border-yellow-500 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 ${!canUseActionButtons ? 'opacity-30 cursor-not-allowed' : ''}`}
-                        >
-                            Report an Issue
-                        </button>
-                        */}
-
             {/* Cancel button - hidden when buyer has Decline/Accept */}
             {canCancel && !canRespond && (
               <button

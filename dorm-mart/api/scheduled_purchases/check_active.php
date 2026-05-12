@@ -14,6 +14,8 @@ try {
 
     $payload = json_request_body_or_error();
 
+    require_csrf_token($payload['csrf_token'] ?? null);
+
     $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
 
     if ($productId <= 0) {

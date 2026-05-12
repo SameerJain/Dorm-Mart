@@ -8,6 +8,7 @@ import {
 import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
 import { resolveProductPhotoUrl } from "../../utils/imageFallback";
+import logger from "../../utils/logger";
 import { containsMemePrice } from "../../utils/priceValidation";
 import { containsXssPattern } from "../../utils/inputValidation";
 import ListingForm from "./components/ListingForm";
@@ -251,7 +252,7 @@ function ProductListingPage() {
               cats = parsed;
             }
           } catch (e) {
-            console.warn("Failed to parse categories:", e);
+            logger.warn("Failed to parse categories:", e);
           }
         }
         setCategories(cats);
@@ -300,7 +301,7 @@ function ProductListingPage() {
         setErrors({}); // This already clears all errors including images
       } catch (e) {
         if (!ignore) {
-          console.error("Error loading existing listing:", e);
+          logger.error("Error loading existing listing:", e);
           setLoadError(e?.message || "Failed to load listing data.");
           setServerMsg(e?.message || "Failed to load listing data.");
         }

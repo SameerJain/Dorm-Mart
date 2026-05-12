@@ -18,6 +18,8 @@ try {
 
     $payload = json_request_body_or_error();
 
+    require_csrf_token($payload['csrf_token'] ?? null);
+
     // Get filter parameters (with defaults for backward compatibility)
     $dateRange = isset($payload['dateRange']) ? (string)$payload['dateRange'] : (isset($payload['year']) ? 'Last Year' : 'All Time');
     $sort = isset($payload['sort']) ? (string)$payload['sort'] : 'Newest First';

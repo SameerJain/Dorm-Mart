@@ -189,20 +189,6 @@ function SchedulePurchasePage() {
     }
   }, [listings, navState]);
 
-  // resetForm function removed - not currently used
-  // const resetForm = () => {
-  //     setSelectedListingId('');
-  //     setSelectedConversationId('');
-  //     setMeetLocationChoice('');
-  //     setCustomMeetLocation('');
-  //     setMeetingDate('');
-  //     setMeetingHour('');
-  //     setMeetingMinute('');
-  //     setMeetingAmPm('');
-  //     setDateTimeError('');
-  //     setDescription('');
-  // };
-
   // Convert 12-hour format to 24-hour format
   const convertTo24Hour = (hour, amPm) => {
     const hourNum = parseInt(hour);

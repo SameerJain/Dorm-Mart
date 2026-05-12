@@ -5,6 +5,7 @@ declare(strict_types=1);
 // Include security utilities
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
@@ -14,67 +15,41 @@ init_json_endpoint('POST');
 try {
     // Require authentication - this will redirect to login if not authenticated
     $userId = require_login();
-    
+
+    $payload = json_request_body_or_error();
+    require_csrf_token($payload['csrf_token'] ?? null);
+
     // DB connection
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Check if scheduled_purchase_requests table exists
-    $tableCheck = $conn->query("SHOW TABLES LIKE 'scheduled_purchase_requests'");
-    $hasScheduledPurchaseTable = $tableCheck && $tableCheck->num_rows > 0;
-
     // Fetch seller listings from INVENTORY for current user
-    // Include check for accepted scheduled purchases (if table exists)
-    if ($hasScheduledPurchaseTable) {
-        $sql = "SELECT 
-                    i.product_id,
-                    i.title,
-                    i.listing_price,
-                    i.item_status,
-                    i.categories,
-                    i.sold,
-                    i.sold_to,
-                    i.date_listed,
-                    i.photos,
-                    i.seller_id,
-                    i.price_nego,
-                    i.trades,
-                    i.wishlisted,
-                    i.item_location AS meet_location,
-                    -- Ongoing purchases: Check if item has any accepted scheduled purchase requests
-                    CASE 
-                        WHEN EXISTS (
-                            SELECT 1 FROM scheduled_purchase_requests spr 
-                            WHERE spr.inventory_product_id = i.product_id 
-                            AND spr.status = 'accepted'
-                        ) THEN 1 
-                        ELSE 0 
-                    END AS has_accepted_scheduled_purchase
-                FROM INVENTORY i
-                WHERE i.seller_id = ?
-                ORDER BY i.product_id DESC";
-    } else {
-        // Fallback query without scheduled_purchase_requests check
-        $sql = "SELECT 
-                    i.product_id,
-                    i.title,
-                    i.listing_price,
-                    i.item_status,
-                    i.categories,
-                    i.sold,
-                    i.sold_to,
-                    i.date_listed,
-                    i.photos,
-                    i.seller_id,
-                    i.price_nego,
-                    i.trades,
-                    i.wishlisted,
-                    i.item_location AS meet_location,
-                    0 AS has_accepted_scheduled_purchase,
-                FROM INVENTORY i
-                WHERE i.seller_id = ?
-                ORDER BY i.product_id DESC";
-    }
+    $sql = "SELECT
+                i.product_id,
+                i.title,
+                i.listing_price,
+                i.item_status,
+                i.categories,
+                i.sold,
+                i.sold_to,
+                i.date_listed,
+                i.photos,
+                i.seller_id,
+                i.price_nego,
+                i.trades,
+                i.wishlisted,
+                i.item_location AS meet_location,
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1 FROM scheduled_purchase_requests spr
+                        WHERE spr.inventory_product_id = i.product_id
+                        AND spr.status = 'accepted'
+                    ) THEN 1
+                    ELSE 0
+                END AS has_accepted_scheduled_purchase
+            FROM INVENTORY i
+            WHERE i.seller_id = ?
+            ORDER BY i.product_id DESC";
 
     $stmt = $conn->prepare($sql);
     if (!$stmt) {

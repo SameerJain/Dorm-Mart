@@ -34,14 +34,14 @@ function UserPreferences() {
       try {
         setCategoriesLoading(true);
         setCategoriesError(null);
-        const res = await fetch(`${API_BASE}/utility/get_categories.php`);
+        const res = await fetch(`${API_BASE}/categories/get_categories.php`);
         if (!res.ok) throw new Error("Failed to load categories");
         const data = await res.json();
         if (!Array.isArray(data)) throw new Error("Invalid categories format");
         if (!cancelled) setAvailableCategories(data);
       } catch (e) {
         if (!cancelled) {
-          console.error("Failed to load categories:", e);
+          logger.error("Failed to load categories:", e);
           setCategoriesError(e.message);
         }
       } finally {
@@ -135,7 +135,7 @@ function UserPreferences() {
         }
         setPreferencesLoaded(true);
       } catch (e) {
-        console.warn("UserPreferences: GET failed", e);
+        logger.warn("UserPreferences: GET failed", e);
         if (!cancelled) setPreferencesLoaded(true);
       }
     })();
@@ -168,7 +168,7 @@ function UserPreferences() {
         });
       } catch (e) {
         if (e.name !== "AbortError")
-          console.warn("UserPreferences: POST failed", e);
+          logger.warn("UserPreferences: POST failed", e);
       }
     }, 400);
     return () => {

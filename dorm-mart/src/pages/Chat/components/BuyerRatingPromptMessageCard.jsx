@@ -20,7 +20,7 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
         setHasRating(!!(result.success && result.has_rating));
       }
     } catch (error) {
-      console.error("Error fetching buyer rating status:", error);
+      logger.error("Error fetching buyer rating status:", error);
     } finally {
       setIsLoadingRating(false);
     }

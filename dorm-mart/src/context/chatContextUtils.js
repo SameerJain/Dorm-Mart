@@ -69,7 +69,7 @@ export async function tickFetchNewMessages(
 
   const myIdNum = Number(myId);
   if (!Number.isInteger(myIdNum) || myIdNum <= 0) {
-    console.error("Invalid myId in tickFetchNewMessages:", myId);
+    logger.error("Invalid myId in tickFetchNewMessages:", myId);
     return { messages: [], typingStatus };
   }
 

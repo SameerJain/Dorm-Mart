@@ -63,7 +63,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
         throw new Error(result.error || `Failed to ${action} request`);
       }
     } catch (error) {
-      console.error(`Failed to ${action}:`, error);
+      logger.error(`Failed to ${action}:`, error);
       alert(error.message || `Failed to ${action} request. Please try again.`);
     } finally {
       setIsResponding(false);

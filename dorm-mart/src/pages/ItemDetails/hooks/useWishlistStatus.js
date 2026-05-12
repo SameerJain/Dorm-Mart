@@ -36,7 +36,7 @@ export default function useWishlistStatus({
         }
       } catch (error) {
         if (error.name !== "AbortError") {
-          console.error("check_wishlist_status failed:", error);
+          logger.error("check_wishlist_status failed:", error);
         }
       }
     })();
@@ -79,7 +79,7 @@ export default function useWishlistStatus({
         throw new Error(json.error || "Failed to update wishlist");
       }
     } catch (error) {
-      console.error("Wishlist toggle failed:", error);
+      logger.error("Wishlist toggle failed:", error);
       setWishlistError(error?.message || "Failed to update wishlist");
     } finally {
       setWishlistLoading(false);

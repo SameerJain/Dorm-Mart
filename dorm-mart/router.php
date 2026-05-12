@@ -57,6 +57,28 @@ if (strpos($requestPath, '/api/') === 0) {
         exit;
     }
 
+    // Block directories that are never HTTP endpoints (libraries, CLI tools, tests).
+    // Using $resolved (realpath-verified) prevents extension/casing tricks.
+    $relPath = str_replace('\\', '/', ltrim(substr($resolved, strlen($apiRoot)), DIRECTORY_SEPARATOR));
+
+    $blockedDirs = [
+        'api_test_files/', // integration test scripts
+        'database/',       // DB libraries and CLI-only migration tools
+        'helpers/',        // shared helper libraries
+        'security/',       // security library and debug tools
+        'utility/',        // CLI tools and dev scripts — not HTTP endpoints
+        'config/',         // configuration library files — not HTTP endpoints
+    ];
+
+    foreach ($blockedDirs as $dir) {
+        if (str_starts_with($relPath, $dir)) {
+            http_response_code(404);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'API endpoint not found']);
+            exit;
+        }
+    }
+
     // If API file exists, include it
     if (file_exists($apiFile) && is_file($apiFile)) {
         require $apiFile;
