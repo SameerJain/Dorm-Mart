@@ -10,6 +10,7 @@ import {
   withFallbackImage,
 } from "../../utils/imageFallback";
 import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
+import logger from "../../utils/logger";
 
 /** Session-only: after dismiss, tap "For You" again to reopen (never auto-opens on login) */
 const FOR_YOU_HINT_SESSION_KEY = "dm_for_you_feed_hint_dismissed";
@@ -266,7 +267,7 @@ export default function LandingPage() {
         setErrorUser(false);
       } catch (e) {
         if (e.name !== "AbortError") {
-          console.error("me.php failed:", e);
+          logger.error("me.php failed:", e);
           setInterests([]);
           setErrorUser(true);
         }
@@ -359,7 +360,7 @@ export default function LandingPage() {
         setErrorItems(false);
       } catch (e) {
         if (e.name !== "AbortError") {
-          console.error("listings/landing_listings.php failed:", e);
+          logger.error("listings/landing_listings.php failed:", e);
           setErrorItems(true);
           setAllItems(FALLBACK_ITEMS);
         }
@@ -375,7 +376,7 @@ export default function LandingPage() {
     const controller = new AbortController();
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/utility/get_active_categories.php`, {
+        const r = await fetch(`${API_BASE}/categories/get_active_categories.php`, {
           signal: controller.signal,
         });
         if (!r.ok) return;

@@ -8,6 +8,7 @@ import {
   useCallback,
 } from "react";
 import { ChatContext } from "../../context/ChatContext";
+import logger from "../../utils/logger";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import ChatComposer from "./components/ChatComposer";
 import ChatHeader from "./components/ChatHeader";
@@ -465,7 +466,7 @@ export default function ChatPage() {
       // Ignore abort errors - typing indicator is not critical, fail silently
       if (error.name !== "AbortError") {
         // Only log non-abort errors for debugging
-        console.warn("Failed to send typing status:", error);
+        logger.warn("Failed to send typing status:", error);
       }
     }
   }, []);

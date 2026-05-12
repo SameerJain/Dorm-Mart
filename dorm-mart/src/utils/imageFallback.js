@@ -92,11 +92,22 @@ export function resolveProductPhotoUrls(photos, options = {}) {
     .filter(Boolean);
 }
 
+function sanitizeImageSrc(url) {
+  if (typeof url !== "string" || url.trim() === "") return "";
+  const s = url.trim();
+  if (
+    s.startsWith("blob:") ||
+    s.startsWith("data:image/") ||
+    s.startsWith("/") ||
+    s.startsWith("./") ||
+    /^https?:\/\//i.test(s)
+  ) return s;
+  return "";
+}
+
 export function withFallbackImage(url) {
-  if (typeof url === "string" && url.trim() !== "") {
-    return url;
-  }
-  return FALLBACK_IMAGE_URL;
+  const safe = sanitizeImageSrc(url);
+  return safe !== "" ? safe : FALLBACK_IMAGE_URL;
 }
 
 /**

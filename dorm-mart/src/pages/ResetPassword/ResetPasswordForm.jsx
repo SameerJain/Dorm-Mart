@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import PreLoginBranding from "../../components/PreLoginBranding";
 import PasswordRequirementRow from "../../components/forms/PasswordRequirementRow";
 import { API_BASE } from "../../utils/apiConfig";
+import logger from "../../utils/logger";
 import {
   buildPasswordPolicy,
   hasDigit,
@@ -113,7 +114,7 @@ function ResetPasswordForm() {
           setTokenError(data.message || "Invalid or expired reset token");
         }
       } catch (error) {
-        console.error("Token validation error:", error);
+        logger.error("Token validation error:", error);
         setIsTokenValid(false);
         setTokenError("Failed to validate reset token");
       } finally {
@@ -204,7 +205,7 @@ function ResetPasswordForm() {
         setSubmitError(data.error || "Failed to reset password");
       }
     } catch (error) {
-      console.error("Password reset error:", error);
+      logger.error("Password reset error:", error);
       setSubmitError("Network error. Please try again.");
     } finally {
       setIsLoading(false);

@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { useLocation } from "react-router-dom";
+import logger from "../utils/logger";
 import {
   createImageMessageApi,
   createMessageApi,
@@ -542,7 +543,7 @@ export function ChatProvider({ children }) {
         );
       } catch (e) {
         if (e.name !== "AbortError") {
-          console.error("tickFetchNewMessages error:", e);
+          logger.error("tickFetchNewMessages error:", e);
         }
       } finally {
         // Keep completed requests visible as complete in Chrome's Network tab.

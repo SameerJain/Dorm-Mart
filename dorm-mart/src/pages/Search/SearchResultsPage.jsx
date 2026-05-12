@@ -9,6 +9,7 @@ import {
 } from "../../utils/imageFallback";
 import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
 import { formatCurrency, formatDate } from "../../utils/formatters";
+import logger from "../../utils/logger";
 import PageBackButton from "../../components/PageBackButton";
 
 function useQuery() {
@@ -199,7 +200,7 @@ export default function SearchResults() {
         setItems(sorted);
       } catch (e) {
         if (e.name !== "AbortError") {
-          console.error("get_search_items failed:", e);
+          logger.error("get_search_items failed:", e);
           setError(e);
           setItems([]);
         }
@@ -446,7 +447,7 @@ function FiltersSidebar({
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/utility/get_active_categories.php`);
+        const r = await fetch(`${API_BASE}/categories/get_active_categories.php`);
         if (r.ok) {
           const json = await r.json();
           if (Array.isArray(json)) setCategories(json);

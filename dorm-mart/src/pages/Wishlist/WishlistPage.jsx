@@ -5,6 +5,7 @@ import ItemCardNew from "../../components/ItemCardNew";
 import { resolveProductPhotoUrl } from "../../utils/imageFallback";
 import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
+import logger from "../../utils/logger";
 
 export default function WishlistPage() {
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ export default function WishlistPage() {
         }
       } catch (e) {
         if (e.name !== "AbortError") {
-          console.error("get_wishlist failed:", e);
+          logger.error("get_wishlist failed:", e);
           setError(e?.message || "Failed to load wishlist");
           setAllItems([]);
           setItems([]);
@@ -227,7 +228,7 @@ export default function WishlistPage() {
         throw new Error(json.error || "Failed to remove from wishlist");
       }
     } catch (e) {
-      console.error("Remove from wishlist failed:", e);
+      logger.error("Remove from wishlist failed:", e);
       setError(e?.message || "Failed to remove from wishlist");
       setConfirmRemove(null);
     } finally {

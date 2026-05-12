@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
+import { csrfFetch } from "../../../utils/csrfFetch";
 import logger from "../../../utils/logger";
 
 export default function useChatConversationStatus({
@@ -26,7 +27,7 @@ export default function useChatConversationStatus({
         return;
       }
       try {
-        const res = await fetch(
+        const res = await csrfFetch(
           `${API_BASE}/scheduled_purchases/check_active.php`,
           {
             method: "POST",
@@ -40,7 +41,7 @@ export default function useChatConversationStatus({
           },
         );
         if (!res.ok) {
-          console.error("Failed to check active scheduled purchase");
+          logger.error("Failed to check active scheduled purchase");
           setHasActiveScheduledPurchase(false);
           return;
         }
@@ -50,7 +51,7 @@ export default function useChatConversationStatus({
         );
       } catch (error) {
         if (error.name !== "AbortError") {
-          console.error("Error checking active scheduled purchase:", error);
+          logger.error("Error checking active scheduled purchase:", error);
           setHasActiveScheduledPurchase(false);
         }
       }
@@ -69,7 +70,7 @@ export default function useChatConversationStatus({
         return;
       }
       try {
-        const res = await fetch(`${API_BASE}/confirm_purchases/status.php`, {
+        const res = await csrfFetch(`${API_BASE}/confirm_purchases/status.php`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

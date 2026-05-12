@@ -26,7 +26,6 @@ import SchedulePurchasePage from "./pages/ScheduledPurchases/SchedulePurchasePag
 import ConfirmPurchasePage from "./pages/ScheduledPurchases/ConfirmPurchasePage.jsx";
 import OngoingPurchasesPage from "./pages/ScheduledPurchases/OngoingPurchasesPage.jsx";
 import MarkCompletedPage from "./pages/ScheduledPurchases/MarkCompletedPage.jsx";
-import ReportIssuePage from "./pages/ScheduledPurchases/ReportIssuePage.jsx";
 import ViewProduct from "./pages/ItemDetails/ViewProductPage.jsx";
 import ViewReceipt from "./pages/ItemDetails/ViewReceiptPage.jsx";
 import SearchResults from "./pages/Search/SearchResultsPage.jsx";
@@ -134,11 +133,7 @@ export const router = createHashRouter([
         path: "scheduled-purchases/mark-completed/:requestId",
         element: <MarkCompletedPage />,
       },
-      {
-        path: "scheduled-purchases/report-issue/:requestId",
-        element: <ReportIssuePage />,
-      },
-      // Settings (under /app)
+// Settings (under /app)
       {
         path: "setting",
         children: [

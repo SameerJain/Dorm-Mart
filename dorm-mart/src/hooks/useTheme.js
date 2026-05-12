@@ -42,7 +42,7 @@ export function useTheme() {
         } catch (_) {}
       }
     } catch (e) {
-      if (e.name !== "AbortError") console.warn("Failed to save theme:", e);
+      if (e.name !== "AbortError") logger.warn("Failed to save theme:", e);
     }
   }, []);
 

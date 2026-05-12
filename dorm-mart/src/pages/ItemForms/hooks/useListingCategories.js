@@ -12,7 +12,7 @@ export default function useListingCategories() {
       try {
         setCatLoading(true);
         setCatFetchError(null);
-        const res = await fetch(`${API_BASE}/utility/get_categories.php`, {
+        const res = await fetch(`${API_BASE}/categories/get_categories.php`, {
           credentials: "include",
         });
         const text = await res.text();

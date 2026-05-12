@@ -24,7 +24,7 @@ export function useEmailPolicy() {
         }
       } catch (error) {
         if (error.name !== "AbortError") {
-          console.error("Failed to fetch email policy:", error);
+          logger.error("Failed to fetch email policy:", error);
         }
       } finally {
         if (active) {

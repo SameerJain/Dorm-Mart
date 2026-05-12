@@ -62,7 +62,7 @@ function ForgotPasswordPage() {
         navigate("/forgot-password/confirmation");
       }, 2000);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       // For valid UB emails, always show confirmation page for security
       setError("");
 

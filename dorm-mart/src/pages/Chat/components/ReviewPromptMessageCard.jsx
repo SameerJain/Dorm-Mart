@@ -20,7 +20,7 @@ function ReviewPromptMessageCard({ productId, productTitle }) {
         setHasReview(!!(result.success && result.has_review));
       }
     } catch (error) {
-      console.error("Error fetching review status:", error);
+      logger.error("Error fetching review status:", error);
     } finally {
       setIsLoadingReview(false);
     }

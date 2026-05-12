@@ -54,7 +54,7 @@ export default function ReviewImageGallery({ review, viewMode }) {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error downloading image:", error);
+      logger.error("Error downloading image:", error);
       alert("Failed to download image. Please try again.");
     }
   };

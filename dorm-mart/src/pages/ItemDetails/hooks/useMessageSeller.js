@@ -74,7 +74,7 @@ export default function useMessageSeller({
         navigate("/app/chat", { state: navState });
       }
     } catch (error) {
-      console.error("Message seller error", error);
+      logger.error("Message seller error", error);
       setMsgError(error?.message || "Unable to open chat.");
       setMsgLoading(false);
     }

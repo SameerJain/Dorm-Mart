@@ -182,7 +182,7 @@ function LoginPage() {
       }
     } catch (error) {
       // Handle network or other errors
-      console.error("Login error:", error);
+      logger.error("Login error:", error);
       setError(`Network error: ${error.message || "Please try again."}`);
     } finally {
       setLoading(false);

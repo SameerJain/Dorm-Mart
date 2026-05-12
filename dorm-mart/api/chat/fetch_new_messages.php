@@ -42,7 +42,6 @@ $stmt->bind_param('ii', $convId, $tsSec); // both ints
 $stmt->execute();
 
 $res = $stmt->get_result(); // requires mysqlnd; otherwise switch to bind_result loop
-error_log(sprintf('[read_new_messages] num_rows=%d', $res->num_rows));
 $messages = [];
 while ($row = $res->fetch_assoc()) {
     // Enrich schedule_request messages with current scheduled purchase status

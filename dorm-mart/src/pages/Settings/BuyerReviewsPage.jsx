@@ -47,7 +47,7 @@ function BuyerReviewsPage() {
         throw new Error(result.error || "Failed to fetch seller ratings");
       }
     } catch (err) {
-      console.error("Error fetching seller ratings:", err);
+      logger.error("Error fetching seller ratings:", err);
       setError(
         err.message || "Failed to load seller ratings. Please try again.",
       );

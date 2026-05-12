@@ -68,7 +68,7 @@ function BuyerRatingModal({
         setCharCount(0);
       }
     } catch (error) {
-      console.error("Error fetching buyer rating:", error);
+      logger.error("Error fetching buyer rating:", error);
       setExistingRating(null);
       setRating(0);
       setReviewText("");
@@ -216,7 +216,7 @@ function BuyerRatingModal({
       }
       onClose();
     } catch (err) {
-      console.error("Error submitting buyer rating:", err);
+      logger.error("Error submitting buyer rating:", err);
       setError(err.message || "Failed to submit rating. Please try again.");
     } finally {
       setIsSubmitting(false);

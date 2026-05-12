@@ -2,10 +2,11 @@ import PurchasedItem from "../../components/Products/PurchasedItem";
 import { Outlet, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 import logger from "../../utils/logger";
 
 async function fetchPurchasedItems(filters, signal) {
-  const r = await fetch(`${API_BASE}/purchase_history/purchase_history.php`, {
+  const r = await csrfFetch(`${API_BASE}/purchase_history/purchase_history.php`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -54,7 +55,7 @@ function PurchaseHistoryPage() {
         setIsFetching(false);
         setError(true);
         if (err.name === "AbortError") return;
-        console.error(err);
+        logger.error(err);
       }
     }
     loadPurchasedItems();
