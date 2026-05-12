@@ -62,27 +62,14 @@ $password = validate_input($passwordRaw, 64);
 
 if ($email === false || $password === false) {
     http_response_code(400);
-    // Provide more specific error message
-    if ($email === false) {
-        if (!filter_var($emailRaw, FILTER_VALIDATE_EMAIL)) {
-            echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
-        } else {
-            echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
-        }
-    } else {
-        echo json_encode(['ok' => false, 'error' => 'Invalid password format. Please check your password.']);
-    }
+    $msg = $email === false ? 'Invalid email format' : 'Invalid password format. Please check your password.';
+    echo json_encode(['ok' => false, 'error' => $msg]);
     exit;
 }
 
 if ($email === '' || $password === '') {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Missing required fields']);
-    exit;
-}
-if (strlen($email) > 255 || strlen($password) > 64) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Username or password is too large']);
     exit;
 }
 // Validate email format using PHP's built-in validator

@@ -31,3 +31,14 @@ if (!function_exists('request_int')) {
         return isset($source[$key]) ? (int)$source[$key] : $default;
     }
 }
+
+if (!function_exists('validate_password_policy')) {
+    function validate_password_policy(string $password): bool
+    {
+        return strlen($password) >= 8
+            && preg_match('/[a-z]/', $password)
+            && preg_match('/[A-Z]/', $password)
+            && preg_match('/\d/', $password)
+            && (bool) preg_match('/[^A-Za-z0-9]/', $password);
+    }
+}

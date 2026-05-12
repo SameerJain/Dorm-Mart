@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import {
   MEET_LOCATION_OPTIONS,
   MEET_LOCATION_OTHER_VALUE,
@@ -52,34 +53,7 @@ function SchedulePurchasePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
-  // Prevent body scroll when close confirmation modal is open
-  useEffect(() => {
-    if (closeConfirmOpen) {
-      const scrollY = window.scrollY;
-      document.documentElement.style.overflow = "hidden";
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = "100%";
-    } else {
-      const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || "0") * -1);
-      }
-    }
-    return () => {
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-    };
-  }, [closeConfirmOpen]);
+  useBodyScrollLock(closeConfirmOpen);
 
   // New fields for price negotiation and trades
   const [negotiatedPrice, setNegotiatedPrice] = useState("");

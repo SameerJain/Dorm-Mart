@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import StarRating from "../Reviews/StarRating";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
 import logger from "../../utils/logger";
@@ -112,34 +113,7 @@ function BuyerRatingModal({
     }
   };
 
-  // Prevent background scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY;
-      document.documentElement.style.overflow = "hidden";
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = "100%";
-    } else {
-      const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = "unset";
-      document.body.style.overflow = "unset";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || "0") * -1);
-      }
-    }
-    return () => {
-      document.documentElement.style.overflow = "unset";
-      document.body.style.overflow = "unset";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-    };
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
 
   const handleSubmit = async (e) => {
     if (e) {
