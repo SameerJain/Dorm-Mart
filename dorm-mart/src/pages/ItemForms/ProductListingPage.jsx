@@ -163,7 +163,7 @@ function ProductListingPage() {
     let ignore = false;
     async function checkActiveListingCap() {
       try {
-        const res = await fetch(
+        const res = await csrfFetch(
           `${API_BASE}/seller_dashboard/manage_seller_listings.php`,
           {
             method: "POST",

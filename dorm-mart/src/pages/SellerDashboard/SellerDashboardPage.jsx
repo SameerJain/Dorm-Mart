@@ -95,7 +95,7 @@ function SellerDashboardPage() {
     try {
       // TODO: Create manage_seller_listings.php endpoint similar to fetch_transacted_items.php
       // This will query transacted_items WHERE seller_user_id = current_user_id
-      const response = await fetch(
+      const response = await csrfFetch(
         `${API_BASE}/seller_dashboard/manage_seller_listings.php`,
         {
           method: "POST",
@@ -104,7 +104,7 @@ function SellerDashboardPage() {
             Accept: "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({}), // May need user_id or session token
+          body: JSON.stringify({}),
         },
       );
 
