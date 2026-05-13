@@ -39,7 +39,7 @@ export default function ProductActionsPanel({
       <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1">
         {normalized.sold ? "Not available" : "In Stock"}
       </p>
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
         Pickup: {normalized.itemLocation || "On campus"}
       </p>
 

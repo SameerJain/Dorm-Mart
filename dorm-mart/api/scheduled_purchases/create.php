@@ -29,8 +29,15 @@ try {
     }
     
     // New fields for price negotiation and trades
-    $negotiatedPrice = isset($payload['negotiated_price']) && $payload['negotiated_price'] !== null 
-        ? (float)$payload['negotiated_price'] : null;
+    $negotiatedPriceRaw = $payload['negotiated_price'] ?? null;
+    $negotiatedPrice = null;
+    if ($negotiatedPriceRaw !== null && $negotiatedPriceRaw !== '') {
+        $negotiatedPriceString = trim((string)$negotiatedPriceRaw);
+        if (!preg_match('/^(?:\d{1,4}(?:\.\d{1,2})?|\.\d{1,2})$/', $negotiatedPriceString)) {
+            json_response(['success' => false, 'error' => 'Invalid negotiated price'], 400);
+        }
+        $negotiatedPrice = (float)$negotiatedPriceString;
+    }
     $isTrade = isset($payload['is_trade']) ? (bool)$payload['is_trade'] : false;
     $tradeItemDescription = isset($payload['trade_item_description']) && $payload['trade_item_description'] !== null
         ? trim((string)$payload['trade_item_description']) : null;

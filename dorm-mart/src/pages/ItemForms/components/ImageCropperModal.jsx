@@ -16,7 +16,7 @@ export default function ImageCropperModal({
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl max-w-3xl w-full p-3 md:p-5">
+      <div className="bg-white dark:bg-gray-950 rounded-lg shadow-2xl max-w-3xl w-full p-3 md:p-5">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">
           Crop Image
         </h2>

@@ -54,10 +54,6 @@ const SELLER_DASHBOARD_SECTIONS = [
         answer: `Use the dropdown menus above the dashboard to filter by status or category, and to sort by date, price, or review status.`,
       },
       {
-        question: "What sorting options are available?",
-        answer: `Newest/Oldest First, Price Low-to-High or High-to-Low, and Reviewed Items On Top/Bottom (only when viewing Sold items).`,
-      },
-      {
         question: "A listing isn't showing up. What should I do?",
         answer: `Check your status and category filters, refresh the page, and make sure you're logged into the correct account.`,
       },

@@ -23,7 +23,7 @@ function NextStepsMessageCard({ message }) {
               <p className="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-1">
                 Next Steps: Meet In-Person
               </p>
-              <p className="text-sm text-orange-700 dark:text-orange-300">
+              <p className="text-sm text-orange-700 dark:text-orange-300 break-words">
                 {content}
               </p>
             </div>

@@ -661,7 +661,7 @@ function SchedulePurchasePage() {
                             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                           />
                         </svg>
-                        <p className="text-sm text-orange-600 dark:text-orange-400">
+                        <p className="text-sm text-orange-600 dark:text-orange-400 break-words">
                           Please note that this location is different from the
                           one listed on your item form (
                           {selectedListing.meet_location})
@@ -858,6 +858,7 @@ function SchedulePurchasePage() {
                       type="text"
                       inputMode="decimal"
                       value={negotiatedPrice}
+                      maxLength={7}
                       onKeyDown={decimalNumericKeyDownHandler}
                       onChange={(e) => {
                         const value = e.target.value;
@@ -865,7 +866,7 @@ function SchedulePurchasePage() {
                           setNegotiatedPrice("");
                           return;
                         }
-                        if (!/^\d*\.?\d*$/.test(value)) return;
+                        if (!/^\d{0,4}(?:\.\d{0,2})?$/.test(value)) return;
                         const numValue = parseFloat(value);
                         if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
                           setNegotiatedPrice(value);

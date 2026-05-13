@@ -85,8 +85,8 @@ try {
   $description = $descriptionRaw;
   $itemLocation = $itemLocationRaw;
 
-  $priceStr  = isset($_POST['price']) ? (string)$_POST['price'] : '';
-  $price     = ($priceStr !== '' && is_numeric($priceStr)) ? (float)$priceStr : 0.0;
+  $priceStr  = isset($_POST['price']) ? trim((string)$_POST['price']) : '';
+  $price     = ($priceStr !== '' && preg_match('/^(?:\d{1,4}(?:\.\d{1,2})?|\.\d{1,2})$/', $priceStr)) ? (float)$priceStr : null;
 
   $trades    = isset($_POST['acceptTrades'])    ? (int)$_POST['acceptTrades']    : 0; // 0/1
   $priceNego = isset($_POST['priceNegotiable']) ? (int)$_POST['priceNegotiable'] : 0; // 0/1
@@ -102,7 +102,7 @@ try {
     $errors['description'] = 'Description cannot exceed 1000 characters.';
   }
 
-  if ($priceStr === '' || !is_numeric($priceStr) || $price < 0.01) {
+  if ($priceStr === '' || $price === null || $price < 0.01) {
     $errors['price'] = 'Price must be at least $0.01.';
   } elseif ($price > 9999.99) {
     $errors['price'] = 'Price must be $9999.99 or less.';

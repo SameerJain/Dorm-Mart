@@ -89,7 +89,7 @@ function ReviewCard({ review }) {
         </div>
         <StarRating rating={review.rating} />
       </div>
-      <p className="text-sm leading-relaxed text-slate-700 dark:text-gray-300">
+      <p className="text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words break-all overflow-hidden">
         {review.review}
       </p>
       {attachments.length > 0 && (
@@ -351,7 +351,7 @@ function PublicProfilePage() {
             </div>
           </div>
           {profile.bio && (
-            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words overflow-wrap-anywhere">
+            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words break-all overflow-wrap-anywhere">
               {profile.bio}
             </p>
           )}

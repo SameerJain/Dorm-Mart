@@ -2,7 +2,7 @@ import { MAX_LISTING_PRICE } from "../../../utils/priceValidation";
 
 export const CATEGORIES_MAX = 3;
 export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
-export const PRICE_INPUT_PATTERN = /^\d*\.?\d*$/;
+export const PRICE_INPUT_PATTERN = /^\d{0,4}(?:\.\d{0,2})?$/;
 export const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",

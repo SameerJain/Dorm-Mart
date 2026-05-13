@@ -30,7 +30,7 @@ export default function ListingSuccessModal({
       aria-modal="true"
       aria-labelledby="success-title"
     >
-      <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+      <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
         <div className="px-6 pt-6">
           <h2
             id="success-title"

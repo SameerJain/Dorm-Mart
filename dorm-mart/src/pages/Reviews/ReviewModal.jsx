@@ -336,7 +336,7 @@ function ReviewModal({
       }}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full flex flex-col"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{
           maxHeight: "90vh",
@@ -446,14 +446,7 @@ function ReviewModal({
                   Review <span className="text-red-500">*</span>
                 </label>
                 <div
-                  className="overflow-hidden border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
-                  style={{
-                    borderRadius: "0.5rem",
-                    borderTopLeftRadius: "0.5rem",
-                    borderTopRightRadius: "0.5rem",
-                    borderBottomLeftRadius: "0.5rem",
-                    borderBottomRightRadius: "0.5rem",
-                  }}
+                  className="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
                 >
                   <textarea
                     id="review-text"
@@ -628,13 +621,7 @@ function ReviewModal({
                   Review
                 </label>
                 <div
-                  className="review-text-rounded p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
-                  style={{
-                    borderRadius: "0.5rem",
-                    WebkitBorderRadius: "0.5rem",
-                    MozBorderRadius: "0.5rem",
-                    overflow: "hidden",
-                  }}
+                  className="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden"
                 >
                   <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all">
                     {reviewText}
@@ -682,7 +669,7 @@ function ReviewModal({
           }}
         >
           <div
-            className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700"
+            className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 pt-6">

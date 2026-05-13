@@ -24,6 +24,21 @@ const HOME_FAQ_ITEMS = [
     answer:
       'You may not have set interested categories, or no listings match them yet. Try adding more or switch to "Explore More."',
   },
+  {
+    question: "How do I contact a seller?",
+    answer:
+      'Open the item detail page and click "Message Seller" to start a chat.',
+  },
+  {
+    question: 'What does "Price Negotiable" mean?',
+    answer:
+      "The seller is open to offers. Message them to discuss a different price.",
+  },
+  {
+    question: 'What does "Open to Trades" mean?',
+    answer:
+      "The seller may accept an item swap instead of cash. Reach out via chat to propose a trade.",
+  },
 ];
 
 function HomeFAQ() {

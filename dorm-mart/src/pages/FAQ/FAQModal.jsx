@@ -1,35 +1,29 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { TABS } from "./faqUtils";
 import HomeFAQ from "./HomeFAQ";
 import ChatFAQ from "./ChatFAQ";
 import SellerDashboardFAQ from "./SellerDashboardFAQ";
 import PurchasesFAQ from "./PurchasesFAQ";
 import ReviewsFAQ from "./ReviewsFAQ";
 import SettingsFAQ from "./SettingsFAQ";
-import BrowsingFAQ from "./BrowsingFAQ";
-
-const TABS = [
-  { id: "home", label: "Home" },
-  { id: "browsing", label: "Browsing" },
-  { id: "chat", label: "Chat" },
-  { id: "purchases", label: "Purchases" },
-  { id: "reviews", label: "Reviews" },
-  { id: "seller", label: "Seller Dashboard" },
-  { id: "settings", label: "Settings" },
-];
+import WishlistFAQ from "./WishlistFAQ";
+import NotificationsFAQ from "./NotificationsFAQ";
+import ProfileFAQ from "./ProfileFAQ";
 
 const TAB_CONTENT = {
   home: <HomeFAQ />,
-  browsing: <BrowsingFAQ />,
+  wishlist: <WishlistFAQ />,
   chat: <ChatFAQ />,
   purchases: <PurchasesFAQ />,
   reviews: <ReviewsFAQ />,
   seller: <SellerDashboardFAQ />,
+  notifications: <NotificationsFAQ />,
+  profile: <ProfileFAQ />,
   settings: <SettingsFAQ />,
 };
 
-function FAQModal({ isOpen, onClose }) {
-  const [activeView, setActiveView] = useState("home");
+function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -111,15 +105,16 @@ function FAQModal({ isOpen, onClose }) {
               border-r border-gray-200 dark:border-gray-700
               pr-4
               flex-none
+              overflow-y-auto
             "
           >
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveView(tab.id)}
+                onClick={() => onTabChange(tab.id)}
                 className={`
-                  w-full text-left px-4 py-2 text-base rounded-md border
+                  w-full text-left px-4 py-2 text-base rounded-lg border
                   ${
                     activeView === tab.id
                       ? "bg-blue-600 text-white border-blue-600"
@@ -140,7 +135,7 @@ function FAQModal({ isOpen, onClose }) {
                 onClick={handleOpenFaqsPage}
                 className="
                   px-3 py-1.5
-                  rounded-md
+                  rounded-lg
                   text-sm
                   bg-blue-600 text-white
                   hover:bg-blue-700

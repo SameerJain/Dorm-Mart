@@ -9,6 +9,7 @@ import homeIcon from "../../assets/icons/icons8-home-96.png";
 import questionIcon from "../../assets/icons/icons8-question-mark-96.png";
 import Icon from "./Icon";
 import { ChatContext } from "../../context/ChatContext";
+import { getTabForPath } from "../../pages/FAQ/faqUtils.js";
 
 // Main navigation bar component with search, notifications, chat, and menu dropdowns
 function MainNav() {
@@ -393,7 +394,9 @@ function MainNav() {
 
               <button
                 onClick={() => {
-                  navigate("/app/faq");
+                  navigate("/app/faq", {
+                    state: { defaultTab: getTabForPath(location.pathname) },
+                  });
                   closeMobileMenuAndMarket();
                 }}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left text-white transition-colors hover:bg-blue-700 dark:text-slate-100 dark:hover:bg-blue-700"
