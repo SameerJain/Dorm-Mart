@@ -407,7 +407,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
                 >
                   Reason
                 </p>
-                <p className={`text-sm font-medium ${visual.textColor}`}>
+                <p className={`text-sm font-medium break-words ${visual.textColor}`}>
                   {failureReasonLabel}
                 </p>
                 {failureReasonNotes && (

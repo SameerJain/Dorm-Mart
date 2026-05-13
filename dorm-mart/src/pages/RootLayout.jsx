@@ -1,10 +1,13 @@
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useEffect, useState, useContext } from "react";
+import { Outlet, useNavigate, useLocation, useMatches } from "react-router-dom";
+import { useEffect, useState, useContext, createContext } from "react";
 import MainNav from "../components/MainNav/MainNav";
 import { fetchMe } from "../utils/handleAuth.js";
 import { loadUserTheme } from "../utils/loadTheme.js";
 import { ChatContext } from "../context/ChatContext.jsx";
 import FAQModal from "./FAQ/FAQModal.jsx";
+import { getTabForPath } from "./FAQ/faqUtils.js";
+
+export const RootLayoutContext = createContext(false);
 
 function RootLayout() {
   const navigate = useNavigate();
@@ -12,16 +15,22 @@ function RootLayout() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const isChatPage = location.pathname.startsWith("/app/chat");
+  const matches = useMatches();
+  const isNotFoundRoute = matches.some((m) => m.handle?.isNotFound);
   const chatContext = useContext(ChatContext);
   // Check if we're viewing a conversation (activeConvId exists) or the list (no activeConvId)
   const isViewingConversation = chatContext?.activeConvId != null;
 
   const [isFAQModalOpen, setIsFAQModalOpen] = useState(false);
+  const [faqActiveView, setFaqActiveView] = useState("home");
+  const [faqPath, setFaqPath] = useState(null);
 
   const handleFAQClick = (event) => {
-    // Remove focus from the button after click
     event.currentTarget.blur();
-    // Open the FAQ modal
+    if (location.pathname !== faqPath) {
+      setFaqActiveView(getTabForPath(location.pathname));
+      setFaqPath(location.pathname);
+    }
     setIsFAQModalOpen(true);
   };
 
@@ -80,45 +89,54 @@ function RootLayout() {
   }
 
   return (
-    <>
-      {/* Show navbar on mobile for chat list, hide for individual conversations */}
-      <div
-        className={isChatPage && isViewingConversation ? "hidden md:block" : ""}
-      >
-        <MainNav />
-      </div>
+    <RootLayoutContext.Provider value={true}>
+      {/* Show navbar on mobile for chat list, hide for individual conversations.
+          404 routes render their own MainNav, so suppress it here. */}
+      {!isNotFoundRoute && (
+        <div
+          className={isChatPage && isViewingConversation ? "hidden md:block" : ""}
+        >
+          <MainNav />
+        </div>
+      )}
       <Outlet />
 
-      {/* FAQ button + modal only on md and larger */}
-      {/* `hidden md:block` hides everything inside this wrapper on small screens */}
-      <div className="hidden md:block">
-        <button
-          type="button"
-          onClick={handleFAQClick}
-          className="
-            fixed bottom-7 right-7 z-50
-            h-12 w-12 flex items-center justify-center
-            rounded-full shadow-lg
-            bg-blue-600 text-white
-            hover:bg-blue-700
-            dark:bg-blue-500 dark:hover:bg-blue-900
-            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
-            qna-bounce-z
-            transition-transform
-          "
-          aria-label="FAQ"
-        >
-          <span
-            className="text-xl font-normal leading-none select-none"
-            aria-hidden
+      {/* FAQ button + modal only on md and larger, hidden on the FAQ page itself */}
+      {location.pathname !== "/app/faq" && (
+        <div className="hidden md:block">
+          <button
+            type="button"
+            onClick={handleFAQClick}
+            className="
+              fixed bottom-7 right-7 z-50
+              h-12 w-12 flex items-center justify-center
+              rounded-full shadow-lg
+              bg-blue-600 text-white
+              hover:bg-blue-700
+              dark:bg-blue-500 dark:hover:bg-blue-900
+              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+              qna-bounce-z
+              transition-transform
+            "
+            aria-label="FAQ"
           >
-            ?
-          </span>
-        </button>
+            <span
+              className="text-xl font-normal leading-none select-none"
+              aria-hidden
+            >
+              ?
+            </span>
+          </button>
 
-        <FAQModal isOpen={isFAQModalOpen} onClose={handleCloseFAQ} />
-      </div>
-    </>
+          <FAQModal
+            isOpen={isFAQModalOpen}
+            onClose={handleCloseFAQ}
+            activeView={faqActiveView}
+            onTabChange={setFaqActiveView}
+          />
+        </div>
+      )}
+    </RootLayoutContext.Provider>
   );
 }
 

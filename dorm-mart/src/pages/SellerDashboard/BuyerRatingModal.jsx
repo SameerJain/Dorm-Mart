@@ -212,11 +212,11 @@ function BuyerRatingModal({
       }}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full overflow-hidden"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             {existingRating ? "Buyer Rating" : "Rate Buyer"}
           </h2>
@@ -273,13 +273,7 @@ function BuyerRatingModal({
                     Review
                   </label>
                   <div
-                    className="review-text-rounded p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 min-w-0 overflow-hidden"
-                    style={{
-                      borderRadius: "0.5rem",
-                      WebkitBorderRadius: "0.5rem",
-                      MozBorderRadius: "0.5rem",
-                      overflow: "hidden",
-                    }}
+                    className="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 min-w-0 overflow-hidden"
                   >
                     <p
                       className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all overflow-wrap-anywhere"
@@ -338,14 +332,7 @@ function BuyerRatingModal({
                   Review (Optional)
                 </label>
                 <div
-                  className="overflow-hidden border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 min-w-0"
-                  style={{
-                    borderRadius: "0.5rem",
-                    borderTopLeftRadius: "0.5rem",
-                    borderTopRightRadius: "0.5rem",
-                    borderBottomLeftRadius: "0.5rem",
-                    borderBottomRightRadius: "0.5rem",
-                  }}
+                  className="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 min-w-0"
                 >
                   <textarea
                     id="buyer-review-text"
@@ -427,7 +414,7 @@ function BuyerRatingModal({
           }}
         >
           <div
-            className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700"
+            className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 pt-6">

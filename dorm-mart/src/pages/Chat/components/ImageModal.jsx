@@ -118,7 +118,7 @@ export default function ImageModal({
       aria-labelledby={labelledBy}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl"
+        className="w-full max-w-sm rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -133,7 +133,7 @@ export default function ImageModal({
             ref={closeBtnRef}
             onClick={handleClose}
             aria-label="Close"
-            className="rounded-md p-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="rounded-lg p-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <svg
               viewBox="0 0 24 24"

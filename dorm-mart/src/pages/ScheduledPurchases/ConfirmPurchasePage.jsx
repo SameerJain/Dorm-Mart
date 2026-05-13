@@ -369,6 +369,7 @@ export default function ConfirmPurchasePage() {
                       inputMode="decimal"
                       value={finalPrice}
                       disabled={disableForm}
+                      maxLength={7}
                       onKeyDown={decimalNumericKeyDownHandler}
                       onChange={(e) => {
                         const value = e.target.value;
@@ -376,7 +377,7 @@ export default function ConfirmPurchasePage() {
                           setFinalPrice("");
                           return;
                         }
-                        if (!/^\d*\.?\d*$/.test(value)) return;
+                        if (!/^\d{0,4}(?:\.\d{0,2})?$/.test(value)) return;
                         const numValue = parseFloat(value);
                         if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
                           setFinalPrice(value);

@@ -157,7 +157,14 @@ export const router = createHashRouter([
       { path: "*", element: <NotFoundPage /> },
     ],
   },
-  { path: "*", element: <NotFoundPage /> },
+  {
+    path: "*",
+    element: (
+      <ChatProvider>
+        <NotFoundPage />
+      </ChatProvider>
+    ),
+  },
 ]);
 
 function App() {

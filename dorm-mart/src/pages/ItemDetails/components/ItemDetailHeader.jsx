@@ -12,7 +12,7 @@ export default function ItemDetailHeader({
       <div className="flex justify-start">
         <PageBackButton onClick={onBack} />
       </div>
-      <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 text-center">
+      <h1 className="min-w-0 text-center text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 break-words break-all">
         {title}
       </h1>
       <div className="flex items-center gap-2 justify-end">

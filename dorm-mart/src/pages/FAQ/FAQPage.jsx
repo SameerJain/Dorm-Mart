@@ -1,36 +1,35 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { TABS } from "./faqUtils";
+import PageBackButton from "../../components/PageBackButton";
 import HomeFAQ from "./HomeFAQ";
 import ChatFAQ from "./ChatFAQ";
 import SellerDashboardFAQ from "./SellerDashboardFAQ";
 import PurchasesFAQ from "./PurchasesFAQ";
 import ReviewsFAQ from "./ReviewsFAQ";
 import SettingsFAQ from "./SettingsFAQ";
-import BrowsingFAQ from "./BrowsingFAQ";
-
-const TABS = [
-  { id: "home", label: "Home" },
-  { id: "browsing", label: "Browsing" },
-  { id: "chat", label: "Chat" },
-  { id: "purchases", label: "Purchases" },
-  { id: "reviews", label: "Reviews" },
-  { id: "seller", label: "Seller Dashboard" },
-  { id: "settings", label: "Settings" },
-];
+import WishlistFAQ from "./WishlistFAQ";
+import NotificationsFAQ from "./NotificationsFAQ";
+import ProfileFAQ from "./ProfileFAQ";
 
 const TAB_CONTENT = {
   home: <HomeFAQ />,
-  browsing: <BrowsingFAQ />,
+  wishlist: <WishlistFAQ />,
   chat: <ChatFAQ />,
   purchases: <PurchasesFAQ />,
   reviews: <ReviewsFAQ />,
   seller: <SellerDashboardFAQ />,
+  notifications: <NotificationsFAQ />,
+  profile: <ProfileFAQ />,
   settings: <SettingsFAQ />,
 };
 
 function FAQPage() {
-  const [activeView, setActiveView] = useState("home");
   const navigate = useNavigate();
+  const location = useLocation();
+  const [activeView, setActiveView] = useState(
+    location.state?.defaultTab ?? "home"
+  );
 
   const handleCloseFAQ = () => {
     navigate(-1);
@@ -66,21 +65,7 @@ function FAQPage() {
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">
             Frequently Asked Questions
           </h2>
-          <button
-            type="button"
-            onClick={handleCloseFAQ}
-            aria-label="Go back"
-            className="
-              text-gray-500 hover:text-gray-700
-              dark:text-gray-400 dark:hover:text-gray-200
-              text-sm sm:text-base leading-none
-              px-2.5 sm:px-3 py-1.5
-              border border-gray-300 dark:border-gray-600
-              rounded-md
-            "
-          >
-            &larr; Back
-          </button>
+          <PageBackButton onClick={handleCloseFAQ} />
         </div>
 
         {/* body */}
@@ -105,7 +90,7 @@ function FAQPage() {
                 type="button"
                 onClick={() => setActiveView(tab.id)}
                 className={`
-                  flex-1 md:flex-none
+                  flex-shrink-0 md:flex-none
                   text-left px-3 sm:px-4 py-2 text-sm sm:text-base rounded-md border
                   whitespace-nowrap
                   ${

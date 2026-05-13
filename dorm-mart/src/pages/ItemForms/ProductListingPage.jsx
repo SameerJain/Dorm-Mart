@@ -396,6 +396,8 @@ function ProductListingPage() {
     } else if (containsMemePrice(price)) {
       newErrors.price =
         "The price has a meme input in it. Please try a different price.";
+    } else if (!Number.isFinite(Number(price))) {
+      newErrors.price = "Please enter a valid price";
     } else if (Number(price) < LIMITS.priceMin) {
       newErrors.price = `Minimum price is $${LIMITS.priceMin.toFixed(2)}`;
     } else if (Number(price) > LIMITS.price) {

@@ -29,9 +29,15 @@ try {
         json_response(['success' => false, 'error' => 'Invalid is_successful value'], 400);
     }
 
-    $finalPrice = isset($payload['final_price']) && $payload['final_price'] !== ''
-        ? (float)$payload['final_price']
-        : null;
+    $finalPriceRaw = $payload['final_price'] ?? null;
+    $finalPrice = null;
+    if ($finalPriceRaw !== null && $finalPriceRaw !== '') {
+        $finalPriceString = trim((string)$finalPriceRaw);
+        if (!preg_match('/^(?:\d{1,4}(?:\.\d{1,2})?|\.\d{1,2})$/', $finalPriceString)) {
+            json_response(['success' => false, 'error' => 'Invalid final price'], 400);
+        }
+        $finalPrice = (float)$finalPriceString;
+    }
     if ($finalPrice !== null && ($finalPrice < 0 || $finalPrice > 9999.99)) {
         json_response(['success' => false, 'error' => 'Final price must be between 0 and 9,999.99'], 400);
     }

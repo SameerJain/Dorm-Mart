@@ -390,6 +390,7 @@ export default function ListingForm({
                   type="text"
                   inputMode="decimal"
                   value={price}
+                  maxLength={7}
                   onKeyDown={decimalNumericKeyDownHandler}
                   onChange={(e) => {
                     const value = e.target.value;

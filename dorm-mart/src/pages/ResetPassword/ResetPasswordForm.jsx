@@ -31,6 +31,7 @@ function Field({
   onChange,
   placeholder,
   disabled = false,
+  maxLength,
 }) {
   return (
     <div className="mb-6">
@@ -47,6 +48,7 @@ function Field({
         placeholder={placeholder}
         onChange={onChange}
         disabled={disabled}
+        maxLength={maxLength}
         className={`min-h-[44px] w-full rounded-lg border-2 px-4 sm:px-5 py-3 sm:py-3.5 text-base sm:text-lg outline-none focus:ring-4 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg ${
           disabled
             ? "border-gray-400 bg-gray-200 text-gray-500 cursor-not-allowed"
@@ -368,6 +370,7 @@ function ResetPasswordForm() {
                     onChange={enforceMax(setNewPassword)}
                     placeholder="Enter new password"
                     disabled={!isTokenValid || isVerifyingToken}
+                    maxLength={MAX_LEN}
                   />
                   <Field
                     id="confirmPassword"
@@ -376,6 +379,7 @@ function ResetPasswordForm() {
                     onChange={enforceMax(setConfirmPassword)}
                     placeholder="Re-enter new password"
                     disabled={!isTokenValid || isVerifyingToken}
+                    maxLength={MAX_LEN}
                   />
 
                   <button
