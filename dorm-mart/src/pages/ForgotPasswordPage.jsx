@@ -12,8 +12,6 @@ function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
-  const BACKDOOR_KEYWORD = "testflow"; // typing this as the email triggers the confirmation page for testing
-
   async function sendForgotPasswordRequest(email, signal) {
     const r = await fetch(`${API_BASE}/auth/forgot_password.php`, {
       method: "POST",
@@ -30,12 +28,6 @@ function ForgotPasswordPage() {
 
     // Clear any previous errors immediately
     setError("");
-
-    // Testing backdoor: allow quick navigation to confirmation page
-    if (email.trim().toLowerCase() === BACKDOOR_KEYWORD) {
-      navigate("/forgot-password/confirmation");
-      return;
-    }
 
     const valid = emailValidation(email);
     if (!valid) {
@@ -152,6 +144,7 @@ function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     maxLength={255}
+                    required
                     className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 text-base sm:text-lg md:text-xl bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                   />
                 </div>
