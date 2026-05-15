@@ -135,13 +135,10 @@ function send_welcome_gmail(array $user, string $tempPassword): array
 
     // Check for SendGrid API key first (Railway option)
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
-    error_log("DEBUG: Checking SendGrid API key for welcome email. Key exists: " . (!empty($sendgridApiKey) ? 'yes' : 'no'));
     if (!empty($sendgridApiKey)) {
         // Use SendGrid REST API for Railway
-        error_log("DEBUG: Using SendGrid for welcome email to: " . $user['email']);
         return send_welcome_email_via_sendgrid($user, $tempPassword, $sendgridApiKey);
     }
-    error_log("DEBUG: SendGrid API key not found, falling back to PHPMailer");
 
     // Ensure PHP is using UTF-8 internally
     if (function_exists('mb_internal_encoding')) {

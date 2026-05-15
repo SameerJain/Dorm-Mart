@@ -168,9 +168,14 @@ try {
   // Process new image uploads
   $newImageUrls = [];
   if (!empty($_FILES['images']) && is_array($_FILES['images']['tmp_name'])) {
-    $maxFiles   = 6;
-    $maxSizeB   = 2 * 1024 * 1024; // 2MB
-    $allowedExt = ['jpg','jpeg','png','webp'];
+    $maxFiles        = 6;
+    $maxSizeB        = 2 * 1024 * 1024; // 2MB
+    $allowedMimeExts = [
+      'image/jpeg' => 'jpg',
+      'image/png'  => 'png',
+      'image/webp' => 'webp',
+    ];
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
     $cnt = 0;
 
     foreach ($_FILES['images']['tmp_name'] as $i => $tmpPath) {
@@ -181,9 +186,9 @@ try {
       $sz = @filesize($tmpPath);
       if ($sz !== false && $sz > $maxSizeB) continue;
 
-      $origName = (string)($_FILES['images']['name'][$i] ?? '');
-      $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
-      if (!in_array($ext, $allowedExt, true)) { $ext = 'jpg'; }
+      $mime = $finfo->file($tmpPath) ?: 'application/octet-stream';
+      if (!isset($allowedMimeExts[$mime])) continue;
+      $ext = $allowedMimeExts[$mime];
 
       $fname = uniqid('img_', true) . '.' . $ext;
       if (move_uploaded_file($tmpPath, $imageDirFs . $fname)) {
