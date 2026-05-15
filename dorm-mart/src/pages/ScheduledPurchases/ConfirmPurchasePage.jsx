@@ -9,8 +9,6 @@ import {
   formatDateTime as formatSharedDateTime,
 } from "../../utils/formatters";
 import { MAX_LISTING_PRICE } from "../../utils/priceValidation";
-import { containsXssPattern } from "../../utils/inputValidation";
-
 // Price limits - max matches ProductListingPage and SchedulePurchasePage exactly
 const PRICE_LIMITS = {
   max: MAX_LISTING_PRICE,
@@ -129,16 +127,6 @@ export default function ConfirmPurchasePage() {
     event.preventDefault();
     if (!prefill) return;
     setFormError("");
-
-    if (sellerNotes.trim() && containsXssPattern(sellerNotes)) {
-      setFormError("Invalid characters in seller notes.");
-      return;
-    }
-
-    if (failureReasonNotes.trim() && containsXssPattern(failureReasonNotes)) {
-      setFormError("Invalid characters in failure reason notes.");
-      return;
-    }
 
     if (finalPrice !== "" && Number.isNaN(Number(finalPrice))) {
       setFormError("Final price must be a valid number.");

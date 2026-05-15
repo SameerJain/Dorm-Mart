@@ -316,40 +316,17 @@ function load_legacy_purchased_items(mysqli $conn, int $userId, string $start, s
     $stmt->execute();
     $res = $stmt->get_result();
 
-    // Get product IDs to fetch metadata
-    $productIds = [];
-    $tempRows = [];
-    while ($row = $res->fetch_assoc()) {
-        $productIds[] = (int)$row['item_id'];
-        $tempRows[(int)$row['item_id']] = [
-            'item_id' => (int)$row['item_id'],
-            'title' => $row['title'] ?? '',
-            'sold_by' => $row['sold_by'] ?? '',
-            'transacted_at' => $row['transacted_at'] ?? '',
-            'image_url' => format_purchase_history_image_url($row['image_url'] ?? ''),
-        ];
-    }
-
-    // Load metadata for legacy items
-    $metadata = [];
-    if (!empty($productIds)) {
-        try {
-            $metadata = load_inventory_metadata($conn, $productIds);
-        } catch (Throwable $metaError) {
-            // If metadata loading fails, continue without it
-            error_log('Failed to load inventory metadata for legacy items: ' . $metaError->getMessage());
-            $metadata = [];
-        }
-    }
-
-    // Merge metadata into rows
     $rows = [];
-    foreach ($tempRows as $itemId => $row) {
-        $meta = $metadata[$itemId] ?? [];
-        $rows[] = array_merge($row, [
-            'categories' => $meta['categories'] ?? [],
-            'price' => $meta['price'] ?? null,
-        ]);
+    while ($row = $res->fetch_assoc()) {
+        $rows[] = [
+            'item_id'      => (int)$row['item_id'],
+            'title'        => $row['title'] ?? '',
+            'sold_by'      => $row['sold_by'] ?? '',
+            'transacted_at' => $row['transacted_at'] ?? '',
+            'image_url'    => format_purchase_history_image_url($row['image_url'] ?? ''),
+            'categories'   => [],
+            'price'        => null,
+        ];
     }
 
     $stmt->close();

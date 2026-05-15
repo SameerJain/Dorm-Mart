@@ -85,7 +85,6 @@ try {
             'created_at' => $createdAt,
             'seller'     => $seller,
             'sold_by'    => $seller,
-            'rating'     => 4.7,
             'status'     => $status,
             'trades'     => (bool)$row['trades'],
             'price_nego' => (bool)$row['price_nego'],

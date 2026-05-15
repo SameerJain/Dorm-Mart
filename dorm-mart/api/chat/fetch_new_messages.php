@@ -1,18 +1,16 @@
 <?php
 
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
 
+auth_boot_session();
+$userId = require_login();
+
 $conn = db();
 $conn->query("SET time_zone = '+00:00'");
-
-session_start(); 
-$userId = (int)($_SESSION['user_id'] ?? 0);
-if ($userId <= 0) {
-    json_response(['success' => false, 'error' => 'Not authenticated'], 401);
-}
 
 $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
 $tsSec  = isset($_GET['ts']) ? (int)$_GET['ts'] : 0;

@@ -6,9 +6,9 @@ This document is for teammates returning to Dorm Mart after the last main sprint
 
 - **Baseline being compared against:** commit `fec6ac5` by IkeSvit.
 - **Downloaded baseline folder used for comparison:** `C:\Users\samee\Downloads\Dorm-Mart-fec6ac5f9ba28f089e045a2168794218c78a5233`.
-- **Current project version:** branch `railway-deployment` at commit `571b336`.
+- **Current project version:** branch `railway-deployment` at commit `e2cdc6c`.
 - **Important:** this document also includes the current uncommitted local edits in the working tree, not just committed Git history.
-- **Scale of change:** the Git diff from `fec6ac5` to `571b336` is very large: hundreds of files changed, including frontend pages, backend APIs, migrations, seed data, deployment files, dependencies, and media cleanup.
+- **Scale of change:** the Git diff from `fec6ac5` to `e2cdc6c` is very large: hundreds of files changed, including frontend pages, backend APIs, migrations, seed data, deployment files, dependencies, and media cleanup.
 - **How this is organized:** page-by-page first, then cross-cutting backend, deployment, data, and codebase changes.
 
 This is meant to help you understand the project as it exists now before taking new work. It is not a raw diff dump. Generated files, vendor dependency churn, image files, and bulk media changes are summarized instead of listed one by one.
@@ -744,17 +744,14 @@ This comparison includes a lot of dependency, vendor, generated, and media churn
 
 ## Current uncommitted local edits included in this handoff
 
-At the time this document was created, the working tree had four modified tracked files. These are part of the current version teammates will see:
+At the time this document was updated, the working tree had 25 modified tracked files. Main points only:
 
-- `dorm-mart/api/auth/create_account.php`
-  - Removed extra SendGrid debug log lines from welcome-email selection.
-- `dorm-mart/api/seller_dashboard/product_listing.php`
-  - Listing image upload now checks actual MIME type and maps allowed MIME types to extensions, instead of trusting the original filename extension.
-- `dorm-mart/src/pages/ForgotPasswordPage.jsx`
-  - Removed the `testflow` testing keyword/backdoor.
-  - Added required-field behavior to the email input.
-- `dorm-mart/src/pages/LoginPage.jsx`
-  - Added required-field behavior to email and password inputs.
+- Pre-login routing now uses a shared `PreLoginLayout` to suppress dark mode on public pages. The old per-component/global CSS workaround was removed.
+- Auth/email cleanup: removed extra reset-email debug logs, added PHPMailer SSL options for local SMTP, made forgot-password rate limiting return the same generic success message, and made create-account graduation year use the current year plus 8.
+- Validation cleanup: several frontend/backend XSS-pattern checks were removed where normal validation/escaping is expected to handle input. Length, numeric, price, category, and enum guards still remain.
+- Chat cleanup: polling errors now log instead of stopping polling, image messages revive deleted conversations, typing status checks conversation membership, and schedule-card action errors show inline instead of using `alert`.
+- Listing/search/purchase fixes: new listing response returns the actual inserted product id, search categories now load from `categories.json`, fake home listing rating was removed, and search no longer client-sorts results after the API returns them.
+- Small UI/form fixes were made in login, create account, reset password, product listing, scheduled purchase, confirm purchase, and search pages.
 
 ## Things to know before working again
 
@@ -767,4 +764,3 @@ At the time this document was created, the working tree had four modified tracke
 - API test files were quick-fixed and moved, but they are not fully cleaned up.
 - Build scripts can clear target folders under `C:\xampp\htdocs`; do not run package scripts casually unless you intend to rebuild those folders.
 - The README and setup docs were updated, but this handoff is the best first read for understanding what changed since the sprint baseline.
-

@@ -6,7 +6,6 @@ import PreLoginNavLinks from "../../components/PreLoginNavLinks";
 import { integerNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
 import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
 import { useEmailPolicy } from "../../hooks/useEmailPolicy";
-import { containsXssPattern } from "../../utils/inputValidation";
 
 // Stable URLs (no webpack content hash) so the PDF viewer shows clean filenames
 const termsPdf = `${PUBLIC_BASE}/pdfs/terms-and-conditions.pdf`;
@@ -76,18 +75,14 @@ function CreateAccountPage() {
     const email = formData.email.trim();
 
     if (!first) newErrors.firstName = "First name is required";
-    else if (containsXssPattern(first)) {
-      newErrors.firstName = "Invalid characters in first name";
-    } else if (!/^[a-zA-Z\s-]+$/.test(first)) {
+    else if (!/^[a-zA-Z\s-]+$/.test(first)) {
       newErrors.firstName =
         "First name can only contain letters, spaces, and hyphens";
     } else if (first.length > 30)
       newErrors.firstName = "First name must be 30 characters or fewer";
 
     if (!last) newErrors.lastName = "Last name is required";
-    else if (containsXssPattern(last)) {
-      newErrors.lastName = "Invalid characters in last name";
-    } else if (!/^[a-zA-Z\s-]+$/.test(last)) {
+    else if (!/^[a-zA-Z\s-]+$/.test(last)) {
       newErrors.lastName =
         "Last name can only contain letters, spaces, and hyphens";
     } else if (last.length > 30)

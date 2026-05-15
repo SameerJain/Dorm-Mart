@@ -605,7 +605,7 @@ export function ChatProvider({ children }) {
           }
         }
       } catch (e) {
-        stopPolling();
+        if (e.name !== "AbortError") logger.error("tickFetchUnreadMessages error:", e);
       } finally {
         controller.abort();
       }
@@ -645,7 +645,7 @@ export function ChatProvider({ children }) {
         setUnreadNotificationsByProduct(unreads || {});
         setUnreadNotificationTotal(Number(total) || 0);
       } catch (e) {
-        stopPolling();
+        if (e.name !== "AbortError") logger.error("tickFetchUnreadNotifications error:", e);
       } finally {
         controller.abort();
       }

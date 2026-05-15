@@ -32,11 +32,6 @@ try {
     $qRaw      = isset($body['q']) ? trim((string)$body['q']) : (isset($body['search']) ? trim((string)$body['search']) : '');
     $category  = isset($body['category']) ? trim((string)$body['category']) : '';
     
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if ($qRaw !== '' && contains_xss_pattern($qRaw)) {
-        json_response(['ok' => false, 'error' => 'Invalid characters in search query'], 400);
-    }
-    
     $q = $qRaw;
     if (mb_strlen($q) > 200) {
         json_response(['ok' => false, 'error' => 'Search query too long'], 400);
@@ -61,12 +56,9 @@ try {
     $location  = isset($body['location']) ? trim((string)$body['location']) : '';
     $ALLOWED_CONDITIONS = ['Like New', 'Excellent', 'Good', 'Fair', 'For Parts'];
     $ALLOWED_LOCATIONS  = ['North Campus', 'South Campus', 'Ellicott', 'Other'];
-    $ALLOWED_CATEGORIES = [
-        'Electronics', 'Outdoors', 'Digital', 'Hearing', 'Gaming', 'Office',
-        'School', 'Utility', 'Bathroom', 'Bed', 'Clothing', 'Stationary',
-        'Games', 'Food', 'Kitchen', 'Furniture', 'Books', 'Decor',
-        'Dorm Essentials', 'Health', 'Misc.',
-    ];
+    $ALLOWED_CATEGORIES = json_decode(
+        file_get_contents(__DIR__ . '/../categories/categories.json'), true
+    ) ?? [];
     $categories = array_values(array_filter($categories, fn($c) => in_array($c, $ALLOWED_CATEGORIES, true)));
     if ($condition !== '' && !in_array($condition, $ALLOWED_CONDITIONS, true)) {
         json_response(['ok' => false, 'error' => 'Invalid condition value'], 400);

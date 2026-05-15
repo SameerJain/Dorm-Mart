@@ -46,11 +46,6 @@ try {
     if (strlen($sellerNotes) > 2000) {
         json_response(['success' => false, 'error' => 'Notes cannot exceed 2000 characters'], 400);
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if ($sellerNotes !== '' && contains_xss_pattern($sellerNotes)) {
-        json_response(['success' => false, 'error' => 'Invalid characters in seller notes'], 400);
-    }
-
     $failureReason = isset($payload['failure_reason']) ? trim((string)$payload['failure_reason']) : null;
     $failureReasonNotes = isset($payload['failure_reason_notes']) ? trim((string)$payload['failure_reason_notes']) : null;
     $validFailureReasons = ['buyer_no_show', 'insufficient_funds', 'other'];
@@ -70,10 +65,6 @@ try {
         }
         if ($failureReasonNotes !== null && strlen($failureReasonNotes) > 1000) {
             json_response(['success' => false, 'error' => 'Failure notes cannot exceed 1000 characters'], 400);
-        }
-        // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-        if ($failureReasonNotes !== null && $failureReasonNotes !== '' && contains_xss_pattern($failureReasonNotes)) {
-            json_response(['success' => false, 'error' => 'Invalid characters in failure reason notes'], 400);
         }
     }
 

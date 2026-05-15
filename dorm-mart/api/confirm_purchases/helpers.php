@@ -154,10 +154,7 @@ function delete_confirm_request_message(mysqli $conn, int $conversationId, int $
         }
 
         $deleteStmt->bind_param('i', $originalMsgId);
-        if ($deleteStmt->execute()) {
-            $deleted = $deleteStmt->affected_rows > 0;
-            error_log('Deleted original confirm_request message' . $logContext . ': message_id=' . $originalMsgId . ', deleted=' . ($deleted ? 'yes' : 'no'));
-        } else {
+        if (!$deleteStmt->execute()) {
             error_log('Failed to execute confirm message deletion' . $logContext . ': ' . $deleteStmt->error);
         }
         $deleteStmt->close();

@@ -10,7 +10,6 @@ import { csrfFetch } from "../../utils/csrfFetch";
 import { resolveProductPhotoUrl } from "../../utils/imageFallback";
 import logger from "../../utils/logger";
 import { containsMemePrice } from "../../utils/priceValidation";
-import { containsXssPattern } from "../../utils/inputValidation";
 import ListingForm from "./components/ListingForm";
 import ImageCropperModal from "./components/ImageCropperModal";
 import ListingStatusBanners from "./components/ListingStatusBanners";
@@ -377,16 +376,12 @@ function ProductListingPage() {
 
     if (!title.trim()) {
       newErrors.title = "Title is required";
-    } else if (containsXssPattern(title)) {
-      newErrors.title = "Invalid characters in title";
     } else if (title.length > LIMITS.title) {
       newErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
     }
 
     if (!description.trim()) {
       newErrors.description = "Description is required";
-    } else if (containsXssPattern(description)) {
-      newErrors.description = "Invalid characters in description";
     } else if (description.length > LIMITS.description) {
       newErrors.description = `Description must be ${LIMITS.description} characters or fewer`;
     }

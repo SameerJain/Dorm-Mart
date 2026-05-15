@@ -9,6 +9,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const messageType = metadata.type;
   const requestId = metadata.request_id;
   const [isResponding, setIsResponding] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   // Track local response status to update UI immediately after Accept/Deny
   // Initialize from messageType if already responded, or from metadata status/buyer_response_at
@@ -35,6 +36,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const handleAction = async (action) => {
     if (!requestId || isResponding || localResponseStatus !== null) return;
     setIsResponding(true);
+    setActionError("");
     try {
       const res = await csrfFetch(`${API_BASE}/scheduled_purchases/respond.php`, {
         method: "POST",
@@ -64,7 +66,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
       }
     } catch (error) {
       logger.error(`Failed to ${action}:`, error);
-      alert(error.message || `Failed to ${action} request. Please try again.`);
+      setActionError(error.message || `Failed to ${action} request. Please try again.`);
     } finally {
       setIsResponding(false);
     }
@@ -412,6 +414,10 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               </p>
             )}
           </div>
+        )}
+
+        {actionError && (
+          <p className="text-xs text-red-600 dark:text-red-400">{actionError}</p>
         )}
 
         {config.showActions && (

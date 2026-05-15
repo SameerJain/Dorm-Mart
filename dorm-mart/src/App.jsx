@@ -1,8 +1,34 @@
 // dorm-mart/src/App.jsx
 
 // essentials
-import { createHashRouter, RouterProvider, Navigate } from "react-router-dom";
+import { createHashRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
+import { useLayoutEffect } from "react";
 import RootLayout from "./pages/RootLayout";
+
+function PreLoginLayout() {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const hadDark = root.classList.contains("dark");
+    const prevScheme = root.style.colorScheme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prevColor = meta?.getAttribute("content") ?? null;
+
+    root.classList.remove("dark");
+    root.style.colorScheme = "light";
+    if (meta) meta.setAttribute("content", "#ffffff");
+
+    return () => {
+      if (hadDark) root.classList.add("dark");
+      root.style.colorScheme = prevScheme;
+      if (meta) {
+        if (prevColor === null) meta.removeAttribute("content");
+        else meta.setAttribute("content", prevColor);
+      }
+    };
+  }, []);
+
+  return <Outlet />;
+}
 // auth
 import LoginPage from "./pages/LoginPage";
 import WelcomePage from "./pages/WelcomePage";
@@ -41,21 +67,24 @@ import FAQPage from "./pages/FAQ/FAQPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 
 export const router = createHashRouter([
-  // Welcome page
-  { path: "/", element: <WelcomePage /> },
-
-  // Auth
-  { path: "/login", element: <LoginPage /> },
-  { path: "/create-account", element: <CreateAccount /> },
-  { path: "/forgot-password", element: <ForgotPasswordPage /> },
+  // Pre-login pages — dark mode suppressed for all children
   {
-    path: "/forgot-password/confirmation",
-    element: <ForgotPasswordConfirmation />,
-  },
-  { path: "/reset-password", element: <ResetPasswordForm /> },
-  {
-    path: "/reset-password/confirmation",
-    element: <ResetPasswordConfirmation />,
+    element: <PreLoginLayout />,
+    children: [
+      { path: "/", element: <WelcomePage /> },
+      { path: "/login", element: <LoginPage /> },
+      { path: "/create-account", element: <CreateAccount /> },
+      { path: "/forgot-password", element: <ForgotPasswordPage /> },
+      {
+        path: "/forgot-password/confirmation",
+        element: <ForgotPasswordConfirmation />,
+      },
+      { path: "/reset-password", element: <ResetPasswordForm /> },
+      {
+        path: "/reset-password/confirmation",
+        element: <ResetPasswordConfirmation />,
+      },
+    ],
   },
   // Main app
   {

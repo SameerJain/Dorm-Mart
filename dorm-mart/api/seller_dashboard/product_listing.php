@@ -353,7 +353,7 @@ try {
 
   echo json_encode([
     'ok'         => true,
-    'product_id' => $conn->insert_id,
+    'product_id' => $newProductId,
     'image_urls' => $imageUrls
   ]);
 

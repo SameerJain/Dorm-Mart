@@ -90,13 +90,9 @@ function send_password_reset_email(array $user, string $resetLink, string $envLa
 
     // Check for SendGrid API key first (Railway option)
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
-    error_log("DEBUG: Checking SendGrid API key. Key exists: " . (!empty($sendgridApiKey) ? 'yes' : 'no'));
     if (!empty($sendgridApiKey)) {
-        // Use SendGrid REST API for Railway
-        error_log("DEBUG: Using SendGrid for password reset email to: " . $user['email']);
         return send_password_reset_email_via_sendgrid($user, $resetLink, $sendgridApiKey);
     }
-    error_log("DEBUG: SendGrid API key not found, falling back to PHPMailer");
 
     // Ensure PHP is using UTF-8 internally (EXACT same as create_account.php)
     if (function_exists('mb_internal_encoding')) {
@@ -125,8 +121,15 @@ function send_password_reset_email(array $user, string $resetLink, string $envLa
 
         // Optimizations for faster email delivery
         $mail->Timeout = dm_smtp_timeout();
-        $mail->SMTPKeepAlive = false; // Close connection after sending
-        // Tell PHPMailer we are sending UTF-8 and how to encode it (EXACT same as create_account.php)
+        $mail->SMTPKeepAlive = false;
+        $mail->SMTPOptions = [
+            'ssl' => [
+                'verify_peer'       => false,
+                'verify_peer_name'  => false,
+                'allow_self_signed' => true,
+            ]
+        ];
+        // Tell PHPMailer we are sending UTF-8 and how to encode it
         $mail->CharSet   = 'UTF-8';
         $mail->Encoding  = 'base64';
 
@@ -251,10 +254,9 @@ try {
         $minutesPassed = (int)$row['minutes_passed'];
         $stmt->close();
 
-        if ($minutesPassed < 10) { // 10 minute rate limit
-            $remainingMinutes = 10 - $minutesPassed;
+        if ($minutesPassed < 10) {
             $conn->close();
-            echo json_encode(['success' => false, 'error' => "Please wait {$remainingMinutes} minutes before requesting another reset link"]);
+            echo json_encode(['success' => true, 'message' => 'If this email is registered, a reset link has been sent.']);
             exit;
         }
     }
@@ -275,14 +277,7 @@ try {
     $resetLink = dm_api_url('redirects/handle_password_reset_token_redirect.php') . '?token=' . urlencode($resetToken);
     $envLabel = dm_env_string('APP_ENV', 'Local');
 
-    // Send email using the same function as create_account.php
-    $emailStartTime = microtime(true);
     $emailResult = send_password_reset_email($user, $resetLink, $envLabel);
-    $emailEndTime = microtime(true);
-    $emailDuration = round(($emailEndTime - $emailStartTime) * 1000, 2); // milliseconds
-    
-    // Debug: Log email timing
-    error_log("Reset password email duration: {$emailDuration}ms");
 
     if (!$emailResult['success']) {
         $conn->close();
