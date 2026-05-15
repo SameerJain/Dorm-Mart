@@ -70,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Verify user has access to this conversation and get other user's ID
-    $convStmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? LIMIT 1');
-    $convStmt->bind_param('i', $conversationId);
+    $convStmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? AND (user1_id = ? OR user2_id = ?) LIMIT 1');
+    $convStmt->bind_param('iii', $conversationId, $userId, $userId);
     $convStmt->execute();
     $convRes = $convStmt->get_result();
     if (!$convRes || $convRes->num_rows === 0) {

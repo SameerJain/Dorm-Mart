@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import PreLoginBranding from "../../components/PreLoginBranding";
 import PasswordRequirementRow from "../../components/forms/PasswordRequirementRow";
 import { API_BASE } from "../../utils/apiConfig";
@@ -80,12 +80,7 @@ function ResetPasswordForm() {
 
   const policy = useMemo(() => buildPasswordPolicy(newPassword), [newPassword]);
 
-  const enforceMax = (setter) => (e) => {
-    const v = e.target.value;
-    if (v.length > MAX_LEN)
-      alert("Entered password is too long. Maximum length is 64 characters.");
-    setter(v);
-  };
+  const enforceMax = (setter) => (e) => setter(e.target.value);
 
   // Check if user already completed password reset for this specific token
   useEffect(() => {
@@ -133,9 +128,9 @@ function ResetPasswordForm() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [handleSubmit]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     // Clear previous errors
     setSubmitError("");
     setPasswordMismatchError("");
@@ -212,7 +207,7 @@ function ResetPasswordForm() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, navigate, newPassword, confirmPassword]);
 
   return (
     <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">

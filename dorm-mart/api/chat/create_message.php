@@ -30,11 +30,6 @@ if ($sender === '' || $receiver === '' || $contentRaw === '') {
     json_response(['success' => false, 'error' => 'missing_fields'], 400);
 }
 
-// XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-if (contains_xss_pattern($contentRaw)) {
-    json_response(['success' => false, 'error' => 'Invalid characters in message'], 400);
-}
-
 $content = $contentRaw;
 
 $len = function_exists('mb_strlen') ? mb_strlen($content, 'UTF-8') : strlen($content); // mb_strlen counts Unicode chars

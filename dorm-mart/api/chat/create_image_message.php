@@ -36,10 +36,6 @@ if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
     json_response(['success' => false, 'error' => 'missing_image'], 400);
 }
 
-/* XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage */
-if ($contentRaw !== '' && contains_xss_pattern($contentRaw)) {
-    json_response(['success' => false, 'error' => 'Invalid characters in caption'], 400);
-}
 $content = $contentRaw;
 
 /* Caption length guard (same policy as text messages) */
@@ -54,7 +50,7 @@ if ($len > 500) {
 }
 
 /* --- Validate and store the uploaded image --- */
-$MAX_BYTES = 2 * 1024 * 1024; // 5MB cap
+$MAX_BYTES = 2 * 1024 * 1024; // 2MB cap
 $allowed = [
     'image/jpeg' => 'jpg',
     'image/png'  => 'png',
@@ -230,6 +226,17 @@ try {
          VALUES (?, ?, 0, 0), (?, ?, 0, 0)'
     );
     $stmt->bind_param('iiii', $convId, $u1, $convId, $u2);
+    $stmt->execute();
+    $stmt->close();
+
+    // Conversation is active again: clear deleted flags for both participants
+    $stmt = $conn->prepare(
+        'UPDATE conversations
+           SET user1_deleted = 0,
+               user2_deleted = 0
+         WHERE conv_id = ?'
+    );
+    $stmt->bind_param('i', $convId);
     $stmt->execute();
     $stmt->close();
 

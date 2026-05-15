@@ -23,10 +23,6 @@ try {
     if (mb_strlen($description) > 1000) {
         json_response(['success' => false, 'error' => 'Description cannot exceed 1000 characters'], 400);
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if ($description !== '' && contains_xss_pattern($description)) {
-        json_response(['success' => false, 'error' => 'Invalid characters in description'], 400);
-    }
     
     // New fields for price negotiation and trades
     $negotiatedPriceRaw = $payload['negotiated_price'] ?? null;
@@ -42,10 +38,6 @@ try {
     $tradeItemDescription = isset($payload['trade_item_description']) && $payload['trade_item_description'] !== null
         ? trim((string)$payload['trade_item_description']) : null;
 
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if ($tradeItemDescription !== null && $tradeItemDescription !== '' && contains_xss_pattern($tradeItemDescription)) {
-        json_response(['success' => false, 'error' => 'Invalid characters in trade item description'], 400);
-    }
     if ($tradeItemDescription !== null && mb_strlen($tradeItemDescription) > 100) {
         json_response(['success' => false, 'error' => 'Trade item description cannot exceed 100 characters'], 400);
     }
@@ -59,11 +51,6 @@ try {
     $meetLocation = isset($payload['meet_location'])
         ? trim((string)$payload['meet_location'])
         : '';
-
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if ($customMeetLocation !== '' && contains_xss_pattern($customMeetLocation)) {
-        json_response(['success' => false, 'error' => 'Invalid characters in meet location'], 400);
-    }
 
     $allowedMeetLocationChoices = ['', 'North Campus', 'South Campus', 'Ellicott', 'Other'];
 

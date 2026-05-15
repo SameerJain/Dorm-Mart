@@ -167,18 +167,21 @@ function sanitize_email($email) {
     if (!is_string($email)) {
         return '';
     }
-    
-    // Convert to lowercase and trim
+
     $email = strtolower(trim($email));
-    
-    // Validate email format
+
+    // Enforce RFC 5321 length limit
+    if (strlen($email) > 254) {
+        return '';
+    }
+
+    // Remove null bytes
+    $email = str_replace("\0", '', $email);
+
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return '';
     }
-    
-    // Additional sanitization
-    $email = sanitize_string($email, 254); // RFC 5321 limit
-    
+
     return $email;
 }
 

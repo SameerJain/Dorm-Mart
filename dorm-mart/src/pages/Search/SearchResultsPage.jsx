@@ -179,25 +179,7 @@ export default function SearchResults() {
             status,
           };
         });
-        // Determine effective sort order
-        // If user explicitly set sort in URL, honor it.
-        // Otherwise, if there's no search query, default to newest -> oldest.
-        const hasQuery = !!payload?.q;
-        const sortPref = (payload?.sort || "").toLowerCase();
-        let sorted = normalized.slice();
-        const getTs = (it) =>
-          it?.createdAt instanceof Date && !isNaN(it.createdAt)
-            ? it.createdAt.getTime()
-            : 0;
-        if (sortPref === "new" || sortPref === "newest") {
-          sorted.sort((a, b) => getTs(b) - getTs(a));
-        } else if (sortPref === "old" || sortPref === "oldest") {
-          sorted.sort((a, b) => getTs(a) - getTs(b));
-        } else if (!hasQuery) {
-          // Default for empty search: newest first
-          sorted.sort((a, b) => getTs(b) - getTs(a));
-        }
-        setItems(sorted);
+        setItems(normalized);
       } catch (e) {
         if (e.name !== "AbortError") {
           logger.error("get_search_items failed:", e);
@@ -841,12 +823,7 @@ function FiltersSidebar({
 
       <button
         onClick={apply}
-        className={`w-full px-3 py-2 rounded text-sm font-medium transition-colors ${
-          hasActiveFilters
-            ? "bg-blue-600 dark:bg-blue-800 text-white hover:bg-blue-700 dark:hover:bg-blue-900"
-            : "bg-gray-400 dark:bg-gray-600 text-white cursor-not-allowed"
-        }`}
-        disabled={!hasActiveFilters}
+        className="w-full px-3 py-2 rounded text-sm font-medium transition-colors bg-blue-600 dark:bg-blue-800 text-white hover:bg-blue-700 dark:hover:bg-blue-900"
       >
         Apply
       </button>

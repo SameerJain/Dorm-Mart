@@ -167,7 +167,14 @@ function send_welcome_gmail(array $user, string $tempPassword): array
 
         // Optimizations for faster email delivery
         $mail->Timeout = dm_smtp_timeout();
-        $mail->SMTPKeepAlive = false; // Close connection after sending
+        $mail->SMTPKeepAlive = false;
+        $mail->SMTPOptions = [
+            'ssl' => [
+                'verify_peer'       => false,
+                'verify_peer_name'  => false,
+                'allow_self_signed' => true,
+            ]
+        ];
         // Tell PHPMailer we are sending UTF-8 and how to encode it
         $mail->CharSet   = 'UTF-8';
         $mail->Encoding  = 'base64'; // robust for UTF-8; 'quoted-printable' also fine
@@ -323,11 +330,6 @@ function send_promo_welcome_email(array $user): array
 
 
 
-// Include security headers for XSS protection
-require_once __DIR__ . '/../security/security.php';
-set_security_headers();
-set_secure_cors();
-
 header('Content-Type: application/json; charset=utf-8');
 
 // Preflight
@@ -374,7 +376,7 @@ require_once __DIR__ . '/../config/email_config.php';
 $firstName = validate_input($firstNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
 $lastName = validate_input($lastNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
 $gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
-$gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
+$gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, (int)date('Y') + 8);
 $promos    = !empty($data['promos']);
 
 // Email validation based on ALLOW_ALL_EMAILS flag

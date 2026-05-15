@@ -6,7 +6,6 @@ import PreLoginNavLinks from "../components/PreLoginNavLinks";
 import { THEME_CACHE_KEY, THEME_PENDING_KEY } from "../utils/loadTheme.js";
 import { API_BASE } from "../utils/apiConfig";
 import { useEmailPolicy } from "../hooks/useEmailPolicy";
-import { containsXssPattern } from "../utils/inputValidation";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -51,11 +50,6 @@ function LoginPage() {
     }
 
     const emailTrimmed = email.trim();
-    if (containsXssPattern(emailTrimmed)) {
-      setError("Invalid email format");
-      setLoading(false);
-      return;
-    }
 
     // Frontend validation
     if (emailTrimmed === "" && password.trim() === "") {
@@ -219,7 +213,7 @@ function LoginPage() {
 
       {/* Right side - Login form (full width on mobile, 50% on desktop).
           login-page-right-column: stay visually light even if html.dark (global CSS + brief theme flash). */}
-      <div className="login-page-se-mobile-col login-page-right-column w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden [color-scheme:light]">
+      <div className="login-page-se-mobile-col login-page-right-column w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="login-page-se-branding lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
@@ -273,7 +267,7 @@ function LoginPage() {
               <form
                 onSubmit={handleLogin}
                 noValidate
-                className="[color-scheme:light] space-y-3 sm:space-y-4 md:space-y-6"
+                className="space-y-3 sm:space-y-4 md:space-y-6"
               >
                 {/* Email input */}
                 <div>

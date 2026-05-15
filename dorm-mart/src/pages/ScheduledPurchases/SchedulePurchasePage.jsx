@@ -12,8 +12,6 @@ import {
   MAX_LISTING_PRICE,
   containsMemePrice,
 } from "../../utils/priceValidation";
-import { containsXssPattern } from "../../utils/inputValidation";
-
 // Price limits - max matches ProductListingPage exactly
 const PRICE_LIMITS = {
   max: MAX_LISTING_PRICE,
@@ -456,28 +454,6 @@ function SchedulePurchasePage() {
       setFormError(
         "Cannot enter a price for a trade. Please clear the price field or uncheck the trade option.",
       );
-      return;
-    }
-
-    if (description.trim() && containsXssPattern(description)) {
-      setFormError("Invalid characters in description.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (customMeetLocation.trim() && containsXssPattern(customMeetLocation)) {
-      setFormError("Invalid characters in meet location.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (
-      isTrade &&
-      tradeItemDescription.trim() &&
-      containsXssPattern(tradeItemDescription)
-    ) {
-      setFormError("Invalid characters in trade item description.");
-      setIsSubmitting(false);
       return;
     }
 
