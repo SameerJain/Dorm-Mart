@@ -49,13 +49,6 @@ if (strpos($ct, 'application/json') !== false) {
     $passwordRaw = (string)($_POST['password'] ?? '');
 }
 
-// XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-if (contains_xss_pattern($emailRaw)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
-    exit;
-}
-
 // Accept any valid email format (to support existing non-UB accounts)
 $email = validate_input($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
 $password = validate_input($passwordRaw, 64);

@@ -6,9 +6,9 @@ This document is for teammates returning to Dorm Mart after the last main sprint
 
 - **Baseline being compared against:** commit `fec6ac5` by IkeSvit.
 - **Downloaded baseline folder used for comparison:** `C:\Users\samee\Downloads\Dorm-Mart-fec6ac5f9ba28f089e045a2168794218c78a5233`.
-- **Current project version:** branch `railway-deployment` at commit `e2cdc6c`.
+- **Current project version:** branch `railway-deployment` at commit `1679206`.
 - **Important:** this document also includes the current uncommitted local edits in the working tree, not just committed Git history.
-- **Scale of change:** the Git diff from `fec6ac5` to `e2cdc6c` is very large: hundreds of files changed, including frontend pages, backend APIs, migrations, seed data, deployment files, dependencies, and media cleanup.
+- **Scale of change:** the Git diff from `fec6ac5` to `1679206` is very large: hundreds of files changed, including frontend pages, backend APIs, migrations, seed data, deployment files, dependencies, and media cleanup.
 - **How this is organized:** page-by-page first, then cross-cutting backend, deployment, data, and codebase changes.
 
 This is meant to help you understand the project as it exists now before taking new work. It is not a raw diff dump. Generated files, vendor dependency churn, image files, and bulk media changes are summarized instead of listed one by one.
@@ -148,6 +148,7 @@ Compared with the sprint baseline, many old loose files were moved into clearer 
 - The search placeholder was changed from a more specific phrase like "search name, category, or description" to a simpler "Search" because the full behavior was not implemented yet.
 - A stray second period in the search description was removed.
 - Layout and positioning were polished.
+- Search price filter fields now use the same two-decimal listing-price style input pattern instead of accepting arbitrary decimal strings.
 
 ### What was removed
 
@@ -157,6 +158,7 @@ Compared with the sprint baseline, many old loose files were moved into clearer 
 
 - Search endpoint naming moved from `api/search/getSearchItems.php` to `api/search/get_search_items.php`.
 - Numeric input guards were applied broadly across the app, including search-related numeric fields where relevant.
+- The current working tree rejects malformed search `minPrice`/`maxPrice` values and rejects `minPrice > maxPrice` instead of casting bad strings to `0`.
 
 ## My Profile page
 
@@ -289,7 +291,7 @@ Compared with the sprint baseline, many old loose files were moved into clearer 
 
 ### What was added
 
-- A backend cap limiting a user to 50 active listings.
+- A backend/frontend cap limiting a user to 25 active listings.
 - Cleaner seller-dashboard API organization under `api/seller_dashboard`.
 - Set-item-status endpoint support in the organized folder.
 
@@ -744,14 +746,34 @@ This comparison includes a lot of dependency, vendor, generated, and media churn
 
 ## Current uncommitted local edits included in this handoff
 
-At the time this document was updated, the working tree had 25 modified tracked files. Main points only:
+At the time this document was updated, the working tree includes these local edits:
 
-- Pre-login routing now uses a shared `PreLoginLayout` to suppress dark mode on public pages. The old per-component/global CSS workaround was removed.
-- Auth/email cleanup: removed extra reset-email debug logs, added PHPMailer SSL options for local SMTP, made forgot-password rate limiting return the same generic success message, and made create-account graduation year use the current year plus 8.
-- Validation cleanup: several frontend/backend XSS-pattern checks were removed where normal validation/escaping is expected to handle input. Length, numeric, price, category, and enum guards still remain.
-- Chat cleanup: polling errors now log instead of stopping polling, image messages revive deleted conversations, typing status checks conversation membership, and schedule-card action errors show inline instead of using `alert`.
-- Listing/search/purchase fixes: new listing response returns the actual inserted product id, search categories now load from `categories.json`, fake home listing rating was removed, and search no longer client-sorts results after the API returns them.
-- Small UI/form fixes were made in login, create account, reset password, product listing, scheduled purchase, confirm purchase, and search pages.
+- Removed the redundant XSS blacklist helpers and their direct API call sites.
+- Kept normal validation, prepared statements, security headers, URL allowlists, and HTML output encoding in place.
+- Updated the XSS demo/test files so they focus on escaped output and unsafe HTML reflection, not rejecting every suspicious string.
+- Removed the stale frontend validation helper documentation entry.
+- Defined the missing `overflow-wrap-anywhere` CSS utility and applied it to high-risk user-generated text displays such as chat messages, reviews, receipt notes, scheduled purchase notes, and profile review text.
+- Tightened search price filters on both the React form and the search API so malformed decimal strings are rejected instead of silently accepted/coerced.
+
+### Security and correctness fixes (post-sprint)
+
+**Password reset table scan fixed (`api/auth/`)**
+
+`validate_reset_token.php` and `reset_password.php` previously fetched every user with an unexpired token and ran `password_verify()` on each one to find the matching user. With many users this gets progressively slower, and response timing leaks information about how many active reset requests exist.
+
+Fix: the reset link now includes `uid=USER_ID` as a URL parameter (`forgot_password.php`, `redirects/handle_password_reset_token_redirect.php`). Both endpoints accept `uid` in the request body and look up the specific user directly (`WHERE user_id = ? AND reset_token_expires > NOW()`). A fallback full-scan path is kept for any old-style links already in flight since they expire within 1 hour. `validate_reset_token.php` no longer returns `user_id` in its response since the frontend does not use it.
+
+**Purchase history race condition fixed (`api/confirm_purchases/helpers.php`)**
+
+`record_purchase_history()` previously did a SELECT to read the current JSON array, appended the new entry in PHP, then wrote it back. Two simultaneous purchase completions for the same buyer could each read the same original array and one would overwrite the other's entry.
+
+Fix: replaced with a single atomic `INSERT ... ON DUPLICATE KEY UPDATE` using MySQL's `JSON_ARRAY_APPEND`, which eliminates the read-modify-write window entirely.
+
+**Legacy purchase history metadata bug fixed (`api/purchase_history/purchase_history.php`)**
+
+`load_legacy_purchased_items()` was passing `purchased_items.item_id` values (the table's own auto-increment PK) to `load_inventory_metadata()` as if they were `INVENTORY.product_id` values. These are unrelated sequential integers from different tables with no foreign key relationship, so the metadata lookup was silently returning data for wrong or nonexistent products.
+
+Fix: removed the metadata lookup for legacy items entirely. The `purchased_items` table already stores `title`, `sold_by`, and `image_url` as a snapshot at purchase time. `categories` and `price` are returned as empty/null for legacy items since there is no `inventory_product_id` column to join on.
 
 ## Things to know before working again
 

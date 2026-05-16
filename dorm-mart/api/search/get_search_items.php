@@ -67,13 +67,31 @@ try {
         json_response(['ok' => false, 'error' => 'Invalid location value'], 400);
     }
     $status    = isset($body['status']) ? strtoupper(trim((string)$body['status'])) : '';
-    $minPrice  = isset($body['minPrice']) ? (float)$body['minPrice'] : null;
-    $maxPrice  = isset($body['maxPrice']) ? (float)$body['maxPrice'] : null;
+    $pricePattern = '/^(?:\d{1,4}(?:\.\d{1,2})?|\.\d{1,2})$/';
+    $minPriceRaw = isset($body['minPrice']) ? trim((string)$body['minPrice']) : '';
+    $maxPriceRaw = isset($body['maxPrice']) ? trim((string)$body['maxPrice']) : '';
+    $minPrice = null;
+    $maxPrice = null;
+    if ($minPriceRaw !== '') {
+        if (!preg_match($pricePattern, $minPriceRaw)) {
+            json_response(['ok' => false, 'error' => 'Invalid minimum price'], 400);
+        }
+        $minPrice = (float)$minPriceRaw;
+    }
+    if ($maxPriceRaw !== '') {
+        if (!preg_match($pricePattern, $maxPriceRaw)) {
+            json_response(['ok' => false, 'error' => 'Invalid maximum price'], 400);
+        }
+        $maxPrice = (float)$maxPriceRaw;
+    }
     if ($minPrice !== null && $minPrice < 0) {
         json_response(['ok' => false, 'error' => 'Minimum price cannot be negative'], 400);
     }
     if ($maxPrice !== null && $maxPrice > 9999.99) {
         json_response(['ok' => false, 'error' => 'Maximum price cannot exceed $9999.99'], 400);
+    }
+    if ($minPrice !== null && $maxPrice !== null && $minPrice > $maxPrice) {
+        json_response(['ok' => false, 'error' => 'Minimum price cannot be greater than maximum price'], 400);
     }
     $sort      = isset($body['sort']) ? strtolower(trim((string)$body['sort'])) : '';
     $ALLOWED_SORTS = ['', 'best', 'best_match', 'relevance', 'new', 'newest', 'old', 'oldest', 'price_asc', 'price_desc'];

@@ -191,13 +191,6 @@ if (strpos($ct, 'application/json') !== false) {
 // Load email policy configuration
 require_once __DIR__ . '/../config/email_config.php';
 
-// XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-if ($emailRaw !== '' && contains_xss_pattern($emailRaw)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid input format']);
-    exit;
-}
-
 // Email validation based on ALLOW_ALL_EMAILS flag
 if (ALLOW_ALL_EMAILS) {
     // Accept any valid email format
@@ -274,7 +267,7 @@ try {
     $stmt->execute();
     $stmt->close();
 
-    $resetLink = dm_api_url('redirects/handle_password_reset_token_redirect.php') . '?token=' . urlencode($resetToken);
+    $resetLink = dm_api_url('redirects/handle_password_reset_token_redirect.php') . '?token=' . urlencode($resetToken) . '&uid=' . (int)$user['user_id'];
     $envLabel = dm_env_string('APP_ENV', 'Local');
 
     $emailResult = send_password_reset_email($user, $resetLink, $envLabel);

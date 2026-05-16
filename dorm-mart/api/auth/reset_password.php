@@ -36,10 +36,12 @@ if (strpos($ct, 'application/json') !== false) {
     // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
     $token = isset($data['token']) ? trim((string)$data['token']) : '';
     $newPassword = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
+    $uid = isset($data['uid']) ? (int)$data['uid'] : 0;
 } else {
     // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
     $token = isset($_POST['token']) ? trim((string)$_POST['token']) : '';
     $newPassword = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
+    $uid = isset($_POST['uid']) ? (int)$_POST['uid'] : 0;
 }
 
 // Validate inputs
@@ -66,24 +68,50 @@ if (!validate_password_policy($newPassword)) {
 try {
     $conn = db();
     
-    // SQL INJECTION PROTECTION: Prepared Statement (No User Input in Query)
-    $stmt = $conn->prepare('
-        SELECT user_id, hash_auth, reset_token_expires 
-        FROM user_accounts 
-        WHERE hash_auth IS NOT NULL 
-        AND reset_token_expires > NOW()
-    ');
-    $stmt->execute();
-    $result = $stmt->get_result();
-
     $isValidToken = false;
     $userId = null;
-    
-    while ($row = $result->fetch_assoc()) {
-        if (password_verify($token, $row['hash_auth'])) {
-            $isValidToken = true;
-            $userId = $row['user_id'];
-            break;
+
+    if ($uid > 0) {
+        // Fast path: look up the specific user directly
+        $stmt = $conn->prepare('
+            SELECT user_id, hash_auth
+            FROM user_accounts
+            WHERE user_id = ?
+              AND hash_auth IS NOT NULL
+              AND reset_token_expires > NOW()
+            LIMIT 1
+        ');
+        if (!$stmt) {
+            throw new RuntimeException('Failed to prepare token lookup');
+        }
+        $stmt->bind_param('i', $uid);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            if (password_verify($token, (string)$row['hash_auth'])) {
+                $isValidToken = true;
+                $userId = (int)$row['user_id'];
+            }
+        }
+    } else {
+        // Fallback for old-style links that predate uid in the URL
+        $stmt = $conn->prepare('
+            SELECT user_id, hash_auth
+            FROM user_accounts
+            WHERE hash_auth IS NOT NULL
+              AND reset_token_expires > NOW()
+        ');
+        if (!$stmt) {
+            throw new RuntimeException('Failed to prepare token lookup');
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            if (password_verify($token, (string)$row['hash_auth'])) {
+                $isValidToken = true;
+                $userId = (int)$row['user_id'];
+                break;
+            }
         }
     }
 

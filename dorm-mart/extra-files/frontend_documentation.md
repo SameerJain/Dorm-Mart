@@ -30,7 +30,7 @@ Shared frontend logic.
 - `utils/apiConfig.js` - `PUBLIC_URL` and `REACT_APP_API_BASE` helpers.
 - `utils/formatters.js`, `utils/productDetails.js`, `utils/imageFallback.js` - Display, product, and media helpers.
 - `utils/handleAuth.js`, `utils/loadTheme.js` - Auth and theme helpers.
-- `utils/inputValidation.js`, `utils/passwordPolicy.js`, `utils/priceValidation.js`, `utils/numericInputKeyHandlers.js` - Form validation helpers.
+- `utils/passwordPolicy.js`, `utils/priceValidation.js`, `utils/numericInputKeyHandlers.js` - Form validation helpers.
 
 ## pages/
 

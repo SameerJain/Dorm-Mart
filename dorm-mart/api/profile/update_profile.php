@@ -110,10 +110,6 @@ function sanitize_bio_value($value): ?string
     if ($bio === '') {
         return null;
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (contains_xss_pattern($bio)) {
-        json_response(['success' => false, 'error' => 'Invalid characters in bio'], 400);
-    }
     $bio = mb_substr($bio, 0, 200);
     return $bio;
 }
@@ -129,10 +125,6 @@ function sanitize_link_value($value): ?string
     }
     if (mb_strlen($link) > 150) {
         json_response(['success' => false, 'error' => 'Link is too long'], 400);
-    }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (contains_xss_pattern($link)) {
-        json_response(['success' => false, 'error' => 'Invalid characters in link'], 400);
     }
     if (!preg_match('#^https?://(www\.)?instagram\.com/[a-zA-Z0-9._]{1,30}/?$#i', $link)) {
         json_response(['success' => false, 'error' => 'Invalid Instagram URL'], 400);
@@ -152,11 +144,6 @@ function sanitize_profile_photo_value($value): ?string
     if (strlen($url) > 255) {
         json_response(['success' => false, 'error' => 'Profile photo URL is too long'], 400);
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (contains_xss_pattern($url)) {
-        json_response(['success' => false, 'error' => 'Invalid characters in profile photo URL'], 400);
-    }
-
     $allowedSchemes = ['http://', 'https://', '/media/', '/images/'];
     $isAllowed = false;
     foreach ($allowedSchemes as $prefix) {

@@ -23,6 +23,11 @@
     cursor: default !important;
   }
 
+  .overflow-wrap-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   /* Pre-login right side background - subtle blue gradient */
   .pre-login-bg {
     background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%);

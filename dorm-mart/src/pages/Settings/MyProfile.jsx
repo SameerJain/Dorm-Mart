@@ -211,7 +211,7 @@ function ReviewRow({ review }) {
         <p className="text-xs sm:text-sm font-semibold text-blue-700 dark:text-blue-400 break-words">
           {review.product_title}
         </p>
-        <p className="text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words whitespace-pre-wrap">
+        <p className="text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words overflow-wrap-anywhere whitespace-pre-wrap">
           {review.review}
         </p>
       </div>

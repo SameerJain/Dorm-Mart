@@ -10,6 +10,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 
 $body  = json_request_body();
 $token = $body['token'] ?? '';
+$uid   = isset($body['uid']) ? (int)$body['uid'] : 0;
 
 if (empty($token)) {
     json_response(['success' => false, 'error' => 'Token required'], 400);
@@ -17,25 +18,48 @@ if (empty($token)) {
 
 try {
     $conn = db();
-    
-    // Check if token is valid and not expired
-    $stmt = $conn->prepare('
-        SELECT user_id, hash_auth, reset_token_expires 
-        FROM user_accounts 
-        WHERE hash_auth IS NOT NULL 
-        AND reset_token_expires > NOW()
-    ');
-    $stmt->execute();
-    $result = $stmt->get_result();
 
-    $isValidToken = false;
-    $userId = null;
-    
-    while ($row = $result->fetch_assoc()) {
-        if (password_verify($token, $row['hash_auth'])) {
-            $isValidToken = true;
-            $userId = $row['user_id'];
-            break;
+    if ($uid > 0) {
+        // Fast path: look up the specific user directly
+        $stmt = $conn->prepare('
+            SELECT user_id, hash_auth
+            FROM user_accounts
+            WHERE user_id = ?
+              AND hash_auth IS NOT NULL
+              AND reset_token_expires > NOW()
+            LIMIT 1
+        ');
+        if (!$stmt) {
+            throw new RuntimeException('Failed to prepare token lookup');
+        }
+        $stmt->bind_param('i', $uid);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $isValidToken = false;
+        if ($row = $result->fetch_assoc()) {
+            $isValidToken = password_verify($token, (string)$row['hash_auth']);
+        }
+    } else {
+        // Fallback for old-style links that predate uid in the URL
+        $stmt = $conn->prepare('
+            SELECT user_id, hash_auth
+            FROM user_accounts
+            WHERE hash_auth IS NOT NULL
+              AND reset_token_expires > NOW()
+        ');
+        if (!$stmt) {
+            throw new RuntimeException('Failed to prepare token lookup');
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $isValidToken = false;
+        while ($row = $result->fetch_assoc()) {
+            if (password_verify($token, (string)$row['hash_auth'])) {
+                $isValidToken = true;
+                break;
+            }
         }
     }
 
@@ -43,20 +67,11 @@ try {
     $conn->close();
 
     if ($isValidToken) {
-        json_response([
-            'success' => true,
-            'valid' => true,
-            'user_id' => $userId,
-            'message' => 'Token is valid'
-        ]);
+        json_response(['success' => true, 'valid' => true, 'message' => 'Token is valid']);
     } else {
-        json_response([
-            'success' => true,
-            'valid' => false,
-            'message' => 'Token is invalid or expired'
-        ]);
+        json_response(['success' => true, 'valid' => false, 'message' => 'Token is invalid or expired']);
     }
-    
+
 } catch (Exception $e) {
     json_response(['success' => false, 'error' => 'Server error'], 500);
 }

@@ -305,7 +305,7 @@ export default function ConfirmPurchasePage() {
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Notes from scheduling
                   </p>
-                  <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words overflow-hidden">
+                  <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words overflow-wrap-anywhere overflow-hidden">
                     {prefill.description}
                   </p>
                 </div>

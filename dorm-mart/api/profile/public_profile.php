@@ -16,8 +16,7 @@ try {
     if ($usernameParam === '') {
         json_response(['success' => false, 'error' => 'Username is required'], 400);
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (strlen($usernameParam) > 64 || contains_xss_pattern($usernameParam)) {
+    if (strlen($usernameParam) > 64) {
         json_response(['success' => false, 'error' => 'Invalid username'], 400);
     }
 

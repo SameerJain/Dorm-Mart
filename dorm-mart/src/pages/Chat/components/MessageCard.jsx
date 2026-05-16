@@ -65,12 +65,12 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
               d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
             />
           </svg>
-          <p className="min-w-0 flex-1 break-words text-lg font-bold leading-tight text-white">
+          <p className="min-w-0 flex-1 break-words overflow-wrap-anywhere text-lg font-bold leading-tight text-white">
             {product.title || "Listing"}
           </p>
         </div>
         <div className="rounded-lg bg-blue-500/30 px-3 py-2 backdrop-blur-sm dark:bg-blue-950/45 dark:ring-1 dark:ring-blue-900/60">
-          <p className="whitespace-pre-wrap break-words text-sm text-blue-50 dark:text-slate-100">
+          <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere text-sm text-blue-50 dark:text-slate-100">
             {previewText}
           </p>
         </div>
