@@ -4,31 +4,6 @@
 import { createHashRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
 import { useLayoutEffect } from "react";
 import RootLayout from "./pages/RootLayout";
-
-function PreLoginLayout() {
-  useLayoutEffect(() => {
-    const root = document.documentElement;
-    const hadDark = root.classList.contains("dark");
-    const prevScheme = root.style.colorScheme;
-    const meta = document.querySelector('meta[name="theme-color"]');
-    const prevColor = meta?.getAttribute("content") ?? null;
-
-    root.classList.remove("dark");
-    root.style.colorScheme = "light";
-    if (meta) meta.setAttribute("content", "#ffffff");
-
-    return () => {
-      if (hadDark) root.classList.add("dark");
-      root.style.colorScheme = prevScheme;
-      if (meta) {
-        if (prevColor === null) meta.removeAttribute("content");
-        else meta.setAttribute("content", prevColor);
-      }
-    };
-  }, []);
-
-  return <Outlet />;
-}
 // auth
 import LoginPage from "./pages/LoginPage";
 import WelcomePage from "./pages/WelcomePage";
@@ -65,6 +40,31 @@ import NotificationPage from "./pages/Notification/NotificationPage.jsx";
 // FAQ
 import FAQPage from "./pages/FAQ/FAQPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
+
+function PreLoginLayout() {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const hadDark = root.classList.contains("dark");
+    const prevScheme = root.style.colorScheme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prevColor = meta?.getAttribute("content") ?? null;
+
+    root.classList.remove("dark");
+    root.style.colorScheme = "light";
+    if (meta) meta.setAttribute("content", "#ffffff");
+
+    return () => {
+      if (hadDark) root.classList.add("dark");
+      root.style.colorScheme = prevScheme;
+      if (meta) {
+        if (prevColor === null) meta.removeAttribute("content");
+        else meta.setAttribute("content", prevColor);
+      }
+    };
+  }, []);
+
+  return <Outlet />;
+}
 
 export const router = createHashRouter([
   // Pre-login pages — dark mode suppressed for all children

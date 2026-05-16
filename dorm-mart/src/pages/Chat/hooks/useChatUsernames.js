@@ -99,8 +99,6 @@ export default function useChatUsernames({
   }, [activeProfilePath, activeReceiverId, navigate, setUsername]);
 
   return {
-    activeProfilePath,
     handleProfileHeaderClick,
-    usernameMap,
   };
 }

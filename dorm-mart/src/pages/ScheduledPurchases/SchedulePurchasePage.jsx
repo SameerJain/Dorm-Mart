@@ -15,10 +15,7 @@ import {
 import {
   convertTo24Hour,
   getDateRangeMessage,
-  getDerivedYear,
   getEasternTime,
-  getMaxDate,
-  getTodayDate,
   validateScheduleDateTime,
 } from "./utils/scheduleDateTimeUtils";
 // Price limits - max matches ProductListingPage exactly

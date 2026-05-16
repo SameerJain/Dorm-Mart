@@ -518,29 +518,6 @@ function FiltersSidebar({
     );
   };
 
-  // Check if any filters are active
-  const hasActiveFilters = useMemo(() => {
-    return (
-      selectedCategories.length > 0 ||
-      sortOrder !== "" ||
-      (minPrice !== "" && minPrice !== null && minPrice.trim() !== "") ||
-      (maxPrice !== "" && maxPrice !== null && maxPrice.trim() !== "") ||
-      itemLocation !== "" ||
-      itemCondition !== "" ||
-      priceNegotiable ||
-      acceptingTrades
-    );
-  }, [
-    selectedCategories,
-    sortOrder,
-    minPrice,
-    maxPrice,
-    itemLocation,
-    itemCondition,
-    priceNegotiable,
-    acceptingTrades,
-  ]);
-
   const apply = () => {
     // Validate price inputs
     setPriceError("");
