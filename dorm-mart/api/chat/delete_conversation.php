@@ -83,13 +83,30 @@ try {
     foreach ($scheduledPurchases as $sp) {
         if ($sp['status'] === 'accepted') {
             $productId = $sp['inventory_product_id'];
-            $requestId = $sp['request_id'];
             // Check if there are other accepted scheduled purchases for this item (excluding ones we're deleting)
             $placeholders = implode(',', array_fill(0, count($requestIds), '?'));
-            $checkOtherStmt = $conn->prepare("SELECT COUNT(*) as cnt FROM scheduled_purchase_requests WHERE inventory_product_id = ? AND status = ? AND request_id NOT IN ($placeholders)");
-            $acceptedStatus = 'accepted';
-            $params = array_merge([$productId, $acceptedStatus], $requestIds);
-            $types = 'is' . str_repeat('i', count($requestIds));
+            $checkOtherStmt = $conn->prepare("
+                SELECT COUNT(*) as cnt
+                FROM scheduled_purchase_requests spr
+                WHERE spr.inventory_product_id = ?
+                  AND spr.status = 'accepted'
+                  AND spr.request_id NOT IN ($placeholders)
+                  AND COALESCE((
+                    SELECT CASE
+                      WHEN cpr.status IN ('buyer_accepted', 'auto_accepted') AND cpr.is_successful = 0 THEN 0
+                      ELSE 1
+                    END
+                    FROM confirm_purchase_requests cpr
+                    WHERE cpr.scheduled_request_id = spr.request_id
+                    ORDER BY cpr.confirm_request_id DESC
+                    LIMIT 1
+                  ), 1) = 1
+            ");
+            if (!$checkOtherStmt) {
+                throw new RuntimeException('Failed to prepare accepted schedule check');
+            }
+            $params = array_merge([$productId], $requestIds);
+            $types = 'i' . str_repeat('i', count($requestIds));
             $checkOtherStmt->bind_param($types, ...$params);
             $checkOtherStmt->execute();
             $checkOtherRes = $checkOtherStmt->get_result();

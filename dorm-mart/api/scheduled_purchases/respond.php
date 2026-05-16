@@ -75,23 +75,38 @@ try {
         json_response(['success' => false, 'error' => 'Request has already been handled'], 409);
     }
 
-    // Prevent double-booking: Check if item is already pending before accepting
-    // This prevents multiple buyers from accepting scheduled purchases for the same item
+    // Prevent double-booking against active accepted schedules only.
+    // Accepted schedules whose latest confirmation was unsuccessful are done.
     $inventoryProductId = (int)$row['inventory_product_id'];
     if ($action === 'accept' && $inventoryProductId > 0) {
         // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-        $itemStatusCheckStmt = $conn->prepare('SELECT item_status FROM INVENTORY WHERE product_id = ? LIMIT 1');
-        if (!$itemStatusCheckStmt) {
-            throw new RuntimeException('Failed to prepare item status check');
+        $activeAcceptedStmt = $conn->prepare('
+            SELECT COUNT(*) as cnt
+            FROM scheduled_purchase_requests spr
+            WHERE spr.inventory_product_id = ?
+              AND spr.status = \'accepted\'
+              AND spr.request_id != ?
+              AND COALESCE((
+                SELECT CASE
+                  WHEN cpr.status IN (\'buyer_accepted\', \'auto_accepted\') AND cpr.is_successful = 0 THEN 0
+                  ELSE 1
+                END
+                FROM confirm_purchase_requests cpr
+                WHERE cpr.scheduled_request_id = spr.request_id
+                ORDER BY cpr.confirm_request_id DESC
+                LIMIT 1
+              ), 1) = 1
+        ');
+        if (!$activeAcceptedStmt) {
+            throw new RuntimeException('Failed to prepare active accepted check');
         }
-        $itemStatusCheckStmt->bind_param('i', $inventoryProductId);
-        $itemStatusCheckStmt->execute();
-        $itemStatusRes = $itemStatusCheckStmt->get_result();
-        $itemStatusRow = $itemStatusRes ? $itemStatusRes->fetch_assoc() : null;
-        $itemStatusCheckStmt->close();
-        
-        // If item already has 'Pending' status, reject this acceptance
-        if ($itemStatusRow && isset($itemStatusRow['item_status']) && $itemStatusRow['item_status'] === 'Pending') {
+        $activeAcceptedStmt->bind_param('ii', $inventoryProductId, $requestId);
+        $activeAcceptedStmt->execute();
+        $activeAcceptedRes = $activeAcceptedStmt->get_result();
+        $activeAcceptedRow = $activeAcceptedRes ? $activeAcceptedRes->fetch_assoc() : null;
+        $activeAcceptedStmt->close();
+
+        if ($activeAcceptedRow && (int)$activeAcceptedRow['cnt'] > 0) {
             json_response(['success' => false, 'error' => 'This item has already been accepted by another buyer'], 409);
         }
     }
@@ -209,9 +224,24 @@ try {
             // When declined, revert item status to "Active" only if no other accepted purchases exist
             // This prevents making item available again if another buyer already accepted a different scheduled purchase
             // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-            $checkOtherAcceptedStmt = $conn->prepare('SELECT COUNT(*) as cnt FROM scheduled_purchase_requests WHERE inventory_product_id = ? AND status = ? AND request_id != ?');
-            $acceptedStatus = 'accepted';
-            $checkOtherAcceptedStmt->bind_param('isi', $inventoryProductId, $acceptedStatus, $requestId);
+            $checkOtherAcceptedStmt = $conn->prepare('
+                SELECT COUNT(*) as cnt
+                FROM scheduled_purchase_requests spr
+                WHERE spr.inventory_product_id = ?
+                  AND spr.status = \'accepted\'
+                  AND spr.request_id != ?
+                  AND COALESCE((
+                    SELECT CASE
+                      WHEN cpr.status IN (\'buyer_accepted\', \'auto_accepted\') AND cpr.is_successful = 0 THEN 0
+                      ELSE 1
+                    END
+                    FROM confirm_purchase_requests cpr
+                    WHERE cpr.scheduled_request_id = spr.request_id
+                    ORDER BY cpr.confirm_request_id DESC
+                    LIMIT 1
+                  ), 1) = 1
+            ');
+            $checkOtherAcceptedStmt->bind_param('ii', $inventoryProductId, $requestId);
             $checkOtherAcceptedStmt->execute();
             $checkRes = $checkOtherAcceptedStmt->get_result();
             $checkRow = $checkRes ? $checkRes->fetch_assoc() : null;

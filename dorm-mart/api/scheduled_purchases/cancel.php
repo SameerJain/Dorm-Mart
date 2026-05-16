@@ -88,9 +88,24 @@ try {
     $inventoryProductId = (int)$row['inventory_product_id'];
     if ($inventoryProductId > 0) {
         // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-        $checkOtherAcceptedStmt = $conn->prepare('SELECT COUNT(*) as cnt FROM scheduled_purchase_requests WHERE inventory_product_id = ? AND status = ? AND request_id != ?');
-        $acceptedStatus = 'accepted';
-        $checkOtherAcceptedStmt->bind_param('isi', $inventoryProductId, $acceptedStatus, $requestId);
+        $checkOtherAcceptedStmt = $conn->prepare('
+            SELECT COUNT(*) as cnt
+            FROM scheduled_purchase_requests spr
+            WHERE spr.inventory_product_id = ?
+              AND spr.status = \'accepted\'
+              AND spr.request_id != ?
+              AND COALESCE((
+                SELECT CASE
+                  WHEN cpr.status IN (\'buyer_accepted\', \'auto_accepted\') AND cpr.is_successful = 0 THEN 0
+                  ELSE 1
+                END
+                FROM confirm_purchase_requests cpr
+                WHERE cpr.scheduled_request_id = spr.request_id
+                ORDER BY cpr.confirm_request_id DESC
+                LIMIT 1
+              ), 1) = 1
+        ');
+        $checkOtherAcceptedStmt->bind_param('ii', $inventoryProductId, $requestId);
         $checkOtherAcceptedStmt->execute();
         $checkRes = $checkOtherAcceptedStmt->get_result();
         $checkRow = $checkRes ? $checkRes->fetch_assoc() : null;

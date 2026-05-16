@@ -13,7 +13,7 @@ import {
   containsMemePrice,
 } from "../../utils/priceValidation";
 import {
-  convertTo24Hour,
+  combineScheduleDateTime,
   getDateRangeMessage,
   getEasternTime,
   validateScheduleDateTime,
@@ -162,66 +162,6 @@ function SchedulePurchasePage() {
     return true;
   };
 
-  // Convert separate fields to ISO datetime string (treats input as Eastern Time, converts to UTC)
-  const combineDateTime = () => {
-    if (!meetingMonth || !meetingDay || !meetingYear || meetingYear.length < 4 || !meetingHour || !meetingMinute || !meetingAmPm) {
-      return null;
-    }
-
-    const hour24 = convertTo24Hour(meetingHour, meetingAmPm);
-
-    // Parse date and create datetime (treat as Eastern Time)
-    const year = parseInt(meetingYear);
-    const month = parseInt(meetingMonth);
-    const day = parseInt(meetingDay);
-
-    // Create date string in Eastern Time format
-    const dateTimeString = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T${String(hour24).padStart(2, "0")}:${meetingMinute}:00`;
-
-    // Options for formatting Eastern Time
-    const easternTimeOptions = {
-      timeZone: "America/New_York",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    };
-
-    // Helper function to check if UTC date matches desired Eastern Time
-    const checkUtcDate = (utcOffset) => {
-      const utcDate = new Date(`${dateTimeString}${utcOffset}`);
-      const utcAsEastern = utcDate.toLocaleString("en-US", easternTimeOptions);
-      const parts = utcAsEastern.match(/(\d+)\/(\d+)\/(\d+),?\s+(\d+):(\d+)/);
-      if (parts) {
-        const [, partMonth, partDay, partYear, partHour, partMinute] =
-          parts.map(Number);
-        if (
-          partYear === year &&
-          partMonth === month &&
-          partDay === day &&
-          partHour === hour24 &&
-          partMinute === parseInt(meetingMinute)
-        ) {
-          return utcDate.toISOString();
-        }
-      }
-      return null;
-    };
-
-    // Try EST (UTC-5) first
-    const estResult = checkUtcDate("-05:00");
-    if (estResult) return estResult;
-
-    // Try EDT (UTC-4)
-    const edtResult = checkUtcDate("-04:00");
-    if (edtResult) return edtResult;
-
-    // Fallback: use EST
-    return new Date(`${dateTimeString}-05:00`).toISOString();
-  };
-
   async function handleSubmit(e) {
     e.preventDefault();
     setFormError("");
@@ -275,7 +215,14 @@ function SchedulePurchasePage() {
       return;
     }
 
-    const meetingDateTimeISO = combineDateTime();
+    const meetingDateTimeISO = combineScheduleDateTime({
+      meetingMonth,
+      meetingDay,
+      meetingYear,
+      meetingHour,
+      meetingMinute,
+      meetingAmPm,
+    });
     if (!meetingDateTimeISO) {
       // This should not happen if validateDateTime passed, but keep as safety check
       setFormError(
@@ -466,7 +413,7 @@ function SchedulePurchasePage() {
                     customMeetLocation.trim() ===
                       selectedListing.meet_location) ? (
                     <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
-                      ✓ This location matches the one listed on your item form
+                      This location matches the one listed on your item form
                     </p>
                   ) : (
                     meetLocationChoice && (
