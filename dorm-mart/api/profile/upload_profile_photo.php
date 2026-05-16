@@ -63,12 +63,8 @@ try {
         json_response(['success' => false, 'error' => $message], $imageInfo['status']);
     }
 
-    $apiRoot      = dirname(__DIR__);          // /api
-    $projectRoot  = dirname($apiRoot);         // project root
-    $envDir       = getenv('DATA_IMAGES_DIR');
-    $envBase      = getenv('DATA_IMAGES_URL_BASE');
-    $imageDirFs   = rtrim($envDir !== false && $envDir !== '' ? $envDir : ($projectRoot . '/images'), '/') . '/';
-    $imageBaseUrl = rtrim($envBase !== false && $envBase !== '' ? $envBase : '/images', '/');
+    $imageDirFs   = rtrim(data_images_dir(), '/\\') . DIRECTORY_SEPARATOR;
+    $imageBaseUrl = '/images';
 
     if (!is_dir($imageDirFs) && !@mkdir($imageDirFs, 0775, true) && !is_dir($imageDirFs)) {
         throw new RuntimeException('Unable to create images directory');

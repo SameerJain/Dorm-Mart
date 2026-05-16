@@ -66,12 +66,8 @@ if (!$imageInfo['ok']) {
 }
 $ext = $imageInfo['extension'];
 
-/* Build destination dir:
-   - __DIR__ = api/chat
-   - dirname(__DIR__, 2) goes up two levels to project root (dorm-mart/)
-*/
-$projectRoot = dirname(__DIR__, 2);
-$destDir     = $projectRoot . '/media/chat-images';
+/* Build destination dir under the configured uploads root. */
+$destDir = data_media_dir('chat-images');
 if (!is_dir($destDir)) {
     if (!ensure_upload_directory($destDir)) {
         json_response(['success' => false, 'error' => 'media_dir_unwritable'], 500);

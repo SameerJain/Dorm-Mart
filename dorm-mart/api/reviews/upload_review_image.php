@@ -40,8 +40,7 @@ if (!$imageInfo['ok']) {
 $ext = $imageInfo['extension'];
 
 // Build destination directory
-$projectRoot = dirname(__DIR__, 2);
-$destDir     = $projectRoot . '/media/review-images';
+$destDir = data_media_dir('review-images');
 if (!is_dir($destDir)) {
     if (!ensure_upload_directory($destDir)) {
         json_response(['success' => false, 'error' => 'media_dir_unwritable'], 500);

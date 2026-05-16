@@ -571,7 +571,7 @@ Compared with the sprint baseline, many old loose files were moved into clearer 
 
 ### Important teammate warning
 
-Railway containers can lose files stored in normal container directories after redeploys/restarts unless a volume is configured. If database rows point at uploaded images but the files are gone, the app will show the placeholder image. The setup docs mention `DATA_IMAGES_DIR` and related image configuration for persistent storage.
+Railway containers can lose files stored in normal container directories after redeploys/restarts unless a volume is configured. If database rows point at uploaded images but the files are gone, the app will show the placeholder image. The setup docs mention `DATA_UPLOADS_DIR` for persistent upload storage.
 
 ## Current run and deploy paths
 

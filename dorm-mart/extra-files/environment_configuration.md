@@ -20,5 +20,5 @@ Dorm Mart should get deployment-specific values from env vars, not hardcoded hos
 - `CORS_ALLOWED_ORIGINS`: comma-separated trusted browser origins.
 - `ALLOW_ALL_EMAILS`: account-creation email policy.
 - `GMAIL_USERNAME`, `GMAIL_PASSWORD`, `SENDGRID_API_KEY`, `MAIL_FROM_*`, `SUPPORT_EMAIL`, `SMTP_*`: mail settings.
-- `DATA_IMAGES_DIR`, `DATA_IMAGES_URL_BASE`: stored image paths.
+- `DATA_UPLOADS_DIR`: upload storage root. The app derives `images/` and `media/` below this path.
 - `WS_TOKEN_SECRET`: chat WebSocket token signing.

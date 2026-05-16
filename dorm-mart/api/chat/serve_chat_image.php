@@ -5,6 +5,7 @@ header('X-Content-Type-Options: nosniff'); // helps prevent MIME sniffing
 
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../helpers/image_upload.php';
 require __DIR__ . '/../database/db_connect.php';
 
 set_security_headers();    // your existing security headers
@@ -62,14 +63,18 @@ if ($imageRel === '') {
   echo json_encode(['success' => false, 'error' => 'no_image']);
   exit;
 }
+if (strpos($imageRel, '/media/chat-images/') !== 0) {
+  http_response_code(404);
+  echo json_encode(['success' => false, 'error' => 'file_missing']);
+  exit;
+}
 
-// Build absolute path safely from project root.
-// __DIR__ = api/chat → dirname(__DIR__, 2) = project root (dorm-mart/)
-$projectRoot = dirname(__DIR__, 2);
-$absPath     = realpath($projectRoot . $imageRel);  // resolves symlinks/.. segments
+// Build absolute path safely from the configured chat media directory.
+$mediaRoot = real_upload_path(data_media_dir('chat-images'));
+$file = basename($imageRel);
+$absPath = $mediaRoot !== null ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
 
 // Security: ensure the resolved path is still under the media directory we expect
-$mediaRoot = realpath($projectRoot . '/media/chat-images');
 if (!$absPath || !$mediaRoot || strpos($absPath, $mediaRoot) !== 0 || !is_file($absPath)) {
   http_response_code(404);
   echo json_encode(['success' => false, 'error' => 'file_missing']);
