@@ -759,6 +759,7 @@ At the time this document was updated, the working tree includes these local edi
 - Consolidated the live promo opt-in email sender into `api/helpers/promo_email.php`; `profile/user_preferences.php` now uses that shared helper, and the stale duplicate in account creation was removed.
 - Rechecked recent refactors with production React builds and PHP syntax checks. The repo still has no matching frontend test files for Jest's default test command.
 - Updated forgot-password and create-account email confirmation copy to remind users to check their spam folder.
+- Hardened the password-reset email HTML with a visible copy/paste reset URL fallback because some mail clients de-click styled buttons on unauthenticated messages.
 - Fixed unsuccessful Confirm Purchase handling so a seller-marked unsuccessful exchange does not behave like a completed sale after buyer acceptance or auto-acceptance. Unsuccessful accepted confirmations no longer mark inventory sold, write purchase history, trigger review/rating prompts, or block the seller from sending another Confirm Purchase or Schedule Purchase form.
 - Brought chat conversation deletion cleanup into the same unsuccessful-confirm rule, so deleting a conversation does not keep an item blocked by an accepted schedule whose latest confirmation was unsuccessful.
 - Removed stale Seller Dashboard comments and corrected the listing image-upload comment to match MIME-based validation.
