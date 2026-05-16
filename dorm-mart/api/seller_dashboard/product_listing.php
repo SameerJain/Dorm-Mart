@@ -122,7 +122,7 @@ try {
     exit;
   }
 
-  // --- Save images (no finfo) ---
+  // --- Save images with MIME validation ---
   // Configurable via env so deployments under subpaths (e.g., Aptitude) work
   $envDir  = getenv('DATA_IMAGES_DIR');
   $envBase = getenv('DATA_IMAGES_URL_BASE');

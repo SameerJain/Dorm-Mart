@@ -142,7 +142,7 @@ try {
     
     // Also check for already accepted/confirmed status (block creation if already confirmed)
     // This prevents creating new confirm purchases after a successful confirmation
-    $latestStmt = $conn->prepare('SELECT status FROM confirm_purchase_requests WHERE scheduled_request_id = ? ORDER BY confirm_request_id DESC LIMIT 1');
+    $latestStmt = $conn->prepare('SELECT status, is_successful FROM confirm_purchase_requests WHERE scheduled_request_id = ? ORDER BY confirm_request_id DESC LIMIT 1');
     $latestStmt->bind_param('i', $scheduledRequestId);
     $latestStmt->execute();
     $latestRes = $latestStmt->get_result();
@@ -150,7 +150,13 @@ try {
     $latestStmt->close();
     
     if ($latestRow && in_array($latestRow['status'], ['buyer_accepted', 'auto_accepted'], true)) {
-        json_response(['success' => false, 'error' => 'This transaction has already been confirmed'], 409);
+        if ((bool)$latestRow['is_successful']) {
+            json_response(['success' => false, 'error' => 'This transaction has already been confirmed'], 409);
+        }
+        json_response([
+            'success' => false,
+            'error' => 'This scheduled purchase was marked unsuccessful. Send a new Schedule Purchase form before confirming again.',
+        ], 409);
     }
 
     $buyerId = (int)$schedRow['buyer_user_id'];

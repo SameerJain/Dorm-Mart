@@ -146,8 +146,6 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
       textColor: "text-green-600 dark:text-green-300",
       iconColor: "text-green-600 dark:text-green-400",
       titleColor: "text-green-800 dark:text-green-200",
-      badge:
-        "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200",
     },
     danger: {
       container:
@@ -155,7 +153,6 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
       textColor: "text-red-600 dark:text-red-300",
       iconColor: "text-red-600 dark:text-red-400",
       titleColor: "text-red-800 dark:text-red-200",
-      badge: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200",
     },
     warning: {
       container:
@@ -163,8 +160,6 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
       textColor: "text-yellow-600 dark:text-yellow-300",
       iconColor: "text-yellow-600 dark:text-yellow-400",
       titleColor: "text-yellow-800 dark:text-yellow-200",
-      badge:
-        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-100",
     },
     info: {
       container:
@@ -172,7 +167,6 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
       textColor: "text-blue-600 dark:text-blue-300",
       iconColor: "text-blue-600 dark:text-blue-400",
       titleColor: "text-blue-800 dark:text-blue-200",
-      badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100",
     },
   };
 
@@ -181,7 +175,8 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     label: "Update",
     tone: "info",
   };
-  const visual = toneClasses[safeStatusDescriptor.tone] || toneClasses.info;
+  const visualTone = isSuccessful ? safeStatusDescriptor.tone : "danger";
+  const visual = toneClasses[visualTone] || toneClasses.info;
 
   // Get icon based on status
   const getIcon = () => {
@@ -269,8 +264,8 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
       }
       setLocalStatus(action === "accept" ? "accepted" : "declined");
       if (typeof onRespond === "function") {
-        // Call the callback to refresh messages
-        await onRespond();
+        // Refresh is best-effort after the confirmation already succeeded.
+        onRespond().catch(() => {});
       }
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
@@ -314,11 +309,11 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
                 </p>
                 <span
                   className={`text-xs font-semibold flex-shrink-0 whitespace-nowrap ${
-                    safeStatusDescriptor.tone === "success"
+                    visualTone === "success"
                       ? "text-green-800 dark:text-green-200"
-                      : safeStatusDescriptor.tone === "danger"
+                      : visualTone === "danger"
                         ? "text-red-800 dark:text-red-200"
-                        : safeStatusDescriptor.tone === "warning"
+                        : visualTone === "warning"
                           ? "text-yellow-800 dark:text-yellow-100"
                           : "text-blue-800 dark:text-blue-100"
                   }`}

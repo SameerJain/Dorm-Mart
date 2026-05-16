@@ -6,9 +6,9 @@ This document is for teammates returning to Dorm Mart after the last main sprint
 
 - **Baseline being compared against:** commit `fec6ac5` by IkeSvit.
 - **Downloaded baseline folder used for comparison:** `C:\Users\samee\Downloads\Dorm-Mart-fec6ac5f9ba28f089e045a2168794218c78a5233`.
-- **Current project version:** branch `railway-deployment` at commit `1679206`.
+- **Current project version:** branch `192-Refactor-Codebase` at commit `b684fd7`.
 - **Important:** this document also includes the current uncommitted local edits in the working tree, not just committed Git history.
-- **Scale of change:** the Git diff from `fec6ac5` to `1679206` is very large: hundreds of files changed, including frontend pages, backend APIs, migrations, seed data, deployment files, dependencies, and media cleanup.
+- **Scale of change:** the Git diff from `fec6ac5` to `b684fd7`, plus current uncommitted edits, is very large: hundreds of files changed, including frontend pages, backend APIs, migrations, seed data, deployment files, dependencies, and media cleanup.
 - **How this is organized:** page-by-page first, then cross-cutting backend, deployment, data, and codebase changes.
 
 This is meant to help you understand the project as it exists now before taking new work. It is not a raw diff dump. Generated files, vendor dependency churn, image files, and bulk media changes are summarized instead of listed one by one.
@@ -85,7 +85,7 @@ Compared with the sprint baseline, many old loose files were moved into clearer 
 
 - A configurable email policy now exists. `ALLOW_ALL_EMAILS` can allow any valid email address instead of only UB emails.
 - Backend account creation can send styled welcome/promo emails through SendGrid on Railway, with PHPMailer fallback locally.
-- The current uncommitted working tree removed extra SendGrid debug logs from account creation, so welcome-email checks are less noisy in logs.
+- Welcome-email and promo-email delivery paths log SendGrid/SMTP outcomes server-side for troubleshooting, but these logs are not user-facing.
 
 ### What changed
 
@@ -97,7 +97,7 @@ Compared with the sprint baseline, many old loose files were moved into clearer 
 ### What was removed
 
 - Hardcoded assumptions that only UB email addresses could be used in every environment.
-- Some noisy debug logging around SendGrid welcome-email selection was removed in the current working tree.
+- Some email logging was cleaned up, but SendGrid/SMTP error and outcome logging remains intentionally available in server logs.
 
 ### Related backend/API notes
 
@@ -398,10 +398,11 @@ Compared with the sprint baseline, many old loose files were moved into clearer 
 ### What changed
 
 - Form card coloring was simplified.
-- Purchase ordering now puts active scheduled purchases first, then upcoming purchases, then purchases where the time has passed.
+- Purchase ordering now groups scheduled purchases as happening now, needing response, upcoming, and past.
 - Active form button designs were polished.
 - Chat is updated when scheduled purchases expire.
 - Ongoing purchases moved out of the SellerDashboard folder into the ScheduledPurchases area.
+- Item grouping and scheduled-purchase bucket sorting now live in feature-local helpers instead of being embedded in the page component.
 
 ### What was removed
 
@@ -439,7 +440,7 @@ Compared with the sprint baseline, many old loose files were moved into clearer 
 
 - Product listing endpoint lives under `api/seller_dashboard/product_listing.php`.
 - Sold items cannot be edited.
-- Active listing count is capped at 50 per user.
+- Active listing count is capped at 25 per user.
 - Uploaded images should use the configured image directory/media route for Railway compatibility.
 
 ## Purchase History page
@@ -754,10 +755,13 @@ At the time this document was updated, the working tree includes these local edi
 - Removed the stale frontend validation helper documentation entry.
 - Defined the missing `overflow-wrap-anywhere` CSS utility and applied it to high-risk user-generated text displays such as chat messages, reviews, receipt notes, scheduled purchase notes, and profile review text.
 - Tightened search price filters on both the React form and the search API so malformed decimal strings are rejected instead of silently accepted/coerced.
-- Reduced the remaining large frontend files by moving scheduled-purchase sorting/fetch helpers, schedule date/time helpers, and chat username lookup into feature-local helper modules. No current frontend/backend source file is over 1,000 lines.
+- Reduced large frontend files by moving scheduled-purchase sorting/fetch helpers, schedule date/time helpers, chat username lookup, and chat typing-status handling into feature-local helper modules. No current frontend/backend source file is over 1,000 physical lines.
 - Consolidated the live promo opt-in email sender into `api/helpers/promo_email.php`; `profile/user_preferences.php` now uses that shared helper, and the stale duplicate in account creation was removed.
-- Rechecked the refactor with a production React build, full PHP syntax lint, Composer validation, and Railway-style router smoke tests. Jest still reports no tests found because the repo has no matching frontend test files.
+- Rechecked recent refactors with production React builds and PHP syntax checks. The repo still has no matching frontend test files for Jest's default test command.
 - Updated forgot-password and create-account email confirmation copy to remind users to check their spam folder.
+- Fixed unsuccessful Confirm Purchase handling so a seller-marked unsuccessful exchange does not behave like a completed sale after buyer acceptance or auto-acceptance. Unsuccessful accepted confirmations no longer mark inventory sold, write purchase history, trigger review/rating prompts, or block the seller from sending another Confirm Purchase or Schedule Purchase form.
+- Brought chat conversation deletion cleanup into the same unsuccessful-confirm rule, so deleting a conversation does not keep an item blocked by an accepted schedule whose latest confirmation was unsuccessful.
+- Removed stale Seller Dashboard comments and corrected the listing image-upload comment to match MIME-based validation.
 
 ### Security and correctness fixes (post-sprint)
 
@@ -779,6 +783,12 @@ Fix: replaced with a single atomic `INSERT ... ON DUPLICATE KEY UPDATE` using My
 
 Fix: removed the metadata lookup for legacy items entirely. The `purchased_items` table already stores `title`, `sold_by`, and `image_url` as a snapshot at purchase time. `categories` and `price` are returned as empty/null for legacy items since there is no `inventory_product_id` column to join on.
 
+**Unsuccessful confirm-purchase retry flow fixed (`api/confirm_purchases`, `api/scheduled_purchases`, chat)**
+
+The confirm-purchase flow stored `is_successful`, but several completion checks treated any accepted or auto-accepted confirmation as a final completed sale. That meant a seller could mark a meet-up as unsuccessful, the buyer could accept that outcome, and the app would still block another confirmation/schedule attempt as if the item had completed safely.
+
+Fix: completion checks now require both an accepted status and `is_successful = 1`. Unsuccessful accepted confirmations are terminal for that specific Confirm Purchase card, but they do not sell the item, write purchase history, show review prompts, or keep the schedule/confirm buttons locked. Scheduled-purchase cancellation, response, active checks, seller listing flags, and chat conversation deletion now use the same "active accepted schedule" rule so unsuccessful confirmations release the item flow consistently. Git history suggests the root behavior was introduced with `01f82dc` (`save state 2`) on April 28, 2026, when the confirm-purchase APIs and active scheduled-purchase check were added. The seller-dashboard accepted-schedule flag picked up the same assumption in `d2f59d0` (`web cli blocks`) on May 12, 2026.
+
 ## Things to know before working again
 
 - Old paths may be wrong. Check current imports and API calls before editing from memory.
@@ -786,7 +796,7 @@ Fix: removed the metadata lookup for legacy items entirely. The `purchased_items
 - Many UI changes were small polish fixes, but they touched many pages. Before editing a page, check its current component folder and related API path.
 - The app now has more consistent modal/button styling. New popups should follow the newer rounded-button/modal approach.
 - Sold listings are protected more strongly now; do not reintroduce edit paths for sold items.
-- Scheduled purchase expiry is lazy and tied into list/chat flows. Be careful when changing scheduled purchase status logic.
+- Scheduled purchase expiry is lazy and tied into list/chat flows. Be careful when changing scheduled purchase status logic, especially around unsuccessful accepted confirm-purchase outcomes, which should release the flow for a new schedule instead of acting like a completed sale.
 - API test files were quick-fixed and moved, but they are not fully cleaned up.
 - Build scripts can clear target folders under `C:\xampp\htdocs`; do not run package scripts casually unless you intend to rebuild those folders.
 - The README and setup docs were updated, but this handoff is the best first read for understanding what changed since the sprint baseline.

@@ -63,12 +63,36 @@ try {
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $schedStmt = $conn->prepare('
         SELECT *
-        FROM scheduled_purchase_requests
-        WHERE conversation_id = ?
-          AND inventory_product_id = ?
-          AND seller_user_id = ?
-          AND status = \'accepted\'
-        ORDER BY COALESCE(updated_at, buyer_response_at) DESC, request_id DESC
+        FROM scheduled_purchase_requests spr
+        WHERE spr.conversation_id = ?
+          AND spr.inventory_product_id = ?
+          AND spr.seller_user_id = ?
+          AND spr.status = \'accepted\'
+          AND spr.request_id = (
+            SELECT spr2.request_id
+            FROM scheduled_purchase_requests spr2
+            WHERE spr2.conversation_id = spr.conversation_id
+              AND spr2.inventory_product_id = spr.inventory_product_id
+              AND spr2.seller_user_id = spr.seller_user_id
+              AND spr2.status = \'accepted\'
+            ORDER BY COALESCE(spr2.updated_at, spr2.buyer_response_at) DESC, spr2.request_id DESC
+            LIMIT 1
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM confirm_purchase_requests cpr
+            WHERE cpr.scheduled_request_id = spr.request_id
+              AND cpr.confirm_request_id = (
+                SELECT cpr2.confirm_request_id
+                FROM confirm_purchase_requests cpr2
+                WHERE cpr2.scheduled_request_id = spr.request_id
+                ORDER BY cpr2.confirm_request_id DESC
+                LIMIT 1
+              )
+              AND cpr.status IN (\'buyer_accepted\', \'auto_accepted\')
+              AND cpr.is_successful = 0
+          )
+        ORDER BY COALESCE(spr.updated_at, spr.buyer_response_at) DESC, spr.request_id DESC
         LIMIT 1
     ');
     if (!$schedStmt) {
@@ -133,6 +157,7 @@ try {
         $latestConfirm = [
             'confirm_request_id' => (int)$confirmRow['confirm_request_id'],
             'status' => $confirmRow['status'],
+            'is_successful' => (bool)$confirmRow['is_successful'],
             'expires_at' => $confirmRow['expires_at'],
             'buyer_response_at' => $confirmRow['buyer_response_at'],
         ];
@@ -145,7 +170,10 @@ try {
             $canConfirm = false;
             $reasonCode = 'pending_request';
             $message = 'There is already a Confirm Purchase waiting for buyer response.';
-        } elseif (in_array($confirmRow['status'], ['buyer_accepted', 'auto_accepted'], true)) {
+        } elseif (
+            in_array($confirmRow['status'], ['buyer_accepted', 'auto_accepted'], true)
+            && (bool)$confirmRow['is_successful']
+        ) {
             $canConfirm = false;
             $reasonCode = 'already_confirmed';
             $message = 'This transaction has already been confirmed.';

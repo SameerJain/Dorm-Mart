@@ -76,6 +76,21 @@ try {
     $row = $res ? $res->fetch_assoc() : $row;
     $selectStmt->close();
 
+    if ($action === 'accept' && (bool)$row['is_successful']) {
+        mark_inventory_as_sold($conn, $row);
+        record_purchase_history($conn, $buyerId, (int)$row['inventory_product_id'], [
+            'confirm_request_id' => $confirmRequestId,
+            'is_successful' => (bool)$row['is_successful'],
+            'final_price' => $row['final_price'] !== null ? (float)$row['final_price'] : null,
+            'failure_reason' => $row['failure_reason'],
+            'seller_notes' => $row['seller_notes'],
+            'failure_reason_notes' => $row['failure_reason_notes'],
+            'auto_accepted' => false,
+        ]);
+    } elseif ($action === 'accept') {
+        release_inventory_after_unsuccessful_confirm($conn, $row);
+    }
+
     $conversationId = (int)$row['conversation_id'];
     $metadataType = $action === 'accept' ? 'confirm_accepted' : 'confirm_denied';
     $metadata = build_confirm_response_metadata($row, $metadataType);
@@ -91,19 +106,6 @@ try {
             delete_confirm_request_message($conn, $conversationId, $confirmRequestId);
             insert_confirm_chat_message($conn, $conversationId, $buyerId, $receiverId, $messageContent, $metadata);
         }
-    }
-
-    if ($action === 'accept') {
-        mark_inventory_as_sold($conn, $row);
-        record_purchase_history($conn, $buyerId, (int)$row['inventory_product_id'], [
-            'confirm_request_id' => $confirmRequestId,
-            'is_successful' => (bool)$row['is_successful'],
-            'final_price' => $row['final_price'] !== null ? (float)$row['final_price'] : null,
-            'failure_reason' => $row['failure_reason'],
-            'seller_notes' => $row['seller_notes'],
-            'failure_reason_notes' => $row['failure_reason_notes'],
-            'auto_accepted' => false,
-        ]);
     }
 
     $responseAtIso = null;
