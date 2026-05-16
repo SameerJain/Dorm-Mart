@@ -101,8 +101,12 @@ function dm_transactional_password_reset_package(string $firstName, string $rese
         . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 26px;border-collapse:collapse;"><tr><td align="center">'
         . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>'
         . '<td bgcolor="#2563eb" style="background-color:#2563eb;border-radius:8px;">'
-        . '<a href="' . $href . '" target="_blank" style="display:inline-block;padding:14px 32px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Reset password</a>'
+        . '<a href="' . $href . '" target="_blank" role="button" style="display:inline-block;padding:14px 32px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Reset password</a>'
         . '</td></tr></table></td></tr></table>'
+        // Some email clients suppress styled CTA links when sender authentication is uncertain.
+        . '<p style="margin:0 0 8px;color:#94a3b8;font-size:13px;line-height:1.5;">Or use this plain reset link:</p>'
+        . '<p style="margin:0 0 22px;color:#93c5fd;font-size:13px;line-height:1.5;word-break:break-all;overflow-wrap:anywhere;">'
+        . '<a href="' . $href . '" target="_blank" style="color:#38bdf8;text-decoration:underline;word-break:break-all;overflow-wrap:anywhere;">' . $href . '</a></p>'
         . '<p style="margin:0 0 12px;color:#94a3b8;font-size:14px;">This link expires in <strong style="color:#e2e8f0;">1 hour</strong> for your security.</p>'
         . '<p style="margin:0 0 22px;color:#64748b;font-size:13px;line-height:1.5;">If you did not ask for a reset, you can ignore this email &mdash; your password will stay the same.</p>'
         . '<p style="margin:0;color:#e2e8f0;">Best regards,<br><span style="color:#38bdf8;font-weight:600;">The Dorm Mart Team</span></p>';
