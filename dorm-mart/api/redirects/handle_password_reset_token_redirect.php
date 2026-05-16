@@ -16,17 +16,22 @@ if ($isHttps) {
 }
 
 $token = $_GET['token'] ?? '';
+$uid = (isset($_GET['uid']) && ctype_digit($_GET['uid'])) ? (int)$_GET['uid'] : 0;
 
 // Validate token format: must be a 64-character hex string
 if (!empty($token) && !preg_match('/^[0-9a-f]{64}$/i', $token)) {
-    $token = ''; // treat malformed tokens as missing
+    $token = '';
 }
 
-// Validate token exists
 if (empty($token)) {
     header('Location: ' . dm_frontend_url('login?error=invalid_reset_link'));
     exit;
 }
 
-header('Location: ' . dm_frontend_url('reset-password?token=' . urlencode($token)));
+$params = 'token=' . urlencode($token);
+if ($uid > 0) {
+    $params .= '&uid=' . $uid;
+}
+
+header('Location: ' . dm_frontend_url('reset-password?' . $params));
 exit;

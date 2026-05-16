@@ -12,6 +12,8 @@ import { formatCurrency, formatDate } from "../../utils/formatters";
 import logger from "../../utils/logger";
 import PageBackButton from "../../components/PageBackButton";
 
+const PRICE_FILTER_PATTERN = /^\d{0,4}(?:\.\d{0,2})?$/;
+
 function useQuery() {
   const { search } = useLocation();
   return useMemo(() => new URLSearchParams(search), [search]);
@@ -720,8 +722,7 @@ function FiltersSidebar({
               onKeyDown={decimalNumericKeyDownHandler}
               onChange={(e) => {
                 const value = e.target.value;
-                // Only allow numbers and decimal point
-                if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                if (value === "" || PRICE_FILTER_PATTERN.test(value)) {
                   setMinPrice(value);
                   // Clear error when user starts typing
                   if (priceError) setPriceError("");
@@ -742,8 +743,7 @@ function FiltersSidebar({
               onKeyDown={decimalNumericKeyDownHandler}
               onChange={(e) => {
                 const value = e.target.value;
-                // Only allow numbers and decimal point
-                if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                if (value === "" || PRICE_FILTER_PATTERN.test(value)) {
                   setMaxPrice(value);
                   // Clear error when user starts typing
                   if (priceError) setPriceError("");

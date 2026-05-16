@@ -62,25 +62,6 @@ try {
 
   $descriptionRaw = (($t = $_POST['description'] ?? '') !== '') ? trim((string)$t) : null;
 
-  // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-  if ($titleRaw !== '' && contains_xss_pattern($titleRaw)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid characters in title']);
-    exit;
-  }
-  // XSS PROTECTION: Filtering (Layer 1)
-  if ($descriptionRaw !== null && $descriptionRaw !== '' && contains_xss_pattern($descriptionRaw)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid characters in description']);
-    exit;
-  }
-  // XSS PROTECTION: Filtering (Layer 1)
-  if ($itemLocationRaw !== null && $itemLocationRaw !== '' && contains_xss_pattern($itemLocationRaw)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid characters in location']);
-    exit;
-  }
-
   $title = $titleRaw;
   $description = $descriptionRaw;
   $itemLocation = $itemLocationRaw;

@@ -63,6 +63,7 @@ function ResetPasswordForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
+  const uid = searchParams.get("uid");
 
   // Form state
   const [newPassword, setNewPassword] = useState("");
@@ -99,7 +100,7 @@ function ResetPasswordForm() {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token }),
+            body: JSON.stringify({ token, ...(uid ? { uid: parseInt(uid, 10) } : {}) }),
           },
         );
         const data = await response.json();
@@ -187,8 +188,9 @@ function ResetPasswordForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          token: token,
-          newPassword: newPassword,
+          token,
+          newPassword,
+          ...(uid ? { uid: parseInt(uid, 10) } : {}),
         }),
       });
 

@@ -1,7 +1,7 @@
 <?php
 /**
  * XSS Injection Test Script
- * Tests various endpoints for XSS vulnerabilities
+ * Tests endpoint responses for unsafe XSS reflection
  * 
  * Usage: Run this script from command line or via web browser
  * Make sure you have valid session cookies for authenticated endpoints
@@ -101,8 +101,8 @@ echo "<!DOCTYPE html>
 </head>
 <body>
     <h1>XSS Injection Test Results</h1>
-    <p class='info'>This script tests endpoints for XSS vulnerabilities. All endpoints should reject XSS attempts or properly escape output.</p>
-    <p class='info'><strong>Note:</strong> PASS is based on HTTP status / JSON error heuristics only. Stored XSS is not detected unless the response reflects the payload unsafely; review rendering in the app for user-generated fields.</p>";
+    <p class='info'>This script checks that XSS-looking payloads are not reflected as executable HTML. Endpoints may reject payloads or accept them as plain text.</p>
+    <p class='info'><strong>Note:</strong> JSON responses may contain user text safely. Stored XSS still depends on escaped rendering in the React app.</p>";
 
 $baseUrl = api_test_api_base_url();
 
@@ -130,29 +130,39 @@ foreach ($testEndpoints as $endpoint) {
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE) ?: '';
+        $curlError = curl_error($ch);
         curl_close($ch);
-        
-        $result = json_decode($response, true);
-        $isSafe = false;
-        
-        // Check if endpoint rejected the payload (error response or validation failure)
-        if ($httpCode >= 400 || 
+
+        $responseBody = is_string($response) ? $response : '';
+        $result = json_decode($responseBody, true);
+        $isRejected = $httpCode >= 400 ||
             (isset($result['ok']) && $result['ok'] === false) ||
-            (isset($result['success']) && $result['success'] === false) ||
-            (isset($result['error']) && (
-                stripos($result['error'], 'invalid') !== false ||
-                stripos($result['error'], 'xss') !== false ||
-                stripos($result['error'], 'characters') !== false
-            ))) {
-            $isSafe = true;
+            (isset($result['success']) && $result['success'] === false);
+        $isHtmlResponse = stripos($contentType, 'text/html') !== false;
+        $unsafeReflection = $isHtmlResponse && $responseBody !== '' && strpos($responseBody, $payload) !== false;
+        $isSafe = $response !== false && ($isRejected || !$unsafeReflection);
+
+        if ($isSafe) {
             $passedTests++;
         }
-        
+
+        if ($response === false) {
+            $reason = 'curl error';
+        } elseif ($isRejected) {
+            $reason = 'rejected by endpoint';
+        } elseif ($unsafeReflection) {
+            $reason = 'unsafe raw HTML reflection';
+        } else {
+            $reason = 'no unsafe HTML reflection';
+        }
+
         $status = $isSafe ? "<span class='pass'>PASS</span>" : "<span class='fail'>FAIL</span>";
-        echo "<p>{$status} Payload: <span class='payload'>" . escape_html($payload) . "</span></p>";
-        
+        echo "<p>{$status} " . escape_html($reason) . " - Payload: <span class='payload'>" . escape_html($payload) . "</span></p>";
+
         if (!$isSafe) {
-            echo "<pre>Response: " . escape_html(substr($response, 0, 500)) . "</pre>";
+            $detail = $response === false ? $curlError : substr($responseBody, 0, 500);
+            echo "<pre>Response: " . escape_html($detail) . "</pre>";
         }
     }
     
@@ -167,7 +177,7 @@ echo "<p>Total Tests: {$totalTests}</p>";
 echo "<p>Passed: <span class='pass'>{$passedTests}</span></p>";
 echo "<p>Failed: <span class='fail'>" . ($totalTests - $passedTests) . "</span></p>";
 echo "<p>Pass Rate: {$passRate}%</p>";
-echo "<p class='info'><strong>Note:</strong> Even if an endpoint accepts XSS payloads, it may still be safe if output is properly escaped. Check the actual output rendering.</p>";
+echo "<p class='info'><strong>Note:</strong> Accepted payloads are okay when rendered as text/JSON and escaped in any HTML context.</p>";
 echo "</div>";
 
 echo "</body>

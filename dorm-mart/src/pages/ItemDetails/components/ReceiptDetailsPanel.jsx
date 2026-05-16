@@ -65,7 +65,7 @@ export default function ReceiptDetailsPanel({ purchaseDetails, purchaseRows }) {
               humanizeStatus(purchaseDetails.failureReason)}
           </p>
           {purchaseDetails.failureReasonNotes && (
-            <p className="text-sm text-red-700 dark:text-red-300 whitespace-pre-wrap break-words overflow-hidden mt-1">
+            <p className="text-sm text-red-700 dark:text-red-300 whitespace-pre-wrap break-words overflow-wrap-anywhere overflow-hidden mt-1">
               {purchaseDetails.failureReasonNotes}
             </p>
           )}
@@ -96,7 +96,7 @@ function NoteBlock({ title, text }) {
       <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
         {title}
       </p>
-      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
+      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words overflow-wrap-anywhere">
         {text}
       </p>
     </div>

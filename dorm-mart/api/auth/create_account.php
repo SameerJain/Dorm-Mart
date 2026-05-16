@@ -361,18 +361,10 @@ $firstNameRaw = trim($data['firstName'] ?? '');
 $lastNameRaw = trim($data['lastName'] ?? '');
 $emailRaw = strtolower(trim($data['email'] ?? ''));
 
-// XSS PROTECTION: Check for XSS patterns in firstName and lastName fields
-// Note: SQL injection is already prevented by prepared statements and regex validation
-if (contains_xss_pattern($firstNameRaw) || contains_xss_pattern($lastNameRaw)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
-    exit;
-}
-
 // Load email policy configuration
 require_once __DIR__ . '/../config/email_config.php';
 
-// XSS PROTECTION: Input validation with regex patterns to prevent XSS attacks
+// Input validation with regex patterns
 $firstName = validate_input($firstNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
 $lastName = validate_input($lastNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
 $gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);

@@ -170,56 +170,35 @@ function delete_confirm_request_message(mysqli $conn, int $conversationId, int $
  */
 function record_purchase_history(mysqli $conn, int $userId, int $productId, array $payload): void
 {
-    $selectStmt = $conn->prepare('SELECT history_id, items FROM purchase_history WHERE user_id = ? LIMIT 1');
-    if (!$selectStmt) {
-        throw new RuntimeException('Failed to prepare purchase history lookup');
-    }
-    $selectStmt->bind_param('i', $userId);
-    $selectStmt->execute();
-    $res = $selectStmt->get_result();
-    $row = $res ? $res->fetch_assoc() : null;
-    $selectStmt->close();
-
     $nowIso = (new DateTime('now', new DateTimeZone('UTC')))->format(DateTime::ATOM);
     $entry = [
-        'product_id' => $productId,
-        'recorded_at' => $nowIso,
+        'product_id'      => $productId,
+        'recorded_at'     => $nowIso,
         'confirm_payload' => $payload,
     ];
-
-    if ($row) {
-        $itemsJson = $row['items'] ?? '[]';
-        $items = json_decode($itemsJson, true);
-        if (!is_array($items)) {
-            $items = [];
-        }
-        $items[] = $entry;
-        $newJson = json_encode($items, JSON_UNESCAPED_SLASHES);
-        if ($newJson === false) {
-            throw new RuntimeException('Failed to encode purchase history items');
-        }
-
-        $updateStmt = $conn->prepare('UPDATE purchase_history SET items = ?, updated_at = NOW() WHERE history_id = ? LIMIT 1');
-        if (!$updateStmt) {
-            throw new RuntimeException('Failed to prepare purchase history update');
-        }
-        $updateStmt->bind_param('si', $newJson, $row['history_id']);
-        $updateStmt->execute();
-        $updateStmt->close();
-    } else {
-        $itemsJson = json_encode([$entry], JSON_UNESCAPED_SLASHES);
-        if ($itemsJson === false) {
-            throw new RuntimeException('Failed to encode purchase history items');
-        }
-
-        $insertStmt = $conn->prepare('INSERT INTO purchase_history (user_id, items) VALUES (?, ?)');
-        if (!$insertStmt) {
-            throw new RuntimeException('Failed to prepare purchase history insert');
-        }
-        $insertStmt->bind_param('is', $userId, $itemsJson);
-        $insertStmt->execute();
-        $insertStmt->close();
+    $entryJson = json_encode($entry, JSON_UNESCAPED_SLASHES);
+    if ($entryJson === false) {
+        throw new RuntimeException('Failed to encode purchase history entry');
     }
+
+    // Single atomic upsert: appends the entry whether or not a row exists yet.
+    // JSON_ARRAY_APPEND on the UPDATE path avoids the SELECT→deserialize→UPDATE
+    // race condition where two simultaneous completions could overwrite each other.
+    $stmt = $conn->prepare('
+        INSERT INTO purchase_history (user_id, items)
+        VALUES (?, JSON_ARRAY(CAST(? AS JSON)))
+        ON DUPLICATE KEY UPDATE
+            items      = JSON_ARRAY_APPEND(items, \'$\', CAST(? AS JSON)),
+            updated_at = NOW()
+    ');
+    if (!$stmt) {
+        throw new RuntimeException('Failed to prepare purchase history upsert');
+    }
+    $stmt->bind_param('iss', $userId, $entryJson, $entryJson);
+    if (!$stmt->execute()) {
+        throw new RuntimeException('Failed to execute purchase history upsert');
+    }
+    $stmt->close();
 }
 
 function get_confirm_snapshot(array $row): array

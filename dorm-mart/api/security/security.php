@@ -230,45 +230,6 @@ function validate_input($input, $maxLength = 255, $allowedChars = null) {
     return $input;
 }
 
-/**
- * Check whether input contains common XSS attack patterns.
- * 
- * This is a filter for rejecting obviously suspicious input. It is not a
- * replacement for context-specific output encoding such as escape_html().
- * 
- * @param string $input Input to check
- * @return bool True if XSS pattern detected, false otherwise
- */
-function contains_xss_pattern($input) {
-    if (!is_string($input)) {
-        return false;
-    }
-    
-    $xss_patterns = [
-        '/<script/i',           // Script tags in any case
-        '/javascript:/i',        // JavaScript: protocol
-        '/onerror=/i',           // Event handlers: onerror
-        '/onload=/i',            // Event handlers: onload
-        '/onclick=/i',           // Event handlers: onclick
-        '/onmouseover=/i',       // Event handlers: onmouseover
-        '/<iframe/i',           // iframe tags
-        '/<object/i',            // object tags
-        '/<embed/i',             // embed tags
-        '/<img[^>]*on/i',        // img tags with event handlers
-        '/<svg[^>]*on/i',        // svg tags with event handlers
-        '/expression\s*\(/i',   // CSS expression()
-        '/vbscript:/i'           // VBScript protocol
-    ];
-    
-    foreach ($xss_patterns as $pattern) {
-        if (preg_match($pattern, $input)) {
-            return true;
-        }
-    }
-    
-    return false;
-}
-
 // RATE LIMITING FUNCTIONS
 
 /**

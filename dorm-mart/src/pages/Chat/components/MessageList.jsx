@@ -223,7 +223,7 @@ export default function MessageList({
                               />
                             </a>
                             {m.content && (
-                              <p className="mt-2 whitespace-pre-wrap break-words">
+                              <p className="mt-2 whitespace-pre-wrap break-words overflow-wrap-anywhere">
                                 {m.content}
                               </p>
                             )}
@@ -261,7 +261,7 @@ export default function MessageList({
                           : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100")
                       }
                     >
-                      <p className="whitespace-pre-wrap break-words">
+                      <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">
                         {m.content}
                       </p>
                       <div
