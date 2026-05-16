@@ -105,6 +105,9 @@ try {
       if ($userRow && !$userRow['received_intro_promo_email']) {
         $shouldSendEmail = true;
       }
+      error_log("user_preferences: promo opt-in requested; intro email " . ($shouldSendEmail ? "will be sent" : "already sent or unavailable") . " for user_id {$userId}");
+    } else {
+      error_log("user_preferences: promo emails disabled for user_id {$userId}; no promo email will be sent");
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
@@ -135,15 +138,20 @@ try {
       $stmt->close();
       
       if ($userDetails) {
+        error_log("user_preferences: attempting promo welcome email for user_id {$userId}");
         $emailResult = send_promo_welcome_email([
           'firstName' => $userDetails['first_name'],
           'lastName' => $userDetails['last_name'],
           'email' => $userDetails['email']
         ]);
-        
+
         if (!$emailResult['ok']) {
           error_log("Failed to send promo welcome email: " . $emailResult['error']);
+        } else {
+          error_log("user_preferences: promo welcome email send completed for user_id {$userId}");
         }
+      } else {
+        error_log("user_preferences: could not load user details for promo email, user_id {$userId}");
       }
     }
 

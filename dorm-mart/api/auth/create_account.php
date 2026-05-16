@@ -88,10 +88,11 @@ function send_welcome_email_via_sendgrid(array $user, string $tempPassword, stri
         error_log("SendGrid: vendor/autoload.php not found");
         return ['ok' => false, 'error' => 'SendGrid SDK not available'];
     }
-    
+
     try {
+        error_log("SendGrid welcome email attempt started for: " . ($user['email'] ?? 'unknown'));
         $sendgrid = new \SendGrid($apiKey);
-        
+
         $pkg = dm_transactional_welcome_package($user['firstName'] ?? '', $tempPassword);
         $subject = $pkg['subject'];
         $html = $pkg['html'];
@@ -113,7 +114,7 @@ function send_welcome_email_via_sendgrid(array $user, string $tempPassword, stri
         $response = $sendgrid->send($email);
         $statusCode = $response->statusCode();
         $responseBody = $response->body();
-        
+
         error_log("SendGrid response: Status " . $statusCode . " - Body: " . $responseBody);
         
         if ($statusCode >= 200 && $statusCode < 300) {
@@ -123,7 +124,7 @@ function send_welcome_email_via_sendgrid(array $user, string $tempPassword, stri
             error_log("SendGrid error: " . $statusCode . " - " . $responseBody);
             return ['ok' => false, 'error' => 'Failed to send email via SendGrid'];
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log("SendGrid exception in send_welcome_email_via_sendgrid: " . $e->getMessage());
         return ['ok' => false, 'error' => $e->getMessage()];
     }
@@ -137,8 +138,10 @@ function send_welcome_gmail(array $user, string $tempPassword): array
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
     if (!empty($sendgridApiKey)) {
         // Use SendGrid REST API for Railway
+        error_log("Welcome email using SendGrid; SENDGRID_API_KEY is configured");
         return send_welcome_email_via_sendgrid($user, $tempPassword, $sendgridApiKey);
     }
+    error_log("Welcome email using SMTP fallback; SENDGRID_API_KEY is not configured");
 
     // Ensure PHP is using UTF-8 internally
     if (function_exists('mb_internal_encoding')) {
@@ -318,6 +321,7 @@ try {
     $chk->execute();
     $chk->store_result();                   // needed to use num_rows without fetching
     if ($chk->num_rows > 0) {
+        error_log("create_account: existing email submitted, skipping account insert and welcome email for {$email}");
         http_response_code(200);
         echo json_encode(['ok' => true]);
         exit;
@@ -369,10 +373,13 @@ try {
     // Account creation succeeds even if email fails
     try {
         // Use a shorter timeout and don't block account creation
-        $emailResult = @send_welcome_gmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
+        error_log("create_account: attempting welcome email for {$email}");
+        $emailResult = send_welcome_gmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
         if (!$emailResult['ok']) {
             // Log email sending error but don't fail account creation
             error_log("Failed to send welcome email to {$email}: " . ($emailResult['error'] ?? 'Unknown error'));
+        } else {
+            error_log("create_account: welcome email send completed for {$email}");
         }
     } catch (Throwable $e) {
         // Email sending failed but account was created successfully

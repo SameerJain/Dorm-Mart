@@ -151,7 +151,7 @@ export default function ChatPage() {
     }, [activeLabel]);
   const activeReceiverId =
     activeConversation?.receiverId ?? navigationState?.receiverId ?? null;
-  const { activeProfilePath, handleProfileHeaderClick } = useChatUsernames({
+  const { handleProfileHeaderClick } = useChatUsernames({
     activeReceiverId,
     conversations,
     navigationState,

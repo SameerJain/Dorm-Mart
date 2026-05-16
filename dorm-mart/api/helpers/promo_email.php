@@ -35,6 +35,7 @@ function send_promo_welcome_email_via_sendgrid(array $user, string $apiKey): arr
     }
 
     try {
+        error_log("SendGrid promo email attempt started for: " . ($user['email'] ?? 'unknown'));
         $sendgrid = new \SendGrid($apiKey);
         $pkg = dm_transactional_promo_welcome_package($user['firstName'] ?? '');
         $fromEmail = dm_mail_from_email();
@@ -52,6 +53,7 @@ function send_promo_welcome_email_via_sendgrid(array $user, string $apiKey): arr
 
         $response = $sendgrid->send($email);
         if ($response->statusCode() >= 200 && $response->statusCode() < 300) {
+            error_log("SendGrid promo email sent successfully to: " . ($user['email'] ?? 'unknown'));
             return ['ok' => true, 'error' => null];
         }
 
@@ -67,8 +69,10 @@ function send_promo_welcome_email(array $user): array
 {
     $sendgridApiKey = getenv('SENDGRID_API_KEY');
     if (!empty($sendgridApiKey)) {
+        error_log("Promo email using SendGrid; SENDGRID_API_KEY is configured");
         return send_promo_welcome_email_via_sendgrid($user, $sendgridApiKey);
     }
+    error_log("Promo email using SMTP fallback; SENDGRID_API_KEY is not configured");
 
     if (!dm_load_mail_vendor()) {
         error_log("Email sending failed: mail vendor files are not available");

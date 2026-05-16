@@ -121,15 +121,7 @@ function ResetPasswordForm() {
     };
 
     validateToken();
-  }, [token, navigate]);
-
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Enter") handleSubmit();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [handleSubmit]);
+  }, [token, uid, navigate]);
 
   const handleSubmit = useCallback(async () => {
     // Clear previous errors
@@ -209,7 +201,15 @@ function ResetPasswordForm() {
     } finally {
       setIsLoading(false);
     }
-  }, [token, navigate, newPassword, confirmPassword]);
+  }, [token, uid, navigate, newPassword, confirmPassword]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Enter") handleSubmit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleSubmit]);
 
   return (
     <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">
