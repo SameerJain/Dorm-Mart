@@ -31,6 +31,7 @@ try {
   // Auth + DB
   require $API_ROOT . '/auth/auth_handle.php';
   require $API_ROOT . '/database/db_connect.php';
+  require $API_ROOT . '/helpers/image_upload.php';
 
   auth_boot_session();
   $userId = require_login();
@@ -123,11 +124,8 @@ try {
   }
 
   // --- Save images with MIME validation ---
-  // Configurable via env so deployments under subpaths (e.g., Aptitude) work
-  $envDir  = getenv('DATA_IMAGES_DIR');
-  $envBase = getenv('DATA_IMAGES_URL_BASE');
-  $imageDirFs   = rtrim($envDir !== false && $envDir !== '' ? $envDir : (dirname($API_ROOT) . '/images'), '/') . '/';
-  $imageBaseUrl = rtrim($envBase !== false && $envBase !== '' ? $envBase : '/images', '/');
+  $imageDirFs   = rtrim(data_images_dir(), '/\\') . DIRECTORY_SEPARATOR;
+  $imageBaseUrl = '/images';
   if (!is_dir($imageDirFs)) { @mkdir($imageDirFs, 0775, true); }
 
   // Handle existing photos for edit mode
