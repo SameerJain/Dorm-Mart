@@ -53,7 +53,17 @@ try {
                     AND cpr.is_successful = 1
                 ) THEN 1 
                 ELSE 0 
-            END AS has_completed_confirm
+            END AS has_completed_confirm,
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 
+                    FROM confirm_purchase_requests cpr 
+                    WHERE cpr.scheduled_request_id = spr.request_id 
+                    AND cpr.status IN ('buyer_accepted', 'auto_accepted')
+                    AND cpr.is_successful = 0
+                ) THEN 1 
+                ELSE 0 
+            END AS has_unsuccessful_confirm
         FROM scheduled_purchase_requests spr
         INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
         INNER JOIN user_accounts ua ON ua.user_id = spr.buyer_user_id
@@ -119,6 +129,7 @@ try {
         }
 
         $hasCompletedConfirm = isset($row['has_completed_confirm']) && ($row['has_completed_confirm'] === 1 || $row['has_completed_confirm'] === '1');
+        $hasUnsuccessfulConfirm = isset($row['has_unsuccessful_confirm']) && ($row['has_unsuccessful_confirm'] === 1 || $row['has_unsuccessful_confirm'] === '1');
         $records[] = [
             'request_id' => (int)$row['request_id'],
             'inventory_product_id' => (int)$row['inventory_product_id'],
@@ -138,6 +149,7 @@ try {
             'trade_item_description' => $tradeItemDescription,
             'canceled_by' => $canceledBy,
             'has_completed_confirm' => $hasCompletedConfirm,
+            'has_unsuccessful_confirm' => $hasUnsuccessfulConfirm,
             'item' => [
                 'title' => $row['item_title'] ?? 'Untitled',
                 'photos' => $photos,

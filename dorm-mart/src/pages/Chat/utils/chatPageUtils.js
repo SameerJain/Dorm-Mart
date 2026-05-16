@@ -8,7 +8,7 @@ export default function fmtTime(ts) {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate();
 
-  // 1) Today → just time with AM/PM (local)
+  // 1) Today -> just time with AM/PM (local)
   if (sameLocalDate(d, now)) {
     return d.toLocaleTimeString([], {
       hour: "2-digit",
@@ -17,7 +17,7 @@ export default function fmtTime(ts) {
     });
   }
 
-  // 2) Yesterday → "yesterday HH:MM AM/PM" (local)
+  // 2) Yesterday -> "yesterday HH:MM AM/PM" (local)
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (sameLocalDate(d, yesterday)) {
@@ -29,7 +29,7 @@ export default function fmtTime(ts) {
     return `yesterday ${time}`;
   }
 
-  // 3) Otherwise → full date + time with AM/PM (local)
+  // 3) Otherwise -> full date + time with AM/PM (local)
   return d.toLocaleString([], {
     year: "numeric",
     month: "2-digit",

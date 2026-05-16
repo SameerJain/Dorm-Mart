@@ -186,9 +186,9 @@ function record_purchase_history(mysqli $conn, int $userId, int $productId, arra
     // race condition where two simultaneous completions could overwrite each other.
     $stmt = $conn->prepare('
         INSERT INTO purchase_history (user_id, items)
-        VALUES (?, JSON_ARRAY(CAST(? AS JSON)))
+        VALUES (?, JSON_ARRAY(JSON_EXTRACT(?, \'$\')))
         ON DUPLICATE KEY UPDATE
-            items      = JSON_ARRAY_APPEND(items, \'$\', CAST(? AS JSON)),
+            items      = JSON_ARRAY_APPEND(items, \'$\', JSON_EXTRACT(?, \'$\')),
             updated_at = NOW()
     ');
     if (!$stmt) {
@@ -270,6 +270,59 @@ function mark_inventory_as_sold(mysqli $conn, array $row): void
     $stmt->close();
 }
 
+function release_inventory_after_unsuccessful_confirm(mysqli $conn, array $row): void
+{
+    if (!isset($row['is_successful']) || (bool)$row['is_successful']) {
+        return;
+    }
+
+    $productId = isset($row['inventory_product_id']) ? (int)$row['inventory_product_id'] : 0;
+    $scheduledRequestId = isset($row['scheduled_request_id']) ? (int)$row['scheduled_request_id'] : 0;
+    if ($productId <= 0 || $scheduledRequestId <= 0) {
+        return;
+    }
+
+    $checkStmt = $conn->prepare('
+        SELECT COUNT(*) as cnt
+        FROM scheduled_purchase_requests spr
+        WHERE spr.inventory_product_id = ?
+          AND spr.status = \'accepted\'
+          AND spr.request_id != ?
+          AND COALESCE((
+            SELECT CASE
+              WHEN cpr.status IN (\'buyer_accepted\', \'auto_accepted\') AND cpr.is_successful = 0 THEN 0
+              ELSE 1
+            END
+            FROM confirm_purchase_requests cpr
+            WHERE cpr.scheduled_request_id = spr.request_id
+            ORDER BY cpr.confirm_request_id DESC
+            LIMIT 1
+          ), 1) = 1
+    ');
+    if (!$checkStmt) {
+        throw new RuntimeException('Failed to prepare active schedule check');
+    }
+    $checkStmt->bind_param('ii', $productId, $scheduledRequestId);
+    $checkStmt->execute();
+    $res = $checkStmt->get_result();
+    $rowCount = $res ? $res->fetch_assoc() : null;
+    $checkStmt->close();
+
+    if ($rowCount && (int)$rowCount['cnt'] > 0) {
+        return;
+    }
+
+    $activeStatus = 'Active';
+    $pendingStatus = 'Pending';
+    $updateStmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND item_status = ?');
+    if (!$updateStmt) {
+        throw new RuntimeException('Failed to prepare inventory release update');
+    }
+    $updateStmt->bind_param('sis', $activeStatus, $productId, $pendingStatus);
+    $updateStmt->execute();
+    $updateStmt->close();
+}
+
 /**
  * If the pending confirm request is past expires_at, mark it as auto accepted,
  * deliver a chat message, and record purchase history. Returns the updated row.
@@ -334,16 +387,20 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
             }
         }
 
-        mark_inventory_as_sold($conn, $updatedRow);
-        record_purchase_history($conn, $buyerId, (int)$updatedRow['inventory_product_id'], [
-            'confirm_request_id' => $confirmId,
-            'is_successful' => (bool)$updatedRow['is_successful'],
-            'final_price' => $updatedRow['final_price'] !== null ? (float)$updatedRow['final_price'] : null,
-            'failure_reason' => $updatedRow['failure_reason'],
-            'seller_notes' => $updatedRow['seller_notes'],
-            'failure_reason_notes' => $updatedRow['failure_reason_notes'],
-            'auto_accepted' => true,
-        ]);
+        if ((bool)$updatedRow['is_successful']) {
+            mark_inventory_as_sold($conn, $updatedRow);
+            record_purchase_history($conn, $buyerId, (int)$updatedRow['inventory_product_id'], [
+                'confirm_request_id' => $confirmId,
+                'is_successful' => true,
+                'final_price' => $updatedRow['final_price'] !== null ? (float)$updatedRow['final_price'] : null,
+                'failure_reason' => $updatedRow['failure_reason'],
+                'seller_notes' => $updatedRow['seller_notes'],
+                'failure_reason_notes' => $updatedRow['failure_reason_notes'],
+                'auto_accepted' => true,
+            ]);
+        } else {
+            release_inventory_after_unsuccessful_confirm($conn, $updatedRow);
+        }
     }
 
     return $updatedRow;

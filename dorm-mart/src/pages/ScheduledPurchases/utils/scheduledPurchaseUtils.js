@@ -18,7 +18,8 @@ export function createdAtMs(req) {
 export function getScheduleBucket(req, nowMs) {
   if (
     ["declined", "cancelled", "expired"].includes(req.status) ||
-    req.has_completed_confirm === true
+    req.has_completed_confirm === true ||
+    req.has_unsuccessful_confirm === true
   ) {
     return "past";
   }
@@ -130,6 +131,33 @@ export function compareItemGroups(a, b) {
   return String(a.productId).localeCompare(String(b.productId), undefined, {
     numeric: true,
   });
+}
+
+export function groupScheduledPurchasesByItem(buyerRequests, sellerRequests, nowMs) {
+  const allRequests = [
+    ...buyerRequests.map((req) => ({ ...req, perspective: "buyer" })),
+    ...sellerRequests.map((req) => ({ ...req, perspective: "seller" })),
+  ];
+
+  const grouped = {};
+  allRequests.forEach((req) => {
+    const productId = req.inventory_product_id;
+    if (!grouped[productId]) {
+      grouped[productId] = {
+        item: req.item || { title: "Unknown Item" },
+        productId,
+        purchases: [],
+      };
+    }
+    grouped[productId].purchases.push(req);
+  });
+
+  return Object.values(grouped)
+    .map((group) => ({
+      ...group,
+      buckets: partitionAndSortPurchases(group.purchases, nowMs),
+    }))
+    .sort(compareItemGroups);
 }
 
 async function fetchScheduledPurchaseList(path, signal) {
