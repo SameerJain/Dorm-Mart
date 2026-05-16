@@ -757,6 +757,7 @@ At the time this document was updated, the working tree includes these local edi
 - Reduced the remaining large frontend files by moving scheduled-purchase sorting/fetch helpers, schedule date/time helpers, and chat username lookup into feature-local helper modules. No current frontend/backend source file is over 1,000 lines.
 - Consolidated the live promo opt-in email sender into `api/helpers/promo_email.php`; `profile/user_preferences.php` now uses that shared helper, and the stale duplicate in account creation was removed.
 - Rechecked the refactor with a production React build, full PHP syntax lint, Composer validation, and Railway-style router smoke tests. Jest still reports no tests found because the repo has no matching frontend test files.
+- Updated forgot-password and create-account email confirmation copy to remind users to check their spam folder.
 
 ### Security and correctness fixes (post-sprint)
 

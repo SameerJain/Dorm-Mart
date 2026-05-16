@@ -45,7 +45,8 @@ function ForgotPasswordConfirmation() {
                 reset your password was sent to your inbox!
               </p>
               <p className="text-sm sm:text-base text-white/80 text-center italic mb-6 sm:mb-8 leading-relaxed">
-                Note: Another email can only be sent after 10 minutes.
+                Note: Another email can only be sent after 10 minutes. Please
+                check your spam folder.
               </p>
 
               {/* Button - Minimum 44px height for touch targets */}
