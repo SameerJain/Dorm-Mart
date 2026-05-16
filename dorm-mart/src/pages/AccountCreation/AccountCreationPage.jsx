@@ -391,7 +391,8 @@ function CreateAccountPage() {
               </h3>
               <p className="text-white/90 text-center leading-relaxed text-sm sm:text-base mb-6 sm:mb-8">
                 If an account using the email does not already exist, a
-                temporary password has been sent to the email.
+                temporary password has been sent to the email. Please check
+                your spam folder.
               </p>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4">
                 <button
