@@ -12,6 +12,15 @@ import {
   MAX_LISTING_PRICE,
   containsMemePrice,
 } from "../../utils/priceValidation";
+import {
+  convertTo24Hour,
+  getDateRangeMessage,
+  getDerivedYear,
+  getEasternTime,
+  getMaxDate,
+  getTodayDate,
+  validateScheduleDateTime,
+} from "./utils/scheduleDateTimeUtils";
 // Price limits - max matches ProductListingPage exactly
 const PRICE_LIMITS = {
   max: MAX_LISTING_PRICE,
@@ -61,32 +70,9 @@ function SchedulePurchasePage() {
 
   // Real-time date range feedback once both month and day are complete
   useEffect(() => {
-    if (!meetingMonth || meetingMonth.length < 2 || !meetingDay || meetingDay.length < 2 || !meetingYear || meetingYear.length < 4) {
-      setDateTimeError("");
-      return;
-    }
-    const now = new Date();
-    const fmt = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York",
-      year: "numeric", month: "2-digit", day: "2-digit",
-    });
-    const parts = fmt.formatToParts(now);
-    const cy = parseInt(parts.find((p) => p.type === "year").value);
-    const cm = parseInt(parts.find((p) => p.type === "month").value);
-    const cd = parseInt(parts.find((p) => p.type === "day").value);
-    const m = parseInt(meetingMonth);
-    const d = parseInt(meetingDay);
-    const year = parseInt(meetingYear);
-    const today = new Date(cy, cm - 1, cd);
-    const selected = new Date(year, m - 1, d);
-    const maxDate = new Date(cy, cm - 1 + 3, cd);
-    if (selected < today) {
-      setDateTimeError("Meeting date cannot be in the past.");
-    } else if (selected > maxDate) {
-      setDateTimeError("Meeting date cannot be more than 3 months in advance.");
-    } else {
-      setDateTimeError("");
-    }
+    setDateTimeError(
+      getDateRangeMessage(meetingMonth, meetingDay, meetingYear),
+    );
   }, [meetingMonth, meetingDay, meetingYear]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -161,157 +147,21 @@ function SchedulePurchasePage() {
     }
   }, [listings, navState]);
 
-  // Convert 12-hour format to 24-hour format
-  const convertTo24Hour = (hour, amPm) => {
-    const hourNum = parseInt(hour);
-    if (amPm === "PM" && hourNum !== 12) {
-      return hourNum + 12;
-    } else if (amPm === "AM" && hourNum === 12) {
-      return 0;
-    }
-    return hourNum;
-  };
-
-  // Get current Eastern Time as a Date object
-  const getEasternTime = () => {
-    const now = new Date();
-    // Get Eastern Time components
-    const easternFormatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    });
-
-    const parts = easternFormatter.formatToParts(now);
-    const year = parseInt(parts.find((p) => p.type === "year").value);
-    const month = parseInt(parts.find((p) => p.type === "month").value) - 1; // JS months are 0-indexed
-    const day = parseInt(parts.find((p) => p.type === "day").value);
-    const hour = parseInt(parts.find((p) => p.type === "hour").value);
-    const minute = parseInt(parts.find((p) => p.type === "minute").value);
-    const second = parseInt(parts.find((p) => p.type === "second").value);
-
-    // Create date representing Eastern Time (treating it as if it were local time)
-    return new Date(year, month, day, hour, minute, second);
-  };
-
-  // Get today's date in Eastern Time (YYYY-MM-DD format for min attribute)
-  const getTodayDate = () => {
-    const easternNow = getEasternTime();
-    const year = easternNow.getFullYear();
-    const month = String(easternNow.getMonth() + 1).padStart(2, "0");
-    const day = String(easternNow.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  // Get maximum date (3 months from now) in Eastern Time (YYYY-MM-DD format for max attribute)
-  const getMaxDate = () => {
-    const easternNow = getEasternTime();
-    const threeMonthsFromNow = new Date(easternNow);
-    threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
-    const year = threeMonthsFromNow.getFullYear();
-    const month = String(threeMonthsFromNow.getMonth() + 1).padStart(2, "0");
-    const day = String(threeMonthsFromNow.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  // Derive the year from month+day: current year unless that date already passed, then next year
-  const getDerivedYear = (month, day) => {
-    const easternNow = getEasternTime();
-    const currentYear = easternNow.getFullYear();
-    const today = new Date(currentYear, easternNow.getMonth(), easternNow.getDate());
-    const thisYearDate = new Date(currentYear, parseInt(month) - 1, parseInt(day));
-    return thisYearDate >= today ? currentYear : currentYear + 1;
-  };
-
   // Validate date and time (using Eastern Time)
   const validateDateTime = () => {
     setDateTimeError("");
-
-    // Check each field individually and provide specific error messages
-    const missingFields = [];
-    if (!meetingMonth || !meetingDay || !meetingYear || meetingYear.length < 4) missingFields.push("meeting date");
-    if (!meetingHour) missingFields.push("meeting hour");
-    if (!meetingMinute) missingFields.push("meeting minute");
-    if (!meetingAmPm) missingFields.push("AM/PM");
-
-    if (missingFields.length > 0) {
-      if (missingFields.length === 1) {
-        setDateTimeError(`Please select a ${missingFields[0]}.`);
-      } else if (missingFields.length === 2) {
-        setDateTimeError(
-          `Please select ${missingFields[0]} and ${missingFields[1]}.`,
-        );
-      } else {
-        const lastField = missingFields.pop();
-        setDateTimeError(
-          `Please select ${missingFields.join(", ")}, and ${lastField}.`,
-        );
-      }
+    const validationError = validateScheduleDateTime({
+      meetingMonth,
+      meetingDay,
+      meetingYear,
+      meetingHour,
+      meetingMinute,
+      meetingAmPm,
+    });
+    if (validationError) {
+      setDateTimeError(validationError);
       return false;
     }
-
-    // Get current Eastern Time components
-    const easternNow = getEasternTime();
-    const easternYear = easternNow.getFullYear();
-    const easternMonth = easternNow.getMonth() + 1; // 1-12
-    const easternDay = easternNow.getDate();
-    const easternHour = easternNow.getHours();
-    const easternMinute = easternNow.getMinutes();
-
-    // Parse selected date (treat as Eastern Time)
-    const year = parseInt(meetingYear);
-    const month = parseInt(meetingMonth);
-    const day = parseInt(meetingDay);
-    const selectedHour24 = convertTo24Hour(meetingHour, meetingAmPm);
-    const selectedMinute = parseInt(meetingMinute);
-
-    // Compare dates (both in Eastern Time)
-    if (
-      year < easternYear ||
-      (year === easternYear && month < easternMonth) ||
-      (year === easternYear && month === easternMonth && day < easternDay)
-    ) {
-      setDateTimeError("Meeting date cannot be in the past.");
-      return false;
-    }
-
-    // If date is today, check if time is in the future (Eastern Time)
-    if (year === easternYear && month === easternMonth && day === easternDay) {
-      // Compare time components directly (both in Eastern Time)
-      if (
-        selectedHour24 < easternHour ||
-        (selectedHour24 === easternHour && selectedMinute <= easternMinute)
-      ) {
-        setDateTimeError("Meeting time must be in the future.");
-        return false;
-      }
-    }
-
-    // Check if date/time is more than 3 months in the future
-    // Create selected date/time in Eastern Time
-    const selectedDateTime = new Date(
-      year,
-      month - 1,
-      day,
-      selectedHour24,
-      selectedMinute,
-      0,
-    ); // month is 1-indexed in input, 0-indexed in Date
-
-    // Calculate 3 months from now (Eastern Time)
-    const threeMonthsFromNow = new Date(easternNow);
-    threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
-
-    if (selectedDateTime > threeMonthsFromNow) {
-      setDateTimeError("Meeting date cannot be more than 3 months in advance.");
-      return false;
-    }
-
     return true;
   };
 

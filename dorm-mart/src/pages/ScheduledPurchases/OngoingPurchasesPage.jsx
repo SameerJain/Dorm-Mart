@@ -9,141 +9,11 @@ import {
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
 import { formatCurrency } from "../../utils/formatters";
-
-/** Grace period after scheduled meet time before the card moves to Past */
-const ACTIVE_AFTER_MEETING_MS = 30 * 60 * 1000;
-
-function parseMeetingAtMs(req) {
-  if (!req?.meeting_at) return null;
-  const t = new Date(req.meeting_at).getTime();
-  return Number.isFinite(t) ? t : null;
-}
-
-function createdAtMs(req) {
-  if (!req?.created_at) return 0;
-  const t = new Date(req.created_at).getTime();
-  return Number.isFinite(t) ? t : 0;
-}
-
-/**
- * @returns {'past' | 'active' | 'needsResponse' | 'upcoming'}
- */
-function getScheduleBucket(req, nowMs) {
-  if (
-    ["declined", "cancelled", "expired"].includes(req.status) ||
-    req.has_completed_confirm === true
-  ) {
-    return "past";
-  }
-  const meetingMs = parseMeetingAtMs(req);
-  if (meetingMs != null && nowMs >= meetingMs + ACTIVE_AFTER_MEETING_MS) {
-    return "past";
-  }
-  if (
-    meetingMs != null &&
-    nowMs >= meetingMs &&
-    nowMs < meetingMs + ACTIVE_AFTER_MEETING_MS
-  ) {
-    return "active";
-  }
-  if (req.status === "pending" && meetingMs == null) {
-    return "needsResponse";
-  }
-  if (meetingMs != null && nowMs < meetingMs) {
-    return "upcoming";
-  }
-  return "upcoming";
-}
-
-function partitionAndSortPurchases(purchases, nowMs) {
-  const buckets = {
-    active: [],
-    needsResponse: [],
-    upcoming: [],
-    past: [],
-  };
-  for (const req of purchases) {
-    buckets[getScheduleBucket(req, nowMs)].push(req);
-  }
-  buckets.active.sort(
-    (a, b) => (parseMeetingAtMs(a) ?? 0) - (parseMeetingAtMs(b) ?? 0),
-  );
-  buckets.needsResponse.sort((a, b) => createdAtMs(b) - createdAtMs(a));
-  buckets.upcoming.sort(
-    (a, b) =>
-      (parseMeetingAtMs(a) ?? Infinity) - (parseMeetingAtMs(b) ?? Infinity),
-  );
-  buckets.past.sort((a, b) => {
-    const ma = parseMeetingAtMs(a);
-    const mb = parseMeetingAtMs(b);
-    if (ma != null && mb != null) return mb - ma;
-    if (ma != null) return -1;
-    if (mb != null) return 1;
-    return createdAtMs(b) - createdAtMs(a);
-  });
-  return buckets;
-}
-
-const BUCKET_ORDER = ["active", "needsResponse", "upcoming", "past"];
-const BUCKET_PRIORITY = { active: 0, needsResponse: 1, upcoming: 2, past: 3 };
-
-function bestBucketKey(buckets) {
-  for (const k of BUCKET_ORDER) {
-    if (buckets[k].length > 0) return k;
-  }
-  return "past";
-}
-
-function compareItemGroups(a, b) {
-  const ba = bestBucketKey(a.buckets);
-  const bb = bestBucketKey(b.buckets);
-  const pa = BUCKET_PRIORITY[ba];
-  const pb = BUCKET_PRIORITY[bb];
-  if (pa !== pb) return pa - pb;
-
-  const arrA = a.buckets[ba];
-  const arrB = b.buckets[bb];
-  if (ba === "active") {
-    const minA = Math.min(...arrA.map((r) => parseMeetingAtMs(r) ?? Infinity));
-    const minB = Math.min(...arrB.map((r) => parseMeetingAtMs(r) ?? Infinity));
-    if (minA !== minB) return minA - minB;
-  } else if (ba === "needsResponse") {
-    const maxA = Math.max(...arrA.map(createdAtMs));
-    const maxB = Math.max(...arrB.map(createdAtMs));
-    if (maxA !== maxB) return maxB - maxA;
-  } else if (ba === "upcoming") {
-    const minA = Math.min(...arrA.map((r) => parseMeetingAtMs(r) ?? Infinity));
-    const minB = Math.min(...arrB.map((r) => parseMeetingAtMs(r) ?? Infinity));
-    if (minA !== minB) return minA - minB;
-  } else {
-    const sortKey = (r) => {
-      const m = parseMeetingAtMs(r);
-      return m != null ? m : createdAtMs(r);
-    };
-    const maxA = Math.max(...arrA.map(sortKey));
-    const maxB = Math.max(...arrB.map(sortKey));
-    if (maxA !== maxB) return maxB - maxA;
-  }
-
-  const flatA = [
-    ...a.buckets.active,
-    ...a.buckets.needsResponse,
-    ...a.buckets.upcoming,
-    ...a.buckets.past,
-  ];
-  const flatB = [
-    ...b.buckets.active,
-    ...b.buckets.needsResponse,
-    ...b.buckets.upcoming,
-    ...b.buckets.past,
-  ];
-  const newestA = Math.max(0, ...flatA.map(createdAtMs));
-  const newestB = Math.max(0, ...flatB.map(createdAtMs));
-  if (newestA !== newestB) return newestB - newestA;
-  return String(a.productId).localeCompare(String(b.productId), undefined, {
-    numeric: true,
-  });
-}
+import {
+  compareItemGroups,
+  loadScheduledPurchases,
+  partitionAndSortPurchases,
+} from "./utils/scheduledPurchaseUtils";
 
 function OngoingPurchasesPage() {
   const navigate = useNavigate();
@@ -165,43 +35,9 @@ function OngoingPurchasesPage() {
       setLoading(true);
       setError("");
       try {
-        // Load both buyer and seller requests
-        const [buyerRes, sellerRes] = await Promise.all([
-          fetch(`${API_BASE}/scheduled_purchases/list_buyer.php`, {
-            method: "GET",
-            headers: { Accept: "application/json" },
-            credentials: "include",
-            signal: abort.signal,
-          }),
-          fetch(`${API_BASE}/scheduled_purchases/list_seller.php`, {
-            method: "GET",
-            headers: { Accept: "application/json" },
-            credentials: "include",
-            signal: abort.signal,
-          }),
-        ]);
-
-        if (!buyerRes.ok || !sellerRes.ok) {
-          throw new Error(`HTTP ${buyerRes.status} or ${sellerRes.status}`);
-        }
-
-        const buyerPayload = await buyerRes.json();
-        const sellerPayload = await sellerRes.json();
-
-        if (!buyerPayload.success || !sellerPayload.success) {
-          throw new Error(
-            buyerPayload.error ||
-              sellerPayload.error ||
-              "Failed to load ongoing purchases",
-          );
-        }
-
-        setBuyerRequests(
-          Array.isArray(buyerPayload.data) ? buyerPayload.data : [],
-        );
-        setSellerRequests(
-          Array.isArray(sellerPayload.data) ? sellerPayload.data : [],
-        );
+        const loaded = await loadScheduledPurchases(abort.signal);
+        setBuyerRequests(loaded.buyerRequests);
+        setSellerRequests(loaded.sellerRequests);
       } catch (e) {
         if (e.name !== "AbortError") {
           setError("Unable to load your scheduled purchases right now.");
@@ -219,36 +55,9 @@ function OngoingPurchasesPage() {
     setLoading(true);
     setError("");
     try {
-      const [buyerRes, sellerRes] = await Promise.all([
-        fetch(`${API_BASE}/scheduled_purchases/list_buyer.php`, {
-          method: "GET",
-          headers: { Accept: "application/json" },
-          credentials: "include",
-        }),
-        fetch(`${API_BASE}/scheduled_purchases/list_seller.php`, {
-          method: "GET",
-          headers: { Accept: "application/json" },
-          credentials: "include",
-        }),
-      ]);
-
-      if (!buyerRes.ok || !sellerRes.ok) {
-        throw new Error("HTTP error");
-      }
-
-      const buyerPayload = await buyerRes.json();
-      const sellerPayload = await sellerRes.json();
-
-      if (!buyerPayload.success || !sellerPayload.success) {
-        throw new Error("Failed to refresh");
-      }
-
-      setBuyerRequests(
-        Array.isArray(buyerPayload.data) ? buyerPayload.data : [],
-      );
-      setSellerRequests(
-        Array.isArray(sellerPayload.data) ? sellerPayload.data : [],
-      );
+      const loaded = await loadScheduledPurchases();
+      setBuyerRequests(loaded.buyerRequests);
+      setSellerRequests(loaded.sellerRequests);
     } catch (e) {
       setError("Unable to refresh scheduled purchases.");
     } finally {

@@ -17,6 +17,7 @@ import ChatSidebar from "./components/ChatSidebar";
 import DeleteConversationModal from "./components/DeleteConversationModal";
 import MessageList from "./components/MessageList";
 import useChatConversationStatus from "./hooks/useChatConversationStatus";
+import useChatUsernames from "./hooks/useChatUsernames";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
 
@@ -62,12 +63,6 @@ export default function ChatPage() {
 
   useBodyScrollLock(deleteConfirmOpen);
   const [attachedImage, setAttachedImage] = useState(null);
-  const [usernameMap, setUsernameMap] = useState({});
-  const usernameCacheRef = useRef({});
-  const pendingUsernameRequests = useRef(new Set());
-  useEffect(() => {
-    usernameCacheRef.current = usernameMap;
-  }, [usernameMap]);
 
   const taRef = useRef(null);
   const autoGrow = useCallback(() => {
@@ -156,87 +151,12 @@ export default function ChatPage() {
     }, [activeLabel]);
   const activeReceiverId =
     activeConversation?.receiverId ?? navigationState?.receiverId ?? null;
-  const activeReceiverUsername = activeReceiverId
-    ? usernameMap[activeReceiverId]
-    : null;
-  const activeProfilePath = activeReceiverUsername
-    ? `/app/profile?username=${encodeURIComponent(activeReceiverUsername)}`
-    : null;
-
-  const ensureUsername = useCallback((userId) => {
-    if (
-      !userId ||
-      usernameCacheRef.current[userId] ||
-      pendingUsernameRequests.current.has(userId)
-    ) {
-      return;
-    }
-    pendingUsernameRequests.current.add(userId);
-    (async () => {
-      try {
-        const res = await fetch(
-          `${API_BASE}/profile/get_username.php?user_id=${encodeURIComponent(userId)}`,
-          {
-            credentials: "include",
-          },
-        );
-        const json = await res.json().catch(() => null);
-        if (res.ok && json?.success && json.username) {
-          setUsernameMap((prev) => {
-            if (prev[userId]) return prev;
-            return { ...prev, [userId]: json.username };
-          });
-        }
-      } catch (_) {
-        // ignore errors
-      } finally {
-        pendingUsernameRequests.current.delete(userId);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    conversations.forEach((c) => c?.receiverId && ensureUsername(c.receiverId));
-  }, [conversations, ensureUsername]);
-
-  useEffect(() => {
-    if (navigationState?.receiverId) {
-      ensureUsername(navigationState.receiverId);
-    }
-  }, [navigationState, ensureUsername]);
-
-  const handleProfileHeaderClick = useCallback(() => {
-    if (!activeReceiverId) return;
-    if (activeProfilePath) {
-      navigate(activeProfilePath);
-      return;
-    }
-    pendingUsernameRequests.current.add(activeReceiverId);
-    (async () => {
-      try {
-        const res = await fetch(
-          `${API_BASE}/profile/get_username.php?user_id=${encodeURIComponent(activeReceiverId)}`,
-          {
-            credentials: "include",
-          },
-        );
-        const json = await res.json().catch(() => null);
-        if (res.ok && json?.success && json.username) {
-          setUsernameMap((prev) => {
-            if (prev[activeReceiverId]) return prev;
-            return { ...prev, [activeReceiverId]: json.username };
-          });
-          navigate(
-            `/app/profile?username=${encodeURIComponent(json.username)}`,
-          );
-        }
-      } catch (_) {
-        // ignore errors
-      } finally {
-        pendingUsernameRequests.current.delete(activeReceiverId);
-      }
-    })();
-  }, [activeReceiverId, activeProfilePath, navigate]);
+  const { activeProfilePath, handleProfileHeaderClick } = useChatUsernames({
+    activeReceiverId,
+    conversations,
+    navigationState,
+    navigate,
+  });
 
   /** Controls which pane is visible on mobile (list vs messages) */
   const [isMobileList, setIsMobileList] = useState(true);
