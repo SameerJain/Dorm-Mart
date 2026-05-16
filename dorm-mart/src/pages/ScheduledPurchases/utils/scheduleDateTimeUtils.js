@@ -11,6 +11,69 @@ export function convertTo24Hour(hour, amPm) {
   return hourNum;
 }
 
+export function combineScheduleDateTime({
+  meetingMonth,
+  meetingDay,
+  meetingYear,
+  meetingHour,
+  meetingMinute,
+  meetingAmPm,
+}) {
+  if (
+    !meetingMonth ||
+    !meetingDay ||
+    !meetingYear ||
+    meetingYear.length < 4 ||
+    !meetingHour ||
+    !meetingMinute ||
+    !meetingAmPm
+  ) {
+    return null;
+  }
+
+  const hour24 = convertTo24Hour(meetingHour, meetingAmPm);
+  const year = parseInt(meetingYear);
+  const month = parseInt(meetingMonth);
+  const day = parseInt(meetingDay);
+  const dateTimeString = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T${String(hour24).padStart(2, "0")}:${meetingMinute}:00`;
+  const easternTimeOptions = {
+    timeZone: EASTERN_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  };
+
+  const checkUtcDate = (utcOffset) => {
+    const utcDate = new Date(`${dateTimeString}${utcOffset}`);
+    const utcAsEastern = utcDate.toLocaleString("en-US", easternTimeOptions);
+    const parts = utcAsEastern.match(/(\d+)\/(\d+)\/(\d+),?\s+(\d+):(\d+)/);
+    if (!parts) return null;
+
+    const [, partMonth, partDay, partYear, partHour, partMinute] =
+      parts.map(Number);
+    if (
+      partYear === year &&
+      partMonth === month &&
+      partDay === day &&
+      partHour === hour24 &&
+      partMinute === parseInt(meetingMinute)
+    ) {
+      return utcDate.toISOString();
+    }
+    return null;
+  };
+
+  // Probe both Eastern offsets because meeting dates may fall in EST or EDT.
+  return (
+    checkUtcDate("-05:00") ||
+    checkUtcDate("-04:00") ||
+    new Date(`${dateTimeString}-05:00`).toISOString()
+  );
+}
+
 export function getEasternTime() {
   const now = new Date();
   const easternFormatter = new Intl.DateTimeFormat("en-US", {

@@ -93,8 +93,6 @@ function SellerDashboardPage() {
   const fetchListings = useCallback(async () => {
     setLoading(true);
     try {
-      // TODO: Create manage_seller_listings.php endpoint similar to fetch_transacted_items.php
-      // This will query transacted_items WHERE seller_user_id = current_user_id
       const response = await csrfFetch(
         `${API_BASE}/seller_dashboard/manage_seller_listings.php`,
         {
@@ -643,7 +641,6 @@ function SellerDashboardPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* TODO: Replace with actual listing cards */}
             {getSortedListings().map((listing) => (
               <div
                 key={listing.id}

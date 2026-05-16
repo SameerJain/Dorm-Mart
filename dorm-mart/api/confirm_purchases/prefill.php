@@ -78,6 +78,29 @@ try {
         WHERE spr.conversation_id = ?
           AND spr.inventory_product_id = ?
           AND spr.status = 'accepted'
+          AND spr.request_id = (
+            SELECT spr2.request_id
+            FROM scheduled_purchase_requests spr2
+            WHERE spr2.conversation_id = spr.conversation_id
+              AND spr2.inventory_product_id = spr.inventory_product_id
+              AND spr2.status = 'accepted'
+            ORDER BY COALESCE(spr2.updated_at, spr2.buyer_response_at) DESC, spr2.request_id DESC
+            LIMIT 1
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM confirm_purchase_requests cpr
+            WHERE cpr.scheduled_request_id = spr.request_id
+              AND cpr.confirm_request_id = (
+                SELECT cpr2.confirm_request_id
+                FROM confirm_purchase_requests cpr2
+                WHERE cpr2.scheduled_request_id = spr.request_id
+                ORDER BY cpr2.confirm_request_id DESC
+                LIMIT 1
+              )
+              AND cpr.status IN ('buyer_accepted', 'auto_accepted')
+              AND cpr.is_successful = 0
+          )
         ORDER BY COALESCE(spr.updated_at, spr.buyer_response_at) DESC, spr.request_id DESC
         LIMIT 1
     SQL;

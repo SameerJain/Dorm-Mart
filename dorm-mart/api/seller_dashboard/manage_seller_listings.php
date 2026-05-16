@@ -44,6 +44,16 @@ try {
                         SELECT 1 FROM scheduled_purchase_requests spr
                         WHERE spr.inventory_product_id = i.product_id
                         AND spr.status = 'accepted'
+                        AND COALESCE((
+                            SELECT CASE
+                                WHEN cpr.status IN ('buyer_accepted', 'auto_accepted') AND cpr.is_successful = 0 THEN 0
+                                ELSE 1
+                            END
+                            FROM confirm_purchase_requests cpr
+                            WHERE cpr.scheduled_request_id = spr.request_id
+                            ORDER BY cpr.confirm_request_id DESC
+                            LIMIT 1
+                        ), 1) = 1
                     ) THEN 1
                     ELSE 0
                 END AS has_accepted_scheduled_purchase
