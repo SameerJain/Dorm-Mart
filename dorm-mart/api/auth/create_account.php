@@ -119,14 +119,14 @@ function send_welcome_email_via_sendgrid(array $user, string $tempPassword, stri
         
         if ($statusCode >= 200 && $statusCode < 300) {
             error_log("SendGrid email sent successfully to: " . $user['email']);
-            return ['ok' => true, 'error' => null];
+            return ['ok' => true, 'provider' => 'sendgrid', 'status' => $statusCode, 'error' => null];
         } else {
             error_log("SendGrid error: " . $statusCode . " - " . $responseBody);
-            return ['ok' => false, 'error' => 'Failed to send email via SendGrid'];
+            return ['ok' => false, 'provider' => 'sendgrid', 'status' => $statusCode, 'error' => 'Failed to send email via SendGrid'];
         }
     } catch (Throwable $e) {
         error_log("SendGrid exception in send_welcome_email_via_sendgrid: " . $e->getMessage());
-        return ['ok' => false, 'error' => $e->getMessage()];
+        return ['ok' => false, 'provider' => 'sendgrid', 'error' => $e->getMessage()];
     }
 }
 
@@ -135,7 +135,7 @@ function send_welcome_gmail(array $user, string $tempPassword): array
     global $PROJECT_ROOT;
 
     // Check for SendGrid API key first (Railway option)
-    $sendgridApiKey = getenv('SENDGRID_API_KEY');
+    $sendgridApiKey = dm_sendgrid_api_key();
     if (!empty($sendgridApiKey)) {
         // Use SendGrid REST API for Railway
         error_log("Welcome email using SendGrid; SENDGRID_API_KEY is configured");
@@ -158,8 +158,8 @@ function send_welcome_gmail(array $user, string $tempPassword): array
         
         // Debug: Log if credentials are missing (but don't expose passwords)
         if (empty($gmailUsername) || empty($gmailPassword)) {
-            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set. Username set: " . (!empty($gmailUsername) ? 'yes' : 'no'));
-            return ['ok' => false, 'error' => 'Email configuration missing'];
+            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set. Username set: " . (!empty($gmailUsername) ? 'yes' : 'no') . ", password set: " . (!empty($gmailPassword) ? 'yes' : 'no'));
+            return ['ok' => false, 'provider' => 'smtp', 'error' => 'Email configuration missing'];
         }
         
         $mail->Username   = $gmailUsername;
@@ -198,12 +198,14 @@ function send_welcome_gmail(array $user, string $tempPassword): array
         $mail->Body    = $html;
         $mail->AltBody = $text;
 
+        error_log("SMTP welcome email attempt started for: " . ($user['email'] ?? 'unknown'));
         $mail->send();
-        return ['ok' => true, 'error' => null];
-    } catch (Exception $e) {
+        error_log("SMTP welcome email sent successfully to: " . ($user['email'] ?? 'unknown'));
+        return ['ok' => true, 'provider' => 'smtp', 'error' => null];
+    } catch (Throwable $e) {
         $errorMsg = $mail->ErrorInfo ?? $e->getMessage();
         error_log("PHPMailer exception in send_welcome_gmail: " . $errorMsg);
-        return ['ok' => false, 'error' => $errorMsg];
+        return ['ok' => false, 'provider' => 'smtp', 'error' => $errorMsg];
     }
 }
 
@@ -323,7 +325,13 @@ try {
     if ($chk->num_rows > 0) {
         error_log("create_account: existing email submitted, skipping account insert and welcome email for {$email}");
         http_response_code(200);
-        echo json_encode(['ok' => true]);
+        echo json_encode([
+            'ok' => true,
+            'email' => [
+                'attempted' => false,
+                'reason' => 'existing_account',
+            ],
+        ]);
         exit;
     }
     $chk->close();
@@ -371,10 +379,12 @@ try {
 
     // Send welcome email (non-blocking - don't wait for it to complete)
     // Account creation succeeds even if email fails
+    $welcomeEmailResult = ['ok' => false, 'provider' => 'unknown', 'error' => 'Email send not attempted'];
     try {
         // Use a shorter timeout and don't block account creation
         error_log("create_account: attempting welcome email for {$email}");
         $emailResult = send_welcome_gmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
+        $welcomeEmailResult = $emailResult;
         if (!$emailResult['ok']) {
             // Log email sending error but don't fail account creation
             error_log("Failed to send welcome email to {$email}: " . ($emailResult['error'] ?? 'Unknown error'));
@@ -384,14 +394,23 @@ try {
     } catch (Throwable $e) {
         // Email sending failed but account was created successfully
         error_log("Exception sending welcome email to {$email}: " . $e->getMessage());
+        $welcomeEmailResult = ['ok' => false, 'provider' => 'unknown', 'error' => $e->getMessage()];
     }
 
     // Success
     echo json_encode([
-        'ok' => true
+        'ok' => true,
+        'email' => [
+            'attempted' => true,
+            'ok' => (bool)($welcomeEmailResult['ok'] ?? false),
+            'provider' => $welcomeEmailResult['provider'] ?? 'unknown',
+            'status' => $welcomeEmailResult['status'] ?? null,
+            'error' => $welcomeEmailResult['ok'] ? null : ($welcomeEmailResult['error'] ?? 'Unknown error'),
+        ],
     ]);
 } catch (Throwable $e) {
     // Log $e->getMessage() server-side
+    error_log("create_account error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => "There was an error"]);
 }

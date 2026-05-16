@@ -201,6 +201,18 @@ function dm_support_email(): string
     return dm_env_string('SUPPORT_EMAIL', dm_mail_reply_to_email());
 }
 
+function dm_sendgrid_api_key(): string
+{
+    foreach (['SENDGRID_API_KEY', 'SENDGRID_KEY', 'SENDGRID_API'] as $key) {
+        $value = dm_env_string($key);
+        if ($value !== '') {
+            return $value;
+        }
+    }
+
+    return '';
+}
+
 function dm_smtp_host(): string
 {
     return dm_env_string('SMTP_HOST', 'smtp.gmail.com');

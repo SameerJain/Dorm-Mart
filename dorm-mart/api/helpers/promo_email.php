@@ -67,7 +67,7 @@ function send_promo_welcome_email_via_sendgrid(array $user, string $apiKey): arr
 
 function send_promo_welcome_email(array $user): array
 {
-    $sendgridApiKey = getenv('SENDGRID_API_KEY');
+    $sendgridApiKey = dm_sendgrid_api_key();
     if (!empty($sendgridApiKey)) {
         error_log("Promo email using SendGrid; SENDGRID_API_KEY is configured");
         return send_promo_welcome_email_via_sendgrid($user, $sendgridApiKey);

@@ -89,7 +89,7 @@ function send_password_reset_email(array $user, string $resetLink, string $envLa
     global $PROJECT_ROOT;
 
     // Check for SendGrid API key first (Railway option)
-    $sendgridApiKey = getenv('SENDGRID_API_KEY');
+    $sendgridApiKey = dm_sendgrid_api_key();
     if (!empty($sendgridApiKey)) {
         return send_password_reset_email_via_sendgrid($user, $resetLink, $sendgridApiKey);
     }
