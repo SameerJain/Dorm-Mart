@@ -89,7 +89,7 @@ if ($Environment -ne "") {
 
 Write-Host "Deploying dorm-mart to Railway..." -ForegroundColor DarkBlue
 Write-Host "Command: railway $($argsList -join ' ')" -ForegroundColor DarkGray
-  
+
 & railway @argsList
 
 if ($LASTEXITCODE -ne 0) {
