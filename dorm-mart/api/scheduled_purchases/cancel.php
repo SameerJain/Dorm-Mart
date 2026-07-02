@@ -6,6 +6,7 @@ require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -87,32 +88,8 @@ try {
     // This ensures item becomes available again only when truly free of all accepted scheduled purchases
     $inventoryProductId = (int)$row['inventory_product_id'];
     if ($inventoryProductId > 0) {
-        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-        $checkOtherAcceptedStmt = $conn->prepare('
-            SELECT COUNT(*) as cnt
-            FROM scheduled_purchase_requests spr
-            WHERE spr.inventory_product_id = ?
-              AND spr.status = \'accepted\'
-              AND spr.request_id != ?
-              AND COALESCE((
-                SELECT CASE
-                  WHEN cpr.status IN (\'buyer_accepted\', \'auto_accepted\') AND cpr.is_successful = 0 THEN 0
-                  ELSE 1
-                END
-                FROM confirm_purchase_requests cpr
-                WHERE cpr.scheduled_request_id = spr.request_id
-                ORDER BY cpr.confirm_request_id DESC
-                LIMIT 1
-              ), 1) = 1
-        ');
-        $checkOtherAcceptedStmt->bind_param('ii', $inventoryProductId, $requestId);
-        $checkOtherAcceptedStmt->execute();
-        $checkRes = $checkOtherAcceptedStmt->get_result();
-        $checkRow = $checkRes ? $checkRes->fetch_assoc() : null;
-        $checkOtherAcceptedStmt->close();
-        
-        $hasOtherAccepted = $checkRow && (int)$checkRow['cnt'] > 0;
-        
+        $hasOtherAccepted = scheduled_purchase_has_active_accepted($conn, $inventoryProductId, $requestId);
+
         // Only set back to Active if no other accepted scheduled purchases exist
         if (!$hasOtherAccepted) {
             // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
@@ -130,70 +107,18 @@ try {
     // Create special message in chat
     $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
     if ($conversationId > 0) {
-        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-        $cancellerStmt = $conn->prepare('SELECT first_name, last_name FROM user_accounts WHERE user_id = ? LIMIT 1');
-        $cancellerStmt->bind_param('i', $userId);
-        $cancellerStmt->execute();
-        $cancellerRes = $cancellerStmt->get_result();
-        $cancellerRow = $cancellerRes ? $cancellerRes->fetch_assoc() : null;
-        $cancellerStmt->close();
-        
-        $cancellerFirstName = $cancellerRow ? trim((string)$cancellerRow['first_name']) : '';
-        $cancellerLastName = $cancellerRow ? trim((string)$cancellerRow['last_name']) : '';
-        $cancellerDisplayName = '';
-        if ($cancellerFirstName !== '' && $cancellerLastName !== '') {
-            $cancellerDisplayName = $cancellerFirstName . ' ' . $cancellerLastName;
-        } else {
-            $cancellerDisplayName = 'User ' . $userId;
-        }
-        
+        $cancellerDisplayName = scheduled_purchase_user_display_name($conn, $userId);
         $messageContent = $cancellerDisplayName . ' has cancelled the scheduled purchase.';
-        
-        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-        $convStmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? LIMIT 1');
-        $convStmt->bind_param('i', $conversationId);
-        $convStmt->execute();
-        $convRes = $convStmt->get_result();
-        $convRow = $convRes ? $convRes->fetch_assoc() : null;
-        $convStmt->close();
-        
+
+        $convRow = scheduled_purchase_conversation_participants($conn, $conversationId);
         if ($convRow) {
             $msgSenderId = $userId;
             $msgReceiverId = ($convRow['user1_id'] == $userId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
-            
-            // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-            $nameStmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?)');
-            $nameStmt->bind_param('ii', $msgSenderId, $msgReceiverId);
-            $nameStmt->execute();
-            $nameRes = $nameStmt->get_result();
-            $names = [];
-            while ($nameRow = $nameRes->fetch_assoc()) {
-                $id = (int)$nameRow['user_id'];
-                $full = trim((string)$nameRow['first_name'] . ' ' . (string)$nameRow['last_name']);
-                $names[$id] = $full !== '' ? $full : ('User ' . $id);
-            }
-            $nameStmt->close();
-            
-            $senderName = $names[$msgSenderId] ?? ('User ' . $msgSenderId);
-            $receiverName = $names[$msgReceiverId] ?? ('User ' . $msgReceiverId);
-            
-            $metadata = json_encode([
+
+            scheduled_purchase_insert_chat_message($conn, $conversationId, $msgSenderId, $msgReceiverId, $messageContent, [
                 'type' => 'schedule_cancelled',
                 'request_id' => $requestId,
-            ], JSON_UNESCAPED_SLASHES);
-            
-            // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-            $msgStmt = $conn->prepare('INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)');
-            $msgStmt->bind_param('iiissss', $conversationId, $msgSenderId, $msgReceiverId, $senderName, $receiverName, $messageContent, $metadata);
-            $msgStmt->execute();
-            $msgId = $msgStmt->insert_id;
-            $msgStmt->close();
-            
-            // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-            $updateStmt = $conn->prepare('UPDATE conversation_participants SET unread_count = unread_count + 1, first_unread_msg_id = CASE WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ? ELSE first_unread_msg_id END WHERE conv_id = ? AND user_id = ?');
-            $updateStmt->bind_param('iii', $msgId, $conversationId, $msgReceiverId);
-            $updateStmt->execute();
-            $updateStmt->close();
+            ]);
         }
     }
 

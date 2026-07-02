@@ -1,18 +1,16 @@
 import { API_BASE } from "../../../utils/apiConfig";
+import { apiGetJson } from "../../../utils/apiClient";
+import { dateTimestamp } from "../../../utils/formatters";
 
 /** Grace period after scheduled meet time before the card moves to Past */
 const ACTIVE_AFTER_MEETING_MS = 30 * 60 * 1000;
 
 export function parseMeetingAtMs(req) {
-  if (!req?.meeting_at) return null;
-  const t = new Date(req.meeting_at).getTime();
-  return Number.isFinite(t) ? t : null;
+  return dateTimestamp(req?.meeting_at, null);
 }
 
 export function createdAtMs(req) {
-  if (!req?.created_at) return 0;
-  const t = new Date(req.created_at).getTime();
-  return Number.isFinite(t) ? t : 0;
+  return dateTimestamp(req?.created_at, 0);
 }
 
 export function getScheduleBucket(req, nowMs) {
@@ -161,16 +159,9 @@ export function groupScheduledPurchasesByItem(buyerRequests, sellerRequests, now
 }
 
 async function fetchScheduledPurchaseList(path, signal) {
-  const res = await fetch(`${API_BASE}/scheduled_purchases/${path}`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    credentials: "include",
+  const payload = await apiGetJson(`${API_BASE}/scheduled_purchases/${path}`, {
     signal,
   });
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
-  }
-  const payload = await res.json();
   if (!payload.success) {
     throw new Error(payload.error || "Failed to load scheduled purchases");
   }

@@ -3,43 +3,69 @@ const ITEM_PLACEHOLDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="800
 
 export const FALLBACK_IMAGE_URL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(ITEM_PLACEHOLDER_SVG)}`;
 
+const LOCAL_IMAGE_PREFIXES = ["/data/images/", "/images/", "/media/"];
+
+function normalizeImageInput(raw) {
+  return typeof raw === "string" ? raw.trim() : "";
+}
+
+function isPassthroughImageUrl(url) {
+  const lower = url.toLowerCase();
+  return (
+    lower.startsWith("blob:") ||
+    lower.startsWith("data:") ||
+    url.includes("/media/image.php")
+  );
+}
+
+function localStoredImagePath(url) {
+  if (LOCAL_IMAGE_PREFIXES.some((prefix) => url.startsWith(prefix))) {
+    return url;
+  }
+
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      const parsed = new URL(url);
+      if (
+        LOCAL_IMAGE_PREFIXES.some((prefix) =>
+          parsed.pathname.startsWith(prefix),
+        )
+      ) {
+        return `${parsed.pathname}${parsed.search}`;
+      }
+    } catch {
+      return "";
+    }
+  }
+
+  return "";
+}
+
+function proxyStoredImage(base, path) {
+  return `${base}/media/image.php?url=${encodeURIComponent(path)}`;
+}
+
 /**
  * Map DB-stored paths (/images/, /data/images/, /media/) to the PHP image endpoint so the
  * browser loads files from the API host (needed for Railway / SPA-only static hosts where
  * /images/ is not served from disk). Does not wrap blob:, data:, or URLs already using image.php.
- * Absolute http(s) URLs are returned unchanged (image.php only resolves local paths).
+ * External http(s) URLs are returned unchanged; absolute URLs with local stored-image paths
+ * are proxied by path because image.php only resolves local paths.
  *
  * @param {unknown} raw
  * @param {string} apiBase e.g. process.env.REACT_APP_API_BASE or `${PUBLIC_URL}/api`, no trailing slash
  * @returns {string}
  */
 export function resolveStoredImageUrl(raw, apiBase) {
-  if (raw == null) return "";
-  const s = String(raw).trim();
+  const s = normalizeImageInput(raw);
   if (!s) return "";
-  if (s.startsWith("blob:") || s.startsWith("data:")) return s;
-  if (s.includes("/media/image.php")) return s;
+  if (isPassthroughImageUrl(s)) return s;
 
   const base = String(apiBase || "").replace(/\/$/, "");
   if (!base) return s;
 
-  if (/^https?:\/\//i.test(s)) {
-    try {
-      const u = new URL(s);
-      if (u.pathname.includes("media/image.php")) return s;
-    } catch {
-      /* ignore */
-    }
-    return s;
-  }
-
-  if (
-    s.startsWith("/data/images/") ||
-    s.startsWith("/images/") ||
-    s.startsWith("/media/")
-  ) {
-    return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
-  }
+  const storedPath = localStoredImagePath(s);
+  if (storedPath) return proxyStoredImage(base, storedPath);
 
   return s;
 }
@@ -48,26 +74,17 @@ export function resolveProductPhotoUrl(
   raw,
   { apiBase, publicBase = "", proxyUnknown = false } = {},
 ) {
-  if (raw == null) return "";
-  const s = String(raw).trim();
+  const s = normalizeImageInput(raw);
   if (!s) return "";
-  if (s.startsWith("blob:") || s.startsWith("data:")) return s;
-  if (s.includes("/media/image.php")) return s;
+  if (isPassthroughImageUrl(s)) return s;
 
   const base = String(apiBase || "").replace(/\/$/, "");
-  if (base && /^https?:\/\//i.test(s)) {
-    return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
+  const storedPath = localStoredImagePath(s);
+  if (base && storedPath) {
+    return proxyStoredImage(base, storedPath);
   }
-  if (
-    base &&
-    (s.startsWith("/data/images/") ||
-      s.startsWith("/images/") ||
-      s.startsWith("/media/"))
-  ) {
-    return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
-  }
-  if (base && proxyUnknown) {
-    return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
+  if (base && proxyUnknown && !/^https?:\/\//i.test(s)) {
+    return proxyStoredImage(base, s);
   }
 
   const publicRoot = String(publicBase || "").replace(/\/$/, "");
@@ -95,9 +112,10 @@ export function resolveProductPhotoUrls(photos, options = {}) {
 function sanitizeImageSrc(url) {
   if (typeof url !== "string" || url.trim() === "") return "";
   const s = url.trim();
+  const lower = s.toLowerCase();
   if (
-    s.startsWith("blob:") ||
-    s.startsWith("data:image/") ||
+    lower.startsWith("blob:") ||
+    lower.startsWith("data:image/") ||
     s.startsWith("/") ||
     s.startsWith("./") ||
     /^https?:\/\//i.test(s)

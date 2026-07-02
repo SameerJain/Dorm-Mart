@@ -6,6 +6,7 @@ require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -258,49 +259,11 @@ try {
     
     // Create special message in chat
     if ($conversationId > 0) {
-        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-        $sellerStmt = $conn->prepare('SELECT first_name, last_name FROM user_accounts WHERE user_id = ? LIMIT 1');
-        $sellerStmt->bind_param('i', $sellerId);
-        $sellerStmt->execute();
-        $sellerRes = $sellerStmt->get_result();
-        $sellerRow = $sellerRes ? $sellerRes->fetch_assoc() : null;
-        $sellerStmt->close();
-        
-        $sellerFirstName = $sellerRow ? trim((string)$sellerRow['first_name']) : '';
-        $sellerLastName = $sellerRow ? trim((string)$sellerRow['last_name']) : '';
-        $sellerDisplayName = '';
-        if ($sellerFirstName !== '' && $sellerLastName !== '') {
-            $sellerDisplayName = $sellerFirstName . ' ' . $sellerLastName;
-        } else {
-            $sellerDisplayName = 'User ' . $sellerId;
-        }
-        
+        $sellerDisplayName = scheduled_purchase_user_display_name($conn, $sellerId);
         $messageContent = $sellerDisplayName . ' has scheduled a purchase. Please Accept or Deny.';
-        
-        // Use conversation details from earlier query to determine sender/receiver
-        $msgSenderId = $sellerId;
-        $msgReceiverId = $buyerId;
-        
-        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-        $nameStmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?)');
-        $nameStmt->bind_param('ii', $msgSenderId, $msgReceiverId);
-        $nameStmt->execute();
-        $nameRes = $nameStmt->get_result();
-        $names = [];
-        while ($row = $nameRes->fetch_assoc()) {
-            $id = (int)$row['user_id'];
-            $full = trim((string)$row['first_name'] . ' ' . (string)$row['last_name']);
-            $names[$id] = $full !== '' ? $full : ('User ' . $id);
-        }
-        $nameStmt->close();
-        
-        $senderName = $names[$msgSenderId] ?? ('User ' . $msgSenderId);
-        $receiverName = $names[$msgReceiverId] ?? ('User ' . $msgReceiverId);
-        
-        // Get listing price for display
         $listingPrice = isset($itemRow['listing_price']) ? (float)$itemRow['listing_price'] : null;
-        
-        $metadata = json_encode([
+
+        scheduled_purchase_insert_chat_message($conn, $conversationId, $sellerId, $buyerId, $messageContent, [
             'type' => 'schedule_request',
             'request_id' => $requestId,
             'inventory_product_id' => $inventoryId,
@@ -315,20 +278,7 @@ try {
             'listing_price' => $listingPrice,
             'is_trade' => $isTrade,
             'trade_item_description' => $tradeItemDescription,
-        ], JSON_UNESCAPED_SLASHES);
-        
-        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-        $msgStmt = $conn->prepare('INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)');
-        $msgStmt->bind_param('iiissss', $conversationId, $msgSenderId, $msgReceiverId, $senderName, $receiverName, $messageContent, $metadata);
-        $msgStmt->execute();
-        $msgId = $msgStmt->insert_id;
-        $msgStmt->close();
-        
-        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-        $updateStmt = $conn->prepare('UPDATE conversation_participants SET unread_count = unread_count + 1, first_unread_msg_id = CASE WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ? ELSE first_unread_msg_id END WHERE conv_id = ? AND user_id = ?');
-        $updateStmt->bind_param('iii', $msgId, $conversationId, $msgReceiverId);
-        $updateStmt->execute();
-        $updateStmt->close();
+        ]);
     }
 
     // XSS PROTECTION: Escape user-generated content before returning in JSON
