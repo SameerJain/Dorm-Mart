@@ -1,11 +1,29 @@
 import { FALLBACK_IMAGE_URL, resolveProductPhotoUrls } from "./imageFallback";
-import { coerceNumber, parseListField } from "./formatters";
+import {
+  coerceBoolean,
+  coerceNumber,
+  parseDateValue,
+  parseListField,
+} from "./formatters";
 
 function coerceProductBoolean(value) {
-  return typeof value === "boolean"
-    ? value
-    : String(value || "").toLowerCase() === "1" ||
-        String(value || "").toLowerCase() === "true";
+  return coerceBoolean(value) === true;
+}
+
+function normalizeEmail(value) {
+  if (typeof value !== "string") return value || null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function deriveSellerUsername(sellerUsername, sellerEmail) {
+  if (typeof sellerUsername === "string" && sellerUsername.trim()) {
+    return sellerUsername.trim();
+  }
+
+  if (typeof sellerEmail !== "string") return null;
+  const localPart = sellerEmail.split("@")[0]?.trim();
+  return localPart || null;
 }
 
 export function normalizeProductDetail(data, { apiBase, publicBase } = {}) {
@@ -13,7 +31,7 @@ export function normalizeProductDetail(data, { apiBase, publicBase } = {}) {
 
   const price = coerceNumber(data.listing_price ?? data.price) ?? 0;
   const sellerId = data.seller_id ?? null;
-  const sellerEmail = data.email || null;
+  const sellerEmail = normalizeEmail(data.email);
   const dateListedStr = data.date_listed || data.created_at || null;
   const dateSoldStr = data.date_sold || null;
   const photoUrls = resolveProductPhotoUrls(data.photos, {
@@ -38,12 +56,11 @@ export function normalizeProductDetail(data, { apiBase, publicBase } = {}) {
     sellerName:
       data.seller ||
       (sellerId != null ? `Seller #${sellerId}` : "Unknown Seller"),
-    sellerUsername:
-      data.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null),
+    sellerUsername: deriveSellerUsername(data.seller_username, sellerEmail),
     soldTo: data.sold_to ?? null,
     sellerEmail,
-    dateListed: dateListedStr ? new Date(dateListedStr) : null,
-    dateSold: dateSoldStr ? new Date(dateSoldStr) : null,
+    dateListed: parseDateValue(dateListedStr),
+    dateSold: parseDateValue(dateSoldStr),
     finalPrice: data.final_price ?? null,
   };
 }
