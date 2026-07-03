@@ -58,11 +58,11 @@ export function useScheduledPurchases() {
         `${API_BASE}/scheduled_purchases/respond.php`,
         { request_id: requestId, action },
       );
-      if (!payload.success) {
-        throw new Error(payload.error || "Action failed");
+      if (!payload?.success) {
+        throw new Error(payload?.error || "Action failed");
       }
 
-      const updated = payload.data;
+      const updated = payload.data || {};
       setBuyerRequests((prev) =>
         prev.map((req) => {
           if (req.request_id !== requestId) return req;
@@ -110,8 +110,8 @@ export function useScheduledPurchases() {
           `${API_BASE}/scheduled_purchases/cancel.php`,
           { request_id: requestId },
         );
-        if (!payload.success) {
-          throw new Error(payload.error || "Failed to cancel");
+        if (!payload?.success) {
+          throw new Error(payload?.error || "Failed to cancel");
         }
         await refresh();
         setActionMessage("Purchase request cancelled successfully.");

@@ -2,6 +2,7 @@ import {
   calculateSummaryMetrics,
   filterListings,
   normalizeSellerListing,
+  readRatingValue,
   sortListings,
 } from "../pages/SellerDashboard/utils/sellerDashboardUtils";
 
@@ -48,5 +49,14 @@ describe("seller dashboard utility boundaries", () => {
     expect(filtered.map((listing) => listing.id)).toEqual([1, 2]);
     expect(sortListings(filtered, "Newest First").map((listing) => listing.id)).toEqual([2, 1]);
     expect(sortListings(filtered, "Price: Low to High").map((listing) => listing.id)).toEqual([2, 1]);
+  });
+
+  test("reads rating values from object, scalar, and malformed payloads", () => {
+    expect(readRatingValue({ rating: "4.5" })).toBe(4.5);
+    expect(readRatingValue(3)).toBe(3);
+    expect(readRatingValue("2")).toBe(2);
+    expect(readRatingValue({ rating: "bad" })).toBeNull();
+    expect(readRatingValue({ product_rating: 5 })).toBeNull();
+    expect(readRatingValue(null)).toBeNull();
   });
 });

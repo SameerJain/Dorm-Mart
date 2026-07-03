@@ -128,7 +128,7 @@ export function useHomeFeed() {
         const json = await apiGetJson(`${API_BASE}/wishlist/get_wishlist.php`, {
           signal: controller.signal,
         });
-        if (json.success && Array.isArray(json.data)) {
+        if (json?.success && Array.isArray(json.data)) {
           setWishlistedIds(new Set(json.data.map((item) => item.product_id)));
         }
       } catch {

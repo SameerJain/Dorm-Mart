@@ -3,6 +3,7 @@ import {
   resolveMeetLocation,
   validateNegotiatedPrice,
 } from "../pages/ScheduledPurchases/utils/schedulePurchaseFormUtils";
+import { getMaxDayForMeetingMonth } from "../pages/ScheduledPurchases/utils/scheduleDateTimeUtils";
 
 describe("schedule purchase form utility boundaries", () => {
   test("normalizes listing booleans from mixed API shapes", () => {
@@ -35,5 +36,14 @@ describe("schedule purchase form utility boundaries", () => {
       /Cannot enter a price/,
     );
     expect(validateNegotiatedPrice("10000").error).toMatch(/9999.99/);
+  });
+
+  test("calculates month day limits without component-local date math", () => {
+    const leapYear = new Date(2024, 0, 15);
+    const commonYear = new Date(2025, 0, 15);
+
+    expect(getMaxDayForMeetingMonth("02", leapYear)).toBe(29);
+    expect(getMaxDayForMeetingMonth("02", commonYear)).toBe(28);
+    expect(getMaxDayForMeetingMonth("13", commonYear)).toBe(31);
   });
 });
