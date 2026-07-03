@@ -66,8 +66,8 @@ export function useSchedulePurchaseForm() {
           {},
           { signal: abort.signal },
         );
-        if (!data.success) {
-          throw new Error(data.error || "Failed to load listings");
+        if (!data?.success) {
+          throw new Error(data?.error || "Failed to load listings");
         }
         setListings(Array.isArray(data.data) ? data.data : []);
       } catch (e) {
@@ -202,8 +202,8 @@ export function useSchedulePurchaseForm() {
         },
       );
 
-      if (!payload.success) {
-        throw new Error(payload.error || "Failed to create schedule");
+      if (!payload?.success) {
+        throw new Error(payload?.error || "Failed to create schedule");
       }
       navigate(navState?.convId ? `/app/chat?conv=${navState.convId}` : "/app/chat");
     } catch (err) {

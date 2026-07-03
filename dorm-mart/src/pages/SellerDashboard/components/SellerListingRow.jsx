@@ -3,6 +3,7 @@ import { onProductImageError, withFallbackImage } from "../../../utils/imageFall
 import StarRating from "../../Reviews/StarRating";
 import {
   listingStatusClass,
+  readRatingValue,
   truncateProductTitle,
 } from "../utils/sellerDashboardUtils";
 
@@ -116,6 +117,10 @@ export default function SellerListingRow({
 }
 
 function ListingSignals({ buyerRating, listing, productReview }) {
+  const sellerRating = readRatingValue(productReview);
+  const productRating = readRatingValue(productReview?.product_rating);
+  const buyerRatingValue = readRatingValue(buyerRating);
+
   return (
     <div className="flex items-center gap-3 flex-wrap">
       <div
@@ -144,13 +149,15 @@ function ListingSignals({ buyerRating, listing, productReview }) {
           {String(listing.wishlisted || 0)}
         </span>
       </div>
-      {productReview?.rating && (
-        <RatingPill label="Seller" rating={productReview.rating} />
+      {sellerRating !== null && (
+        <RatingPill label="Seller" rating={sellerRating} />
       )}
-      {productReview?.product_rating && (
-        <RatingPill label="Product" rating={productReview.product_rating} />
+      {productRating !== null && (
+        <RatingPill label="Product" rating={productRating} />
       )}
-      {buyerRating?.rating && <RatingPill label="Buyer" rating={buyerRating.rating} />}
+      {buyerRatingValue !== null && (
+        <RatingPill label="Buyer" rating={buyerRatingValue} />
+      )}
     </div>
   );
 }

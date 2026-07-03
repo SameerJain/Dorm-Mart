@@ -103,6 +103,13 @@ export function sortListings(listings, sort, productReviews = {}) {
   }
 }
 
+export function readRatingValue(rating) {
+  const rawValue =
+    rating && typeof rating === "object" ? rating.rating : rating;
+  const value = Number(rawValue);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
 export function listingStatusClass(status) {
   const normalized = String(status || "").toLowerCase();
   if (normalized === "active") return "bg-green-100 text-green-800";

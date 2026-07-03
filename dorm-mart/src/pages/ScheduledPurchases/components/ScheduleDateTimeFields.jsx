@@ -1,4 +1,4 @@
-import { getEasternTime } from "../utils/scheduleDateTimeUtils";
+import { getMaxDayForMeetingMonth } from "../utils/scheduleDateTimeUtils";
 
 export default function ScheduleDateTimeFields({
   dayInputRef,
@@ -82,11 +82,7 @@ export default function ScheduleDateTimeFields({
                   return;
                 }
                 const maxDay = meetingMonth
-                  ? new Date(
-                      getEasternTime().getFullYear(),
-                      parseInt(meetingMonth),
-                      0,
-                    ).getDate()
+                  ? getMaxDayForMeetingMonth(meetingMonth)
                   : 31;
                 const first = parseInt(raw[0]);
                 if (raw.length === 1) {

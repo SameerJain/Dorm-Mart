@@ -25,7 +25,7 @@ export function useSellerListings() {
         {},
       );
 
-      if (result.success) {
+      if (result?.success) {
         const dataArray = Array.isArray(result.data) ? result.data : [];
         setListings(dataArray.map(normalizeSellerListing));
       } else {
@@ -50,8 +50,8 @@ export function useSellerListings() {
         `${API_BASE}/seller_dashboard/delete_listing.php`,
         { id },
       );
-      if (!result.success) {
-        throw new Error(result.error || "Delete failed");
+      if (!result?.success) {
+        throw new Error(result?.error || "Delete failed");
       }
       setListings((prev) => prev.filter((listing) => listing.id !== id));
     },

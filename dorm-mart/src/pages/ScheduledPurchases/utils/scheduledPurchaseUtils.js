@@ -162,8 +162,8 @@ async function fetchScheduledPurchaseList(path, signal) {
   const payload = await apiGetJson(`${API_BASE}/scheduled_purchases/${path}`, {
     signal,
   });
-  if (!payload.success) {
-    throw new Error(payload.error || "Failed to load scheduled purchases");
+  if (!payload?.success) {
+    throw new Error(payload?.error || "Failed to load scheduled purchases");
   }
   return Array.isArray(payload.data) ? payload.data : [];
 }

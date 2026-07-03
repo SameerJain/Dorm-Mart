@@ -4,7 +4,13 @@ import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import ReviewImageGallery from "./components/ReviewImageGallery";
 import { onProductImageError } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
+import {
+  csrfPostJson,
+  readApiError,
+  readJsonResponse,
+} from "../../utils/apiClient";
 import { csrfFetch } from "../../utils/csrfFetch";
+import { formatDate } from "../../utils/formatters";
 
 /**
  * ReviewModal Component
@@ -169,15 +175,22 @@ function ReviewModal({
           `${API_BASE}/reviews/upload_review_image.php`,
           {
             method: "POST",
+            headers: {
+              Accept: "application/json",
+            },
             credentials: "include",
             body: formData,
           },
         );
 
-        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(await readApiError(response, "Failed to upload image"));
+        }
 
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || "Failed to upload image");
+        const result = await readJsonResponse(response);
+
+        if (!result?.success) {
+          throw new Error(result?.error || "Failed to upload image");
         }
 
         // Add to uploaded images with both preview URL and server URL
@@ -273,39 +286,19 @@ function ReviewModal({
         image3_url: uploadedImages[2]?.uploadedUrl || null,
       };
 
-      const response = await csrfFetch(`${API_BASE}/reviews/submit_review.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
+      const result = await csrfPostJson(
+        `${API_BASE}/reviews/submit_review.php`,
+        {
           product_id: productId,
           rating: rating,
           product_rating: productRating,
           review_text: reviewText.trim(),
           ...imageUrls,
-        }),
-      });
+        },
+      );
 
-      // Check if response is ok before parsing JSON
-      if (!response.ok) {
-        let errorMessage = "Failed to submit review";
-        try {
-          const errorResult = await response.json();
-          errorMessage = errorResult.error || errorMessage;
-        } catch (e) {
-          // If JSON parsing fails, use status text
-          errorMessage = `Server error: ${response.status} ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to submit review");
+      if (!result?.success) {
+        throw new Error(result?.error || "Failed to submit review");
       }
 
       // Success!
@@ -633,8 +626,7 @@ function ReviewModal({
 
               {existingReview?.created_at && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                  Submitted on{" "}
-                  {new Date(existingReview.created_at).toLocaleDateString()}
+                  Submitted on {formatDate(existingReview.created_at)}
                 </p>
               )}
 
