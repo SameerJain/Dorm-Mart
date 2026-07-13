@@ -212,11 +212,11 @@ function ResetPasswordForm() {
   }, [handleSubmit]);
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">
+    <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
       {/* Form: full width below lg (matches mobile when left branding is hidden); half width on lg+ with image panel */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 h-screen pre-login-bg relative overflow-hidden">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-hidden">
         {/* Branding header: same as mobile through tablet; hidden on lg+ where PreLoginBranding shows */}
         <div className="lg:hidden mb-6 sm:mb-8 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">

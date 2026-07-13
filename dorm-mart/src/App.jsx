@@ -48,10 +48,15 @@ function PreLoginLayout() {
     const prevScheme = root.style.colorScheme;
     const meta = document.querySelector('meta[name="theme-color"]');
     const prevColor = meta?.getAttribute("content") ?? null;
+    const prevBodyBackground = document.body.style.background;
 
     root.classList.remove("dark");
     root.style.colorScheme = "light";
     if (meta) meta.setAttribute("content", "#ffffff");
+    // Matches .pre-login-bg (index.css) so any gap from viewport-unit rounding
+    // on mobile browsers blends into the gradient instead of showing white.
+    document.body.style.background =
+      "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%)";
 
     return () => {
       if (hadDark) root.classList.add("dark");
@@ -60,6 +65,7 @@ function PreLoginLayout() {
         if (prevColor === null) meta.removeAttribute("content");
         else meta.setAttribute("content", prevColor);
       }
+      document.body.style.background = prevBodyBackground;
     };
   }, []);
 
