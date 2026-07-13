@@ -94,11 +94,11 @@ function ForgotPasswordPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">
+    <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
       {/* Right side - forgot password form (full width on mobile, 50% on desktop) */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 py-8 sm:py-12 md:pt-16 md:pb-8 lg:py-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 py-8 sm:py-12 md:pt-16 md:pb-8 lg:py-8 pb-[max(2rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-y-auto lg:overflow-hidden">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">

@@ -17,7 +17,7 @@ This is meant to help you understand the project as it exists now before taking 
 
 Dorm Mart is still a React frontend plus PHP/MySQL backend marketplace app, but the structure is much cleaner than the sprint baseline.
 
-The main app routes now live in `dorm-mart/src/App.jsx`, with route groups under:
+The **main** app routes now live in `dorm-mart/src/App.jsx`, with route groups under:
 
 - `/` for the welcome/pre-login entry point.
 - `/login`, `/create-account`, `/forgot-password`, and `/reset-password` for auth flows.
