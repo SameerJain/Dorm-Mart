@@ -7,6 +7,8 @@
 3. Set up your local database (see `README.project_setup.md` for schema migration details)
 4. Start the development server: `npm run start-local-win` (or `-mac`) and run `php -S localhost:8080 -t .` in the `dorm-mart` directory
 
+Stop the React development server before running `npm install`, `npm ci`, or dependency-update commands. Replacing files in `node_modules` while the compiler is running can cause temporary missing-module errors.
+
 # POSIX Demo (ssh into Aptitude to user terminal)
 
 Copy any necessary files to the server:
@@ -46,8 +48,8 @@ Copy any necessary files to the server:
    3. (These list of files and folders are subject to change as the project grows)
 6. Navigate to localhost/serve/dorm-mart from your browser since that is the file path
 7. You now should have the app running on your local apache server
-8. Make sure to migrate to apply db schema to your local mysql: `php migrate_schema.php`
-9. To add contents to your local db, run `php migrate_data.php`
+8. Make sure to migrate to apply db schema to your local mysql: `php api/database/migrate_schema.php`
+9. To add contents to your local db, run `php api/database/migrate_data.php`
 
 # Test Server Build: APTITUDE (How to build and upload prod app to aptitude)
 
@@ -87,7 +89,8 @@ Copy any necessary files to the server:
 # Railway and uploaded images
 
 - On **Railway** (and similar), the app shell is often a React `build/` plus PHP. Browsers must load user uploads via **`/api/media/image.php?url=...`**, not as raw `/images/...` paths on the static host (those requests do not hit the PHP `images/` folder and tend to 404, which shows the gray “No photo” placeholder).
-- The **container filesystem is ephemeral** unless you attach a **volume**: new deploys or restarts can delete files under `dorm-mart/images` and `dorm-mart/media`. The database will still point at old paths. Set **`DATA_IMAGES_DIR`** (and optionally **`DATA_IMAGES_URL_BASE`**) to a persistent volume path that matches where `api/media/image.php` reads from.
+- The **container filesystem is ephemeral** unless you attach a **volume**: new deploys or restarts can delete uploaded files. Set **`DATA_UPLOADS_DIR`** to the persistent upload root; the app stores product/profile files under `DATA_UPLOADS_DIR/images` and chat/review files under `DATA_UPLOADS_DIR/media`.
+- To test any local branch/commit on Railway without merging it into `dev`, install and link the Railway CLI once, then run `build-scripts-win\railway.bat` from the repo root. The script deploys the local `dorm-mart/` directory with `railway up`; Railway labels the deployment as `railway up`, but the script prompts for a local deploy note or accepts `-Note "your message"`.
 
 # Development Utilities
 
@@ -96,6 +99,11 @@ Copy any necessary files to the server:
 - More docs are in /extra-files
 
 # Windows Powershell Build Scripts Commands
+
+Run the supported development launcher from the repository root:
+`C:\xampp\htdocs\f25-no-brainers\build-scripts-win\dev.bat`
+
+The repository root intentionally has no `package.json`, so do not run `npm start` there. Manual npm and PHP commands must be run from the `dorm-mart` directory. The launcher resolves its own repository path and will leave services alone when their expected ports are already in use.
 
 **Build Method 1: Local Development:**
 `C:\xampp\htdocs\f25-no-brainers\build-scripts-win\dev.bat`

@@ -1,15 +1,11 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import PreLoginBranding from "../../components/PreLoginBranding";
 import PreLoginNavLinks from "../../components/PreLoginNavLinks";
 import { integerNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
-import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
 import { useEmailPolicy } from "../../hooks/useEmailPolicy";
-
-// Stable URLs (no webpack content hash) so the PDF viewer shows clean filenames
-const termsPdf = `${PUBLIC_BASE}/pdfs/terms-and-conditions.pdf`;
-const privacyPdf = `${PUBLIC_BASE}/pdfs/privacy.pdf`;
+import { submitAccountRequest } from "./accountCreationRequest";
 
 function FieldError({ children, className = "" }) {
   if (!children) return null;
@@ -24,15 +20,18 @@ function FieldError({ children, className = "" }) {
 
 function CreateAccountPage() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    gradMonth: "",
-    gradYear: "",
-    email: "",
-    terms: false,
-    promos: false,
-  });
+  const location = useLocation();
+  const [formData, setFormData] = useState(() =>
+    location.state?.accountDraft || {
+      firstName: "",
+      lastName: "",
+      gradMonth: "",
+      gradYear: "",
+      email: "",
+      terms: false,
+      promos: false,
+    },
+  );
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
@@ -139,32 +138,28 @@ function CreateAccountPage() {
 
     setLoading(true);
     try {
-      await fetch(`${API_BASE}/auth/create_account.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          gradMonth: formData.gradMonth,
-          gradYear: formData.gradYear,
-          email: formData.email.trim(),
-          promos: formData.promos,
-        }),
-      });
+      const result = await submitAccountRequest(formData);
+      if (!result.accepted) {
+        setErrors({ submit: result.error });
+        return;
+      }
+
       setShowNotice(true);
     } catch {
-      setShowNotice(true);
+      setErrors({
+        submit: "Unable to reach the server. Please check your connection and try again.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">
+    <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
       {/* Right side - Create Account form (full width on mobile/tablet, 50% on desktop) */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-6 lg:px-8 xl:px-8 pt-6 sm:pt-8 md:pt-16 md:pb-8 lg:py-6 xl:py-8 h-screen min-h-0 overflow-y-auto lg:overflow-y-hidden pre-login-bg relative">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-6 lg:px-8 xl:px-8 pt-6 sm:pt-8 md:pt-16 md:pb-8 lg:py-6 xl:py-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] h-dvh min-h-0 overflow-y-auto lg:overflow-y-hidden pre-login-bg relative">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="lg:hidden mb-4 sm:mb-6 md:mb-8 text-center w-full relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
@@ -297,25 +292,33 @@ function CreateAccountPage() {
                     />
                     <span className="select-none text-sm sm:text-base md:text-lg lg:text-base leading-relaxed pt-0.5">
                       I agree to the{" "}
-                      <a
-                        href={termsPdf}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
                         className="underline decoration-white/70 hover:decoration-white hover:text-blue-200"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          navigate("/terms-of-service", {
+                            state: { from: "/create-account", accountDraft: formData },
+                          });
+                        }}
                       >
                         Terms & Conditions
-                      </a>{" "}
+                      </button>{" "}
                       and{" "}
-                      <a
-                        href={privacyPdf}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
                         className="underline decoration-white/70 hover:decoration-white hover:text-blue-200"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          navigate("/privacy-policy", {
+                            state: { from: "/create-account", accountDraft: formData },
+                          });
+                        }}
                       >
                         Privacy Policy
-                      </a>
+                      </button>
                     </span>
                   </label>
                   <FieldError className="ml-8">{errors.terms}</FieldError>
@@ -333,6 +336,7 @@ function CreateAccountPage() {
                     </span>
                   </label>
                 </div>
+                <FieldError>{errors.submit}</FieldError>
 
                 {/* Confirm button - Minimum 44px height for touch targets */}
                 <button

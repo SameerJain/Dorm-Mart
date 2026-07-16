@@ -7,20 +7,13 @@ declare(strict_types=1);
 
 // Include security utilities
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/image_upload.php';
 set_security_headers();
 set_secure_cors();
 
-// Must match upload_profile_photo.php / product_listing.php: uploads honor DATA_IMAGES_DIR.
-$projectRoot = dirname(__DIR__, 2);
-$envDir = getenv('DATA_IMAGES_DIR');
-$imagesCandidate = rtrim(
-    $envDir !== false && $envDir !== ''
-        ? $envDir
-        : ($projectRoot . DIRECTORY_SEPARATOR . 'images'),
-    '/\\'
-);
-$IMAGE_DIR = realpath($imagesCandidate);
-if ($IMAGE_DIR === false) {
+// Must match upload_profile_photo.php / product_listing.php: uploads honor DATA_UPLOADS_DIR.
+$IMAGE_DIR = real_upload_path(data_images_dir());
+if ($IMAGE_DIR === null) {
     http_response_code(500);
     exit('Image directory not found');
 }
@@ -75,27 +68,27 @@ if (isset($_GET['url']) && $_GET['url'] !== '') {
     // Handle /media/review-images/ paths
     elseif (strpos($url, '/media/review-images/') === 0) {
         $file = basename(substr($url, strlen('/media/review-images/')));
-        $mediaRoot = realpath($projectRoot . '/media/review-images');
-        $mediaPath = $mediaRoot !== false ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
-        if ($mediaRoot !== false && $mediaPath !== false && strpos($mediaPath, $mediaRoot) === 0 && is_file($mediaPath)) {
+        $mediaRoot = real_upload_path(data_media_dir('review-images'));
+        $mediaPath = $mediaRoot !== null ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
+        if ($mediaRoot !== null && $mediaPath !== false && strpos($mediaPath, $mediaRoot) === 0 && is_file($mediaPath)) {
             $path = $mediaPath;
         }
     }
     // Handle /media/chat-images/ paths
     elseif (strpos($url, '/media/chat-images/') === 0) {
         $file = basename(substr($url, strlen('/media/chat-images/')));
-        $mediaRoot = realpath($projectRoot . '/media/chat-images');
-        $mediaPath = $mediaRoot !== false ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
-        if ($mediaRoot !== false && $mediaPath !== false && strpos($mediaPath, $mediaRoot) === 0 && is_file($mediaPath)) {
+        $mediaRoot = real_upload_path(data_media_dir('chat-images'));
+        $mediaPath = $mediaRoot !== null ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
+        if ($mediaRoot !== null && $mediaPath !== false && strpos($mediaPath, $mediaRoot) === 0 && is_file($mediaPath)) {
             $path = $mediaPath;
         }
     }
     // Handle other /media/ paths — basename() prevents traversal, realpath() prevents symlink escape
     elseif (strpos($url, '/media/') === 0) {
         $file = basename(substr($url, strlen('/media/')));
-        $mediaRoot = realpath($projectRoot . '/media');
-        $mediaPath = $mediaRoot !== false ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
-        if ($mediaRoot !== false && $mediaPath !== false && strpos($mediaPath, $mediaRoot) === 0 && is_file($mediaPath)) {
+        $mediaRoot = real_upload_path(data_media_dir());
+        $mediaPath = $mediaRoot !== null ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
+        if ($mediaRoot !== null && $mediaPath !== false && strpos($mediaPath, $mediaRoot) === 0 && is_file($mediaPath)) {
             $path = $mediaPath;
         }
     }

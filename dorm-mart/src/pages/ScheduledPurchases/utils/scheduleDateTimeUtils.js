@@ -98,6 +98,12 @@ export function getEasternTime() {
   return new Date(year, month, day, hour, minute, second);
 }
 
+export function getMaxDayForMeetingMonth(monthValue, referenceDate = getEasternTime()) {
+  const month = parseInt(monthValue);
+  if (!Number.isInteger(month) || month < 1 || month > 12) return 31;
+  return new Date(referenceDate.getFullYear(), month, 0).getDate();
+}
+
 export function getDateRangeMessage(meetingMonth, meetingDay, meetingYear) {
   if (
     !meetingMonth ||

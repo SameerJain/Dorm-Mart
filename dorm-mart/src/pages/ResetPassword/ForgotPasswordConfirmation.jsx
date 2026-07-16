@@ -5,11 +5,11 @@ function ForgotPasswordConfirmation() {
   const navigate = useNavigate();
 
   return (
-    <div className="h-screen flex flex-col md:flex-row pre-login-bg overflow-hidden">
+    <div className="h-dvh flex flex-col md:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
       {/* Right side - Confirmation message (full width on mobile, 50% on desktop) */}
-      <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 h-screen pre-login-bg relative overflow-hidden">
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-hidden">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">

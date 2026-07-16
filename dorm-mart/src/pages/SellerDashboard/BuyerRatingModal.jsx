@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import StarRating from "../Reviews/StarRating";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { API_BASE } from "../../utils/apiConfig";
-import { csrfFetch } from "../../utils/csrfFetch";
+import { apiGetJson, csrfPostJson } from "../../utils/apiClient";
+import { formatDate } from "../../utils/formatters";
 import logger from "../../utils/logger";
+import { readRatingValue } from "./utils/sellerDashboardUtils";
 
 /**
  * BuyerRatingModal Component
@@ -40,29 +42,18 @@ function BuyerRatingModal({
 
   const fetchExistingRating = useCallback(async () => {
     try {
-      const response = await fetch(
+      const result = await apiGetJson(
         `${API_BASE}/reviews/get_buyer_rating.php?product_id=${productId}`,
-        {
-          method: "GET",
-          credentials: "include",
-        },
       );
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.has_rating) {
-          setExistingRating(result.rating);
-          setRating(result.rating.rating || 0);
-          setReviewText(result.rating.review_text || "");
-          setCharCount((result.rating.review_text || "").length);
-        } else {
-          setExistingRating(null);
-          setRating(0);
-          setReviewText("");
-          setCharCount(0);
-        }
+      if (result?.success && result.has_rating) {
+        const existing = result.rating || null;
+        const existingReviewText = existing?.review_text || "";
+        setExistingRating(existing);
+        setRating(readRatingValue(existing) || 0);
+        setReviewText(existingReviewText);
+        setCharCount(existingReviewText.length);
       } else {
-        // Reset on error
         setExistingRating(null);
         setRating(0);
         setReviewText("");
@@ -160,28 +151,18 @@ function BuyerRatingModal({
     setError(null);
 
     try {
-      const response = await csrfFetch(
+      const result = await csrfPostJson(
         `${API_BASE}/reviews/submit_buyer_rating.php`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            product_id: productId,
-            buyer_user_id: buyerId,
-            rating: rating,
-            review_text: reviewText.trim(),
-          }),
+          product_id: productId,
+          buyer_user_id: buyerId,
+          rating: rating,
+          review_text: reviewText.trim(),
         },
       );
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to submit rating");
+      if (!result?.success) {
+        throw new Error(result?.error || "Failed to submit rating");
       }
 
       // Success!
@@ -289,8 +270,7 @@ function BuyerRatingModal({
               )}
               {existingRating.created_at && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                  Rated on{" "}
-                  {new Date(existingRating.created_at).toLocaleDateString()}
+                  Rated on {formatDate(existingRating.created_at)}
                 </p>
               )}
               <div className="flex justify-end">
