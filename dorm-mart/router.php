@@ -92,11 +92,22 @@ if (strpos($requestPath, '/api/') === 0) {
     exit;
 }
 
-// Serve static files from build directory
-$buildPath = __DIR__ . '/build' . $requestPath;
+// Serve static files from build directory. Decode before validating so encoded
+// traversal sequences cannot bypass the containment check.
+$decodedRequestPath = rawurldecode($requestPath);
+if (strpos($decodedRequestPath, "\0") !== false
+    || preg_match('#(?:^|[\\\\/])\.\.(?:[\\\\/]|$)#', $decodedRequestPath)) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo '404 Not Found';
+    exit;
+}
+
+$buildRoot = realpath(__DIR__ . '/build');
+$buildPath = __DIR__ . '/build' . $decodedRequestPath;
 
 // If requesting root, serve index.html
-if ($requestPath === '/' || $requestPath === '') {
+if ($decodedRequestPath === '/' || $decodedRequestPath === '') {
     $buildPath = __DIR__ . '/build/index.html';
 }
 
@@ -112,7 +123,13 @@ if (router_is_https_request()) {
 }
 
 // If file exists in build directory, serve it
-if (file_exists($buildPath) && is_file($buildPath)) {
+// Only serve an existing file when its resolved path remains inside build/.
+$resolvedBuildPath = $buildRoot !== false ? realpath($buildPath) : false;
+if ($resolvedBuildPath !== false
+    && $buildRoot !== false
+    && str_starts_with($resolvedBuildPath, $buildRoot . DIRECTORY_SEPARATOR)
+    && is_file($resolvedBuildPath)) {
+    $buildPath = $resolvedBuildPath;
     // Set appropriate content type
     $ext = pathinfo($buildPath, PATHINFO_EXTENSION);
     $mimeTypes = [

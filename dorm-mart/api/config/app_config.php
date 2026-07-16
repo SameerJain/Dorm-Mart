@@ -232,3 +232,20 @@ function dm_smtp_timeout(): int
 {
     return max(1, (int)dm_env_string('SMTP_TIMEOUT', '10'));
 }
+
+function dm_smtp_allow_self_signed(): bool
+{
+    return dm_env_bool('SMTP_ALLOW_SELF_SIGNED', false);
+}
+
+function dm_log_auth_event(string $flow, string $requestId, string $event, array $context = []): void
+{
+    $payload = array_merge([
+        'component' => 'auth',
+        'flow' => $flow,
+        'request_id' => $requestId,
+        'event' => $event,
+    ], $context);
+
+    error_log((string)json_encode($payload, JSON_UNESCAPED_SLASHES));
+}

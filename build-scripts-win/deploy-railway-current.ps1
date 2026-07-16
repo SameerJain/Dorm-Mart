@@ -12,7 +12,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$projectRoot = Get-Location
+$projectRoot = Split-Path -Parent $PSScriptRoot
 $dormMartPath = Join-Path $projectRoot "dorm-mart"
 
 if (!(Test-Path $dormMartPath)) {

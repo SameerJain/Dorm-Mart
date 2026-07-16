@@ -354,6 +354,23 @@ function LoginPage() {
                     { label: "Forgot Password?", to: "/forgot-password" },
                   ]}
                 />
+                <PreLoginNavLinks
+                  className="mt-2 text-xs sm:text-sm"
+                  buttonClassName="min-h-[36px] py-1 text-gray-300"
+                  hoverClassName="hover:text-blue-300"
+                  links={[
+                    {
+                      label: "Privacy Policy",
+                      to: "/privacy-policy",
+                      state: { from: "/login" },
+                    },
+                    {
+                      label: "Terms of Service",
+                      to: "/terms-of-service",
+                      state: { from: "/login" },
+                    },
+                  ]}
+                />
               </div>
             </div>
           </div>

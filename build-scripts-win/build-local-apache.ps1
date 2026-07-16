@@ -19,15 +19,21 @@ try {
     Write-Host "Warning: Could not start XAMPP services automatically. Please start them manually from XAMPP Control Panel." -ForegroundColor Red
 }
 
-# Get the current directory (should be the project root)
-$projectRoot = Get-Location
+# Resolve paths from this script so the command works from any directory.
+$projectRoot = Split-Path -Parent $PSScriptRoot
 $dormMartPath = Join-Path $projectRoot "dorm-mart"
 $servePath = "C:\xampp\htdocs\serve"
 
 Write-Host "Building React app..." -ForegroundColor Cyan
 # Change to dorm-mart directory and build
 Set-Location $dormMartPath
+if (Test-Path (Join-Path $dormMartPath "build")) {
+    Remove-Item -LiteralPath (Join-Path $dormMartPath "build") -Recurse -Force
+}
 npm run build-local-win
+if ($LASTEXITCODE -ne 0) {
+    throw "React local build failed with exit code $LASTEXITCODE"
+}
 
 Write-Host "Creating/clearing serve directory..." -ForegroundColor Yellow
 # Create serve directory if it doesn't exist, or clear it if it does
@@ -85,4 +91,4 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$servePath'; 
 Write-Host "Build Method 2 completed!" -ForegroundColor Green
 Write-Host "Your app is now available at: http://localhost/serve/dorm-mart" -ForegroundColor Yellow
 Write-Host "PHP API is available at: http://localhost:8080" -ForegroundColor Yellow
-Write-Host "Don't forget to run: php migrate_schema.php from the serve/dorm-mart directory" -ForegroundColor Red
+Write-Host "Don't forget to run: php api/database/migrate_schema.php from the serve/dorm-mart directory" -ForegroundColor Red
