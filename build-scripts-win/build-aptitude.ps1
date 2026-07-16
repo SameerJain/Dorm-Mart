@@ -3,15 +3,21 @@
 
 Write-Host "Starting Aptitude Production Build..." -ForegroundColor Green
 
-# Get the current directory (should be the project root)
-$projectRoot = Get-Location
+# Resolve paths from this script so the command works from any directory.
+$projectRoot = Split-Path -Parent $PSScriptRoot
 $dormMartPath = Join-Path $projectRoot "dorm-mart"
 $prodBuildPath = "C:\xampp\htdocs\prod-build"
 
 Write-Host "Building React app for production..." -ForegroundColor Cyan
 # Change to dorm-mart directory and build
 Set-Location $dormMartPath
+if (Test-Path (Join-Path $dormMartPath "build")) {
+    Remove-Item -LiteralPath (Join-Path $dormMartPath "build") -Recurse -Force
+}
 npm run build-prod-win
+if ($LASTEXITCODE -ne 0) {
+    throw "React Aptitude build failed with exit code $LASTEXITCODE"
+}
 
 Write-Host "Creating prod-build directory..." -ForegroundColor Yellow
 # Create prod-build directory if it doesn't exist

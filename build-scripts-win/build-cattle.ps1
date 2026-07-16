@@ -3,15 +3,21 @@
 
 Write-Host "Starting Cattle Production Build..." -ForegroundColor Green
 
-# Get the current directory (should be the project root)
-$projectRoot = Get-Location
+# Resolve paths from this script so the command works from any directory.
+$projectRoot = Split-Path -Parent $PSScriptRoot
 $dormMartPath = Join-Path $projectRoot "dorm-mart"
 $cattleBuildPath = "C:\xampp\htdocs\cattle-build"
 
 Write-Host "Building React app for production..." -ForegroundColor Cyan
 # Change to dorm-mart directory and build
 Set-Location $dormMartPath
+if (Test-Path (Join-Path $dormMartPath "build")) {
+    Remove-Item -LiteralPath (Join-Path $dormMartPath "build") -Recurse -Force
+}
 npm run build-cattle-win
+if ($LASTEXITCODE -ne 0) {
+    throw "React Cattle build failed with exit code $LASTEXITCODE"
+}
 
 Write-Host "Creating cattle-build directory..." -ForegroundColor Yellow
 # Create cattle-build directory if it doesn't exist
@@ -61,4 +67,3 @@ Write-Host "Cattle Production Build completed!" -ForegroundColor Green
 Write-Host "All files are ready in: C:\xampp\htdocs\cattle-build" -ForegroundColor Yellow
 Write-Host "You can now upload this entire folder to Cattle using WinSCP" -ForegroundColor Cyan
 Write-Host "Don't forget to run migrations on the server after upload!" -ForegroundColor Red
-

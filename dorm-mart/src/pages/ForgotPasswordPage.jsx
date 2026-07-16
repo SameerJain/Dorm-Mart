@@ -45,8 +45,8 @@ function ForgotPasswordPage() {
       const ac = new AbortController();
       await sendForgotPasswordRequest(email, ac.signal);
 
-      // For valid UB emails, always show confirmation page for security
-      // (whether email exists in DB, rate limited, or network error)
+      // The API returns the same accepted response for every valid-looking
+      // address, so this does not disclose whether an account exists.
       setError("");
 
       setTimeout(() => {
@@ -55,13 +55,8 @@ function ForgotPasswordPage() {
       }, 2000);
     } catch (err) {
       logger.error(err);
-      // For valid UB emails, always show confirmation page for security
-      setError("");
-
-      setTimeout(() => {
-        setIsLoading(false); // keep spinner during the delay
-        navigate("/forgot-password/confirmation");
-      }, 2000);
+      setIsLoading(false);
+      setError("Unable to reach the server. Please check your connection and try again.");
     }
   };
 

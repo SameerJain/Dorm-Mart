@@ -7,6 +7,8 @@
 3. Set up your local database (see `README.project_setup.md` for schema migration details)
 4. Start the development server: `npm run start-local-win` (or `-mac`) and run `php -S localhost:8080 -t .` in the `dorm-mart` directory
 
+Stop the React development server before running `npm install`, `npm ci`, or dependency-update commands. Replacing files in `node_modules` while the compiler is running can cause temporary missing-module errors.
+
 # POSIX Demo (ssh into Aptitude to user terminal)
 
 Copy any necessary files to the server:
@@ -46,8 +48,8 @@ Copy any necessary files to the server:
    3. (These list of files and folders are subject to change as the project grows)
 6. Navigate to localhost/serve/dorm-mart from your browser since that is the file path
 7. You now should have the app running on your local apache server
-8. Make sure to migrate to apply db schema to your local mysql: `php migrate_schema.php`
-9. To add contents to your local db, run `php migrate_data.php`
+8. Make sure to migrate to apply db schema to your local mysql: `php api/database/migrate_schema.php`
+9. To add contents to your local db, run `php api/database/migrate_data.php`
 
 # Test Server Build: APTITUDE (How to build and upload prod app to aptitude)
 
@@ -97,6 +99,11 @@ Copy any necessary files to the server:
 - More docs are in /extra-files
 
 # Windows Powershell Build Scripts Commands
+
+Run the supported development launcher from the repository root:
+`C:\xampp\htdocs\f25-no-brainers\build-scripts-win\dev.bat`
+
+The repository root intentionally has no `package.json`, so do not run `npm start` there. Manual npm and PHP commands must be run from the `dorm-mart` directory. The launcher resolves its own repository path and will leave services alone when their expected ports are already in use.
 
 **Build Method 1: Local Development:**
 `C:\xampp\htdocs\f25-no-brainers\build-scripts-win\dev.bat`

@@ -40,6 +40,7 @@ import NotificationPage from "./pages/Notification/NotificationPage.jsx";
 // FAQ
 import FAQPage from "./pages/FAQ/FAQPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
+import LegalDocumentPage from "./pages/Legal/LegalDocumentPage.jsx";
 
 function PreLoginLayout() {
   useLayoutEffect(() => {
@@ -81,6 +82,14 @@ export const router = createHashRouter([
       { path: "/login", element: <LoginPage /> },
       { path: "/create-account", element: <CreateAccount /> },
       { path: "/forgot-password", element: <ForgotPasswordPage /> },
+      {
+        path: "/privacy-policy",
+        element: <LegalDocumentPage documentKey="privacy" />,
+      },
+      {
+        path: "/terms-of-service",
+        element: <LegalDocumentPage documentKey="terms" />,
+      },
       {
         path: "/forgot-password/confirmation",
         element: <ForgotPasswordConfirmation />,

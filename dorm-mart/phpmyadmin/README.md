@@ -1,15 +1,18 @@
-# phpMyAdmin for Railway
+# Deploying phpMyAdmin on Railway
 
-To deploy phpMyAdmin on Railway:
+1. Create a service in the Railway project.
+2. Connect the service to this directory, or deploy it from the included `Dockerfile`.
+3. Configure the following environment variables:
 
-1. Create a new service in your Railway project
-2. Connect it to this directory (or create from Dockerfile)
-3. Set these environment variables:
-   - `PMA_HOST` = Your MySQL service's internal hostname (usually `mysql` or check Railway's service name)
-   - `PMA_PORT` = `3306`
-   - `PMA_USER` = Your MySQL username
-   - `PMA_PASSWORD` = Your MySQL password
-   - `PMA_ARBITRARY` = `1` (allows connecting to any MySQL server)
+   | Variable | Value |
+   | --- | --- |
+   | `PMA_HOST` | The internal hostname of the MySQL service, usually `mysql` or the Railway service name |
+   | `PMA_PORT` | `3306` |
+   | `PMA_USER` | The MySQL username |
+   | `PMA_PASSWORD` | The MySQL password |
+   | `PMA_ARBITRARY` | `1`, which permits connections to other MySQL servers |
 
-4. Railway will auto-detect the Dockerfile and deploy phpMyAdmin
-5. Access it at your Railway URL
+4. Deploy the service. Railway should detect the `Dockerfile` automatically.
+5. Open phpMyAdmin at the URL assigned by Railway.
+
+Restrict access to the deployed phpMyAdmin service and avoid exposing database credentials in logs or source control.

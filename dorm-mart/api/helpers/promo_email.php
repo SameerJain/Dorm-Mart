@@ -104,11 +104,12 @@ function send_promo_welcome_email(array $user): array
         $mail->Port = dm_smtp_port();
         $mail->Timeout = dm_smtp_timeout();
         $mail->SMTPKeepAlive = false;
+        $allowSelfSigned = dm_smtp_allow_self_signed();
         $mail->SMTPOptions = [
             'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true,
+                'verify_peer' => !$allowSelfSigned,
+                'verify_peer_name' => !$allowSelfSigned,
+                'allow_self_signed' => $allowSelfSigned,
             ],
         ];
         $mail->CharSet = 'UTF-8';
