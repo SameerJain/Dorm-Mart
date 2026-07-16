@@ -50,3 +50,51 @@ if (!function_exists('ensure_upload_directory')) {
         return is_dir($directory) || @mkdir($directory, $mode, true) || is_dir($directory);
     }
 }
+
+if (!function_exists('project_root_path')) {
+    function project_root_path(): string
+    {
+        return dirname(__DIR__, 2);
+    }
+}
+
+if (!function_exists('data_uploads_root')) {
+    function data_uploads_root(): string
+    {
+        $projectRoot = project_root_path();
+        $envRoot = getenv('DATA_UPLOADS_DIR');
+        $root = $envRoot !== false && trim($envRoot) !== '' ? trim($envRoot) : $projectRoot;
+
+        if (!preg_match('/^[A-Za-z]:[\/\\\\]/', $root) && $root[0] !== '/') {
+            $root = $projectRoot . DIRECTORY_SEPARATOR . $root;
+        }
+
+        return rtrim($root, '/\\');
+    }
+}
+
+if (!function_exists('data_images_dir')) {
+    function data_images_dir(): string
+    {
+        return data_uploads_root() . DIRECTORY_SEPARATOR . 'images';
+    }
+}
+
+if (!function_exists('data_media_dir')) {
+    function data_media_dir(?string $subdir = null): string
+    {
+        $dir = data_uploads_root() . DIRECTORY_SEPARATOR . 'media';
+        if ($subdir !== null && $subdir !== '') {
+            $dir .= DIRECTORY_SEPARATOR . trim($subdir, '/\\');
+        }
+        return $dir;
+    }
+}
+
+if (!function_exists('real_upload_path')) {
+    function real_upload_path(string $path): ?string
+    {
+        $real = realpath($path);
+        return $real !== false ? $real : null;
+    }
+}

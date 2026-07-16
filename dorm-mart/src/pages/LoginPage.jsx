@@ -184,7 +184,7 @@ function LoginPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">
+    <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <style>{`
         /* iPhone SE presets only (375×667 Chrome; 320×568 original) — nudge content up so bottom tagline isn’t clipped */
         @media (max-width: 375px) and (max-height: 667px) {
@@ -213,7 +213,7 @@ function LoginPage() {
 
       {/* Right side - Login form (full width on mobile, 50% on desktop).
           login-page-right-column: stay visually light even if html.dark (global CSS + brief theme flash). */}
-      <div className="login-page-se-mobile-col login-page-right-column w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 h-screen pre-login-bg relative overflow-y-auto lg:overflow-hidden">
+      <div className="login-page-se-mobile-col login-page-right-column w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 pb-[max(2rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-y-auto lg:overflow-hidden">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="login-page-se-branding lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
@@ -352,6 +352,23 @@ function LoginPage() {
                   links={[
                     { label: "Create Account", to: "/create-account" },
                     { label: "Forgot Password?", to: "/forgot-password" },
+                  ]}
+                />
+                <PreLoginNavLinks
+                  className="mt-2 text-xs sm:text-sm"
+                  buttonClassName="min-h-[36px] py-1 text-gray-300"
+                  hoverClassName="hover:text-blue-300"
+                  links={[
+                    {
+                      label: "Privacy Policy",
+                      to: "/privacy-policy",
+                      state: { from: "/login" },
+                    },
+                    {
+                      label: "Terms of Service",
+                      to: "/terms-of-service",
+                      state: { from: "/login" },
+                    },
                   ]}
                 />
               </div>

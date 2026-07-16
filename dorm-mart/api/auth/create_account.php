@@ -35,6 +35,45 @@ use PHPMailer\PHPMailer\Exception;
 require_once __DIR__ . '/../utility/transactional_email_html.php';
 require_once __DIR__ . '/../config/app_config.php';
 
+const ACCOUNT_REQUEST_ACCEPTED_MESSAGE = 'If eligible, account instructions will be sent.';
+$accountRequestStartedAt = microtime(true);
+
+function accept_account_request(): void
+{
+    global $accountRequestStartedAt;
+    $remainingMicros = (int)max(0, (2 - (microtime(true) - $accountRequestStartedAt)) * 1000000);
+    if ($remainingMicros > 0) {
+        usleep($remainingMicros);
+    }
+    http_response_code(202);
+    echo json_encode([
+        'ok' => true,
+        'message' => ACCOUNT_REQUEST_ACCEPTED_MESSAGE,
+    ]);
+    exit;
+}
+
+function remove_undeliverable_account(mysqli $conn, int $userId, string $email, string $requestId): bool
+{
+    try {
+        $stmt = $conn->prepare('DELETE FROM user_accounts WHERE user_id = ? AND email = ?');
+        $stmt->bind_param('is', $userId, $email);
+        $stmt->execute();
+        $removed = $stmt->affected_rows === 1;
+        $stmt->close();
+        dm_log_auth_event('create_account', $requestId, $removed ? 'account_cleanup_succeeded' : 'account_cleanup_failed', [
+            'user_id' => $userId,
+        ]);
+        return $removed;
+    } catch (Throwable $e) {
+        dm_log_auth_event('create_account', $requestId, 'account_cleanup_failed', [
+            'user_id' => $userId,
+            'error' => $e->getMessage(),
+        ]);
+        return false;
+    }
+}
+
 
 function generate_password(int $length = 8): string
 {
@@ -171,11 +210,12 @@ function send_welcome_gmail(array $user, string $tempPassword): array
         // Optimizations for faster email delivery
         $mail->Timeout = dm_smtp_timeout();
         $mail->SMTPKeepAlive = false;
+        $allowSelfSigned = dm_smtp_allow_self_signed();
         $mail->SMTPOptions = [
             'ssl' => [
-                'verify_peer'       => false,
-                'verify_peer_name'  => false,
-                'allow_self_signed' => true,
+                'verify_peer'       => !$allowSelfSigned,
+                'verify_peer_name'  => !$allowSelfSigned,
+                'allow_self_signed' => $allowSelfSigned,
             ]
         ];
         // Tell PHPMailer we are sending UTF-8 and how to encode it
@@ -314,25 +354,20 @@ if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > 
     exit;
 }
 
+$requestId = bin2hex(random_bytes(8));
 require __DIR__ . '/../database/db_connect.php';
-$conn = db();
 try {
+    $conn = db();
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $chk = $conn->prepare('SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1');
     $chk->bind_param('s', $email);  // 's' = string type, safely bound as parameter
     $chk->execute();
     $chk->store_result();                   // needed to use num_rows without fetching
     if ($chk->num_rows > 0) {
-        error_log("create_account: existing email submitted, skipping account insert and welcome email for {$email}");
-        http_response_code(200);
-        echo json_encode([
-            'ok' => true,
-            'email' => [
-                'attempted' => false,
-                'reason' => 'existing_account',
-            ],
-        ]);
-        exit;
+        $chk->close();
+        $conn->close();
+        dm_log_auth_event('create_account', $requestId, 'duplicate_request');
+        accept_account_request();
     }
     $chk->close();
 
@@ -369,48 +404,54 @@ try {
     );
 
     $ok = $ins->execute();
+    $newUserId = (int)$conn->insert_id;
     $ins->close();
 
     if (!$ok) {
-        http_response_code(500);
-        echo json_encode(['ok' => false, 'error' => 'Insert failed']);
-        exit;
+        dm_log_auth_event('create_account', $requestId, 'insert_failed');
+        $conn->close();
+        accept_account_request();
     }
 
-    // Send welcome email (non-blocking - don't wait for it to complete)
-    // Account creation succeeds even if email fails
-    $welcomeEmailResult = ['ok' => false, 'provider' => 'unknown', 'error' => 'Email send not attempted'];
     try {
-        // Use a shorter timeout and don't block account creation
-        error_log("create_account: attempting welcome email for {$email}");
+        dm_log_auth_event('create_account', $requestId, 'delivery_started', ['user_id' => $newUserId]);
         $emailResult = send_welcome_gmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
-        $welcomeEmailResult = $emailResult;
         if (!$emailResult['ok']) {
-            // Log email sending error but don't fail account creation
-            error_log("Failed to send welcome email to {$email}: " . ($emailResult['error'] ?? 'Unknown error'));
+            dm_log_auth_event('create_account', $requestId, 'delivery_failed', [
+                'user_id' => $newUserId,
+                'provider' => $emailResult['provider'] ?? 'unknown',
+                'error' => $emailResult['error'] ?? 'Unknown error',
+            ]);
+            remove_undeliverable_account($conn, $newUserId, $email, $requestId);
+            $newUserId = 0;
+            $conn->close();
+            accept_account_request();
         } else {
-            error_log("create_account: welcome email send completed for {$email}");
+            dm_log_auth_event('create_account', $requestId, 'accepted', [
+                'user_id' => $newUserId,
+                'provider' => $emailResult['provider'] ?? 'unknown',
+            ]);
         }
     } catch (Throwable $e) {
-        // Email sending failed but account was created successfully
-        error_log("Exception sending welcome email to {$email}: " . $e->getMessage());
-        $welcomeEmailResult = ['ok' => false, 'provider' => 'unknown', 'error' => $e->getMessage()];
+        dm_log_auth_event('create_account', $requestId, 'delivery_failed', [
+            'user_id' => $newUserId,
+            'error' => $e->getMessage(),
+        ]);
+        remove_undeliverable_account($conn, $newUserId, $email, $requestId);
+        $newUserId = 0;
+        $conn->close();
+        accept_account_request();
     }
 
-    // Success
-    echo json_encode([
-        'ok' => true,
-        'email' => [
-            'attempted' => true,
-            'ok' => (bool)($welcomeEmailResult['ok'] ?? false),
-            'provider' => $welcomeEmailResult['provider'] ?? 'unknown',
-            'status' => $welcomeEmailResult['status'] ?? null,
-            'error' => $welcomeEmailResult['ok'] ? null : ($welcomeEmailResult['error'] ?? 'Unknown error'),
-        ],
-    ]);
+    $conn->close();
+    accept_account_request();
 } catch (Throwable $e) {
-    // Log $e->getMessage() server-side
-    error_log("create_account error: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => "There was an error"]);
+    dm_log_auth_event('create_account', $requestId, 'internal_error', ['error' => $e->getMessage()]);
+    if (isset($conn) && $conn instanceof mysqli) {
+        if (!empty($newUserId)) {
+            remove_undeliverable_account($conn, (int)$newUserId, $email, $requestId);
+        }
+        $conn->close();
+    }
+    accept_account_request();
 }

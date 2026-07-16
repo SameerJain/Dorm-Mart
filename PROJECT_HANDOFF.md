@@ -17,7 +17,7 @@ This is meant to help you understand the project as it exists now before taking 
 
 Dorm Mart is still a React frontend plus PHP/MySQL backend marketplace app, but the structure is much cleaner than the sprint baseline.
 
-The main app routes now live in `dorm-mart/src/App.jsx`, with route groups under:
+The **main** app routes now live in `dorm-mart/src/App.jsx`, with route groups under:
 
 - `/` for the welcome/pre-login entry point.
 - `/login`, `/create-account`, `/forgot-password`, and `/reset-password` for auth flows.
@@ -571,7 +571,7 @@ Compared with the sprint baseline, many old loose files were moved into clearer 
 
 ### Important teammate warning
 
-Railway containers can lose files stored in normal container directories after redeploys/restarts unless a volume is configured. If database rows point at uploaded images but the files are gone, the app will show the placeholder image. The setup docs mention `DATA_IMAGES_DIR` and related image configuration for persistent storage.
+Railway containers can lose files stored in normal container directories after redeploys/restarts unless a volume is configured. If database rows point at uploaded images but the files are gone, the app will show the placeholder image. The setup docs mention `DATA_UPLOADS_DIR` for persistent upload storage.
 
 ## Current run and deploy paths
 

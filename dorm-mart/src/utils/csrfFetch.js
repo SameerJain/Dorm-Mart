@@ -29,6 +29,22 @@ export function clearCsrfToken() {
   csrfTokenPromise = null;
 }
 
+function parseJsonRequestBody(body) {
+  if (!body) return {};
+  if (typeof body !== "string") {
+    return body && typeof body === "object" && !Array.isArray(body) ? body : {};
+  }
+
+  try {
+    const parsed = JSON.parse(body);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    throw new Error("Invalid JSON request body");
+  }
+}
+
 function withCsrfToken(options, method, token) {
   const nextOptions = { ...options, method };
 
@@ -45,13 +61,7 @@ function withCsrfToken(options, method, token) {
 
   if (!nextOptions.body || contentType.includes("application/json")) {
     headers.set("Content-Type", "application/json");
-    let payload = {};
-    if (nextOptions.body) {
-      payload =
-        typeof nextOptions.body === "string"
-          ? JSON.parse(nextOptions.body)
-          : nextOptions.body;
-    }
+    const payload = parseJsonRequestBody(nextOptions.body);
     nextOptions.body = JSON.stringify({ ...payload, csrf_token: token });
     nextOptions.headers = headers;
   }

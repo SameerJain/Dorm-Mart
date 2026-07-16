@@ -21,7 +21,7 @@ export default function PreLoginNavLinks({
           {index > 0 && <span className="w-1 h-1 bg-black rounded-full" />}
           <button
             type="button"
-            onClick={() => navigate(link.to)}
+            onClick={() => navigate(link.to, { state: link.state })}
             className={`${baseButtonClass} ${hoverClassName} ${buttonClassName}`.trim()}
           >
             {link.label}

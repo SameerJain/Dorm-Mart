@@ -17,12 +17,16 @@ export function parseListField(value) {
 
 export function coerceNumber(value) {
   if (value === null || value === undefined || value === "") return null;
-  if (typeof value === "number" && !Number.isNaN(value)) return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "string") {
-    const cleaned = value.replace(/[^0-9.-]/g, "");
-    if (!cleaned) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const moneyPattern =
+      /^[+-]?\$?(?:(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?|\.\d+)$/;
+    if (!moneyPattern.test(trimmed)) return null;
+    const cleaned = trimmed.replace(/[$,]/g, "");
     const num = Number(cleaned);
-    return Number.isNaN(num) ? null : num;
+    return Number.isFinite(num) ? num : null;
   }
   return null;
 }
@@ -66,6 +70,23 @@ export function parseDateValue(value) {
     return Number.isNaN(attempt.getTime()) ? null : attempt;
   }
   return null;
+}
+
+export function dateTimestamp(value, fallback = null) {
+  const date = parseDateValue(value);
+  return date ? date.getTime() : fallback;
+}
+
+export function compareDateAsc(a, b, fallback = Infinity) {
+  const left = dateTimestamp(a, fallback);
+  const right = dateTimestamp(b, fallback);
+  return left === right ? 0 : left - right;
+}
+
+export function compareDateDesc(a, b, fallback = 0) {
+  const left = dateTimestamp(a, fallback);
+  const right = dateTimestamp(b, fallback);
+  return left === right ? 0 : right - left;
 }
 
 export function formatDate(value) {

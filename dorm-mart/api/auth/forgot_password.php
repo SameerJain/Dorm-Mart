@@ -28,6 +28,48 @@ use PHPMailer\PHPMailer\Exception;
 require_once __DIR__ . '/../utility/transactional_email_html.php';
 require_once __DIR__ . '/../config/app_config.php';
 
+const PASSWORD_RESET_ACCEPTED_MESSAGE = 'If this email is registered, a reset link has been sent.';
+$passwordResetStartedAt = microtime(true);
+
+function accept_password_reset_request(): void
+{
+    global $passwordResetStartedAt;
+    $remainingMicros = (int)max(0, (2 - (microtime(true) - $passwordResetStartedAt)) * 1000000);
+    if ($remainingMicros > 0) {
+        usleep($remainingMicros);
+    }
+    http_response_code(202);
+    echo json_encode(['success' => true, 'message' => PASSWORD_RESET_ACCEPTED_MESSAGE]);
+    exit;
+}
+
+function restore_password_reset_state(mysqli $conn, array $user, string $requestId): bool
+{
+    try {
+        $oldHash = $user['hash_auth'] ?? null;
+        $oldExpires = $user['reset_token_expires'] ?? null;
+        $oldRequested = $user['last_reset_request'] ?? null;
+        $userId = (int)$user['user_id'];
+        $stmt = $conn->prepare(
+            'UPDATE user_accounts SET hash_auth = ?, reset_token_expires = ?, last_reset_request = ? WHERE user_id = ?'
+        );
+        $stmt->bind_param('sssi', $oldHash, $oldExpires, $oldRequested, $userId);
+        $stmt->execute();
+        $restored = $stmt->affected_rows >= 0;
+        $stmt->close();
+        dm_log_auth_event('forgot_password', $requestId, $restored ? 'token_cleanup_succeeded' : 'token_cleanup_failed', [
+            'user_id' => $userId,
+        ]);
+        return $restored;
+    } catch (Throwable $e) {
+        dm_log_auth_event('forgot_password', $requestId, 'token_cleanup_failed', [
+            'user_id' => (int)($user['user_id'] ?? 0),
+            'error' => $e->getMessage(),
+        ]);
+        return false;
+    }
+}
+
 /**
  * Send password reset email via SendGrid REST API (for Railway)
  */
@@ -122,11 +164,12 @@ function send_password_reset_email(array $user, string $resetLink, string $envLa
         // Optimizations for faster email delivery
         $mail->Timeout = dm_smtp_timeout();
         $mail->SMTPKeepAlive = false;
+        $allowSelfSigned = dm_smtp_allow_self_signed();
         $mail->SMTPOptions = [
             'ssl' => [
-                'verify_peer'       => false,
-                'verify_peer_name'  => false,
-                'allow_self_signed' => true,
+                'verify_peer'       => !$allowSelfSigned,
+                'verify_peer_name'  => !$allowSelfSigned,
+                'allow_self_signed' => $allowSelfSigned,
             ]
         ];
         // Tell PHPMailer we are sending UTF-8 and how to encode it
@@ -217,11 +260,12 @@ if (preg_match('/^\d+$/', $emailLocalPart)) {
     exit;
 }
 
+$requestId = bin2hex(random_bytes(8));
 try {
     $conn = db();
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email, last_reset_request FROM user_accounts WHERE email = ?');
+    $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email, hash_auth, reset_token_expires, last_reset_request FROM user_accounts WHERE email = ?');
     $stmt->bind_param('s', $email);  // 's' = string type, safely bound as parameter
     $stmt->execute();
     $result = $stmt->get_result();
@@ -229,9 +273,8 @@ try {
     if ($result->num_rows === 0) {
         $stmt->close();
         $conn->close();
-        // Return the same response as a successful send to prevent email enumeration
-        echo json_encode(['success' => true, 'message' => 'If this email is registered, a reset link has been sent.']);
-        exit;
+        dm_log_auth_event('forgot_password', $requestId, 'unknown_request');
+        accept_password_reset_request();
     }
 
     $user = $result->fetch_assoc();
@@ -249,8 +292,8 @@ try {
 
         if ($minutesPassed < 10) {
             $conn->close();
-            echo json_encode(['success' => true, 'message' => 'If this email is registered, a reset link has been sent.']);
-            exit;
+            dm_log_auth_event('forgot_password', $requestId, 'rate_limited', ['user_id' => (int)$user['user_id']]);
+            accept_password_reset_request();
         }
     }
 
@@ -261,11 +304,13 @@ try {
     // Set expiration to 1 hour from now using UTC timezone
     $expiresAt = (new DateTime('+1 hour', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 
-    // Store token, expiration, and update timestamp in one query
+    // Save the prior state so a rejected email can be compensated without
+    // holding a database transaction open during the provider request.
     $stmt = $conn->prepare('UPDATE user_accounts SET hash_auth = ?, reset_token_expires = ?, last_reset_request = NOW() WHERE user_id = ?');
     $stmt->bind_param('ssi', $hashedToken, $expiresAt, $user['user_id']);
     $stmt->execute();
     $stmt->close();
+    $resetTokenStored = true;
 
     $resetLink = dm_api_url('redirects/handle_password_reset_token_redirect.php') . '?token=' . urlencode($resetToken) . '&uid=' . (int)$user['user_id'];
     $envLabel = dm_env_string('APP_ENV', 'Local');
@@ -273,17 +318,27 @@ try {
     $emailResult = send_password_reset_email($user, $resetLink, $envLabel);
 
     if (!$emailResult['success']) {
+        dm_log_auth_event('forgot_password', $requestId, 'delivery_failed', [
+            'user_id' => (int)$user['user_id'],
+            'error' => $emailResult['error'] ?? 'Unknown error',
+        ]);
+        restore_password_reset_state($conn, $user, $requestId);
+        $resetTokenStored = false;
         $conn->close();
-        echo json_encode(['success' => false, 'error' => 'Failed to send email']);
-        exit;
+        accept_password_reset_request();
     }
 
     $conn->close();
-    echo json_encode([
-        'success' => true,
-        'message' => 'If this email is registered, a reset link has been sent.',
-    ]);
-} catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    $resetTokenStored = false;
+    dm_log_auth_event('forgot_password', $requestId, 'accepted', ['user_id' => (int)$user['user_id']]);
+    accept_password_reset_request();
+} catch (Throwable $e) {
+    dm_log_auth_event('forgot_password', $requestId, 'internal_error', ['error' => $e->getMessage()]);
+    if (isset($conn) && $conn instanceof mysqli) {
+        if (!empty($resetTokenStored) && isset($user) && is_array($user)) {
+            restore_password_reset_state($conn, $user, $requestId);
+        }
+        $conn->close();
+    }
+    accept_password_reset_request();
 }
