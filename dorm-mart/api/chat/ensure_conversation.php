@@ -215,7 +215,9 @@ try {
         ];
     }
 
-    $namesStmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?) LIMIT 2');
+    $sharedContactEmail = null;
+    $sharedContactPhone = null;
+    $namesStmt = $conn->prepare('SELECT user_id, first_name, last_name, email, phone_number, reveal_contact_info FROM user_accounts WHERE user_id IN (?, ?) LIMIT 2');
     if ($namesStmt) {
         $namesStmt->bind_param('ii', $buyerId, $sellerId);
         $namesStmt->execute();
@@ -234,10 +236,16 @@ try {
                 $sellerFirst = $first;
                 $sellerLast = $last;
                 $sellerName = $full !== '' ? $full : null;
+                if ((int)($row['reveal_contact_info'] ?? 0) === 1) {
+                    $sharedContactEmail = (string)($row['email'] ?? '');
+                    $sharedContactPhone = $row['phone_number'] ?: null;
+                }
             }
         }
         $namesStmt->close();
     }
+    $conversationRow['shared_contact_email'] = $sharedContactEmail;
+    $conversationRow['shared_contact_phone'] = $sharedContactPhone;
 
     $convId = (int) $conversationRow['conv_id'];
     $existingMessageCount = 0;

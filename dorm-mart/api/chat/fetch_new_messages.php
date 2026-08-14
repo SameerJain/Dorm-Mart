@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../helpers/profanity.php';
 require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
@@ -28,7 +29,7 @@ if ($convId > 0) {
 
 $stmt = $conn->prepare(
   'SELECT
-       message_id, conv_id, sender_id, receiver_id, content, image_url, metadata,
+       message_id, conv_id, sender_id, receiver_id, content, is_flagged, image_url, metadata,
        DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at,
        DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at,
        DATE_FORMAT(GREATEST(created_at, COALESCE(edited_at, created_at)), "%Y-%m-%dT%H:%i:%sZ") AS activity_at
@@ -92,6 +93,8 @@ while ($row = $res->fetch_assoc()) {
             $confirmStatusStmt->close();
         }
     }
+    $row['content'] = filter_profanity($conn, (string)$row['content']);
+    $row['is_flagged'] = (bool)$row['is_flagged'];
     $messages[] = $row;
 }
 $stmt->close();

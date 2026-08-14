@@ -131,6 +131,33 @@ function recommendation_build_context(mysqli $conn, int $userId): array
         $behaviorStmt->close();
     }
 
+    // Include wishlist rows created before behavior tracking was introduced.
+    $wishlistStmt = $conn->prepare(
+        'SELECT w.product_id, i.categories
+         FROM wishlist w
+         INNER JOIN INVENTORY i ON i.product_id = w.product_id
+         WHERE w.user_id = ?'
+    );
+    if ($wishlistStmt) {
+        $wishlistStmt->bind_param('i', $userId);
+        $wishlistStmt->execute();
+        $result = $wishlistStmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $productId = (int)$row['product_id'];
+            if (!empty($productSignals[$productId]['wishlisted'])) {
+                continue;
+            }
+            foreach (inventory_string_list($row['categories'] ?? null) as $category) {
+                recommendation_add_category($profile, $category, 5.0, 'wishlist');
+            }
+            $productSignals[$productId] = [
+                'views' => (int)($productSignals[$productId]['views'] ?? 0),
+                'wishlisted' => true,
+            ];
+        }
+        $wishlistStmt->close();
+    }
+
     $purchaseStmt = $conn->prepare(
         'SELECT categories FROM INVENTORY WHERE sold_to = ? AND sold = 1'
     );

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
+require_once __DIR__ . '/../helpers/profanity.php';
 require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
@@ -248,12 +249,13 @@ try {
     $stmt->close();
 
     /* Insert media message (stored in the legacy messages.image_url column). */
+    $isFlagged = contains_profanity($conn, $content) ? 1 : 0;
     $stmt = $conn->prepare(
         'INSERT INTO messages
-           (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, image_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?)'
+           (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, is_flagged, image_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    $stmt->bind_param('iiissss', $convId, $senderId, $receiverId, $senderName, $receiverName, $content, $imageRelUrl);
+    $stmt->bind_param('iiisssis', $convId, $senderId, $receiverId, $senderName, $receiverName, $content, $isFlagged, $imageRelUrl);
     $stmt->execute();
     $msgId = (int)$conn->insert_id;
     $stmt->close();
@@ -303,7 +305,8 @@ try {
         'message_id'  => $msgId,
         'message'     => [
             'message_id' => $msgId,
-            'content'    => $content,       // caption (possibly empty string) - Note: No HTML encoding needed for JSON - React handles XSS protection
+            'content'    => filter_profanity($conn, $content),
+            'is_flagged' => (bool)$isFlagged,
             'created_at' => $createdIso,    // ISO-8601 UTC
             'image_url'  => $imageRelUrl,   // relative public path
         ],

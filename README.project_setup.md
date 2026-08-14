@@ -51,6 +51,16 @@ Copy any necessary files to the server:
 8. Make sure to migrate to apply db schema to your local mysql: `php api/database/migrate_schema.php`
 9. To add contents to your local db, run `php api/database/migrate_data.php`
 
+### Moderator account
+
+After applying schema migrations, create or promote a moderator without committing privileged credentials:
+
+```powershell
+php api/database/create_moderator.php moderator@buffalo.edu "use-a-strong-password" "Dorm Mart" "Moderator"
+```
+
+Moderator accounts use the normal login page and are sent to `/app/moderation` after login.
+
 # Test Server Build: APTITUDE (How to build and upload prod app to aptitude)
 
 1. `npm run build-prod` (add -win or -mac at the end depending on your machine)

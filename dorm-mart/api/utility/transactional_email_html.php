@@ -126,6 +126,47 @@ function dm_transactional_password_reset_package(string $firstName, string $rese
 /**
  * @return array{subject: string, html: string, text: string}
  */
+function dm_transactional_two_factor_code_package(string $firstName, string $code): array
+{
+    $name = $firstName !== '' ? $firstName : 'Student';
+    $subject = 'Your Dorm Mart verification code';
+    $inner = '<p style="margin:0 0 16px;color:#f1f5f9;font-size:17px;">Hi ' . escape_html($name) . ',</p>'
+        . '<p style="margin:0 0 18px;color:#cbd5e1;">Use this code to finish signing in to Dorm Mart:</p>'
+        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;border-collapse:collapse;border:1px solid #334155;">'
+        . '<tr><td style="padding:22px;text-align:center;background-color:#0f172a;font-family:\'Courier New\',Courier,monospace;font-size:30px;font-weight:700;letter-spacing:0.2em;color:#38bdf8;">'
+        . escape_html($code) . '</td></tr></table>'
+        . '<p style="margin:0 0 12px;color:#94a3b8;font-size:14px;">This code expires in 10 minutes and can only be used once.</p>'
+        . '<p style="margin:0 0 22px;color:#64748b;font-size:13px;">If you did not try to log in, change your password immediately.</p>';
+
+    return [
+        'subject' => $subject,
+        'html' => dm_transactional_shell($subject, 'Your sign-in verification code expires in 10 minutes.', $inner),
+        'text' => "Hi {$name},\n\nYour Dorm Mart verification code is: {$code}\n\nThis code expires in 10 minutes and can only be used once.\n\nIf you did not try to log in, change your password immediately.",
+    ];
+}
+
+/**
+ * @return array{subject: string, html: string, text: string}
+ */
+function dm_transactional_two_factor_enabled_package(string $firstName): array
+{
+    $name = $firstName !== '' ? $firstName : 'Student';
+    $subject = 'Two-Factor Authentication enabled';
+    $inner = '<p style="margin:0 0 16px;color:#f1f5f9;font-size:17px;">Hi ' . escape_html($name) . ',</p>'
+        . '<p style="margin:0 0 18px;color:#cbd5e1;">Two-Factor Authentication was enabled successfully on your Dorm Mart account.</p>'
+        . '<p style="margin:0 0 22px;color:#94a3b8;font-size:14px;">Future logins will require a one-time code sent to this email address.</p>'
+        . '<p style="margin:0 0 22px;color:#64748b;font-size:13px;">If you did not make this change, reset your password and contact support.</p>';
+
+    return [
+        'subject' => $subject,
+        'html' => dm_transactional_shell($subject, 'Email verification is now enabled for your account.', $inner),
+        'text' => "Hi {$name},\n\nTwo-Factor Authentication was enabled successfully on your Dorm Mart account. Future logins will require a one-time code sent to this email address.\n\nIf you did not make this change, reset your password and contact support.",
+    ];
+}
+
+/**
+ * @return array{subject: string, html: string, text: string}
+ */
 function dm_transactional_promo_welcome_package(string $firstName): array
 {
     $plainFirst = $firstName !== '' ? $firstName : 'Student';
