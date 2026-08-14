@@ -9,9 +9,10 @@ init_json_endpoint();
 // Use require_login() which calls ensure_session() to restore sessions from persistent cookies
 require_once __DIR__ . '/auth_handle.php';
 $userId = require_login();
+$account = auth_account($userId);
 
 json_response([
     'success' => true,
     'user_id' => $userId,
-    // add other fields if you want: 'name' => $_SESSION['name'] ?? null
+    'role' => $account['role'] ?? 'user',
 ]);

@@ -2,18 +2,15 @@
 
 declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../helpers/profanity.php';
 require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
 
 $conn = db();
 
-session_start(); // read the PHP session cookie to identify the caller
-
-$userId = (int)($_SESSION['user_id'] ?? 0);
-if ($userId <= 0) {
-    json_response(['success' => false, 'error' => 'Not authenticated'], 401);
-}
+$userId = require_login();
 
 // --- input: conv_id must come from the query string ---
 // e.g. GET /api/chat/fetch_conversation.php?conv_id=123
@@ -34,7 +31,7 @@ $authStmt->close();
 // --- fetch all messages for this conversation (oldest first) ---
 $stmt = $conn->prepare(
     'SELECT
-         message_id, conv_id, sender_id, receiver_id, content, image_url, metadata,
+         message_id, conv_id, sender_id, receiver_id, content, is_flagged, image_url, metadata,
          DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at,  -- ISO UTC
          DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at    -- ISO UTC (NULL stays NULL)
        FROM messages
@@ -96,6 +93,8 @@ while ($row = $res->fetch_assoc()) {
             $confirmStatusStmt->close();
         }
     }
+    $row['content'] = filter_profanity($conn, (string)$row['content']);
+    $row['is_flagged'] = (bool)$row['is_flagged'];
     $messages[] = $row;
 }
 $stmt->close();

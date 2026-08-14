@@ -5,6 +5,7 @@ require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/profanity.php';
 
 init_json_endpoint('POST');
 
@@ -47,9 +48,10 @@ try {
     $latestStmt->close();
     if (!$latest || (int)$latest['message_id'] !== $messageId) json_response(['success' => false, 'error' => 'Only your last sent message can be edited'], 409);
 
-    $update = $conn->prepare('UPDATE messages SET content = ?, edited_at = NOW() WHERE message_id = ? AND sender_id = ?');
+    $isFlagged = contains_profanity($conn, $content) ? 1 : 0;
+    $update = $conn->prepare('UPDATE messages SET content = ?, is_flagged = ?, edited_at = NOW() WHERE message_id = ? AND sender_id = ?');
     if (!$update) throw new RuntimeException('Failed to prepare message update');
-    $update->bind_param('sii', $content, $messageId, $userId);
+    $update->bind_param('siii', $content, $isFlagged, $messageId, $userId);
     $update->execute();
     $update->close();
 
@@ -59,7 +61,12 @@ try {
     $editedAt = $timeStmt->get_result()->fetch_assoc()['edited_at'] ?? gmdate('Y-m-d\TH:i:s\Z');
     $timeStmt->close();
 
-    json_response(['success' => true, 'message' => ['message_id' => $messageId, 'content' => $content, 'edited_at' => $editedAt]]);
+    json_response(['success' => true, 'message' => [
+        'message_id' => $messageId,
+        'content' => filter_profanity($conn, $content),
+        'is_flagged' => (bool)$isFlagged,
+        'edited_at' => $editedAt,
+    ]]);
 } catch (Throwable $e) {
     error_log('edit_last_message error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);

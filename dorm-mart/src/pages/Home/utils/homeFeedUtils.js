@@ -134,7 +134,7 @@ export function normalizeLandingItem(data, index = 0) {
     location: data.location || data.campus || "North Campus",
     recommendationScore: coerceNumber(data.recommendation_score) ?? 0,
     recommendationReason: data.recommendation_reason || null,
-    personalized: Boolean(data.personalized),
+    personalized: data.personalized === true || data.personalized === 1,
   };
 }
 

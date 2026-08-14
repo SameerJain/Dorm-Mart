@@ -10,6 +10,7 @@ import questionIcon from "../../assets/icons/icons8-question-mark-96.png";
 import Icon from "./Icon";
 import { ChatContext } from "../../context/ChatContext";
 import { getTabForPath } from "../../pages/FAQ/faqUtils.js";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 // Main navigation bar component with search, notifications, chat, and menu dropdowns
 function MainNav() {
@@ -21,6 +22,8 @@ function MainNav() {
   const dropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const location = useLocation();
+  const currentUser = useAuth();
+  const isModerator = currentUser?.role === "moderator";
 
   const ctx = useContext(ChatContext);
   const { unreadMsgTotal, unreadNotificationTotal } = ctx;
@@ -194,6 +197,17 @@ function MainNav() {
             </button>
             {showDropdown && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
+                {isModerator && (
+                  <button
+                    onClick={() => {
+                      navigate("/app/moderation");
+                      setShowDropdown(false);
+                    }}
+                    className="w-full px-4 py-2 text-left font-semibold text-red-700 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-gray-600"
+                  >
+                    Moderation
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     handleSellerDashboard();
@@ -268,6 +282,18 @@ function MainNav() {
 
           {showMobileMenu && (
             <div className="absolute right-0 mt-2 w-56 rounded-lg border-2 border-blue-400 bg-blue-600 py-2 shadow-lg z-50 dark:border-blue-700 dark:bg-blue-800 dark:shadow-black/40">
+              {isModerator && (
+                <button
+                  onClick={() => {
+                    navigate("/app/moderation");
+                    closeMobileMenuAndMarket();
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left font-semibold text-white transition-colors hover:bg-blue-700"
+                >
+                  <span aria-hidden>🛡️</span>
+                  <span>Moderation</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   navigate("/app");

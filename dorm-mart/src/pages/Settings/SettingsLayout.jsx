@@ -21,6 +21,8 @@ function SettingsLayout({ children }) {
     { label: "User Preferences", to: `${linkBase}/user-preferences` },
     { label: "Change Password", to: `${linkBase}/change-password` },
     { label: "Logged Devices", to: `${linkBase}/security-options` },
+    { label: "Two-Factor Authentication", to: `${linkBase}/two-factor-authentication` },
+    { label: "About Us", to: `${linkBase}/about-us` },
     { label: "Delete Account", to: `${linkBase}/delete-account` },
   ];
 

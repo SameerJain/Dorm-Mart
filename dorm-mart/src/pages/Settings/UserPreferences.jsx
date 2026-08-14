@@ -17,6 +17,7 @@ function UserPreferences() {
   } = useTheme();
   const [promoFrequency, setPromoFrequency] = useState("off");
   const [revealContact, setRevealContact] = useState(false);
+  const [contactPhone, setContactPhone] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedInterests, setSelectedInterests] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -124,12 +125,14 @@ function UserPreferences() {
           promoEmails,
           promoFrequency: savedPromoFrequency,
           revealContact,
+          contactPhone: savedContactPhone,
           interests,
           theme: serverTheme,
         } = json.data;
         if (cancelled) return;
         setPromoFrequency(savedPromoFrequency || (promoEmails ? "weekly" : "off"));
         setRevealContact(!!revealContact);
+        setContactPhone(savedContactPhone || "");
         if (Array.isArray(interests)) setSelectedInterests(interests);
         if (serverTheme === "dark" || serverTheme === "light") {
           syncFromServerIfNoPending(serverTheme);
@@ -158,6 +161,7 @@ function UserPreferences() {
           promoEmails: promoFrequency !== "off",
           promoFrequency,
           revealContact,
+          contactPhone,
           interests: selectedInterests,
           theme: theme,
         };
@@ -180,6 +184,7 @@ function UserPreferences() {
   }, [
     promoFrequency,
     revealContact,
+    contactPhone,
     selectedInterests,
     theme,
     themeIsLoading,
@@ -407,23 +412,55 @@ function UserPreferences() {
           )}
         </div>
 
-        {/* TODO: Uncomment when reveal_contact_info feature is implemented
-        Seller Options */}
-        {/* <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">Seller Options</h2>
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="reveal-contact"
-              checked={revealContact}
-              onChange={(e) => setRevealContact(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
-            />
-            <label htmlFor="reveal-contact" className="text-sm text-slate-700 dark:text-gray-300">
-              I agree to have my email and phone number be revealed to a prospective buyer
-            </label>
+        {/* Seller privacy */}
+        <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
+            Seller Privacy
+          </h2>
+          <div className="max-w-lg space-y-4">
+            <div>
+              <label
+                htmlFor="contact-phone"
+                className="text-sm font-medium text-slate-700 dark:text-gray-300"
+              >
+                Phone number (optional)
+              </label>
+              <input
+                type="tel"
+                id="contact-phone"
+                value={contactPhone}
+                onChange={(e) =>
+                  setContactPhone(
+                    e.target.value.replace(/[^0-9+().\-\s]/g, "").slice(0, 25),
+                  )
+                }
+                autoComplete="tel"
+                placeholder="(716) 555-0123"
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+              />
+            </div>
+            <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="reveal-contact"
+                checked={revealContact}
+                onChange={(e) => setRevealContact(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+              />
+              <label
+                htmlFor="reveal-contact"
+                className="text-sm text-slate-700 dark:text-gray-300"
+              >
+                Share my UB email{contactPhone ? " and phone number" : ""} with
+                buyers who message me about one of my listings.
+              </label>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-gray-400">
+              Contact information is hidden by default and is never shown on
+              your public profile.
+            </p>
           </div>
-        </div> */}
+        </div>
 
         {/* Theme */}
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">

@@ -2,9 +2,7 @@ import { PUBLIC_BASE } from "../../../utils/apiConfig";
 
 export default function HomeFeedTabs({
   activeTab,
-  interests,
   navigate,
-  onReopenForYouHint,
   onSelectTab,
   openExternalRoute,
   quickFilterCategories,
@@ -40,7 +38,7 @@ export default function HomeFeedTabs({
                 personalized feed
               </p>
               <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-gray-100">
-                Items from categories you actually picked
+                Picks shaped by how you shop
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Real UB students • On-campus meetups • No shipping
@@ -60,30 +58,12 @@ export default function HomeFeedTabs({
               <div className="flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-600 dark:bg-gray-700/60">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!interests.length) {
-                      onReopenForYouHint();
-                      return;
-                    }
-                    onSelectTab("forYou");
-                  }}
-                  aria-label={
-                    !interests.length
-                      ? "For You — tap for instructions to unlock this feed"
-                      : undefined
-                  }
+                  onClick={() => onSelectTab("forYou")}
                   className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                    !interests.length
-                      ? "cursor-pointer text-gray-400 opacity-60 dark:text-gray-500"
-                      : activeTab === "forYou"
-                        ? "bg-blue-600 text-white shadow dark:bg-blue-800"
-                        : "text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
+                    activeTab === "forYou"
+                      ? "bg-blue-600 text-white shadow dark:bg-blue-800"
+                      : "text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
                   }`}
-                  title={
-                    interests.length
-                      ? undefined
-                      : "Tap to show how to unlock For You (Settings → User Preferences)"
-                  }
                 >
                   For You
                 </button>

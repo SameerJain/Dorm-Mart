@@ -6,6 +6,7 @@ import { loadUserTheme } from "../utils/loadTheme.js";
 import { ChatContext } from "../context/ChatContext.jsx";
 import FAQModal from "./FAQ/FAQModal.jsx";
 import { getTabForPath } from "./FAQ/faqUtils.js";
+import { AuthContext } from "../context/AuthContext.jsx";
 
 export const RootLayoutContext = createContext(false);
 
@@ -13,6 +14,7 @@ function RootLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [isChecking, setIsChecking] = useState(true);
   const isChatPage = location.pathname.startsWith("/app/chat");
   const matches = useMatches();
@@ -44,6 +46,7 @@ function RootLayout() {
     const checkAuth = async () => {
       try {
         const user = await fetchMe(controller.signal);
+        setCurrentUser(user);
         setIsAuthenticated(true);
         setIsChecking(false);
         loadUserTheme(user?.user_id);
@@ -90,20 +93,21 @@ function RootLayout() {
 
   return (
     <RootLayoutContext.Provider value={true}>
-      {/* Show navbar on mobile for chat list, hide for individual conversations.
-          404 routes render their own MainNav, so suppress it here. */}
-      {!isNotFoundRoute && (
-        <div
-          className={isChatPage && isViewingConversation ? "hidden md:block" : ""}
-        >
-          <MainNav />
-        </div>
-      )}
-      <Outlet />
+      <AuthContext.Provider value={currentUser}>
+        {/* Show navbar on mobile for chat list, hide for individual conversations.
+            404 routes render their own MainNav, so suppress it here. */}
+        {!isNotFoundRoute && (
+          <div
+            className={isChatPage && isViewingConversation ? "hidden md:block" : ""}
+          >
+            <MainNav />
+          </div>
+        )}
+        <Outlet />
 
       {/* FAQ button + modal only on md and larger, hidden on the FAQ page itself */}
-      {location.pathname !== "/app/faq" && (
-        <div className="hidden md:block">
+        {location.pathname !== "/app/faq" && (
+          <div className="hidden md:block">
           <button
             type="button"
             onClick={handleFAQClick}
@@ -134,8 +138,9 @@ function RootLayout() {
             activeView={faqActiveView}
             onTabChange={setFaqActiveView}
           />
-        </div>
-      )}
+          </div>
+        )}
+      </AuthContext.Provider>
     </RootLayoutContext.Provider>
   );
 }

@@ -153,13 +153,59 @@ function require_login(): int
   if (empty($_SESSION['user_id'])) {
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(401);
-    echo json_encode(['ok' => false, 'error' => 'Not authenticated']);
+    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Not authenticated']);
     exit;
   }
   $userId = (int) $_SESSION['user_id'];
+  $account = auth_account($userId);
+  if (!$account) {
+    unset($_SESSION['user_id']);
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(401);
+    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Not authenticated']);
+    exit;
+  }
+  if ((int)$account['is_banned'] === 1) {
+    unset($_SESSION['user_id']);
+    clear_remember_cookie($userId);
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Account suspended']);
+    exit;
+  }
   $lastTouched = (int)($_SESSION['device_history_touched_at'] ?? 0);
   if (time() - $lastTouched >= 300) {
     record_login_device($userId);
+  }
+  return $userId;
+}
+
+function auth_account(int $userId): ?array
+{
+  static $accounts = [];
+  if (array_key_exists($userId, $accounts)) return $accounts[$userId];
+
+  require_once __DIR__ . '/../database/db_connect.php';
+  $conn = db();
+  $stmt = $conn->prepare('SELECT user_id, role, is_banned FROM user_accounts WHERE user_id = ? LIMIT 1');
+  $stmt->bind_param('i', $userId);
+  $stmt->execute();
+  $account = $stmt->get_result()->fetch_assoc() ?: null;
+  $stmt->close();
+  $conn->close();
+  $accounts[$userId] = $account;
+  return $account;
+}
+
+function require_moderator(): int
+{
+  $userId = require_login();
+  $account = auth_account($userId);
+  if (($account['role'] ?? 'user') !== 'moderator') {
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Moderator access required']);
+    exit;
   }
   return $userId;
 }

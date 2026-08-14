@@ -15,6 +15,9 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationEmail, setVerificationEmail] = useState("");
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
 
   // Handle URL parameters
@@ -123,6 +126,13 @@ function LoginPage() {
 
       const data = await response.json();
 
+      if (data.ok && data.requires_two_factor) {
+        setRequiresTwoFactor(true);
+        setVerificationEmail(data.email || "your account email");
+        setPassword("");
+        return;
+      }
+
       if (data.ok) {
         // Auth token is now set server-side as httpOnly cookie
 
@@ -156,7 +166,9 @@ function LoginPage() {
         }
 
         // Navigate to the main app
-        navigate("/app");
+        navigate(data.role === "moderator" ? "/app/moderation" : "/app", {
+          state: { loginSuccess: true },
+        });
       } else {
         // Show error from backend, with improved messaging
         const backendError = data.error || "Login failed";
@@ -178,6 +190,46 @@ function LoginPage() {
       // Handle network or other errors
       logger.error("Login error:", error);
       setError(`Network error: ${error.message || "Please try again."}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTwoFactorVerification = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!/^\d{6}$/.test(verificationCode)) {
+      setError("Enter the 6-digit verification code.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/auth/verify_two_factor.php`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: verificationCode }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        setError(data.error || "Unable to verify the code. Please try again.");
+        return;
+      }
+
+      if (data.theme === "dark" || data.theme === "light") {
+        try {
+          localStorage.removeItem(THEME_PENDING_KEY);
+          localStorage.setItem(THEME_CACHE_KEY, data.theme);
+          if (data.user_id) localStorage.setItem(`userTheme_${data.user_id}`, data.theme);
+        } catch (_) {}
+      }
+      navigate(data.role === "moderator" ? "/app/moderation" : "/app", {
+        state: { loginSuccess: true },
+      });
+    } catch (requestError) {
+      logger.error("Two-factor verification error:", requestError);
+      setError(`Network error: ${requestError.message || "Please try again."}`);
     } finally {
       setLoading(false);
     }
@@ -240,7 +292,7 @@ function LoginPage() {
               <div className="text-center mb-4 sm:mb-6 md:mb-8">
                 <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-3 sm:mb-4"></div>
                 <h2 className="text-2xl sm:text-3xl md:text-5xl font-serif text-white leading-tight">
-                  Log In
+                  {requiresTwoFactor ? "Verify Login" : "Log In"}
                 </h2>
               </div>
 
@@ -265,10 +317,33 @@ function LoginPage() {
               {/* Login form - Improved spacing for mobile */}
               {/* scheme-light: keep native inputs light when html gets color-scheme:dark right before navigate */}
               <form
-                onSubmit={handleLogin}
+                onSubmit={requiresTwoFactor ? handleTwoFactorVerification : handleLogin}
                 noValidate
                 className="space-y-3 sm:space-y-4 md:space-y-6"
               >
+                {requiresTwoFactor ? (
+                  <div>
+                    <p className="mb-4 text-sm sm:text-base text-gray-100">
+                      Enter the one-time passcode sent to {verificationEmail}.
+                    </p>
+                    <label htmlFor="verification-code" className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
+                      Verification code
+                    </label>
+                    <input
+                      id="verification-code"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      maxLength={6}
+                      autoFocus
+                      required
+                      className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-center tracking-[0.35em] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm text-xl md:text-2xl"
+                    />
+                  </div>
+                ) : (
+                  <>
                 {/* Email input */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
@@ -321,6 +396,8 @@ function LoginPage() {
                     className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
                   />
                 </div>
+                  </>
+                )}
 
                 {/* Login button with arrow - Minimum 44px height for touch targets */}
                 <button
@@ -328,7 +405,11 @@ function LoginPage() {
                   disabled={loading}
                   className="w-full min-h-[44px] bg-sky-500 hover:bg-sky-600 disabled:bg-sky-300 disabled:cursor-not-allowed text-white py-3 sm:py-3.5 md:py-5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium disabled:hover:scale-100 text-base sm:text-lg md:text-xl active:scale-95"
                 >
-                  <span>{loading ? "Logging in..." : "Login"}</span>
+                  <span>
+                    {loading
+                      ? requiresTwoFactor ? "Verifying..." : "Logging in..."
+                      : requiresTwoFactor ? "Verify" : "Login"}
+                  </span>
                   {!loading && (
                     <svg
                       className="w-5 h-5"

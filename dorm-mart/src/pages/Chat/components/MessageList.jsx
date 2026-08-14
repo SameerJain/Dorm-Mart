@@ -7,8 +7,47 @@ import ReviewPromptMessageCard from "./ReviewPromptMessageCard";
 import BuyerRatingPromptMessageCard from "./BuyerRatingPromptMessageCard";
 import TypingIndicatorMessage from "./TypingIndicatorMessage";
 import { API_BASE } from "../../../utils/apiConfig";
+import { csrfFetch } from "../../../utils/csrfFetch";
 import { isVideoMediaUrl } from "../../../utils/imageFallback";
 import { useMemo, useState } from "react";
+
+function ReportButton({ messageId }) {
+  const [reported, setReported] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  async function report() {
+    setReporting(true);
+    setFailed(false);
+    try {
+      const response = await csrfFetch(`${API_BASE}/moderation/report_message.php`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message_id: messageId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(data.error || "Unable to report message");
+      setReported(true);
+    } catch (_) {
+      setFailed(true);
+    } finally {
+      setReporting(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={report}
+      disabled={reported || reporting}
+      title={failed ? "The report could not be sent. Try again." : undefined}
+      className="mt-1 text-[10px] font-semibold text-red-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-red-400"
+    >
+      {reported ? "Reported" : reporting ? "Reporting..." : failed ? "Retry report" : "Report"}
+    </button>
+  );
+}
 
 function TextMessage({ message, canEdit, onEdit }) {
   const [editing, setEditing] = useState(false);
@@ -56,6 +95,7 @@ function TextMessage({ message, canEdit, onEdit }) {
           <div className={"mt-1 text-[10px] " + (mine ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
             {fmtTime(message.ts)}{message.editedAt ? " · Edited" : ""}
           </div>
+          {!mine && <ReportButton messageId={message.message_id} />}
         </>
       )}
     </div>
@@ -330,6 +370,7 @@ export default function MessageList({
                                 Download
                               </a>
                             </div>
+                            {m.sender !== "me" && <ReportButton messageId={m.message_id} />}
                           </>
                         );
                       })()}
