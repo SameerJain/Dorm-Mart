@@ -58,11 +58,6 @@ export function useHomeFeed() {
 
   useEffect(() => {
     if (loadingUser) return;
-    if (!interests.length) {
-      setActiveTab("explore");
-      writeStoredFeedTab("explore");
-      return;
-    }
     const stored = readStoredFeedTab();
     if (stored === "explore" || stored === "forYou") {
       setActiveTab(stored);
@@ -162,6 +157,8 @@ export function useHomeFeed() {
     isLoading: loadingUser || loadingItems,
     loadingUser,
     itemsByInterest: feed.itemsByInterest,
+    forYouItems: feed.forYouItems,
+    hasPersonalization: feed.forYouItems.some((item) => item.personalized),
     exploreItems: feed.exploreItems,
     quickFilterCategories,
     selectTab,

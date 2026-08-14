@@ -18,7 +18,7 @@ $conn = db();
 function get_prefs(mysqli $conn, int $userId)
 {
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  $stmt = $conn->prepare('SELECT theme, promotional, reveal_contact_info, interested_category_1, interested_category_2, interested_category_3 FROM user_accounts WHERE user_id = ?');
+  $stmt = $conn->prepare('SELECT theme, promotional, promo_frequency, reveal_contact_info, phone_number, interested_category_1, interested_category_2, interested_category_3 FROM user_accounts WHERE user_id = ?');
   $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
   $res = $stmt->get_result();
@@ -58,12 +58,26 @@ function get_prefs(mysqli $conn, int $userId)
   
   $result = [
     'promoEmails' => $promoEmails,
+    'promoFrequency' => $userRow['promo_frequency'] ?? ($promoEmails ? 'weekly' : 'off'),
     'revealContact' => $revealContact,
+    'contactPhone' => $userRow['phone_number'] ?? '',
     'interests' => $interests,
     'theme' => $theme,
   ];
   
   return $result;
+}
+
+function allowed_preference_categories(): array
+{
+  $path = __DIR__ . '/../categories/categories.json';
+  $contents = is_readable($path) ? file_get_contents($path) : false;
+  $categories = $contents !== false ? json_decode($contents, true) : null;
+  if (!is_array($categories)) {
+    throw new RuntimeException('Unable to load preference categories');
+  }
+
+  return array_values(array_filter($categories, fn($category) => is_string($category) && $category !== ''));
 }
 
 try {
@@ -77,11 +91,20 @@ try {
     $body = json_request_body();
     require_csrf_token($body['csrf_token'] ?? null);
 
-    $promo = isset($body['promoEmails']) ? (int)!!$body['promoEmails'] : 0;
+    $frequency = in_array(($body['promoFrequency'] ?? 'off'), ['off', 'daily', 'weekly'], true) ? $body['promoFrequency'] : 'off';
+    $promo = $frequency === 'off' ? 0 : 1;
     $reveal = isset($body['revealContact']) ? (int)!!$body['revealContact'] : 0;
-    $ALLOWED_CATS = ['Textbooks', 'Electronics', 'Clothing', 'Furniture', 'Food', 'Services', 'Other'];
+    $phone = trim((string)($body['contactPhone'] ?? ''));
+    if ($phone !== '' && (!preg_match('/^[0-9+().\-\s]{1,25}$/', $phone) || !preg_match('/\d/', $phone))) {
+      json_response(['ok' => false, 'error' => 'Invalid phone number'], 400);
+    }
+    $phone = $phone !== '' ? $phone : null;
+    $allowedCategories = allowed_preference_categories();
     $interests = isset($body['interests']) && is_array($body['interests'])
-        ? array_slice(array_values(array_filter($body['interests'], fn($c) => in_array($c, $ALLOWED_CATS, true))), 0, 3)
+        ? array_slice(array_values(array_unique(array_filter(
+            $body['interests'],
+            fn($category) => is_string($category) && in_array($category, $allowedCategories, true)
+        ))), 0, 3)
         : [];
     $theme = (isset($body['theme']) && $body['theme'] === 'dark') ? 1 : 0;
     
@@ -111,21 +134,13 @@ try {
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, promotional = ?, reveal_contact_info = ?, interested_category_1 = ?, interested_category_2 = ?, interested_category_3 = ? WHERE user_id = ?');
-    $stmt->bind_param('iiisssi', $theme, $promo, $reveal, $int1, $int2, $int3, $userId);  // 'i'=integer, 's'=string
+    $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, promotional = ?, promo_frequency = ?, reveal_contact_info = ?, phone_number = ?, interested_category_1 = ?, interested_category_2 = ?, interested_category_3 = ? WHERE user_id = ?');
+    $stmt->bind_param('iisissssi', $theme, $promo, $frequency, $reveal, $phone, $int1, $int2, $int3, $userId);
     $result = $stmt->execute();
     if (!$result) {
       error_log("Failed to update user_accounts: " . $stmt->error);
     }
     $stmt->close();
-
-    // Handle received_intro_promo_email separately if needed
-    if ($shouldSendEmail) {
-      $stmt2 = $conn->prepare('UPDATE user_accounts SET received_intro_promo_email = 1 WHERE user_id = ?');
-      $stmt2->bind_param('i', $userId);
-      $stmt2->execute();
-      $stmt2->close();
-    }
 
     // Send promo welcome email if this is the first time opting in
     if ($shouldSendEmail) {
@@ -148,6 +163,10 @@ try {
         if (!$emailResult['ok']) {
           error_log("Failed to send promo welcome email: " . $emailResult['error']);
         } else {
+          $stmt2 = $conn->prepare('UPDATE user_accounts SET received_intro_promo_email = 1 WHERE user_id = ?');
+          $stmt2->bind_param('i', $userId);
+          $stmt2->execute();
+          $stmt2->close();
           error_log("user_preferences: promo welcome email send completed for user_id {$userId}");
         }
       } else {

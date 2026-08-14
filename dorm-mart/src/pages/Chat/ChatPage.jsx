@@ -37,6 +37,7 @@ export default function ChatPage() {
     myId,
     fetchConversation,
     createMessage,
+    editMessage,
     createImageMessage,
     clearActiveConversation,
     removeConversationLocal,
@@ -728,6 +729,7 @@ export default function ChatPage() {
               isOtherPersonTyping={isOtherPersonTyping}
               messages={messages}
               messagesByConv={messagesByConv}
+              editMessage={editMessage}
               parseMetadata={parseMetadata}
               scrollRef={scrollRef}
               typingUserName={typingUserName}

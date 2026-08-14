@@ -19,28 +19,27 @@ try {
 
     require_csrf_token($input['csrf_token'] ?? null);
 
-    $productId = request_int($input, 'product_id');
-    if ($productId <= 0) {
-        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
+    $notificationId = request_int($input, 'notification_id');
+    if ($notificationId <= 0) {
+        json_response(['success' => false, 'error' => 'Invalid notification_id'], 400);
     }
 
     // Reset unread_count to 0 for this seller + product
     $stmt = $conn->prepare(
-        'UPDATE wishlist_notification
-         SET unread_count = 0
-         WHERE seller_id = ? AND product_id = ?'
+        'UPDATE notifications SET is_read = 1
+         WHERE recipient_user_id = ? AND notification_id = ?'
     );
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare update');
     }
 
-    $stmt->bind_param('ii', $userId, $productId);
+    $stmt->bind_param('ii', $userId, $notificationId);
     $stmt->execute();
     $stmt->close();
 
     json_response([
         'success'    => true,
-        'product_id' => $productId,
+        'notification_id' => $notificationId,
     ]);
 } catch (Throwable $e) {
     error_log('mark_item_read error: ' . $e->getMessage());

@@ -21,6 +21,11 @@ import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
 import MyProfilePage from "./pages/Settings/MyProfile.jsx";
 import BuyerReviewsPage from "./pages/Settings/BuyerReviewsPage.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
+import AccountInfoPage from "./pages/Settings/AccountInfoPage.jsx";
+import LoggedDevicesPage from "./pages/Settings/LoggedDevicesPage.jsx";
+import DeleteAccountPage from "./pages/Settings/DeleteAccount.jsx";
+import TwoFactorAuthentication from "./pages/Settings/TwoFactorAuthentication.jsx";
+import AboutUs from "./pages/Settings/AboutUs.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.jsx";
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
 import SchedulePurchasePage from "./pages/ScheduledPurchases/SchedulePurchasePage.jsx";
@@ -41,6 +46,13 @@ import NotificationPage from "./pages/Notification/NotificationPage.jsx";
 import FAQPage from "./pages/FAQ/FAQPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import LegalDocumentPage from "./pages/Legal/LegalDocumentPage.jsx";
+import ModeratorDashboard from "./pages/Moderator/ModeratorDashboard.jsx";
+import { useAuth } from "./context/AuthContext.jsx";
+
+function ModeratorOnly({ children }) {
+  const currentUser = useAuth();
+  return currentUser?.role === "moderator" ? children : <Navigate to="/app" replace />;
+}
 
 function PreLoginLayout() {
   useLayoutEffect(() => {
@@ -190,13 +202,24 @@ export const router = createHashRouter([
           { path: "buyer-reviews", element: <BuyerReviewsPage /> },
           // User Preferences
           { path: "user-preferences", element: <UserPreferences /> },
-          { path: "personal-information", element: <NotFoundPage /> },
-          { path: "security-options", element: <NotFoundPage /> },
+          { path: "personal-information", element: <AccountInfoPage /> },
+          { path: "security-options", element: <LoggedDevicesPage /> },
+          { path: "two-factor-authentication", element: <TwoFactorAuthentication /> },
+          { path: "about-us", element: <AboutUs /> },
+          { path: "delete-account", element: <DeleteAccountPage /> },
         ],
       },
       {
         path: "faq",
         element: <FAQPage />,
+      },
+      {
+        path: "moderation",
+        element: (
+          <ModeratorOnly>
+            <ModeratorDashboard />
+          </ModeratorOnly>
+        ),
       },
       { path: "*", element: <NotFoundPage /> },
     ],

@@ -7,7 +7,7 @@ const SETTINGS_FAQ_ITEMS = [
   {
     question: "How do I set my interested categories?",
     answer:
-      'Go to Settings \u2192 User Preferences. Select up to 3 categories and save. These power the "For You" feed.',
+      'Go to Settings \u2192 User Preferences. Select up to 3 categories and save. These give the "For You" ranking an immediate signal.',
   },
   {
     question: "How do I switch between light and dark mode?",

@@ -6,6 +6,7 @@ require_once __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/profanity.php';
 
 init_json_endpoint();
 
@@ -189,13 +190,13 @@ try {
     $stmt->close();
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    $isFlagged = contains_profanity($conn, $content) ? 1 : 0;
     $stmt = $conn->prepare(
         'INSERT INTO messages
-           (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content)
-         VALUES (?, ?, ?, ?, ?, ?)'
+           (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, is_flagged)
+         VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
-    // 'iiisss' => 3 ints, 3 strings - all safely bound as parameters
-    $stmt->bind_param('iiisss', $convId, $senderId, $receiverId, $senderName, $receiverName, $content);
+    $stmt->bind_param('iiisssi', $convId, $senderId, $receiverId, $senderName, $receiverName, $content, $isFlagged);
     $stmt->execute();
     $msgId = $conn->insert_id;
     $stmt->close();
@@ -226,6 +227,8 @@ try {
     $stmt->execute();
     $stmt->close();
 
+    $filteredContent = filter_profanity($conn, $content);
+
     // Release advisory lock
     $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
     $stmt->bind_param('s', $lockKey);
@@ -246,14 +249,13 @@ try {
         // Return the fields you asked for as a single object for the client
         'message'     => [
             'message_id' => $msgId,
-            'content'    => $content,
+            'content'    => $filteredContent,
+            'is_flagged' => (bool)$isFlagged,
             'created_at' => $createdIso, // ISO-8601 UTC, e.g., 2025-10-31T03:05:06Z
         ],
     ], 200, JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
-    if ($conn->errno === 0) {
-        $conn->rollback();
-    }
+    try { $conn->rollback(); } catch (Throwable $_) {}
     if ($lockKey) {
         $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
         if ($stmt) {

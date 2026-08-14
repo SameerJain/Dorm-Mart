@@ -8,6 +8,7 @@ init_json_endpoint('POST');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/notifications.php';
 
 try {
     $userId = require_login();
@@ -23,6 +24,22 @@ try {
     if ($id <= 0) {
         json_response(['success' => false, 'error' => 'Invalid id'], 400);
     }
+
+    $itemStmt = $conn->prepare('SELECT title, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
+    if (!$itemStmt) throw new RuntimeException('Failed to prepare listing snapshot');
+    $itemStmt->bind_param('ii', $id, $userId);
+    $itemStmt->execute();
+    $item = $itemStmt->get_result()->fetch_assoc();
+    $itemStmt->close();
+    if (!$item) json_response(['success' => false, 'error' => 'Not found'], 404);
+    $conn->begin_transaction();
+    notification_for_wishlist($conn, $id, [
+        'type' => 'item_deleted', 'product_id' => null, 'title' => (string)$item['title'],
+        'message' => (string)$item['title'] . ' was deleted and is no longer available.',
+        'image_url' => notification_first_image($item['photos'] ?? null),
+        'severity' => 'warning', 'destination' => null,
+        'idempotency_key' => 'deleted-' . $id,
+    ]);
 
     // Before deleting the item, handle active conversations
     // Find all conversations associated with this product
@@ -88,8 +105,11 @@ try {
         json_response(['success' => false, 'error' => 'Not found'], 404);
     }
 
+    $conn->commit();
+
     json_response(['success' => true, 'id' => $id]);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
     error_log('delete_listing error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

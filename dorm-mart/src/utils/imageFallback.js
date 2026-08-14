@@ -3,6 +3,21 @@ const ITEM_PLACEHOLDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="800
 
 export const FALLBACK_IMAGE_URL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(ITEM_PLACEHOLDER_SVG)}`;
 
+const VIDEO_EXTENSIONS = /\.(mp4|webm|mov)(?:$|[?#])/i;
+
+export function isVideoMediaUrl(raw) {
+  if (typeof raw !== "string") return false;
+  const url = raw.trim();
+  if (VIDEO_EXTENSIONS.test(url)) return true;
+
+  try {
+    const storedUrl = new URL(url, "http://localhost").searchParams.get("url");
+    return storedUrl ? VIDEO_EXTENSIONS.test(storedUrl) : false;
+  } catch {
+    return false;
+  }
+}
+
 const LOCAL_IMAGE_PREFIXES = ["/data/images/", "/images/", "/media/"];
 
 function normalizeImageInput(raw) {

@@ -27,7 +27,7 @@ function dm_load_mail_vendor(): bool
     return false;
 }
 
-function send_promo_welcome_email_via_sendgrid(array $user, string $apiKey): array
+function send_promo_welcome_email_via_sendgrid(array $user, string $apiKey, ?array $package = null): array
 {
     if (!dm_load_mail_vendor()) {
         error_log("SendGrid: vendor/autoload.php not found");
@@ -37,7 +37,7 @@ function send_promo_welcome_email_via_sendgrid(array $user, string $apiKey): arr
     try {
         error_log("SendGrid promo email attempt started for: " . ($user['email'] ?? 'unknown'));
         $sendgrid = new \SendGrid($apiKey);
-        $pkg = dm_transactional_promo_welcome_package($user['firstName'] ?? '');
+        $pkg = $package ?? dm_transactional_promo_welcome_package($user['firstName'] ?? '');
         $fromEmail = dm_mail_from_email();
         if ($fromEmail === '') {
             error_log("SendGrid promo email failed: MAIL_FROM_EMAIL or GMAIL_USERNAME is not set");
@@ -48,8 +48,26 @@ function send_promo_welcome_email_via_sendgrid(array $user, string $apiKey): arr
         $email->setFrom($fromEmail, dm_mail_from_name());
         $email->setSubject($pkg['subject']);
         $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
-        $email->addContent("text/html", $pkg['html']);
         $email->addContent("text/plain", $pkg['text']);
+        $email->addContent("text/html", $pkg['html']);
+        $finfo = null;
+        foreach (($pkg['inline_images'] ?? []) as $image) {
+            $path = $image['path'] ?? null;
+            $cid = $image['cid'] ?? null;
+            if (!is_string($path) || !is_file($path) || !is_string($cid) || $cid === '') continue;
+
+            $contents = file_get_contents($path);
+            if ($contents === false) continue;
+            $finfo ??= new finfo(FILEINFO_MIME_TYPE);
+            $mime = $finfo->file($path) ?: 'application/octet-stream';
+            $email->addAttachment(
+                base64_encode($contents),
+                $mime,
+                $image['name'] ?? basename($path),
+                'inline',
+                $cid
+            );
+        }
 
         $response = $sendgrid->send($email);
         if ($response->statusCode() >= 200 && $response->statusCode() < 300) {
@@ -65,12 +83,12 @@ function send_promo_welcome_email_via_sendgrid(array $user, string $apiKey): arr
     }
 }
 
-function send_promo_welcome_email(array $user): array
+function send_promo_welcome_email(array $user, ?array $package = null): array
 {
     $sendgridApiKey = dm_sendgrid_api_key();
     if (!empty($sendgridApiKey)) {
         error_log("Promo email using SendGrid; SENDGRID_API_KEY is configured");
-        return send_promo_welcome_email_via_sendgrid($user, $sendgridApiKey);
+        return send_promo_welcome_email_via_sendgrid($user, $sendgridApiKey, $package);
     }
     error_log("Promo email using SMTP fallback; SENDGRID_API_KEY is not configured");
 
@@ -118,7 +136,12 @@ function send_promo_welcome_email(array $user): array
         $mail->addReplyTo(dm_mail_reply_to_email(), dm_mail_reply_to_name());
         $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
-        $pkg = dm_transactional_promo_welcome_package($user['firstName'] ?? '');
+        $pkg = $package ?? dm_transactional_promo_welcome_package($user['firstName'] ?? '');
+        foreach (($pkg['inline_images'] ?? []) as $image) {
+            if (!empty($image['path']) && is_file($image['path'])) {
+                $mail->addEmbeddedImage($image['path'], $image['cid'], $image['name'] ?? basename($image['path']));
+            }
+        }
         $mail->Subject = $pkg['subject'];
         $mail->isHTML(true);
         $mail->Body = $pkg['html'];

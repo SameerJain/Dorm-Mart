@@ -38,6 +38,18 @@ describe("home feed utility boundaries", () => {
     expect(feed.exploreItems.map((item) => item.id)).not.toContain(1);
   });
 
+  test("ranks the For You feed by recommendation score without requiring interests", () => {
+    const items = [
+      { id: 1, recommendationScore: 2, createdAtTs: 3 },
+      { id: 2, recommendationScore: 8, createdAtTs: 1 },
+      { id: 3, recommendationScore: 8, createdAtTs: 4 },
+    ];
+
+    const feed = buildHomeFeed(items, [], 30);
+
+    expect(feed.forYouItems.map((item) => item.id)).toEqual([3, 2, 1]);
+  });
+
   test("derives quick filters from items when category API is empty", () => {
     expect(
       getQuickFilterCategories([], [

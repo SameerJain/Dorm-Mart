@@ -7,7 +7,10 @@ import {
 } from "react-router-dom";
 import { API_BASE, PUBLIC_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
-import { resolveProductPhotoUrl } from "../../utils/imageFallback";
+import {
+  isVideoMediaUrl,
+  resolveProductPhotoUrl,
+} from "../../utils/imageFallback";
 import logger from "../../utils/logger";
 import { containsMemePrice } from "../../utils/priceValidation";
 import ListingForm from "./components/ListingForm";
@@ -18,11 +21,14 @@ import useListingCategories from "./hooks/useListingCategories";
 import {
   ALLOWED_IMAGE_EXTENSIONS,
   ALLOWED_IMAGE_MIME_TYPES,
+  ALLOWED_VIDEO_EXTENSIONS,
+  ALLOWED_VIDEO_MIME_TYPES,
   CATEGORIES_MAX,
   DEFAULT_FORM,
   getPreviewBoxSize,
   LIMITS,
   MAX_IMAGE_BYTES,
+  MAX_VIDEO_BYTES,
   PRICE_INPUT_PATTERN,
 } from "./utils/listingFormConfig";
 
@@ -62,6 +68,7 @@ function ProductListingPage() {
   const [showTopErrorBanner, setShowTopErrorBanner] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [isSold, setIsSold] = useState(false);
+  const [listingStatus, setListingStatus] = useState(null);
 
   const [atListingCap, setAtListingCap] = useState(false);
   const [activeListingCount, setActiveListingCount] = useState(0);
@@ -151,14 +158,18 @@ function ProductListingPage() {
     setPrice(DEFAULT_FORM.price);
     setAcceptTrades(DEFAULT_FORM.acceptTrades);
     setPriceNegotiable(DEFAULT_FORM.priceNegotiable);
-    setImages([...DEFAULT_FORM.images]);
+    setImages((current) => {
+      current.forEach((media) => {
+        if (media.previewObjectUrl) URL.revokeObjectURL(media.url);
+      });
+      return [...DEFAULT_FORM.images];
+    });
     setSelectedCategory("");
     setErrors({});
   }
 
-  // New listing cap
+  // Active listing cap
   useEffect(() => {
-    if (!isNew) return;
     let ignore = false;
     async function checkActiveListingCap() {
       try {
@@ -186,7 +197,7 @@ function ProductListingPage() {
     return () => {
       ignore = true;
     };
-  }, [isNew]);
+  }, []);
 
   // Existing listing
   useEffect(() => {
@@ -233,6 +244,7 @@ function ProductListingPage() {
         }
 
         setIsSold(false);
+        setListingStatus(data.item_status || "Active");
 
         // Populate form fields
         setTitle(data.title || "");
@@ -292,6 +304,7 @@ function ProductListingPage() {
               publicBase: PUBLIC_BASE,
             }),
             originalUrl: url, // Store original URL for submission
+            type: isVideoMediaUrl(url) ? "video" : "image",
           };
         });
         setImages(imageObjects);
@@ -324,6 +337,7 @@ function ProductListingPage() {
       setServerMsg(null);
       setLoadError(null);
       setIsSold(false);
+      setListingStatus(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew]);
@@ -413,7 +427,7 @@ function ProductListingPage() {
     }
 
     if (!images || images.length === 0) {
-      newErrors.images = "At least one image is required";
+      newErrors.images = "At least one photo or video is required";
     }
 
     setErrors(newErrors);
@@ -431,10 +445,25 @@ function ProductListingPage() {
   }, [images.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function isAllowedType(f) {
-    if (f.type && ALLOWED_IMAGE_MIME_TYPES.has(f.type)) return true;
+    if (
+      f.type &&
+      (ALLOWED_IMAGE_MIME_TYPES.has(f.type) ||
+        ALLOWED_VIDEO_MIME_TYPES.has(f.type))
+    )
+      return true;
 
     const name = (f.name || "").toLowerCase();
-    return ALLOWED_IMAGE_EXTENSIONS.has(name.slice(name.lastIndexOf(".")));
+    const extension = name.slice(name.lastIndexOf("."));
+    return (
+      ALLOWED_IMAGE_EXTENSIONS.has(extension) ||
+      ALLOWED_VIDEO_EXTENSIONS.has(extension)
+    );
+  }
+
+  function isVideoFile(file) {
+    if (file.type && ALLOWED_VIDEO_MIME_TYPES.has(file.type)) return true;
+    const name = (file.name || "").toLowerCase();
+    return ALLOWED_VIDEO_EXTENSIONS.has(name.slice(name.lastIndexOf(".")));
   }
 
   function onFileChange(e) {
@@ -444,18 +473,21 @@ function ProductListingPage() {
     if (images.length >= LIMITS.images) {
       setErrors((prev) => ({
         ...prev,
-        images: `Maximum ${LIMITS.images} images allowed.`,
+        images: `Maximum ${LIMITS.images} media files allowed.`,
       }));
       e.target.value = null;
       return;
     }
 
     const file = files[0];
+    const video = isVideoFile(file);
 
-    if (file.size > MAX_IMAGE_BYTES) {
+    if (file.size > (video ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) {
       setErrors((prev) => ({
         ...prev,
-        images: "Image is too large. Max size is 2 MB.",
+        images: video
+          ? "Video is too large. Max size is 25 MB."
+          : "Image is too large. Max size is 2 MB.",
       }));
       e.target.value = null;
       return;
@@ -464,7 +496,7 @@ function ProductListingPage() {
     if (!isAllowedType(file)) {
       setErrors((prev) => ({
         ...prev,
-        images: "Only JPG/JPEG, PNG, and WEBP images are allowed.",
+        images: "Only JPG/JPEG, PNG, WEBP, MP4, WEBM, and MOV files are allowed.",
       }));
       e.target.value = null;
       return;
@@ -473,7 +505,7 @@ function ProductListingPage() {
     // Clear file size and type errors if validation passes
     if (
       errors.images &&
-      (errors.images.includes("Image is too large") ||
+      (errors.images.includes("too large") ||
         errors.images.includes("Only JPG/JPEG"))
     ) {
       setErrors((prev) => {
@@ -481,6 +513,16 @@ function ProductListingPage() {
         delete ne.images;
         return ne;
       });
+    }
+
+    if (video) {
+      const previewUrl = URL.createObjectURL(file);
+      setImages((prev) => [
+        ...prev,
+        { file, url: previewUrl, type: "video", previewObjectUrl: true },
+      ]);
+      e.target.value = null;
+      return;
     }
 
     const reader = new FileReader();
@@ -491,7 +533,7 @@ function ProductListingPage() {
         if (images.length >= LIMITS.images) {
           setErrors((prev) => ({
             ...prev,
-            images: `Maximum ${LIMITS.images} images allowed.`,
+            images: `Maximum ${LIMITS.images} media files allowed.`,
           }));
           e.target.value = null;
           return;
@@ -506,6 +548,7 @@ function ProductListingPage() {
             {
               file,
               url: ev.target.result,
+              type: "image",
             },
           ]);
           // Clear image error when image is added
@@ -521,7 +564,7 @@ function ProductListingPage() {
           if (images.length >= LIMITS.images) {
             setErrors((prev) => ({
               ...prev,
-              images: `Maximum ${LIMITS.images} images allowed.`,
+              images: `Maximum ${LIMITS.images} media files allowed.`,
             }));
             e.target.value = null;
             return;
@@ -541,7 +584,11 @@ function ProductListingPage() {
   }
 
   function removeImage(idx) {
-    setImages((prev) => prev.filter((_, i) => i !== idx));
+    setImages((prev) => {
+      const removed = prev[idx];
+      if (removed?.previewObjectUrl) URL.revokeObjectURL(removed.url);
+      return prev.filter((_, i) => i !== idx);
+    });
   }
 
   function handlePreviewImgLoaded() {
@@ -633,7 +680,7 @@ function ProductListingPage() {
     if (images.length >= LIMITS.images) {
       setErrors((prev) => ({
         ...prev,
-        images: `Maximum ${LIMITS.images} images allowed.`,
+        images: `Maximum ${LIMITS.images} media files allowed.`,
       }));
       setShowCropper(false);
       setCropImageSrc(null);
@@ -678,7 +725,7 @@ function ProductListingPage() {
         if (images.length >= LIMITS.images) {
           setErrors((prev) => ({
             ...prev,
-            images: `Maximum ${LIMITS.images} images allowed.`,
+            images: `Maximum ${LIMITS.images} media files allowed.`,
           }));
           setShowCropper(false);
           setCropImageSrc(null);
@@ -692,7 +739,10 @@ function ProductListingPage() {
         });
         const finalUrl = URL.createObjectURL(blob);
 
-        setImages((prev) => [...prev, { file: finalFile, url: finalUrl }]);
+        setImages((prev) => [
+          ...prev,
+          { file: finalFile, url: finalUrl, type: "image", previewObjectUrl: true },
+        ]);
 
         if (errors.images) {
           setErrors((prev) => {
@@ -719,9 +769,10 @@ function ProductListingPage() {
     setPendingFileName("");
   }
 
-  async function publishListing(e) {
+  async function submitListing(e, status) {
     e.preventDefault();
     setServerMsg(null);
+    const savingDraft = status === "Draft";
 
     if (isEdit && isSold) {
       setServerMsg("Cannot edit sold items.");
@@ -732,7 +783,23 @@ function ProductListingPage() {
       return;
     }
 
-    if (!validateAll()) {
+    if (savingDraft) {
+      const draftErrors = {};
+      if (!title.trim()) {
+        draftErrors.title = "Title is required";
+      } else if (title.length > LIMITS.title) {
+        draftErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
+      }
+      setErrors(draftErrors);
+      if (Object.keys(draftErrors).length > 0) {
+        formTopRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        setShowTopErrorBanner(true);
+        return;
+      }
+    } else if (!validateAll()) {
       formTopRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "start",
@@ -744,13 +811,14 @@ function ProductListingPage() {
 
     const fd = new FormData();
     fd.append("mode", isEdit ? "update" : "create");
+    fd.append("status", status);
     if (isEdit) fd.append("id", String(id));
     fd.append("title", title.trim());
     categories.forEach((c) => fd.append("tags[]", c));
     fd.append("meetLocation", itemLocation);
     fd.append("condition", condition);
     fd.append("description", description);
-    fd.append("price", String(Number(price)));
+    fd.append("price", price === "" ? "" : String(Number(price)));
     fd.append("acceptTrades", acceptTrades ? "1" : "0");
     fd.append("priceNegotiable", priceNegotiable ? "1" : "0");
 
@@ -762,7 +830,8 @@ function ProductListingPage() {
         fd.append(
           "images[]",
           img.file,
-          img.file.name || `image_${Date.now()}.png`,
+          img.file.name ||
+            `${img.type === "video" ? "video" : "image"}_${Date.now()}`,
         );
       } else if (img?.originalUrl) {
         // Existing photo - store original URL to send back
@@ -800,7 +869,7 @@ function ProductListingPage() {
         return;
       }
 
-      if (isEdit) {
+      if (savingDraft || isEdit) {
         const returnTo = location.state?.returnTo || "/app/seller-dashboard";
         navigate(returnTo);
       } else {
@@ -866,17 +935,19 @@ function ProductListingPage() {
             isNew={isNew}
             itemLocation={itemLocation}
             loadingExisting={loadingExisting}
+            listingStatus={listingStatus}
             location={location}
             navigate={navigate}
             onFileChange={onFileChange}
             price={price}
             priceNegotiable={priceNegotiable}
-            publishListing={publishListing}
+            publishListing={(e) => submitListing(e, "Active")}
             removeCategory={removeCategory}
             removeImage={removeImage}
             scrollPositionRef={scrollPositionRef}
             selectableOptions={selectableOptions}
             selectedCategory={selectedCategory}
+            saveDraft={(e) => submitListing(e, "Draft")}
             setAcceptTrades={setAcceptTrades}
             setCategories={setCategories}
             setCondition={setCondition}
