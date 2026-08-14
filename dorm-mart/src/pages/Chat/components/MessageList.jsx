@@ -7,6 +7,60 @@ import ReviewPromptMessageCard from "./ReviewPromptMessageCard";
 import BuyerRatingPromptMessageCard from "./BuyerRatingPromptMessageCard";
 import TypingIndicatorMessage from "./TypingIndicatorMessage";
 import { API_BASE } from "../../../utils/apiConfig";
+import { isVideoMediaUrl } from "../../../utils/imageFallback";
+import { useMemo, useState } from "react";
+
+function TextMessage({ message, canEdit, onEdit }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(message.content);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const mine = message.sender === "me";
+
+  async function save() {
+    const content = draft.trim();
+    if (!content || content.length > 500 || content === message.content) {
+      if (content === message.content) setEditing(false);
+      else setError(!content ? "Message cannot be empty." : "Message cannot exceed 500 characters.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await onEdit(message.message_id, content);
+      setEditing(false);
+    } catch (err) {
+      setError(err.message || "Unable to edit message.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className={"group max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " + (mine ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100")}>
+      {editing ? (
+        <div className="w-64 max-w-full space-y-2">
+          <textarea autoFocus value={draft} maxLength={500} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") { setDraft(message.content); setEditing(false); setError(""); } else if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); } }} className="min-h-20 w-full resize-none rounded-lg border border-indigo-300 bg-white p-2 text-gray-900 outline-none focus:ring-2 focus:ring-indigo-300" />
+          {error && <p className="text-xs text-red-100" role="alert">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" disabled={saving} onClick={() => { setDraft(message.content); setEditing(false); setError(""); }} className="rounded px-2 py-1 text-xs hover:bg-white/15">Cancel</button>
+            <button type="button" disabled={saving} onClick={save} className="rounded bg-white px-2 py-1 text-xs font-semibold text-indigo-700 disabled:opacity-60">{saving ? "Saving..." : "Save"}</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-start gap-2">
+            <p className="min-w-0 flex-1 whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.content}</p>
+            {canEdit && <button type="button" aria-label="Edit last message" title="Edit message" onClick={() => { setDraft(message.content); setEditing(true); }} className="rounded p-1 text-indigo-100 opacity-100 hover:bg-white/15 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100">✎</button>}
+          </div>
+          <div className={"mt-1 text-[10px] " + (mine ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
+            {fmtTime(message.ts)}{message.editedAt ? " · Edited" : ""}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function MessageList({
   activeConvId,
@@ -21,10 +75,17 @@ export default function MessageList({
   isOtherPersonTyping,
   messages,
   messagesByConv,
+  editMessage,
   parseMetadata,
   scrollRef,
   typingUserName,
 }) {
+  const lastEditableId = useMemo(() => {
+    const latest = [...filteredMessages].reverse().find((message) =>
+      message.sender === "me" && !message.image_url && !message.metadata && Number(message.message_id) > 0,
+    );
+    return latest ? Number(latest.message_id) : null;
+  }, [filteredMessages]);
   return (
     <div
       ref={scrollRef}
@@ -84,7 +145,8 @@ export default function MessageList({
           const isNextStepsMessage = messageType === "next_steps";
           const isReviewPrompt = messageType === "review_prompt";
           const isBuyerRatingPrompt = messageType === "buyer_rating_prompt";
-          const isItemDeletedMessage = messageType === "item_deleted";
+          const isItemDeletedMessage =
+            messageType === "item_deleted" || messageType === "account_deleted";
           const messageWithMetadata = {
             ...m,
             metadata: metadata || m.metadata,
@@ -141,10 +203,12 @@ export default function MessageList({
                         </svg>
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">
-                            Item Removed
+                            {messageType === "account_deleted" ? "Account Deleted" : "Item Removed"}
                           </p>
                           <p className="text-sm text-red-700 dark:text-red-300">
-                            This chat has been closed.
+                            {messageType === "account_deleted"
+                              ? "This user's account has been deleted. This chat has been closed."
+                              : "This chat has been closed."}
                           </p>
                         </div>
                       </div>
@@ -199,29 +263,47 @@ export default function MessageList({
                       }
                     >
                       {(() => {
-                        const imgSrc = `${API_BASE}/chat/serve_chat_image.php?message_id=${m.message_id}`;
-                        const dlSrc = `${imgSrc}&download=1`;
+                        const mediaSrc = `${API_BASE}/chat/serve_chat_image.php?message_id=${m.message_id}`;
+                        const dlSrc = `${mediaSrc}&download=1`;
+                        const isVideo = isVideoMediaUrl(
+                          messageWithMetadata.image_url,
+                        );
                         return (
                           <>
-                            <a
-                              href={imgSrc}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block"
-                              title="Chat Image - Click to view full size"
-                            >
-                              <img
-                                src={imgSrc}
-                                alt="Chat attachment"
+                            {isVideo ? (
+                              <video
+                                src={mediaSrc}
+                                controls
+                                preload="metadata"
+                                aria-label="Chat video attachment"
                                 className={
-                                  "max-h-72 w-full object-contain rounded-lg " +
+                                  "max-h-72 w-full rounded-lg object-contain " +
                                   (m.sender === "me"
                                     ? "bg-white/10"
                                     : "bg-black/5")
                                 }
-                                loading="lazy"
                               />
-                            </a>
+                            ) : (
+                              <a
+                                href={mediaSrc}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                                title="Chat Image - Click to view full size"
+                              >
+                                <img
+                                  src={mediaSrc}
+                                  alt="Chat attachment"
+                                  className={
+                                    "max-h-72 w-full object-contain rounded-lg " +
+                                    (m.sender === "me"
+                                      ? "bg-white/10"
+                                      : "bg-black/5")
+                                  }
+                                  loading="lazy"
+                                />
+                              </a>
+                            )}
                             {m.content && (
                               <p className="mt-2 whitespace-pre-wrap break-words overflow-wrap-anywhere">
                                 {m.content}
@@ -253,28 +335,7 @@ export default function MessageList({
                       })()}
                     </div>
                   ) : (
-                    <div
-                      className={
-                        "max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " +
-                        (m.sender === "me"
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100")
-                      }
-                    >
-                      <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">
-                        {m.content}
-                      </p>
-                      <div
-                        className={
-                          "mt-1 text-[10px] " +
-                          (m.sender === "me"
-                            ? "text-indigo-100"
-                            : "text-gray-500 dark:text-gray-400")
-                        }
-                      >
-                        {fmtTime(m.ts)}
-                      </div>
-                    </div>
+                    <TextMessage message={m} canEdit={Number(m.message_id) === lastEditableId} onEdit={editMessage} />
                   )}
                 </div>
               )}

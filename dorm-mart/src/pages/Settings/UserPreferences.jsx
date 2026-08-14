@@ -15,7 +15,7 @@ function UserPreferences() {
     syncFromServerIfNoPending,
     isLoading: themeIsLoading,
   } = useTheme();
-  const [promotionalEmails, setPromotionalEmails] = useState(false);
+  const [promoFrequency, setPromoFrequency] = useState("off");
   const [revealContact, setRevealContact] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedInterests, setSelectedInterests] = useState([]);
@@ -122,12 +122,13 @@ function UserPreferences() {
         if (!json || json.ok !== true || !json.data) return;
         const {
           promoEmails,
+          promoFrequency: savedPromoFrequency,
           revealContact,
           interests,
           theme: serverTheme,
         } = json.data;
         if (cancelled) return;
-        setPromotionalEmails(!!promoEmails);
+        setPromoFrequency(savedPromoFrequency || (promoEmails ? "weekly" : "off"));
         setRevealContact(!!revealContact);
         if (Array.isArray(interests)) setSelectedInterests(interests);
         if (serverTheme === "dark" || serverTheme === "light") {
@@ -154,7 +155,8 @@ function UserPreferences() {
     const t = setTimeout(async () => {
       try {
         const body = {
-          promoEmails: promotionalEmails,
+          promoEmails: promoFrequency !== "off",
+          promoFrequency,
           revealContact,
           interests: selectedInterests,
           theme: theme,
@@ -176,7 +178,7 @@ function UserPreferences() {
       clearTimeout(t);
     };
   }, [
-    promotionalEmails,
+    promoFrequency,
     revealContact,
     selectedInterests,
     theme,
@@ -199,20 +201,19 @@ function UserPreferences() {
           <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
             Notification Settings
           </h2>
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="promotional-emails"
-              checked={promotionalEmails}
-              onChange={(e) => setPromotionalEmails(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
-            />
+          <div className="flex flex-col gap-2 sm:max-w-sm">
             <label
               htmlFor="promotional-emails"
               className="text-sm text-slate-700 dark:text-gray-300"
             >
-              I would like to receive emails regarding promotional content
+              Promotional email frequency
             </label>
+            <select id="promotional-emails" value={promoFrequency} onChange={(e) => setPromoFrequency(e.target.value)} className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+              <option value="off">Off</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+            </select>
+            <p className="text-xs text-slate-500 dark:text-gray-400">Receive active listings matched to your selected interests.</p>
           </div>
         </div>
 

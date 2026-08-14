@@ -65,8 +65,8 @@ try {
                 ELSE 0 
             END AS has_unsuccessful_confirm
         FROM scheduled_purchase_requests spr
-        INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
-        INNER JOIN user_accounts ua ON ua.user_id = spr.buyer_user_id
+        LEFT JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
+        LEFT JOIN user_accounts ua ON ua.user_id = spr.buyer_user_id
         LEFT JOIN user_accounts canceler ON canceler.user_id = spr.canceled_by_user_id
         WHERE spr.seller_user_id = ?
         ORDER BY spr.created_at DESC
@@ -132,9 +132,9 @@ try {
         $hasUnsuccessfulConfirm = isset($row['has_unsuccessful_confirm']) && ($row['has_unsuccessful_confirm'] === 1 || $row['has_unsuccessful_confirm'] === '1');
         $records[] = [
             'request_id' => (int)$row['request_id'],
-            'inventory_product_id' => (int)$row['inventory_product_id'],
+            'inventory_product_id' => $row['inventory_product_id'] !== null ? (int)$row['inventory_product_id'] : null,
             'seller_user_id' => (int)$row['seller_user_id'],
-            'buyer_user_id' => (int)$row['buyer_user_id'],
+            'buyer_user_id' => $row['buyer_user_id'] !== null ? (int)$row['buyer_user_id'] : null,
             'conversation_id' => $row['conversation_id'] !== null ? (int)$row['conversation_id'] : null,
             'meet_location' => $row['meet_location'] ?? '',
             'meeting_at' => $meetingAtIso,
@@ -151,12 +151,12 @@ try {
             'has_completed_confirm' => $hasCompletedConfirm,
             'has_unsuccessful_confirm' => $hasUnsuccessfulConfirm,
             'item' => [
-                'title' => $row['item_title'] ?? 'Untitled',
+                'title' => $row['item_title'] ?? 'Deleted listing',
                 'photos' => $photos,
                 'listing_price' => isset($row['item_listing_price']) ? (float)$row['item_listing_price'] : null,
             ],
             'buyer' => [
-                'first_name' => $row['buyer_first_name'] ?? '',
+                'first_name' => $row['buyer_first_name'] ?? 'Deleted User',
                 'last_name' => $row['buyer_last_name'] ?? '',
             ],
         ];

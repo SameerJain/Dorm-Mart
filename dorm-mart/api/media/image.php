@@ -83,6 +83,15 @@ if (isset($_GET['url']) && $_GET['url'] !== '') {
             $path = $mediaPath;
         }
     }
+    // Handle /media/chat-attachments/ paths
+    elseif (strpos($url, '/media/chat-attachments/') === 0) {
+        $file = basename(substr($url, strlen('/media/chat-attachments/')));
+        $mediaRoot = real_upload_path(data_media_dir('chat-attachments'));
+        $mediaPath = $mediaRoot !== null ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
+        if ($mediaRoot !== null && $mediaPath !== false && strpos($mediaPath, $mediaRoot) === 0 && is_file($mediaPath)) {
+            $path = $mediaPath;
+        }
+    }
     // Handle other /media/ paths — basename() prevents traversal, realpath() prevents symlink escape
     elseif (strpos($url, '/media/') === 0) {
         $file = basename(substr($url, strlen('/media/')));

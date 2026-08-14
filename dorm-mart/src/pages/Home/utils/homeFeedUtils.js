@@ -132,6 +132,9 @@ export function normalizeLandingItem(data, index = 0) {
     sellerEmail,
     rating: typeof data.rating === "number" ? data.rating : 4.7,
     location: data.location || data.campus || "North Campus",
+    recommendationScore: coerceNumber(data.recommendation_score) ?? 0,
+    recommendationReason: data.recommendation_reason || null,
+    personalized: Boolean(data.personalized),
   };
 }
 
@@ -163,6 +166,13 @@ export function buildHomeFeed(allItems, interests, exploreLimit) {
   if (!interests.length) {
     return {
       itemsByInterest: {},
+      forYouItems: [...allItems]
+        .sort(
+          (a, b) =>
+            (b.recommendationScore || 0) - (a.recommendationScore || 0) ||
+            (b.createdAtTs || 0) - (a.createdAtTs || 0),
+        )
+        .slice(0, maxTotalItems),
       exploreItems: shuffleArray(allItems).slice(0, exploreCap),
     };
   }
@@ -215,6 +225,13 @@ export function buildHomeFeed(allItems, interests, exploreLimit) {
 
   return {
     itemsByInterest: byInterest,
+    forYouItems: [...allItems]
+      .sort(
+        (a, b) =>
+          (b.recommendationScore || 0) - (a.recommendationScore || 0) ||
+          (b.createdAtTs || 0) - (a.createdAtTs || 0),
+      )
+      .slice(0, maxTotalItems),
     exploreItems: shuffleArray(allItems.filter((item) => !used.has(item.id))).slice(
       0,
       exploreCap,

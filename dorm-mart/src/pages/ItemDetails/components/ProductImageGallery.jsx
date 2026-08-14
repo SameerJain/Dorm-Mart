@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { onProductImageError } from "../../../utils/imageFallback";
+import {
+  isVideoMediaUrl,
+  onProductImageError,
+} from "../../../utils/imageFallback";
 
 export default function ProductImageGallery({ photoUrls = [], title }) {
   const [activeIdx, setActiveIdx] = useState(0);
@@ -31,12 +34,7 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
 
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm w-full max-w-[28rem] md:max-w-[32rem] aspect-square mx-auto overflow-hidden relative">
         {hasPhotos ? (
-          <img
-            alt={title}
-            src={photoUrls[activeIdx]}
-            onError={onProductImageError}
-            className="h-full w-full object-contain"
-          />
+          <GalleryMedia url={photoUrls[activeIdx]} alt={title} controls />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-gray-400 dark:text-gray-500">
             No image
@@ -51,7 +49,7 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
               }
               disabled={!hasPrev}
               className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full h-9 w-9 flex items-center justify-center disabled:opacity-40"
-              aria-label="Previous image"
+              aria-label="Previous media"
             >
               &lsaquo;
             </button>
@@ -62,7 +60,7 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
               }
               disabled={!hasNext}
               className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full h-9 w-9 flex items-center justify-center disabled:opacity-40"
-              aria-label="Next image"
+              aria-label="Next media"
             >
               &rsaquo;
             </button>
@@ -100,12 +98,31 @@ function GalleryThumb({ url, idx, activeIdx, onSelect, small = false }) {
       onClick={() => onSelect(idx)}
       className={`${sizeClass} rounded-md overflow-hidden border bg-white dark:bg-gray-800 ${activeClass}`}
     >
-      <img
-        src={url}
-        alt={`thumb-${idx}`}
-        onError={onProductImageError}
-        className="h-full w-full object-cover"
-      />
+      <GalleryMedia url={url} alt={`thumb-${idx}`} />
     </button>
+  );
+}
+
+function GalleryMedia({ url, alt, controls = false }) {
+  if (isVideoMediaUrl(url)) {
+    return (
+      <video
+        src={url}
+        aria-label={alt}
+        controls={controls}
+        muted={!controls}
+        preload="metadata"
+        className="h-full w-full object-contain"
+      />
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt={alt}
+      onError={onProductImageError}
+      className={`h-full w-full ${controls ? "object-contain" : "object-cover"}`}
+    />
   );
 }

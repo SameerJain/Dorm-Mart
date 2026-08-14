@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/inventory.php';
+
 function notification_first_image(?string $photos): ?string
 {
-    if (!$photos) return null;
-    $decoded = json_decode($photos, true);
-    return is_array($decoded) && isset($decoded[0]) ? (string)$decoded[0] : null;
+    return inventory_first_photo($photos);
 }
 
 function notification_insert(mysqli $conn, array $n): void

@@ -2,6 +2,7 @@ import { MAX_LISTING_PRICE } from "../../../utils/priceValidation";
 
 export const CATEGORIES_MAX = 3;
 export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 export const PRICE_INPUT_PATTERN = /^\d{0,4}(?:\.\d{0,2})?$/;
 export const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/jpeg",
@@ -14,6 +15,12 @@ export const ALLOWED_IMAGE_EXTENSIONS = new Set([
   ".png",
   ".webp",
 ]);
+export const ALLOWED_VIDEO_MIME_TYPES = new Set([
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+]);
+export const ALLOWED_VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov"]);
 
 export const LIMITS = {
   title: 50,

@@ -46,6 +46,14 @@ try {
   // --- Read FormData ---
   $mode   = isset($_POST['mode']) ? trim((string)$_POST['mode']) : 'create';   // 'create' | 'update'
   $itemId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+  $status = ($_POST['status'] ?? 'Active') === 'Draft' ? 'Draft' : 'Active';
+  $savingDraft = $status === 'Draft';
+
+  if (!in_array($mode, ['create', 'update'], true)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid listing mode.']);
+    exit;
+  }
 
   $titleRaw = isset($_POST['title']) ? trim((string)$_POST['title']) : '';
 
@@ -79,24 +87,26 @@ try {
   if ($title === '')                        { $errors['title'] = 'Title is required.'; }
   elseif (mb_strlen($title) > 50)          { $errors['title'] = 'Title cannot exceed 50 characters.'; }
 
-  if ($description === null || $description === '') {
+  if (!$savingDraft && ($description === null || $description === '')) {
     $errors['description'] = 'Description is required.';
-  } elseif (mb_strlen($description) > 1000) {
+  } elseif ($description !== null && mb_strlen($description) > 1000) {
     $errors['description'] = 'Description cannot exceed 1000 characters.';
   }
 
-  if ($priceStr === '' || $price === null || $price < 0.01) {
+  if (!$savingDraft && ($priceStr === '' || $price === null || $price < 0.01)) {
     $errors['price'] = 'Price must be at least $0.01.';
-  } elseif ($price > 9999.99) {
+  } elseif ($priceStr !== '' && ($price === null || $price < 0.01)) {
+    $errors['price'] = 'Price must be at least $0.01.';
+  } elseif ($price !== null && $price > 9999.99) {
     $errors['price'] = 'Price must be $9999.99 or less.';
-  } else {
+  } elseif ($price !== null) {
     $priceDigitsOnly = preg_replace('/[^0-9]/', '', $priceStr);
     foreach (['80085','8008','5318008','42069','66666','6969','42042','1488','420','666','69','67'] as $_m) {
       if (strpos($priceDigitsOnly, $_m) !== false) { $errors['price'] = 'Invalid price value.'; break; }
     }
   }
 
-  if (empty($catsArr)) {
+  if (!$savingDraft && empty($catsArr)) {
     $errors['categories'] = 'Select at least one category.';
   } else {
     foreach ($catsArr as $_cat) {
@@ -105,16 +115,16 @@ try {
   }
 
   $allowedLocations = ['North Campus', 'South Campus', 'Ellicott', 'Other'];
-  if ($itemLocation === null || $itemLocation === '' || $itemLocation === '<Select Option>') {
+  if (!$savingDraft && ($itemLocation === null || $itemLocation === '' || $itemLocation === '<Select Option>')) {
     $errors['itemLocation'] = 'Select an item location.';
-  } elseif (!in_array($itemLocation, $allowedLocations, true)) {
+  } elseif ($itemLocation !== null && !in_array($itemLocation, $allowedLocations, true)) {
     $errors['itemLocation'] = 'Invalid item location.';
   }
 
   $allowedConditions = ['Like New', 'Excellent', 'Good', 'Fair', 'For Parts'];
-  if ($itemCondition === null || $itemCondition === '' || $itemCondition === '<Select Option>') {
+  if (!$savingDraft && ($itemCondition === null || $itemCondition === '' || $itemCondition === '<Select Option>')) {
     $errors['condition'] = 'Select an item condition.';
-  } elseif (!in_array($itemCondition, $allowedConditions, true)) {
+  } elseif ($itemCondition !== null && !in_array($itemCondition, $allowedConditions, true)) {
     $errors['condition'] = 'Invalid item condition.';
   }
 
@@ -124,7 +134,7 @@ try {
     exit;
   }
 
-  // --- Save images with MIME validation ---
+  // --- Save listing media with MIME validation ---
   $imageDirFs   = rtrim(data_images_dir(), '/\\') . DIRECTORY_SEPARATOR;
   $imageBaseUrl = '/images';
   if (!is_dir($imageDirFs)) { @mkdir($imageDirFs, 0775, true); }
@@ -145,15 +155,17 @@ try {
     }
   }
 
-  // Process new image uploads
+  // Process new image and video uploads
   $newImageUrls = [];
   if (!empty($_FILES['images']) && is_array($_FILES['images']['tmp_name'])) {
     $maxFiles        = 6;
-    $maxSizeB        = 2 * 1024 * 1024; // 2MB
     $allowedMimeExts = [
-      'image/jpeg' => 'jpg',
-      'image/png'  => 'png',
-      'image/webp' => 'webp',
+      'image/jpeg'     => ['extension' => 'jpg',  'max_bytes' => 2 * 1024 * 1024],
+      'image/png'      => ['extension' => 'png',  'max_bytes' => 2 * 1024 * 1024],
+      'image/webp'     => ['extension' => 'webp', 'max_bytes' => 2 * 1024 * 1024],
+      'video/mp4'      => ['extension' => 'mp4',  'max_bytes' => 25 * 1024 * 1024],
+      'video/webm'     => ['extension' => 'webm', 'max_bytes' => 25 * 1024 * 1024],
+      'video/quicktime'=> ['extension' => 'mov',  'max_bytes' => 25 * 1024 * 1024],
     ];
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $cnt = 0;
@@ -163,12 +175,11 @@ try {
       if (($_FILES['images']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
       if (!is_uploaded_file($tmpPath)) continue;
 
-      $sz = @filesize($tmpPath);
-      if ($sz !== false && $sz > $maxSizeB) continue;
-
       $mime = $finfo->file($tmpPath) ?: 'application/octet-stream';
       if (!isset($allowedMimeExts[$mime])) continue;
-      $ext = $allowedMimeExts[$mime];
+      $sz = @filesize($tmpPath);
+      if ($sz === false || $sz > $allowedMimeExts[$mime]['max_bytes']) continue;
+      $ext = $allowedMimeExts[$mime]['extension'];
 
       $fname = uniqid('img_', true) . '.' . $ext;
       if (move_uploaded_file($tmpPath, $imageDirFs . $fname)) {
@@ -178,15 +189,15 @@ try {
     }
   }
 
-  // Merge existing photos with new uploads (limit total to 6)
+  // Merge existing media with new uploads (limit total to 6)
   $imageUrls = array_merge($existingPhotos, $newImageUrls);
   if (count($imageUrls) > 6) {
     $imageUrls = array_slice($imageUrls, 0, 6);
   }
 
-  if (empty($imageUrls)) {
+  if (!$savingDraft && empty($imageUrls)) {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Validation failed', 'errors' => ['images' => 'At least one image is required.']]);
+    echo json_encode(['ok' => false, 'error' => 'Validation failed', 'errors' => ['images' => 'At least one photo or video is required.']]);
     exit;
   }
 
@@ -230,6 +241,28 @@ try {
       exit;
     }
 
+    if ($status === 'Active' && $statusStr !== 'Active') {
+      $capStmt = $conn->prepare(
+        'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ? AND product_id != ?'
+      );
+      $activeStatus = 'Active';
+      $capStmt->bind_param('isi', $userId, $activeStatus, $itemId);
+      $capStmt->execute();
+      $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
+      $capStmt->close();
+
+      if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+        http_response_code(403);
+        echo json_encode([
+          'ok' => false,
+          'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . ' active listings. Please deactivate or remove an existing listing before publishing this draft.'
+        ]);
+        exit;
+      }
+    }
+
+    $publishingDraft = $statusStr === 'Draft' && $status === 'Active';
+
     $conn->begin_transaction();
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
@@ -242,13 +275,15 @@ try {
                    photos=?,
                    listing_price=?,
                    trades=?,
-                   price_nego=?
+                   price_nego=?,
+                   item_status=?,
+                   date_listed=IF(? = 1, CURRENT_DATE, date_listed)
              WHERE product_id=? AND seller_id=?
                AND (sold IS NULL OR sold = 0)
                AND (item_status IS NULL OR item_status <> 'Sold')";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param(
-      'ssssssdiiii',
+      'ssssssdiisiii',
       $title,            // safely bound as string parameter
       $categoriesJson,   // safely bound as string parameter
       $itemLocation,     // safely bound as string parameter
@@ -258,24 +293,16 @@ try {
       $price,            // safely bound as double parameter
       $trades,           // safely bound as integer parameter
       $priceNego,        // safely bound as integer parameter
+      $status,
+      $publishingDraft,
       $itemId,           // safely bound as integer parameter
       $userId            // safely bound as integer parameter
     );
     $stmt->execute();
 
-    // Check if any rows were actually updated
-    if ($stmt->affected_rows === 0) {
-      http_response_code(404);
-      echo json_encode([
-        'ok' => false,
-        'error' => 'Product not found or you do not have permission to edit this product.'
-      ]);
-      exit;
-    }
-
     $oldPrice = (float)$existing['listing_price'];
     $firstImage = notification_first_image($photosJson);
-    if (abs($oldPrice - (float)$price) >= 0.005) {
+    if ($status === 'Active' && abs($oldPrice - (float)$price) >= 0.005) {
       $reduced = (float)$price < $oldPrice;
       notification_for_wishlist($conn, $itemId, [
         'type' => $reduced ? 'price_reduced' : 'price_increased',
@@ -287,10 +314,10 @@ try {
         'idempotency_key' => 'price-' . $itemId . '-' . bin2hex(random_bytes(8)),
       ]);
     }
-    if (!empty($newImageUrls)) {
+    if ($status === 'Active' && !empty($newImageUrls)) {
       notification_for_wishlist($conn, $itemId, [
         'type' => 'images_added', 'title' => $title,
-        'message' => 'New images were added to this listing.', 'image_url' => $firstImage,
+        'message' => 'New media was added to this listing.', 'image_url' => $firstImage,
         'destination' => '/app/viewProduct/' . $itemId,
         'idempotency_key' => 'images-' . $itemId . '-' . bin2hex(random_bytes(8)),
       ]);
@@ -300,28 +327,31 @@ try {
     echo json_encode([
       'ok'         => true,
       'prod_id' => $itemId,
+      'status' => $status,
       'image_urls' => $imageUrls
     ]);
     exit;
   }
 
-  // Enforce cap on active listings per seller
-  $capStmt = $conn->prepare(
-    'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ?'
-  );
-  $activeStatus = 'Active';
-  $capStmt->bind_param('is', $userId, $activeStatus);
-  $capStmt->execute();
-  $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
-  $capStmt->close();
+  // Drafts do not count toward the active-listing limit.
+  if ($status === 'Active') {
+    $capStmt = $conn->prepare(
+      'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ?'
+    );
+    $activeStatus = 'Active';
+    $capStmt->bind_param('is', $userId, $activeStatus);
+    $capStmt->execute();
+    $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
+    $capStmt->close();
 
-  if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
-    http_response_code(403);
-    echo json_encode([
-      'ok' => false,
-      'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . ' active listings. Please deactivate or remove an existing listing before creating a new one.'
-    ]);
-    exit;
+    if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+      http_response_code(403);
+      echo json_encode([
+        'ok' => false,
+        'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . ' active listings. Please deactivate or remove an existing listing before creating a new one.'
+      ]);
+      exit;
+    }
   }
 
   // INSERT
@@ -331,7 +361,6 @@ try {
           VALUES
             (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
   $stmt = $conn->prepare($sql);
-  $status = 'Active';
   $stmt->bind_param(
     'ssssssdsiii',
     $title,            // safely bound as string parameter
@@ -350,7 +379,7 @@ try {
 
   // Create wishlist_notification row for this new listing
   $newProductId = (int)$conn->insert_id;
-  $firstImageUrl = !empty($imageUrls) ? $imageUrls[0] : null;  // first image or null
+  $firstImageUrl = notification_first_image($photosJson);
   $wnSql = "INSERT INTO wishlist_notification (seller_id, product_id, title, image_url, unread_count)
             VALUES (?, ?, ?, ?, 0)";
   $wnStmt = $conn->prepare($wnSql);
@@ -360,6 +389,7 @@ try {
   echo json_encode([
     'ok'         => true,
     'product_id' => $newProductId,
+    'status' => $status,
     'image_urls' => $imageUrls
   ]);
 

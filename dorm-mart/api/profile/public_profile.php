@@ -105,7 +105,7 @@ function fetch_active_listings(mysqli $conn, int $userId): array
 {
     $sql = 'SELECT product_id, title, listing_price, item_status, photos, date_listed
             FROM INVENTORY
-            WHERE seller_id = ? AND (sold IS NULL OR sold = 0)
+            WHERE seller_id = ? AND item_status = \'Active\' AND (sold IS NULL OR sold = 0)
             ORDER BY date_listed DESC, product_id DESC
             LIMIT 30';
     $stmt = $conn->prepare($sql);

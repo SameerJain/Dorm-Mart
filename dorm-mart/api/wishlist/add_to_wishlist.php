@@ -9,6 +9,7 @@ init_json_endpoint('POST');
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../helpers/recommendations.php';
 
 try {
     $userId = require_login();
@@ -25,7 +26,7 @@ try {
         json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
     }
 
-    $checkStmt = $conn->prepare('SELECT product_id, seller_id, title, photos FROM INVENTORY WHERE product_id = ?');
+    $checkStmt = $conn->prepare("SELECT product_id, seller_id, title, photos FROM INVENTORY WHERE product_id = ? AND item_status = 'Active' AND (sold IS NULL OR sold = 0)");
     if (!$checkStmt) {
         throw new RuntimeException('Failed to prepare product check');
     }
@@ -69,6 +70,8 @@ try {
         $updateStmt->execute();
         $updateStmt->close();
     }
+
+    recommendation_record_behavior($conn, $userId, $productId, 'wishlist_add');
 
     notification_insert($conn, [
         'recipient_user_id' => (int)$product['seller_id'], 'type' => 'wishlist_added',

@@ -11,6 +11,7 @@ import logger from "../utils/logger";
 import {
   createImageMessageApi,
   createMessageApi,
+  editLastMessageApi,
   envBool,
   fetchConversationApi,
   fetchConversations,
@@ -252,6 +253,8 @@ export function ChatProvider({ children }) {
               content: m.content,
               image_url: m.image_url,
               ts: Date.parse(m.created_at),
+              editedAt: m.edited_at ? Date.parse(m.edited_at) : null,
+              activityTs: Date.parse(m.edited_at || m.created_at),
               metadata,
             };
           }
@@ -261,13 +264,15 @@ export function ChatProvider({ children }) {
             content: m.content,
             image_url: m.image_url,
             ts: Date.parse(m.created_at),
+            editedAt: m.edited_at ? Date.parse(m.edited_at) : null,
+            activityTs: Date.parse(m.edited_at || m.created_at),
             metadata,
           };
         });
 
         setMessagesByConv((prev) => ({ ...prev, [convId]: normalized }));
         lastTsRefByConv.current[convId] = normalized.length
-          ? Math.max(...normalized.map((m) => Number(m.ts) || 0))
+          ? Math.max(...normalized.map((m) => Number(m.activityTs) || Number(m.ts) || 0))
           : 0;
 
         clearUnreadMsgFor(convId);
@@ -416,6 +421,24 @@ export function ChatProvider({ children }) {
     }
   }
 
+  async function editMessage(messageId, content) {
+    const saved = await editLastMessageApi(messageId, content);
+    const editedAt = Date.parse(saved.edited_at);
+    setMessagesByConv((prev) => ({
+      ...prev,
+      [activeConvId]: (prev[activeConvId] || []).map((message) =>
+        Number(message.message_id) === Number(messageId)
+          ? { ...message, content: saved.content, editedAt, activityTs: editedAt }
+          : message,
+      ),
+    }));
+    lastTsRefByConv.current[activeConvId] = Math.max(
+      lastTsRefByConv.current[activeConvId] || 0,
+      editedAt || 0,
+    );
+    return saved;
+  }
+
   async function createImageMessage(draft, file) {
     setSendMsgError(false);
 
@@ -512,16 +535,24 @@ export function ChatProvider({ children }) {
 
         setMessagesByConv((prev) => {
           const existing = prev[activeConvId] ?? [];
-          const seen = new Set(existing.map((m) => m.message_id));
-          const newMessages = incoming.filter((m) => !seen.has(m.message_id));
-          if (!newMessages.length) return prev;
-
-          return { ...prev, [activeConvId]: existing.concat(newMessages) };
+          const incomingById = new Map(
+            incoming.map((message) => [Number(message.message_id), message]),
+          );
+          const merged = existing.map(
+            (message) => incomingById.get(Number(message.message_id)) || message,
+          );
+          const seen = new Set(existing.map((message) => Number(message.message_id)));
+          incoming.forEach((message) => {
+            if (!seen.has(Number(message.message_id))) merged.push(message);
+          });
+          return { ...prev, [activeConvId]: merged };
         });
 
         clearUnreadMsgFor(activeConvId);
 
-        const maxTs = Math.max(...incoming.map((m) => Number(m.ts) || 0));
+        const maxTs = Math.max(
+          ...incoming.map((m) => Number(m.activityTs) || Number(m.ts) || 0),
+        );
         lastTsRefByConv.current[activeConvId] = Math.max(
           lastTsRefByConv.current[activeConvId] || 0,
           maxTs,
@@ -667,6 +698,7 @@ export function ChatProvider({ children }) {
     // actions
     fetchConversation,
     createMessage,
+    editMessage,
     createImageMessage,
     clearActiveConversation,
     registerConversation: upsertConversationRow,

@@ -17,7 +17,7 @@ auth_boot_session();
 $userId = require_login();
 $sender = $userId;
 
-// This endpoint expects multipart/form-data with an image file
+// This endpoint expects multipart/form-data with an image or video attachment.
 require_multipart_formdata();
 
 /* Read form fields (sent via FormData on the client) */
@@ -27,8 +27,8 @@ $convIdParam = isset($_POST['conv_id'])     ? (int)$_POST['conv_id']            
 
 require_csrf_token($_POST['csrf_token'] ?? null);
 
-/* Validate presence of receiver and the uploaded image.
-   Caption (contentRaw) is allowed to be empty for image-only messages. */
+/* Validate presence of receiver and the uploaded attachment.
+   Caption (contentRaw) is allowed to be empty for media-only messages. */
 if ($receiver === '' || !ctype_digit($receiver) || (int)$receiver <= 0) {
     json_response(['success' => false, 'error' => 'missing_receiver'], 400);
 }
@@ -49,12 +49,15 @@ if ($len > 500) {
     ], 400);
 }
 
-/* --- Validate and store the uploaded image --- */
-$MAX_BYTES = 2 * 1024 * 1024; // 2MB cap
+/* --- Validate and store the uploaded media --- */
+$MAX_BYTES = 25 * 1024 * 1024;
 $allowed = [
-    'image/jpeg' => 'jpg',
-    'image/png'  => 'png',
-    'image/webp' => 'webp',
+    'image/jpeg'      => 'jpg',
+    'image/png'       => 'png',
+    'image/webp'      => 'webp',
+    'video/mp4'       => 'mp4',
+    'video/webm'      => 'webm',
+    'video/quicktime' => 'mov',
 ];
 $imageInfo = uploaded_image_info($_FILES['image'], $MAX_BYTES, $allowed);
 if (!$imageInfo['ok']) {
@@ -64,10 +67,18 @@ if (!$imageInfo['ok']) {
     }
     json_response($payload, $imageInfo['status']);
 }
+$isVideo = strpos((string)$imageInfo['mime'], 'video/') === 0;
+if (!$isVideo && (int)$imageInfo['size'] > 2 * 1024 * 1024) {
+    json_response([
+        'success' => false,
+        'error' => 'image_too_large',
+        'max_bytes' => 2 * 1024 * 1024,
+    ], 400);
+}
 $ext = $imageInfo['extension'];
 
 /* Build destination dir under the configured uploads root. */
-$destDir = data_media_dir('chat-images');
+$destDir = data_media_dir('chat-attachments');
 if (!is_dir($destDir)) {
     if (!ensure_upload_directory($destDir)) {
         json_response(['success' => false, 'error' => 'media_dir_unwritable'], 500);
@@ -87,12 +98,12 @@ $destPath = $destDir . '/' . $fname;
 
 /* Move the uploaded temp file to the destination */
 if (!@move_uploaded_file($imageInfo['tmp_name'], $destPath)) {
-    json_response(['success' => false, 'error' => 'image_save_failed'], 500);
+    json_response(['success' => false, 'error' => 'media_save_failed'], 500);
 }
 
 /* Build the public relative URL path that your frontend can render.
    Assumes /media is web-accessible from the project root. */
-$imageRelUrl = '/media/chat-images/' . $fname;
+$imageRelUrl = '/media/chat-attachments/' . $fname;
 
 /* --- Conversation plumbing (same as create_message.php) --- */
 $receiverId = (int)$receiver;
@@ -203,7 +214,7 @@ try {
     }
     $stmt->close();
 
-    // If item is deleted, block image message creation
+    // If item is deleted, block media message creation
     if ($itemDeletedFlag) {
         // Release lock before exiting
         $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
@@ -236,7 +247,7 @@ try {
     $stmt->execute();
     $stmt->close();
 
-    /* Insert image message (assumes messages.image_url exists) */
+    /* Insert media message (stored in the legacy messages.image_url column). */
     $stmt = $conn->prepare(
         'INSERT INTO messages
            (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, image_url)

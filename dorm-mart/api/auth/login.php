@@ -149,6 +149,7 @@ try {
     // This happens AFTER clearing rate limits to ensure old session data is cleared
     regenerate_session_on_login();
     $_SESSION['user_id'] = $userId;
+    record_login_device($userId);
 
     // Persist across restarts
     issue_remember_cookie($userId);

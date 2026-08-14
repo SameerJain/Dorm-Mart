@@ -17,8 +17,11 @@ function SettingsLayout({ children }) {
 
   const links = [
     { label: "My Profile", to: `${linkBase}/my-profile` },
+    { label: "Account Info", to: `${linkBase}/personal-information` },
     { label: "User Preferences", to: `${linkBase}/user-preferences` },
     { label: "Change Password", to: `${linkBase}/change-password` },
+    { label: "Logged Devices", to: `${linkBase}/security-options` },
+    { label: "Delete Account", to: `${linkBase}/delete-account` },
   ];
 
   return (

@@ -1,6 +1,8 @@
 <?php
 // Session + persistent login helpers
 
+require_once __DIR__ . '/device_history.php';
+
 const REMEMBER_COOKIE = 'remember_token';
 const REMEMBER_TTL_DAYS = 7; // persistent login length
 
@@ -124,6 +126,7 @@ function ensure_session(): void
   // success → hydrate session and rotate token
   session_regenerate_id(true);
   $_SESSION['user_id'] = $uid;
+  record_login_device($uid);
 
   $newToken = bin2hex(random_bytes(32));
   $newHash  = password_hash($newToken, PASSWORD_DEFAULT);
@@ -153,7 +156,12 @@ function require_login(): int
     echo json_encode(['ok' => false, 'error' => 'Not authenticated']);
     exit;
   }
-  return (int) $_SESSION['user_id'];
+  $userId = (int) $_SESSION['user_id'];
+  $lastTouched = (int)($_SESSION['device_history_touched_at'] ?? 0);
+  if (time() - $lastTouched >= 300) {
+    record_login_device($userId);
+  }
+  return $userId;
 }
 
 /** Destroy session + clear persistent cookie */
@@ -161,6 +169,10 @@ function logout_destroy_session(): void
 {
   auth_boot_session();
   $uid = $_SESSION['user_id'] ?? null;
+
+  if ($uid) {
+    mark_login_device_signed_out((int)$uid);
+  }
 
   $_SESSION = [];
   $params = session_get_cookie_params();
