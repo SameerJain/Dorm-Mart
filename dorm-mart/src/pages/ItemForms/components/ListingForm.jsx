@@ -505,7 +505,6 @@ export default function ListingForm({
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
-              multiple
               onChange={onFileChange}
               className="hidden"
             />

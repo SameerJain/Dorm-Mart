@@ -741,7 +741,7 @@ function ProductListingPage() {
 
         setImages((prev) => [
           ...prev,
-          { file: finalFile, url: finalUrl, type: "image" },
+          { file: finalFile, url: finalUrl, type: "image", previewObjectUrl: true },
         ]);
 
         if (errors.images) {

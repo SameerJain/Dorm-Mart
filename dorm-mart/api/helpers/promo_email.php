@@ -48,8 +48,26 @@ function send_promo_welcome_email_via_sendgrid(array $user, string $apiKey, ?arr
         $email->setFrom($fromEmail, dm_mail_from_name());
         $email->setSubject($pkg['subject']);
         $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
-        $email->addContent("text/html", $pkg['html']);
         $email->addContent("text/plain", $pkg['text']);
+        $email->addContent("text/html", $pkg['html']);
+        $finfo = null;
+        foreach (($pkg['inline_images'] ?? []) as $image) {
+            $path = $image['path'] ?? null;
+            $cid = $image['cid'] ?? null;
+            if (!is_string($path) || !is_file($path) || !is_string($cid) || $cid === '') continue;
+
+            $contents = file_get_contents($path);
+            if ($contents === false) continue;
+            $finfo ??= new finfo(FILEINFO_MIME_TYPE);
+            $mime = $finfo->file($path) ?: 'application/octet-stream';
+            $email->addAttachment(
+                base64_encode($contents),
+                $mime,
+                $image['name'] ?? basename($path),
+                'inline',
+                $cid
+            );
+        }
 
         $response = $sendgrid->send($email);
         if ($response->statusCode() >= 200 && $response->statusCode() < 300) {

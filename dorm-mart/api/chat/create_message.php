@@ -227,6 +227,8 @@ try {
     $stmt->execute();
     $stmt->close();
 
+    $filteredContent = filter_profanity($conn, $content);
+
     // Release advisory lock
     $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
     $stmt->bind_param('s', $lockKey);
@@ -247,15 +249,13 @@ try {
         // Return the fields you asked for as a single object for the client
         'message'     => [
             'message_id' => $msgId,
-            'content'    => filter_profanity($conn, $content),
+            'content'    => $filteredContent,
             'is_flagged' => (bool)$isFlagged,
             'created_at' => $createdIso, // ISO-8601 UTC, e.g., 2025-10-31T03:05:06Z
         ],
     ], 200, JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
-    if ($conn->errno === 0) {
-        $conn->rollback();
-    }
+    try { $conn->rollback(); } catch (Throwable $_) {}
     if ($lockKey) {
         $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
         if ($stmt) {

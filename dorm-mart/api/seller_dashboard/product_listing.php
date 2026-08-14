@@ -5,7 +5,6 @@ declare(strict_types=1);
 const MAX_ACTIVE_LISTINGS_PER_SELLER = 25;
 
 // Keep diagnostics in server logs; never display PHP errors from this API.
-$DEBUG = false;
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
 
@@ -134,6 +133,65 @@ try {
     exit;
   }
 
+  // Reject unauthorized updates and active-listing cap violations before saving uploads.
+  $existing = null;
+  $publishingDraft = 0;
+  $activatingListing = 0;
+  if ($mode === 'update') {
+    if ($itemId <= 0) {
+      http_response_code(400);
+      echo json_encode(['ok' => false, 'error' => 'Invalid product ID. A valid product ID is required for updates.']);
+      exit;
+    }
+
+    $checkStmt = $conn->prepare('SELECT sold, item_status, title, listing_price, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
+    $checkStmt->bind_param('ii', $itemId, $userId);
+    $checkStmt->execute();
+    $existing = $checkStmt->get_result()->fetch_assoc();
+    $checkStmt->close();
+    if (!$existing) {
+      http_response_code(404);
+      echo json_encode(['ok' => false, 'error' => 'Product not found or you do not have permission to edit this product.']);
+      exit;
+    }
+
+    $soldFlag = (int)($existing['sold'] ?? 0);
+    $statusStr = (string)($existing['item_status'] ?? '');
+    if ($soldFlag === 1 || $statusStr === 'Sold') {
+      http_response_code(403);
+      echo json_encode(['ok' => false, 'error' => 'Sold listings cannot be edited.']);
+      exit;
+    }
+
+    $publishingDraft = (int)($statusStr === 'Draft' && $status === 'Active');
+    $activatingListing = (int)($statusStr !== 'Active' && $status === 'Active');
+  }
+
+  if ($status === 'Active' && ($mode === 'create' || $activatingListing === 1)) {
+    $capSql = 'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ?';
+    if ($mode === 'update') $capSql .= ' AND product_id != ?';
+    $capStmt = $conn->prepare($capSql);
+    $activeStatus = 'Active';
+    if ($mode === 'update') {
+      $capStmt->bind_param('isi', $userId, $activeStatus, $itemId);
+    } else {
+      $capStmt->bind_param('is', $userId, $activeStatus);
+    }
+    $capStmt->execute();
+    $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
+    $capStmt->close();
+
+    if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+      $action = $mode === 'update' ? 'publishing this draft' : 'creating a new one';
+      http_response_code(403);
+      echo json_encode([
+        'ok' => false,
+        'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . " active listings. Please deactivate or remove an existing listing before {$action}."
+      ]);
+      exit;
+    }
+  }
+
   // --- Save listing media with MIME validation ---
   $imageDirFs   = rtrim(data_images_dir(), '/\\') . DIRECTORY_SEPARATOR;
   $imageBaseUrl = '/images';
@@ -157,8 +215,9 @@ try {
 
   // Process new image and video uploads
   $newImageUrls = [];
+  $newImagePaths = [];
   if (!empty($_FILES['images']) && is_array($_FILES['images']['tmp_name'])) {
-    $maxFiles        = 6;
+    $maxFiles        = max(0, 6 - count($existingPhotos));
     $allowedMimeExts = [
       'image/jpeg'     => ['extension' => 'jpg',  'max_bytes' => 2 * 1024 * 1024],
       'image/png'      => ['extension' => 'png',  'max_bytes' => 2 * 1024 * 1024],
@@ -184,6 +243,7 @@ try {
       $fname = uniqid('img_', true) . '.' . $ext;
       if (move_uploaded_file($tmpPath, $imageDirFs . $fname)) {
         $newImageUrls[] = $imageBaseUrl . '/' . $fname;
+        $newImagePaths[] = $imageDirFs . $fname;
         $cnt++;
       }
     }
@@ -207,62 +267,6 @@ try {
 
   // --- Create / Update ---
   if ($mode === 'update') {
-    // Validate that a valid product ID was provided for update
-    if ($itemId <= 0) {
-      http_response_code(400);
-      echo json_encode([
-        'ok' => false,
-        'error' => 'Invalid product ID. A valid product ID is required for updates.'
-      ]);
-      exit;
-    }
-
-    $checkStmt = $conn->prepare('SELECT sold, item_status, title, listing_price, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
-    if (!$checkStmt) {
-      throw new RuntimeException('Failed to prepare sold-state check');
-    }
-    $checkStmt->bind_param('ii', $itemId, $userId);
-    $checkStmt->execute();
-    $existing = $checkStmt->get_result()->fetch_assoc();
-    $checkStmt->close();
-    if (!$existing) {
-      http_response_code(404);
-      echo json_encode([
-        'ok' => false,
-        'error' => 'Product not found or you do not have permission to edit this product.'
-      ]);
-      exit;
-    }
-    $soldFlag = isset($existing['sold']) ? (int)$existing['sold'] : 0;
-    $statusStr = isset($existing['item_status']) ? (string)$existing['item_status'] : '';
-    if ($soldFlag === 1 || $statusStr === 'Sold') {
-      http_response_code(403);
-      echo json_encode(['ok' => false, 'error' => 'Sold listings cannot be edited.']);
-      exit;
-    }
-
-    if ($status === 'Active' && $statusStr !== 'Active') {
-      $capStmt = $conn->prepare(
-        'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ? AND product_id != ?'
-      );
-      $activeStatus = 'Active';
-      $capStmt->bind_param('isi', $userId, $activeStatus, $itemId);
-      $capStmt->execute();
-      $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
-      $capStmt->close();
-
-      if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
-        http_response_code(403);
-        echo json_encode([
-          'ok' => false,
-          'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . ' active listings. Please deactivate or remove an existing listing before publishing this draft.'
-        ]);
-        exit;
-      }
-    }
-
-    $publishingDraft = $statusStr === 'Draft' && $status === 'Active';
-
     $conn->begin_transaction();
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
@@ -333,28 +337,8 @@ try {
     exit;
   }
 
-  // Drafts do not count toward the active-listing limit.
-  if ($status === 'Active') {
-    $capStmt = $conn->prepare(
-      'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ?'
-    );
-    $activeStatus = 'Active';
-    $capStmt->bind_param('is', $userId, $activeStatus);
-    $capStmt->execute();
-    $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
-    $capStmt->close();
-
-    if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
-      http_response_code(403);
-      echo json_encode([
-        'ok' => false,
-        'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . ' active listings. Please deactivate or remove an existing listing before creating a new one.'
-      ]);
-      exit;
-    }
-  }
-
   // INSERT
+  $conn->begin_transaction();
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
   $sql = "INSERT INTO INVENTORY
             (title, categories, item_location, item_condition, description, photos, listing_price, item_status, trades, price_nego, seller_id)
@@ -385,6 +369,8 @@ try {
   $wnStmt = $conn->prepare($wnSql);
   $wnStmt->bind_param('iiss', $userId, $newProductId, $title, $firstImageUrl);
   $wnStmt->execute();
+  $wnStmt->close();
+  $conn->commit();
 
   echo json_encode([
     'ok'         => true,
@@ -395,6 +381,9 @@ try {
 
 } catch (Throwable $e) {
   if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
+  foreach ($newImagePaths ?? [] as $newImagePath) {
+    if (is_file($newImagePath)) @unlink($newImagePath);
+  }
   error_log('[product_listing] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
   http_response_code(500);
   // XSS PROTECTION: Escape error message to prevent XSS if it contains user input

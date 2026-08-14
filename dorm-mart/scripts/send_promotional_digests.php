@@ -6,6 +6,7 @@ if (php_sapi_name() !== 'cli') { http_response_code(403); exit("Forbidden\n"); }
 require_once __DIR__ . '/../api/database/db_connect.php';
 require_once __DIR__ . '/../api/helpers/promo_email.php';
 require_once __DIR__ . '/../api/helpers/image_upload.php';
+require_once __DIR__ . '/../api/helpers/inventory.php';
 
 $conn = db();
 $dryRun = in_array('--dry-run', $argv ?? [], true);
@@ -38,8 +39,7 @@ while ($user = $users->fetch_assoc()) {
     $result = $stmt->get_result();
     $items = [];
     while ($item = $result->fetch_assoc()) {
-        $photos = json_decode((string)($item['photos'] ?? ''), true);
-        $photo = is_array($photos) ? ($photos[0] ?? null) : null;
+        $photo = inventory_first_photo($item['photos'] ?? null);
         $path = $photo ? data_images_dir() . DIRECTORY_SEPARATOR . basename((string)$photo) : null;
         $cid = $path && is_file($path) ? 'promo-item-' . (int)$item['product_id'] : null;
         $items[] = [

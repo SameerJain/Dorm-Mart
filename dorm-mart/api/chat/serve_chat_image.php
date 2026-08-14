@@ -35,7 +35,7 @@ $sql = '
   SELECT m.image_url, m.conv_id, c.user1_id, c.user2_id
     FROM messages m
     JOIN conversations c ON c.conv_id = m.conv_id
-   WHERE m.message_id = ?
+   WHERE m.message_id = ? AND m.deleted_at IS NULL
    LIMIT 1
 ';
 $stmt = $conn->prepare($sql);

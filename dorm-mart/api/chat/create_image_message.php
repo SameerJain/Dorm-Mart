@@ -37,6 +37,21 @@ if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
     json_response(['success' => false, 'error' => 'missing_image'], 400);
 }
 
+$senderId = (int)$sender;
+$receiverId = (int)$receiver;
+if ($senderId === $receiverId) {
+    json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
+}
+
+$receiverStmt = $conn->prepare('SELECT user_id FROM user_accounts WHERE user_id = ? LIMIT 1');
+$receiverStmt->bind_param('i', $receiverId);
+$receiverStmt->execute();
+$receiverExists = $receiverStmt->get_result()->num_rows === 1;
+$receiverStmt->close();
+if (!$receiverExists) {
+    json_response(['success' => false, 'error' => 'Receiver not found'], 404);
+}
+
 $content = $contentRaw;
 
 /* Caption length guard (same policy as text messages) */
@@ -87,7 +102,6 @@ if (!is_dir($destDir)) {
 }
 
 /* Generate a unique filename to avoid collisions */
-$senderId = (int)$sender;
 $fname = sprintf(
     'u%s_%s_%s.%s',
     $senderId,
@@ -107,12 +121,6 @@ if (!@move_uploaded_file($imageInfo['tmp_name'], $destPath)) {
 $imageRelUrl = '/media/chat-attachments/' . $fname;
 
 /* --- Conversation plumbing (same as create_message.php) --- */
-$receiverId = (int)$receiver;
-
-if ($senderId === $receiverId) {
-    json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
-}
-
 $u1 = min($senderId, $receiverId);
 $u2 = max($senderId, $receiverId);
 $lockKey = "conv:$u1:$u2";
@@ -121,6 +129,8 @@ $convId = null;
 $msgId  = null;
 /* will hold ISO-8601 UTC string, e.g., 2025-10-31T03:05:06Z */
 $createdIso = null;
+$filteredContent = $content;
+$committed = false;
 
 try {
     $conn->begin_transaction();
@@ -177,9 +187,9 @@ try {
             $stmt->bind_param('s', $lockKey);
             $stmt->execute();
             $stmt->close();
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Invalid conversation ID']);
-            exit;
+            @unlink($destPath);
+            $conn->rollback();
+            json_response(['success' => false, 'error' => 'Invalid conversation ID'], 403);
         }
     } else {
         $stmt = $conn->prepare('SELECT conv_id FROM conversations WHERE user1_id = ? AND user2_id = ? LIMIT 1');
@@ -223,9 +233,8 @@ try {
         $stmt->execute();
         $stmt->close();
         $conn->rollback();
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Item has been deleted. Cannot send messages.']);
-        exit;
+        @unlink($destPath);
+        json_response(['success' => false, 'error' => 'Item has been deleted. Cannot send messages.'], 403);
     }
 
     // Ensure participants exist
@@ -286,6 +295,8 @@ try {
     $stmt->execute();
     $stmt->close();
 
+    $filteredContent = filter_profanity($conn, $content);
+
     // Release advisory lock
     $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
     $stmt->bind_param('s', $lockKey);
@@ -293,6 +304,7 @@ try {
     $stmt->close();
 
     $conn->commit();
+    $committed = true;
 
     if ($createdIso === null) {
         $createdIso = gmdate('Y-m-d\TH:i:s\Z');
@@ -305,16 +317,15 @@ try {
         'message_id'  => $msgId,
         'message'     => [
             'message_id' => $msgId,
-            'content'    => filter_profanity($conn, $content),
+            'content'    => $filteredContent,
             'is_flagged' => (bool)$isFlagged,
             'created_at' => $createdIso,    // ISO-8601 UTC
             'image_url'  => $imageRelUrl,   // relative public path
         ],
     ], JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
-    if ($conn->errno === 0) {
-        $conn->rollback();
-    }
+    try { $conn->rollback(); } catch (Throwable $_) {}
+    if (!$committed && isset($destPath) && is_file($destPath)) @unlink($destPath);
     if (!empty($lockKey)) {
         $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
         if ($stmt) {

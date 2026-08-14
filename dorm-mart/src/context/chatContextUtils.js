@@ -78,16 +78,17 @@ export async function tickFetchNewMessages(
     is_typing: false,
     typing_user_first_name: null,
   };
+  const cursorTs = Number(res?.cursor_ts) || 0;
 
   const myIdNum = Number(myId);
   if (!Number.isInteger(myIdNum) || myIdNum <= 0) {
     logger.error("Invalid myId in tickFetchNewMessages:", myId);
-    return { messages: [], typingStatus };
+    return { messages: [], typingStatus, cursorTs };
   }
 
   // Always return typing status, even if no new messages
   if (!raw.length) {
-    return { messages: [], typingStatus };
+    return { messages: [], typingStatus, cursorTs };
   }
 
   const messages = raw.map((m) => {
@@ -127,7 +128,7 @@ export async function tickFetchNewMessages(
     return base;
   });
 
-  return { messages, typingStatus };
+  return { messages, typingStatus, cursorTs };
 }
 
 export async function fetchUnreadMessages(signal) {

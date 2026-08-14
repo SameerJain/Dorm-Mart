@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../helpers/image_upload.php';
 
 init_json_endpoint('POST');
 
@@ -278,8 +279,8 @@ try {
     );
     account_delete_run($conn, 'DELETE FROM login_history WHERE user_id = ?', 'i', $userId);
 
-    account_delete_run($conn, 'DELETE FROM user_accounts WHERE user_id = ?', 'i', $userId);
-    if ($conn->affected_rows !== 1) throw new RuntimeException('Account deletion did not remove one account');
+    $deletedRows = account_delete_run($conn, 'DELETE FROM user_accounts WHERE user_id = ?', 'i', $userId);
+    if ($deletedRows !== 1) throw new RuntimeException('Account deletion did not remove one account');
 
     $conn->commit();
     $conn->close();
@@ -309,18 +310,20 @@ try {
     json_response(['success' => false, 'error' => 'Unable to delete account'], 500);
 }
 
-function account_delete_run(mysqli $conn, string $sql, string $types = '', mixed ...$params): void
+function account_delete_run(mysqli $conn, string $sql, string $types = '', mixed ...$params): int
 {
     $stmt = $conn->prepare($sql);
     if (!$stmt) throw new RuntimeException('Failed to prepare account deletion statement');
     if ($types !== '') $stmt->bind_param($types, ...$params);
     if (!$stmt->execute()) throw new RuntimeException('Failed to execute account deletion statement');
+    $affectedRows = $stmt->affected_rows;
     $stmt->close();
+    return $affectedRows;
 }
 
 function account_delete_owned_images(array $paths, int $userId): void
 {
-    $imagesDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'images';
+    $imagesDir = data_images_dir();
     foreach (glob($imagesDir . DIRECTORY_SEPARATOR . 'profile_' . $userId . '_*') ?: [] as $path) {
         $paths[] = '/images/' . basename($path);
     }
