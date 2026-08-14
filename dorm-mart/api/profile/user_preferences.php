@@ -18,7 +18,7 @@ $conn = db();
 function get_prefs(mysqli $conn, int $userId)
 {
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  $stmt = $conn->prepare('SELECT theme, promotional, reveal_contact_info, interested_category_1, interested_category_2, interested_category_3 FROM user_accounts WHERE user_id = ?');
+  $stmt = $conn->prepare('SELECT theme, promotional, promo_frequency, reveal_contact_info, interested_category_1, interested_category_2, interested_category_3 FROM user_accounts WHERE user_id = ?');
   $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
   $res = $stmt->get_result();
@@ -58,6 +58,7 @@ function get_prefs(mysqli $conn, int $userId)
   
   $result = [
     'promoEmails' => $promoEmails,
+    'promoFrequency' => $userRow['promo_frequency'] ?? ($promoEmails ? 'weekly' : 'off'),
     'revealContact' => $revealContact,
     'interests' => $interests,
     'theme' => $theme,
@@ -77,7 +78,8 @@ try {
     $body = json_request_body();
     require_csrf_token($body['csrf_token'] ?? null);
 
-    $promo = isset($body['promoEmails']) ? (int)!!$body['promoEmails'] : 0;
+    $frequency = in_array(($body['promoFrequency'] ?? 'off'), ['off', 'daily', 'weekly'], true) ? $body['promoFrequency'] : 'off';
+    $promo = $frequency === 'off' ? 0 : 1;
     $reveal = isset($body['revealContact']) ? (int)!!$body['revealContact'] : 0;
     $ALLOWED_CATS = ['Textbooks', 'Electronics', 'Clothing', 'Furniture', 'Food', 'Services', 'Other'];
     $interests = isset($body['interests']) && is_array($body['interests'])
@@ -111,8 +113,8 @@ try {
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, promotional = ?, reveal_contact_info = ?, interested_category_1 = ?, interested_category_2 = ?, interested_category_3 = ? WHERE user_id = ?');
-    $stmt->bind_param('iiisssi', $theme, $promo, $reveal, $int1, $int2, $int3, $userId);  // 'i'=integer, 's'=string
+    $stmt = $conn->prepare('UPDATE user_accounts SET theme = ?, promotional = ?, promo_frequency = ?, reveal_contact_info = ?, interested_category_1 = ?, interested_category_2 = ?, interested_category_3 = ? WHERE user_id = ?');
+    $stmt->bind_param('iisisssi', $theme, $promo, $frequency, $reveal, $int1, $int2, $int3, $userId);
     $result = $stmt->execute();
     if (!$result) {
       error_log("Failed to update user_accounts: " . $stmt->error);

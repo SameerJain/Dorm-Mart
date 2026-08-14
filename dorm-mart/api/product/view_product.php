@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
+require_once __DIR__ . '/../helpers/recommendations.php';
 
 init_json_endpoint('GET', ['ok' => false, 'error' => 'Method Not Allowed']);
 
@@ -42,6 +43,7 @@ try {
             i.price_nego,
             i.date_listed,
             i.seller_id,
+            i.item_status,
             i.sold,
             i.final_price,
             i.date_sold,
@@ -72,6 +74,34 @@ try {
 
     if (!$row) {
         json_response(['ok' => false, 'error' => 'Product not found'], 404);
+    }
+
+    // Drafts are private to their seller, including direct product URLs.
+    if (($row['item_status'] ?? '') === 'Draft' && (int)$row['seller_id'] !== $userId) {
+        json_response(['ok' => false, 'error' => 'Product not found'], 404);
+    }
+
+    // Count successful views of published listings by users other than the seller.
+    // View tracking is best-effort and must not prevent the product from loading.
+    $viewStmt = $mysqli->prepare(
+        "UPDATE INVENTORY
+         SET view_count = view_count + 1
+         WHERE product_id = ?
+           AND seller_id <> ?
+           AND item_status IN ('Active', 'Pending', 'Sold')"
+    );
+    if ($viewStmt) {
+        $viewStmt->bind_param('ii', $productId, $userId);
+        if (!$viewStmt->execute()) {
+            error_log('view_product view count update failed: ' . $viewStmt->error);
+        }
+        $viewStmt->close();
+    } else {
+        error_log('view_product view count prepare failed: ' . $mysqli->error);
+    }
+
+    if ((int)$row['seller_id'] !== $userId && ($row['item_status'] ?? '') !== 'Draft') {
+        recommendation_record_behavior($mysqli, $userId, $productId, 'view');
     }
 
     json_response(inventory_product_payload($row), 200, JSON_UNESCAPED_SLASHES);

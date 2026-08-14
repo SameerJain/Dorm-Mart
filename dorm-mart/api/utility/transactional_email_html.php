@@ -164,3 +164,31 @@ function dm_transactional_promo_welcome_package(string $firstName): array
 
     return ['subject' => $subject, 'html' => $html, 'text' => $text];
 }
+
+/** @param array<int,array{title:string,price:float,url:string}> $items */
+function dm_promotional_items_package(string $firstName, array $items): array
+{
+    $name = $firstName !== '' ? $firstName : 'Student';
+    $rows = '';
+    $textRows = [];
+    foreach ($items as $item) {
+        $title = escape_html((string)$item['title']);
+        $url = escape_html((string)$item['url']);
+        $price = '$' . number_format((float)$item['price'], 2);
+        $image = !empty($item['image_cid']) ? '<a href="' . $url . '"><img src="cid:' . escape_html((string)$item['image_cid']) . '" alt="' . $title . '" width="120" style="display:block;width:120px;height:90px;object-fit:cover;border-radius:8px;border:0;"></a>' : '';
+        $rows .= '<tr><td width="136" valign="middle" style="padding:14px 16px 14px 0;border-bottom:1px solid #334155;">' . $image . '</td><td valign="middle" style="padding:14px 0;border-bottom:1px solid #334155;"><a href="' . $url . '" style="color:#38bdf8;font-weight:700;text-decoration:underline;">' . $title . '</a><br><span style="color:#cbd5e1;">' . $price . '</span></td></tr>';
+        $textRows[] = $item['title'] . ' - ' . $price . "\n" . $item['url'];
+    }
+    $settingsUrl = dm_frontend_url('app/setting/user-preferences');
+    $inner = '<p style="margin:0 0 6px;color:#38bdf8;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Fresh finds from Dorm Mart</p>'
+        . '<p style="margin:0 0 12px;color:#f1f5f9;font-size:24px;font-weight:700;">Items picked for you &#10024;</p>'
+        . '<p style="color:#cbd5e1;">Hey ' . escape_html($name) . '! We spotted a few marketplace finds you might love. Take a peek before another Bull grabs them!</p>'
+        . '<table role="presentation" width="100%" style="border-collapse:collapse;">' . $rows . '</table>'
+        . '<p style="margin:24px 0;color:#94a3b8;font-size:13px;">Change the frequency or turn these emails off in <a href="' . escape_html($settingsUrl) . '" style="color:#38bdf8;">User Preferences</a>.</p>';
+    return [
+        'subject' => 'Items picked for you - Dorm Mart',
+        'html' => dm_transactional_shell('Items picked for you - Dorm Mart', 'Fresh marketplace finds picked for you.', $inner),
+        'text' => "Items picked for you - Dorm Mart\n\nHey {$name}! We spotted a few marketplace finds you might love. Take a peek before another Bull grabs them!\n\n" . implode("\n\n", $textRows) . "\n\nManage promotional emails: {$settingsUrl}",
+        'inline_images' => array_values(array_filter(array_map(static fn($item) => $item['inline_image'] ?? null, $items))),
+    ];
+}

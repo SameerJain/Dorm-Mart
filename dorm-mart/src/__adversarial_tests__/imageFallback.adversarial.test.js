@@ -1,5 +1,6 @@
 import {
   FALLBACK_IMAGE_URL,
+  isVideoMediaUrl,
   resolveProductPhotoUrl,
   resolveProductPhotoUrls,
   withFallbackImage,
@@ -36,5 +37,15 @@ describe("image fallback adversarial boundaries", () => {
     expect(withFallbackImage(" data:image/png;base64,abcd ")).toBe(
       "data:image/png;base64,abcd",
     );
+  });
+
+  test("recognizes stored and proxied product video URLs", () => {
+    expect(isVideoMediaUrl("/images/item-demo.mp4")).toBe(true);
+    expect(
+      isVideoMediaUrl(
+        `${apiBase}/media/image.php?url=%2Fimages%2Fitem-demo.webm`,
+      ),
+    ).toBe(true);
+    expect(isVideoMediaUrl("/images/item-photo.jpg")).toBe(false);
   });
 });

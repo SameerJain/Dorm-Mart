@@ -379,9 +379,9 @@ try {
     // 3) Insert user
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $sql = 'INSERT INTO user_accounts
-          (first_name, last_name, grad_month, grad_year, email, promotional, hash_pass, hash_auth, join_date, seller, theme, received_intro_promo_email)
+          (first_name, last_name, grad_month, grad_year, email, promotional, promo_frequency, hash_pass, hash_auth, join_date, seller, theme, received_intro_promo_email)
         VALUES
-          (?, ?, ?, ?, ?, ?, ?, NULL, CURRENT_DATE, 0, 0, ?)';
+          (?, ?, ?, ?, ?, ?, ?, ?, NULL, CURRENT_DATE, 0, 0, ?)';
 
     $ins = $conn->prepare($sql);
     /*
@@ -390,15 +390,17 @@ try {
     email(s), promotional(i), hash_pass(s), hash_auth(s), received_intro_promo_email(i)
 */
     $promotional = $promos ? 1 : 0;
+    $promoFrequency = $promos ? 'weekly' : 'off';
     $receivedIntroPromoEmail = $promos ? 1 : 0; // Set to TRUE if promotional emails are enabled
     $ins->bind_param(
-        'ssiisisi',
+        'ssiisissi',
         $firstName,
         $lastName,
         $gradMonth,
         $gradYear,
         $email,
         $promotional,
+        $promoFrequency,
         $hashPass,
         $receivedIntroPromoEmail,
     );

@@ -6,6 +6,7 @@ declare(strict_types=1);
 // Include security utilities
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
+require_once __DIR__ . '/../helpers/recommendations.php';
 
 init_json_endpoint('GET', ['ok' => false, 'error' => 'Method Not Allowed']);
 
@@ -19,7 +20,8 @@ try {
     mysqli_report(MYSQLI_REPORT_OFF);
     $mysqli = db();
 
-    // SQL INJECTION PROTECTION: Safe Query (No User Input)
+    $recommendationContext = recommendation_build_context($mysqli, $userId);
+
     $sql = "
         SELECT 
             i.product_id,
@@ -34,6 +36,8 @@ try {
             i.date_listed,
             i.seller_id,
             i.sold,
+            i.wishlisted,
+            i.view_count,
             ua.first_name,
             ua.last_name,
             ua.email
@@ -41,19 +45,39 @@ try {
         LEFT JOIN user_accounts AS ua ON i.seller_id = ua.user_id
         WHERE (i.sold = 0 OR i.sold IS NULL)
           AND i.item_status = 'Active'
+          AND i.seller_id <> ?
         ORDER BY i.date_listed DESC, i.product_id DESC
-        LIMIT 40
+        LIMIT 120
     ";
 
-    $res = $mysqli->query($sql);
-    if ($res === false) {
-        throw new Exception("SQL error: " . $mysqli->error);
+    $stmt = $mysqli->prepare($sql);
+    if (!$stmt) {
+        throw new Exception('SQL prepare failed: ' . $mysqli->error);
     }
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    $rankedRows = [];
+    while ($row = $res->fetch_assoc()) {
+        $row['_recommendation'] = recommendation_score_listing($row, $recommendationContext);
+        $rankedRows[] = $row;
+    }
+    $stmt->close();
+
+    usort($rankedRows, static function (array $a, array $b): int {
+        $scoreOrder = $b['_recommendation']['score'] <=> $a['_recommendation']['score'];
+        if ($scoreOrder !== 0) {
+            return $scoreOrder;
+        }
+        $dateOrder = strcmp((string)($b['date_listed'] ?? ''), (string)($a['date_listed'] ?? ''));
+        return $dateOrder !== 0 ? $dateOrder : ((int)$b['product_id'] <=> (int)$a['product_id']);
+    });
 
     $out = [];
     $now = time();
 
-    while ($row = $res->fetch_assoc()) {
+    foreach (array_slice($rankedRows, 0, 50) as $row) {
         $tags = inventory_string_list($row['categories'] ?? null);
         $image = inventory_first_photo($row['photos'] ?? null);
 
@@ -88,6 +112,9 @@ try {
             'status'     => $status,
             'trades'     => (bool)$row['trades'],
             'price_nego' => (bool)$row['price_nego'],
+            'recommendation_score' => (float)$row['_recommendation']['score'],
+            'recommendation_reason' => $row['_recommendation']['reason'],
+            'personalized' => (bool)$row['_recommendation']['personalized'],
         ];
     }
 

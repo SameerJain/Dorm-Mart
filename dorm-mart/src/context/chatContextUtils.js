@@ -54,6 +54,18 @@ export async function fetchNewMessages(activeConvId, ts, signal) {
   return r.json();
 }
 
+export async function editLastMessageApi(messageId, content) {
+  const response = await csrfFetch(`${API_BASE}/chat/edit_last_message.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ message_id: messageId, content }),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.success) throw new Error(data?.error || "Unable to edit message");
+  return data.message;
+}
+
 export async function tickFetchNewMessages(
   activeConvId,
   myId,
@@ -104,6 +116,8 @@ export async function tickFetchNewMessages(
           : "them",
       content: m.content ?? "",
       ts: Date.parse(m.created_at),
+      editedAt: m.edited_at ? Date.parse(m.edited_at) : null,
+      activityTs: Date.parse(m.activity_at || m.edited_at || m.created_at),
       metadata,
     };
 

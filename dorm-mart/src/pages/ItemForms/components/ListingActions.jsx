@@ -5,9 +5,11 @@ export default function ListingActions({
   isEdit,
   isNew,
   loadingExisting,
+  listingStatus,
   location,
   navigate,
   publishListing,
+  saveDraft,
   submitting,
 }) {
   return (
@@ -18,7 +20,11 @@ export default function ListingActions({
       <div className="flex flex-col sm:flex-row gap-4">
         <button
           onClick={publishListing}
-          disabled={submitting || loadingExisting || (isNew && atListingCap)}
+          disabled={
+            submitting ||
+            loadingExisting ||
+            (atListingCap && (isNew || listingStatus === "Draft"))
+          }
           className="flex-1 py-4 bg-blue-600 text-white rounded-lg font-bold text-lg hover:bg-blue-700 transition-colors disabled:opacity-60"
         >
           {isNew && atListingCap
@@ -27,9 +33,18 @@ export default function ListingActions({
               ? "Submitting..."
               : loadingExisting
                 ? "Loading..."
-                : isEdit
+                : isEdit && listingStatus !== "Draft"
                   ? "Update Listing"
                   : "Publish Listing"}
+        </button>
+
+        <button
+          type="button"
+          onClick={saveDraft}
+          disabled={submitting || loadingExisting}
+          className="flex-1 py-3 border border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors disabled:opacity-60"
+        >
+          {submitting ? "Saving..." : "Save as Draft"}
         </button>
 
         <button

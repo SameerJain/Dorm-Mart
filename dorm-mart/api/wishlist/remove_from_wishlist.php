@@ -8,6 +8,7 @@ init_json_endpoint('POST');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/recommendations.php';
 
 try {
     $userId = require_login();
@@ -42,6 +43,8 @@ try {
         $updateStmt->execute();
         $updateStmt->close();
     }
+
+    recommendation_record_behavior($conn, $userId, $productId, 'wishlist_remove');
 
     $notifStmt = $conn->prepare(
         'UPDATE wishlist_notification

@@ -21,6 +21,9 @@ import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
 import MyProfilePage from "./pages/Settings/MyProfile.jsx";
 import BuyerReviewsPage from "./pages/Settings/BuyerReviewsPage.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
+import AccountInfoPage from "./pages/Settings/AccountInfoPage.jsx";
+import LoggedDevicesPage from "./pages/Settings/LoggedDevicesPage.jsx";
+import DeleteAccountPage from "./pages/Settings/DeleteAccount.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.jsx";
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
 import SchedulePurchasePage from "./pages/ScheduledPurchases/SchedulePurchasePage.jsx";
@@ -190,8 +193,9 @@ export const router = createHashRouter([
           { path: "buyer-reviews", element: <BuyerReviewsPage /> },
           // User Preferences
           { path: "user-preferences", element: <UserPreferences /> },
-          { path: "personal-information", element: <NotFoundPage /> },
-          { path: "security-options", element: <NotFoundPage /> },
+          { path: "personal-information", element: <AccountInfoPage /> },
+          { path: "security-options", element: <LoggedDevicesPage /> },
+          { path: "delete-account", element: <DeleteAccountPage /> },
         ],
       },
       {
