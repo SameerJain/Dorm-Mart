@@ -21,9 +21,8 @@ try {
 
     // Reset unread_count to 0 for all products for this seller
     $stmt = $conn->prepare(
-        'UPDATE wishlist_notification
-         SET unread_count = 0
-         WHERE seller_id = ? AND unread_count > 0'
+        'UPDATE notifications SET is_read = 1
+         WHERE recipient_user_id = ? AND is_read = 0 AND available_at <= NOW()'
     );
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare update');

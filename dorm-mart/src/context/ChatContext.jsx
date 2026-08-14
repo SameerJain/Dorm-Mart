@@ -162,35 +162,20 @@ export function ChatProvider({ children }) {
   const [unreadMsgByConv, setUnreadMsgConv] = useState({}); // { conv_id -> count }
   const [unreadMsgTotal, setUnreadMsgTotal] = useState(0); // sum of counts
   const [unreadNotificationsByProduct, setUnreadNotificationsByProduct] =
-    useState({}); // { product_id -> { count, title, imageUrl } }
+    useState([]);
   const [unreadNotificationTotal, setUnreadNotificationTotal] = useState(0);
 
   function markAllNotificationsReadLocal() {
     // Clear all product notification entries and zero out the total
-    setUnreadNotificationsByProduct({});
+    setUnreadNotificationsByProduct([]);
     setUnreadNotificationTotal(0);
   }
 
-  function markNotificationReadLocal(productId) {
-    const key = String(productId);
+  function markNotificationReadLocal(notificationId) {
     setUnreadNotificationsByProduct((prev) => {
-      if (!prev || !Object.prototype.hasOwnProperty.call(prev, key)) {
-        return prev;
-      }
-
-      const info = prev[key];
-      const dec = Number(info?.count ?? 0);
-
-      const next = { ...prev };
-      delete next[key];
-
-      if (dec > 0) {
-        setUnreadNotificationTotal((total) =>
-          Math.max(0, (Number(total) || 0) - dec),
-        );
-      }
-
-      return next;
+      const removed = (prev || []).find((n) => Number(n.notification_id) === Number(notificationId));
+      if (removed && !removed.is_read) setUnreadNotificationTotal((total) => Math.max(0, Number(total) - 1));
+      return (prev || []).filter((n) => Number(n.notification_id) !== Number(notificationId));
     });
   }
 
@@ -639,10 +624,10 @@ export function ChatProvider({ children }) {
       if (!shouldPollNow()) return;
       const controller = new AbortController();
       try {
-        const { unreads, total } = await tickFetchUnreadNotifications(
+        const { notifications, total } = await tickFetchUnreadNotifications(
           controller.signal,
         );
-        setUnreadNotificationsByProduct(unreads || {});
+        setUnreadNotificationsByProduct(notifications || []);
         setUnreadNotificationTotal(Number(total) || 0);
       } catch (e) {
         if (e.name !== "AbortError") logger.error("tickFetchUnreadNotifications error:", e);

@@ -32,6 +32,7 @@ try {
   require $API_ROOT . '/auth/auth_handle.php';
   require $API_ROOT . '/database/db_connect.php';
   require $API_ROOT . '/helpers/image_upload.php';
+  require_once $API_ROOT . '/helpers/notifications.php';
 
   auth_boot_session();
   $userId = require_login();
@@ -205,7 +206,7 @@ try {
       exit;
     }
 
-    $checkStmt = $conn->prepare('SELECT sold, item_status FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
+    $checkStmt = $conn->prepare('SELECT sold, item_status, title, listing_price, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
     if (!$checkStmt) {
       throw new RuntimeException('Failed to prepare sold-state check');
     }
@@ -228,6 +229,8 @@ try {
       echo json_encode(['ok' => false, 'error' => 'Sold listings cannot be edited.']);
       exit;
     }
+
+    $conn->begin_transaction();
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $sql = "UPDATE INVENTORY
@@ -269,6 +272,30 @@ try {
       ]);
       exit;
     }
+
+    $oldPrice = (float)$existing['listing_price'];
+    $firstImage = notification_first_image($photosJson);
+    if (abs($oldPrice - (float)$price) >= 0.005) {
+      $reduced = (float)$price < $oldPrice;
+      notification_for_wishlist($conn, $itemId, [
+        'type' => $reduced ? 'price_reduced' : 'price_increased',
+        'title' => $title,
+        'message' => sprintf('Price %s from $%.2f to $%.2f.', $reduced ? 'reduced' : 'increased', $oldPrice, $price),
+        'image_url' => $firstImage, 'severity' => $reduced ? 'success' : 'warning',
+        'destination' => '/app/viewProduct/' . $itemId,
+        'metadata' => ['old_price' => $oldPrice, 'new_price' => $price],
+        'idempotency_key' => 'price-' . $itemId . '-' . bin2hex(random_bytes(8)),
+      ]);
+    }
+    if (!empty($newImageUrls)) {
+      notification_for_wishlist($conn, $itemId, [
+        'type' => 'images_added', 'title' => $title,
+        'message' => 'New images were added to this listing.', 'image_url' => $firstImage,
+        'destination' => '/app/viewProduct/' . $itemId,
+        'idempotency_key' => 'images-' . $itemId . '-' . bin2hex(random_bytes(8)),
+      ]);
+    }
+    $conn->commit();
 
     echo json_encode([
       'ok'         => true,
@@ -337,6 +364,7 @@ try {
   ]);
 
 } catch (Throwable $e) {
+  if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
   error_log('[product_listing] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
   http_response_code(500);
   // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
