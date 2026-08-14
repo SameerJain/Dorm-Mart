@@ -39,4 +39,3 @@ try {
     error_log('account_info error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
-

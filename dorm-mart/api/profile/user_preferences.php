@@ -68,6 +68,18 @@ function get_prefs(mysqli $conn, int $userId)
   return $result;
 }
 
+function allowed_preference_categories(): array
+{
+  $path = __DIR__ . '/../categories/categories.json';
+  $contents = is_readable($path) ? file_get_contents($path) : false;
+  $categories = $contents !== false ? json_decode($contents, true) : null;
+  if (!is_array($categories)) {
+    throw new RuntimeException('Unable to load preference categories');
+  }
+
+  return array_values(array_filter($categories, fn($category) => is_string($category) && $category !== ''));
+}
+
 try {
   if ($method === 'GET') {
     $data = get_prefs($conn, $userId);
@@ -87,9 +99,12 @@ try {
       json_response(['ok' => false, 'error' => 'Invalid phone number'], 400);
     }
     $phone = $phone !== '' ? $phone : null;
-    $ALLOWED_CATS = ['Textbooks', 'Electronics', 'Clothing', 'Furniture', 'Food', 'Services', 'Other'];
+    $allowedCategories = allowed_preference_categories();
     $interests = isset($body['interests']) && is_array($body['interests'])
-        ? array_slice(array_values(array_filter($body['interests'], fn($c) => in_array($c, $ALLOWED_CATS, true))), 0, 3)
+        ? array_slice(array_values(array_unique(array_filter(
+            $body['interests'],
+            fn($category) => is_string($category) && in_array($category, $allowedCategories, true)
+        ))), 0, 3)
         : [];
     $theme = (isset($body['theme']) && $body['theme'] === 'dark') ? 1 : 0;
     
@@ -127,14 +142,6 @@ try {
     }
     $stmt->close();
 
-    // Handle received_intro_promo_email separately if needed
-    if ($shouldSendEmail) {
-      $stmt2 = $conn->prepare('UPDATE user_accounts SET received_intro_promo_email = 1 WHERE user_id = ?');
-      $stmt2->bind_param('i', $userId);
-      $stmt2->execute();
-      $stmt2->close();
-    }
-
     // Send promo welcome email if this is the first time opting in
     if ($shouldSendEmail) {
       // Get user details for email
@@ -156,6 +163,10 @@ try {
         if (!$emailResult['ok']) {
           error_log("Failed to send promo welcome email: " . $emailResult['error']);
         } else {
+          $stmt2 = $conn->prepare('UPDATE user_accounts SET received_intro_promo_email = 1 WHERE user_id = ?');
+          $stmt2->bind_param('i', $userId);
+          $stmt2->execute();
+          $stmt2->close();
           error_log("user_preferences: promo welcome email send completed for user_id {$userId}");
         }
       } else {

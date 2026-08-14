@@ -23,7 +23,7 @@ try {
     $recommendationContext = recommendation_build_context($mysqli, $userId);
 
     $sql = "
-        SELECT 
+        SELECT
             i.product_id,
             i.title,
             i.categories,

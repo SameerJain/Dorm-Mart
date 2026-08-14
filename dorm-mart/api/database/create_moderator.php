@@ -21,8 +21,8 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     fwrite(STDERR, "Enter a valid email address.\n");
     exit(1);
 }
-if (strlen($password) < 12) {
-    fwrite(STDERR, "Moderator passwords must contain at least 12 characters.\n");
+if (strlen($password) < 12 || strlen($password) > 64) {
+    fwrite(STDERR, "Moderator passwords must contain between 12 and 64 characters.\n");
     exit(1);
 }
 

@@ -42,7 +42,8 @@ try {
     $stmt = $conn->prepare(
         'INSERT INTO message_reports (message_id, reporter_id, reported_user_id, reason)
          VALUES (?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE reason = VALUES(reason), status = \'open\', resolved_at = NULL, resolved_by = NULL'
+         ON DUPLICATE KEY UPDATE report_id = LAST_INSERT_ID(report_id), reason = VALUES(reason),
+                                 status = \'open\', resolved_at = NULL, resolved_by = NULL'
     );
     $stmt->bind_param('iiis', $messageId, $reporterId, $reportedUserId, $reason);
     $stmt->execute();

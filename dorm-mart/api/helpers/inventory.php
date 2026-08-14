@@ -40,6 +40,11 @@ if (!function_exists('inventory_first_photo')) {
         }
 
         if (is_string($photos) && trim($photos) !== '') {
+            json_decode($photos, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return null;
+            }
+
             foreach (explode(',', $photos) as $photo) {
                 $trimmed = trim($photo);
                 if ($trimmed !== '' && !inventory_is_video_path($trimmed)) {

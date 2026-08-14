@@ -24,6 +24,7 @@ describe("ModeratorDashboard", () => {
               sender_id: 2,
               sender_fname: "Test User",
               sender_email: "test@buffalo.edu",
+              sender_role: "user",
               sender_is_banned: 0,
               content: "raw blockedword message",
               created_at: "2026-08-14T12:00:00Z",

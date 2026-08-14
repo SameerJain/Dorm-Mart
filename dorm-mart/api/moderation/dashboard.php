@@ -25,7 +25,8 @@ try {
     $flaggedResult = $conn->query(
         "SELECT m.message_id, m.conv_id, m.sender_id, m.sender_fname, m.content,
                 DATE_FORMAT(m.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
-                ua.email AS sender_email, COALESCE(ua.is_banned, 0) AS sender_is_banned
+                ua.email AS sender_email, ua.role AS sender_role,
+                COALESCE(ua.is_banned, 0) AS sender_is_banned
            FROM messages m
            LEFT JOIN user_accounts ua ON ua.user_id = m.sender_id
           WHERE m.is_flagged = 1
@@ -40,7 +41,7 @@ try {
                 m.conv_id, m.content,
                 COALESCE(m.sender_fname, 'Deleted User') AS sender_name,
                 CONCAT_WS(' ', reporter.first_name, reporter.last_name) AS reporter_name,
-                reported.email AS reported_user_email,
+                reported.email AS reported_user_email, reported.role AS reported_user_role,
                 COALESCE(reported.is_banned, 0) AS reported_user_is_banned
            FROM message_reports r
            JOIN messages m ON m.message_id = r.message_id

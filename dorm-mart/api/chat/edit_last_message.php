@@ -24,7 +24,7 @@ try {
     $conn->set_charset('utf8mb4');
     $stmt = $conn->prepare(
         'SELECT message_id, conv_id, content, image_url, metadata
-         FROM messages WHERE message_id = ? AND sender_id = ? LIMIT 1'
+         FROM messages WHERE message_id = ? AND sender_id = ? AND deleted_at IS NULL LIMIT 1'
     );
     if (!$stmt) throw new RuntimeException('Failed to prepare message lookup');
     $stmt->bind_param('ii', $messageId, $userId);
@@ -38,7 +38,7 @@ try {
     $convId = (int)$message['conv_id'];
     $latestStmt = $conn->prepare(
         'SELECT message_id FROM messages
-         WHERE conv_id = ? AND sender_id = ? AND image_url IS NULL AND metadata IS NULL
+         WHERE conv_id = ? AND sender_id = ? AND image_url IS NULL AND metadata IS NULL AND deleted_at IS NULL
          ORDER BY message_id DESC LIMIT 1'
     );
     if (!$latestStmt) throw new RuntimeException('Failed to prepare latest message lookup');
@@ -49,7 +49,7 @@ try {
     if (!$latest || (int)$latest['message_id'] !== $messageId) json_response(['success' => false, 'error' => 'Only your last sent message can be edited'], 409);
 
     $isFlagged = contains_profanity($conn, $content) ? 1 : 0;
-    $update = $conn->prepare('UPDATE messages SET content = ?, is_flagged = ?, edited_at = NOW() WHERE message_id = ? AND sender_id = ?');
+    $update = $conn->prepare('UPDATE messages SET content = ?, is_flagged = ?, edited_at = NOW() WHERE message_id = ? AND sender_id = ? AND deleted_at IS NULL');
     if (!$update) throw new RuntimeException('Failed to prepare message update');
     $update->bind_param('siii', $content, $isFlagged, $messageId, $userId);
     $update->execute();

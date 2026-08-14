@@ -36,4 +36,3 @@ SELECT seller_id, 'wishlist_added', product_id, title,
        image_url, 'info', CONCAT('/app/viewProduct/', product_id),
        JSON_OBJECT('count', unread_count), CONCAT('legacy-wishlist-', seller_id, '-', product_id), NOW()
 FROM wishlist_notification WHERE unread_count > 0;
-

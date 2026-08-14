@@ -29,16 +29,21 @@ if ($convId > 0) {
 
 $stmt = $conn->prepare(
   'SELECT
-       message_id, conv_id, sender_id, receiver_id, content, is_flagged, image_url, metadata,
+       message_id, conv_id, sender_id, receiver_id,
+       CASE WHEN deleted_at IS NULL THEN content ELSE \'This message was deleted\' END AS content,
+       CASE WHEN deleted_at IS NULL THEN is_flagged ELSE 0 END AS is_flagged,
+       CASE WHEN deleted_at IS NULL THEN image_url ELSE NULL END AS image_url,
+       CASE WHEN deleted_at IS NULL THEN metadata ELSE NULL END AS metadata,
        DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at,
        DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at,
-       DATE_FORMAT(GREATEST(created_at, COALESCE(edited_at, created_at)), "%Y-%m-%dT%H:%i:%sZ") AS activity_at
+       DATE_FORMAT(deleted_at, "%Y-%m-%dT%H:%i:%sZ") AS deleted_at,
+       DATE_FORMAT(GREATEST(created_at, COALESCE(edited_at, created_at), COALESCE(deleted_at, created_at)), "%Y-%m-%dT%H:%i:%sZ") AS activity_at
      FROM messages
     WHERE conv_id = ?
-      AND (created_at > FROM_UNIXTIME(?) OR edited_at > FROM_UNIXTIME(?))
+      AND (created_at >= FROM_UNIXTIME(?) OR edited_at >= FROM_UNIXTIME(?) OR deleted_at >= FROM_UNIXTIME(?))
     ORDER BY message_id ASC'
 );
-$stmt->bind_param('iii', $convId, $tsSec, $tsSec);
+$stmt->bind_param('iiii', $convId, $tsSec, $tsSec, $tsSec);
 $stmt->execute();
 
 $res = $stmt->get_result(); // requires mysqlnd; otherwise switch to bind_result loop
@@ -95,6 +100,7 @@ while ($row = $res->fetch_assoc()) {
     }
     $row['content'] = filter_profanity($conn, (string)$row['content']);
     $row['is_flagged'] = (bool)$row['is_flagged'];
+    $row['is_deleted'] = $row['deleted_at'] !== null;
     $messages[] = $row;
 }
 $stmt->close();
@@ -157,4 +163,6 @@ json_response([
     'conv_id'  => $convId,
     'messages' => $messages, // array of only-new messages
     'typing_status' => $typingStatus, // typing status for other user
+    // Keep a one-second overlap so messages/edits sharing a timestamp are not missed.
+    'cursor_ts' => max(0, time() - 1),
 ], 200, JSON_UNESCAPED_SLASHES);

@@ -170,18 +170,37 @@ export function ChatProvider({ children }) {
     useState([]);
   const [unreadNotificationTotal, setUnreadNotificationTotal] = useState(0);
 
-  function markAllNotificationsReadLocal() {
-    // Clear all product notification entries and zero out the total
-    setUnreadNotificationsByProduct([]);
-    setUnreadNotificationTotal(0);
+  function markNotificationReadLocal(notificationId) {
+    const id = Number(notificationId);
+    const wasUnread = unreadNotificationsByProduct.some(
+      (item) => Number(item.notification_id) === id && !item.is_read,
+    );
+    setUnreadNotificationsByProduct((prev) =>
+      (prev || []).map((item) =>
+        Number(item.notification_id) === id ? { ...item, is_read: true } : item,
+      ),
+    );
+    if (wasUnread) {
+      setUnreadNotificationTotal((total) => Math.max(0, Number(total) - 1));
+    }
   }
 
-  function markNotificationReadLocal(notificationId) {
-    setUnreadNotificationsByProduct((prev) => {
-      const removed = (prev || []).find((n) => Number(n.notification_id) === Number(notificationId));
-      if (removed && !removed.is_read) setUnreadNotificationTotal((total) => Math.max(0, Number(total) - 1));
-      return (prev || []).filter((n) => Number(n.notification_id) !== Number(notificationId));
-    });
+  function removeNotificationLocal(notificationId) {
+    const id = Number(notificationId);
+    const wasUnread = unreadNotificationsByProduct.some(
+      (item) => Number(item.notification_id) === id && !item.is_read,
+    );
+    setUnreadNotificationsByProduct((prev) =>
+      (prev || []).filter((item) => Number(item.notification_id) !== id),
+    );
+    if (wasUnread) {
+      setUnreadNotificationTotal((total) => Math.max(0, Number(total) - 1));
+    }
+  }
+
+  function clearNotificationsLocal() {
+    setUnreadNotificationsByProduct([]);
+    setUnreadNotificationTotal(0);
   }
 
   const loadConversations = useCallback(async (signal, userIdOverride) => {
@@ -535,6 +554,14 @@ export function ChatProvider({ children }) {
           [activeConvId]: typingStatus,
         }));
 
+        const cursorMs = Number(result?.cursorTs) * 1000;
+        if (cursorMs > 0) {
+          lastTsRefByConv.current[activeConvId] = Math.max(
+            lastTsRefByConv.current[activeConvId] || 0,
+            cursorMs,
+          );
+        }
+
         if (!incoming.length) return;
 
         setMessagesByConv((prev) => {
@@ -706,8 +733,9 @@ export function ChatProvider({ children }) {
     createImageMessage,
     clearActiveConversation,
     registerConversation: upsertConversationRow,
-    markAllNotificationsReadLocal,
     markNotificationReadLocal,
+    removeNotificationLocal,
+    clearNotificationsLocal,
     removeConversationLocal,
     // config (optional: useful for tests or dynamic tuning)
     _config: { POLL_MS: NEW_MSG_POLL_MS, UNREAD_MSG_POLL_MS },

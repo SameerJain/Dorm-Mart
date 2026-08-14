@@ -206,14 +206,18 @@ try {
                 'idempotency_key' => 'pending-schedule-' . $requestId,
             ], $buyerId);
             $meeting = new DateTimeImmutable((string)$row['meeting_at'], new DateTimeZone('UTC'));
+            $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
             foreach ([['24h', '-24 hours', 'info'], ['1h', '-1 hour', 'urgent']] as [$label, $offset, $severity]) {
+                $availableAt = $meeting->modify($offset);
+                if ($availableAt <= $now) continue;
+
                 notification_insert($conn, [
                     'recipient_user_id' => $buyerId, 'type' => 'scheduled_purchase_' . $label,
                     'product_id' => $inventoryProductId, 'scheduled_request_id' => $requestId,
                     'title' => $title, 'message' => 'Your scheduled purchase is coming up in ' . ($label === '24h' ? '24 hours.' : '1 hour.'),
                     'image_url' => $image, 'severity' => $severity, 'destination' => '/app/seller-dashboard/ongoing-purchases',
                     'idempotency_key' => 'schedule-' . $label . '-' . $requestId,
-                    'available_at' => $meeting->modify($offset)->format('Y-m-d H:i:s'),
+                    'available_at' => $availableAt->format('Y-m-d H:i:s'),
                 ]);
             }
             notification_insert($conn, [

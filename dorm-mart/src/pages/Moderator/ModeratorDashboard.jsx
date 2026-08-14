@@ -141,7 +141,7 @@ export default function ModeratorDashboard() {
                         <ActionButton disabled={working} onClick={() => post("resolve_report.php", { report_id: report.report_id, status: "resolved" })}>Resolve</ActionButton>
                         <button type="button" disabled={working} onClick={() => post("resolve_report.php", { report_id: report.report_id, status: "dismissed" })} className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold disabled:opacity-50 dark:border-gray-600">Dismiss</button>
                       </>}
-                      {report.reported_user_id && <ActionButton disabled={working} onClick={() => changeBan(report.reported_user_id, Boolean(Number(report.reported_user_is_banned)))}>{Number(report.reported_user_is_banned) ? "Unban user" : "Ban user"}</ActionButton>}
+                      {report.reported_user_id && report.reported_user_role !== "moderator" && <ActionButton disabled={working} onClick={() => changeBan(report.reported_user_id, Boolean(Number(report.reported_user_is_banned)))}>{Number(report.reported_user_is_banned) ? "Unban user" : "Ban user"}</ActionButton>}
                     </div></td>
                   </tr>
                 ))}
@@ -162,7 +162,7 @@ export default function ModeratorDashboard() {
                     <td className="max-w-xl whitespace-pre-wrap p-3">{message.content}</td>
                     <td className="p-3">{message.sender_fname}<br /><span className="text-xs text-gray-500">{message.sender_email || "Deleted account"}</span></td>
                     <td className="p-3 text-xs">Conversation #{message.conv_id}<br />{new Date(message.created_at).toLocaleString()}</td>
-                    <td className="p-3">{message.sender_id && <ActionButton disabled={working} onClick={() => changeBan(message.sender_id, Boolean(Number(message.sender_is_banned)))}>{Number(message.sender_is_banned) ? "Unban user" : "Ban user"}</ActionButton>}</td>
+                    <td className="p-3">{message.sender_id && message.sender_role !== "moderator" && <ActionButton disabled={working} onClick={() => changeBan(message.sender_id, Boolean(Number(message.sender_is_banned)))}>{Number(message.sender_is_banned) ? "Unban user" : "Ban user"}</ActionButton>}</td>
                   </tr>
                 ))}
                 {(dashboard?.flagged_messages || []).length === 0 && <tr><td colSpan="4" className="p-6 text-center text-gray-500">No flagged messages.</td></tr>}

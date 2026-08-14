@@ -33,22 +33,18 @@ function recommendation_record_behavior(
         return;
     }
 
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        error_log('recommendation behavior prepare failed: ' . $conn->error);
-        return;
+    try {
+        $stmt = $conn->prepare($sql);
+        if ($event === 'view') {
+            $stmt->bind_param('ii', $userId, $productId);
+        } else {
+            $stmt->bind_param('iiii', $userId, $productId, $wishlisted, $wishlisted);
+        }
+        $stmt->execute();
+        $stmt->close();
+    } catch (Throwable $e) {
+        error_log('recommendation behavior update failed: ' . $e->getMessage());
     }
-
-    if ($event === 'view') {
-        $stmt->bind_param('ii', $userId, $productId);
-    } else {
-        $stmt->bind_param('iiii', $userId, $productId, $wishlisted, $wishlisted);
-    }
-
-    if (!$stmt->execute()) {
-        error_log('recommendation behavior update failed: ' . $stmt->error);
-    }
-    $stmt->close();
 }
 
 function recommendation_add_category(
