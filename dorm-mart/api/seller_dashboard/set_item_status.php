@@ -11,6 +11,7 @@ init_json_endpoint('POST');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/notifications.php';
 
 try {
     $userId = require_login();
@@ -30,7 +31,7 @@ try {
         json_response(['success' => false, 'error' => 'Invalid id or status'], 400);
     }
 
-    $checkStmt = $conn->prepare('SELECT sold, item_status FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
+    $checkStmt = $conn->prepare('SELECT sold, item_status, title, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
     if (!$checkStmt) {
         throw new RuntimeException('Failed to prepare sold-state check');
     }
@@ -66,6 +67,7 @@ try {
         }
     }
 
+    $conn->begin_transaction();
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare(
         'UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND seller_id = ?'
@@ -79,8 +81,41 @@ try {
         json_response(['success' => false, 'error' => 'Not found'], 404);
     }
 
+    $type = null;
+    $message = null;
+    $severity = 'info';
+    if ($statusStr !== $status && $status === 'Pending') {
+        $type = 'item_pending'; $message = $existing['title'] . ' is not currently for sale.'; $severity = 'warning';
+    } elseif ($statusStr === 'Pending' && $status === 'Active') {
+        $type = 'item_back_on_sale'; $message = $existing['title'] . ' is back on sale.'; $severity = 'success';
+    } elseif ($statusStr !== $status && $status === 'Sold') {
+        $type = 'item_sold'; $message = $existing['title'] . ' has been sold.'; $severity = 'warning';
+    }
+    if ($type) {
+        notification_for_wishlist($conn, $id, [
+            'type' => $type, 'title' => (string)$existing['title'], 'message' => $message,
+            'image_url' => notification_first_image($existing['photos'] ?? null), 'severity' => $severity,
+            'destination' => $status === 'Active' ? '/app/viewProduct/' . $id : null,
+            'idempotency_key' => $type . '-' . $id . '-' . bin2hex(random_bytes(6)),
+        ]);
+    }
+    if ($status === 'Sold') {
+        $wishlistDelete = $conn->prepare('DELETE FROM wishlist WHERE product_id = ?');
+        if (!$wishlistDelete) throw new RuntimeException('Failed to remove sold item from wishlists');
+        $wishlistDelete->bind_param('i', $id);
+        $wishlistDelete->execute();
+        $wishlistDelete->close();
+        $resetCount = $conn->prepare('UPDATE INVENTORY SET sold = 1, wishlisted = 0, date_sold = CURDATE() WHERE product_id = ?');
+        if (!$resetCount) throw new RuntimeException('Failed to finalize sold listing');
+        $resetCount->bind_param('i', $id);
+        $resetCount->execute();
+        $resetCount->close();
+    }
+    $conn->commit();
+
     json_response(['success' => true, 'id' => $id, 'status' => $status]);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
     error_log('set_item_status error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

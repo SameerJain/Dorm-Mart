@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/notifications.php';
 
 /**
  * Fetches display names for the given user ids.
@@ -259,8 +260,17 @@ function mark_inventory_as_sold(mysqli $conn, array $row): void
         $finalPrice = 0.0;
     }
 
+    $itemStmt = $conn->prepare('SELECT title, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
+    if (!$itemStmt) throw new RuntimeException('Failed to prepare item notification snapshot');
+    $itemStmt->bind_param('i', $productId);
+    $itemStmt->execute();
+    $item = $itemStmt->get_result()->fetch_assoc();
+    $itemStmt->close();
+    $title = (string)($item['title'] ?? 'Item');
+    $image = notification_first_image($item['photos'] ?? null);
+
     $status = 'Sold';
-    $updateSql = 'UPDATE INVENTORY SET item_status = ?, sold = 1, final_price = ?, date_sold = CURDATE(), sold_to = ? WHERE product_id = ?';
+    $updateSql = 'UPDATE INVENTORY SET item_status = ?, sold = 1, wishlisted = 0, final_price = ?, date_sold = CURDATE(), sold_to = ? WHERE product_id = ?';
     $stmt = $conn->prepare($updateSql);
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare inventory sold update');
@@ -268,6 +278,24 @@ function mark_inventory_as_sold(mysqli $conn, array $row): void
     $stmt->bind_param('sdii', $status, $finalPrice, $buyerId, $productId);
     $stmt->execute();
     $stmt->close();
+    notification_for_wishlist($conn, $productId, [
+        'type' => 'item_sold', 'title' => $title, 'message' => $title . ' has been sold.',
+        'image_url' => $image, 'severity' => 'warning', 'destination' => null,
+        'idempotency_key' => 'sold-confirm-' . (int)($row['confirm_request_id'] ?? 0),
+    ], $buyerId);
+    notification_insert($conn, [
+        'recipient_user_id' => $buyerId, 'type' => 'review_reminder', 'product_id' => $productId,
+        'scheduled_request_id' => (int)($row['scheduled_request_id'] ?? 0), 'title' => $title,
+        'message' => 'Please leave a review for your completed purchase.', 'image_url' => $image,
+        'severity' => 'info', 'destination' => '/app/purchase-history?review=' . $productId,
+        'idempotency_key' => 'review-reminder-' . (int)($row['confirm_request_id'] ?? 0),
+        'available_at' => gmdate('Y-m-d H:i:s', time() + 86400),
+    ]);
+    $wishlistDelete = $conn->prepare('DELETE FROM wishlist WHERE product_id = ?');
+    if (!$wishlistDelete) throw new RuntimeException('Failed to remove sold item from wishlists');
+    $wishlistDelete->bind_param('i', $productId);
+    $wishlistDelete->execute();
+    $wishlistDelete->close();
 }
 
 function release_inventory_after_unsuccessful_confirm(mysqli $conn, array $row): void
@@ -320,6 +348,21 @@ function release_inventory_after_unsuccessful_confirm(mysqli $conn, array $row):
     }
     $updateStmt->bind_param('sis', $activeStatus, $productId, $pendingStatus);
     $updateStmt->execute();
+    if ($updateStmt->affected_rows > 0) {
+        $itemStmt = $conn->prepare('SELECT title, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
+        if (!$itemStmt) throw new RuntimeException('Failed to prepare released item');
+        $itemStmt->bind_param('i', $productId);
+        $itemStmt->execute();
+        $item = $itemStmt->get_result()->fetch_assoc();
+        $itemStmt->close();
+        notification_for_wishlist($conn, $productId, [
+            'type' => 'item_back_on_sale', 'title' => (string)($item['title'] ?? 'Item'),
+            'message' => ($item['title'] ?? 'Item') . ' is back on sale.',
+            'image_url' => notification_first_image($item['photos'] ?? null),
+            'severity' => 'success', 'destination' => '/app/viewProduct/' . $productId,
+            'idempotency_key' => 'back-on-sale-confirm-' . $scheduledRequestId,
+        ]);
+    }
     $updateStmt->close();
 }
 

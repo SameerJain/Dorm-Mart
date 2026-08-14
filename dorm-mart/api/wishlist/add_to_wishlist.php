@@ -8,6 +8,7 @@ init_json_endpoint('POST');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/notifications.php';
 
 try {
     $userId = require_login();
@@ -24,7 +25,7 @@ try {
         json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
     }
 
-    $checkStmt = $conn->prepare('SELECT product_id, seller_id FROM INVENTORY WHERE product_id = ?');
+    $checkStmt = $conn->prepare('SELECT product_id, seller_id, title, photos FROM INVENTORY WHERE product_id = ?');
     if (!$checkStmt) {
         throw new RuntimeException('Failed to prepare product check');
     }
@@ -52,6 +53,7 @@ try {
     }
     $checkWishlistStmt->close();
 
+    $conn->begin_transaction();
     $stmt = $conn->prepare('INSERT INTO wishlist (user_id, product_id) VALUES (?, ?)');
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare insert');
@@ -68,15 +70,19 @@ try {
         $updateStmt->close();
     }
 
-    $wnStmt = $conn->prepare('UPDATE wishlist_notification SET unread_count = unread_count + 1 WHERE product_id = ?');
-    if ($wnStmt) {
-        $wnStmt->bind_param('i', $productId);
-        $wnStmt->execute();
-        $wnStmt->close();
-    }
+    notification_insert($conn, [
+        'recipient_user_id' => (int)$product['seller_id'], 'type' => 'wishlist_added',
+        'product_id' => $productId, 'title' => (string)$product['title'],
+        'message' => 'A buyer saved this listing to their wishlist.',
+        'image_url' => notification_first_image($product['photos'] ?? null),
+        'destination' => '/app/viewProduct/' . $productId,
+        'idempotency_key' => 'wishlist-added-' . $wishlistId,
+    ]);
+    $conn->commit();
 
     json_response(['success' => true, 'wishlist_id' => $wishlistId, 'product_id' => $productId]);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
     error_log('add_to_wishlist error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

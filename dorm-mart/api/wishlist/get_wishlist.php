@@ -42,7 +42,7 @@ try {
             FROM wishlist w
             INNER JOIN INVENTORY i ON w.product_id = i.product_id
             LEFT JOIN user_accounts ua ON i.seller_id = ua.user_id
-            WHERE w.user_id = ?
+            WHERE w.user_id = ? AND i.item_status = 'Active'
             ORDER BY w.created_at DESC";
     
     $stmt = $conn->prepare($sql);

@@ -8,6 +8,7 @@ require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/expire_stale.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../helpers/notifications.php';
 
 init_json_endpoint('POST');
 
@@ -46,7 +47,8 @@ try {
             spr.snapshot_price_nego,
             spr.snapshot_trades,
             spr.snapshot_meet_location,
-            inv.title AS item_title
+            inv.title AS item_title,
+            inv.photos AS item_photos
         FROM scheduled_purchase_requests spr
         INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
         WHERE spr.request_id = ?
@@ -86,6 +88,7 @@ try {
     }
 
     $nextStatus = $action === 'accept' ? 'accepted' : 'declined';
+    $conn->begin_transaction();
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $updateStmt = $conn->prepare('UPDATE scheduled_purchase_requests SET status = ?, buyer_response_at = NOW() WHERE request_id = ? LIMIT 1');
@@ -194,7 +197,35 @@ try {
             } else {
                 error_log('Failed to prepare inventory update statement for scheduled purchase ' . $requestId);
             }
+            $title = (string)($row['item_title'] ?? 'Item');
+            $image = notification_first_image($row['item_photos'] ?? null);
+            notification_for_wishlist($conn, $inventoryProductId, [
+                'type' => 'item_pending', 'title' => $title,
+                'message' => $title . ' is not currently for sale because another purchase is scheduled.',
+                'image_url' => $image, 'severity' => 'warning', 'destination' => null,
+                'idempotency_key' => 'pending-schedule-' . $requestId,
+            ], $buyerId);
+            $meeting = new DateTimeImmutable((string)$row['meeting_at'], new DateTimeZone('UTC'));
+            foreach ([['24h', '-24 hours', 'info'], ['1h', '-1 hour', 'urgent']] as [$label, $offset, $severity]) {
+                notification_insert($conn, [
+                    'recipient_user_id' => $buyerId, 'type' => 'scheduled_purchase_' . $label,
+                    'product_id' => $inventoryProductId, 'scheduled_request_id' => $requestId,
+                    'title' => $title, 'message' => 'Your scheduled purchase is coming up in ' . ($label === '24h' ? '24 hours.' : '1 hour.'),
+                    'image_url' => $image, 'severity' => $severity, 'destination' => '/app/seller-dashboard/ongoing-purchases',
+                    'idempotency_key' => 'schedule-' . $label . '-' . $requestId,
+                    'available_at' => $meeting->modify($offset)->format('Y-m-d H:i:s'),
+                ]);
+            }
+            notification_insert($conn, [
+                'recipient_user_id' => (int)$row['seller_user_id'], 'type' => 'confirm_purchase_reminder',
+                'product_id' => $inventoryProductId, 'scheduled_request_id' => $requestId,
+                'title' => $title, 'message' => 'Please complete the Confirm Purchase form for this scheduled purchase.',
+                'image_url' => $image, 'severity' => 'warning', 'destination' => '/app/chat?conv=' . (int)$row['conversation_id'],
+                'idempotency_key' => 'confirm-reminder-' . $requestId,
+                'available_at' => $meeting->modify('+8 hours')->format('Y-m-d H:i:s'),
+            ]);
         } elseif ($nextStatus === 'declined') {
+            notification_cancel_schedule($conn, $requestId);
             // When declined, revert item status to "Active" only if no other accepted purchases exist.
             $hasOtherAccepted = scheduled_purchase_has_active_accepted($conn, $inventoryProductId, $requestId);
 
@@ -264,8 +295,10 @@ try {
         ],
     ];
 
+    $conn->commit();
     json_response($response);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
     error_log('scheduled-purchase respond error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

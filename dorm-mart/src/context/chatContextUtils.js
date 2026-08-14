@@ -158,25 +158,10 @@ export async function fetchUnreadNotifications(signal) {
 
 export async function tickFetchUnreadNotifications(signal) {
   const res = await fetchUnreadNotifications(signal);
-  const raw = res.unreads ?? [];
-
-  // build { product_id -> { count, title } }
-  const unreads = {};
-  let total = 0;
-
-  for (const u of raw) {
-    const pid = Number(u.product_id);
-    const title = u.title ?? "";
-    const imageUrl = u.image_url ?? "";
-    const cnt = Number(u.unread_count) || 0;
-
-    if (pid > 0 && cnt > 0) {
-      unreads[pid] = { count: cnt, title, imageUrl };
-      total += cnt;
-    }
-  }
-
-  return { unreads, total };
+  return {
+    notifications: Array.isArray(res.notifications) ? res.notifications : [],
+    total: Number(res.unread_total) || 0,
+  };
 }
 
 export async function createMessageApi({

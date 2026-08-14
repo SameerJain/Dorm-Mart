@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../helpers/notifications.php';
 
 init_json_endpoint('POST');
 
@@ -34,7 +35,8 @@ try {
             spr.buyer_user_id,
             spr.conversation_id,
             spr.inventory_product_id,
-            inv.title AS item_title
+            inv.title AS item_title,
+            inv.photos AS item_photos
         FROM scheduled_purchase_requests spr
         INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
         WHERE spr.request_id = ?
@@ -83,6 +85,7 @@ try {
     $updateStmt->bind_param('sii', $status, $userId, $requestId);
     $updateStmt->execute();
     $updateStmt->close();
+    notification_cancel_schedule($conn, $requestId);
     
     // Revert item status to "Active" when cancelled, but only if no other accepted purchases exist
     // This ensures item becomes available again only when truly free of all accepted scheduled purchases
@@ -99,6 +102,15 @@ try {
                 $pendingStatus = 'Pending';
                 $itemStatusStmt->bind_param('sis', $activeStatus, $inventoryProductId, $pendingStatus);
                 $itemStatusStmt->execute();
+                if ($itemStatusStmt->affected_rows > 0) {
+                    notification_for_wishlist($conn, $inventoryProductId, [
+                        'type' => 'item_back_on_sale', 'title' => (string)$row['item_title'],
+                        'message' => $row['item_title'] . ' is back on sale.',
+                        'image_url' => notification_first_image($row['item_photos'] ?? null),
+                        'severity' => 'success', 'destination' => '/app/viewProduct/' . $inventoryProductId,
+                        'idempotency_key' => 'back-on-sale-cancel-' . $requestId,
+                    ]);
+                }
                 $itemStatusStmt->close();
             }
         }
@@ -122,6 +134,8 @@ try {
         }
     }
 
+    $conn->begin_transaction();
+
     $response = [
         'success' => true,
         'data' => [
@@ -130,8 +144,10 @@ try {
         ],
     ];
 
+    $conn->commit();
     json_response($response);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
     error_log('scheduled-purchase cancel error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
