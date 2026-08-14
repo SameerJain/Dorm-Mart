@@ -91,6 +91,14 @@ foreach ($files as $path) {
   $ran[] = $name;                                               // Add to the list of executed files
 }
 
+// Keep every account mentioned by seed data protected from destructive actions.
+require_once __DIR__ . '/protect_test_accounts.php';
+$protection = protect_test_accounts($conn, $dataDir);
+
 // XSS PROTECTION: Escape filenames before outputting in JSON (defense-in-depth)
 $escapedRan = array_map('escape_html', $ran);
-echo json_encode(["success" => true, "applied" => $escapedRan]);        // Return summary of executed files
+echo json_encode([
+  "success" => true,
+  "applied" => $escapedRan,
+  "test_accounts" => $protection,
+]);

@@ -14,6 +14,7 @@ dm_enforce_https();
 
 require __DIR__ . '/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/two_factor.php';
 
 // Initialize session for rate limiting (must be done before checking rate limits)
 auth_boot_session();
@@ -91,7 +92,10 @@ try {
     $conn = db();
     
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $stmt = $conn->prepare('SELECT user_id, hash_pass FROM user_accounts WHERE email = ? LIMIT 1');
+    $stmt = $conn->prepare(
+        'SELECT user_id, first_name, last_name, email, hash_pass, theme, two_factor_enabled, role, is_banned
+         FROM user_accounts WHERE email = ? LIMIT 1'
+    );
     $stmt->bind_param('s', $email);  // 's' = string type, $email is safely bound as parameter
     $stmt->execute();
     $res = $stmt->get_result();
@@ -125,14 +129,14 @@ try {
     }
 
     $userId = (int)$row['user_id'];
+
+    if (!empty($row['is_banned'])) {
+        $conn->close();
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'Account suspended']);
+        exit;
+    }
     
-    // SQL INJECTION PROTECTION: Prepared statement for theme query (user_id parameter bound safely)
-    $themeStmt = $conn->prepare('SELECT theme FROM user_accounts WHERE user_id = ?');
-    $themeStmt->bind_param('i', $userId);  // 'i' = integer type
-    $themeStmt->execute();
-    $themeRes = $themeStmt->get_result();
-    $themeRow = $themeRes->fetch_assoc();
-    $themeStmt->close();
     $conn->close();
     
     // Clear rate limiting data on successful login BEFORE regenerating session ID
@@ -141,19 +145,46 @@ try {
     reset_failed_attempts($sessionId);
     
     $theme = 'light'; // default
-    if ($themeRow && isset($themeRow['theme'])) {
-        $theme = $themeRow['theme'] ? 'dark' : 'light';
+    if (isset($row['theme'])) {
+        $theme = $row['theme'] ? 'dark' : 'light';
+    }
+
+    if (!empty($row['two_factor_enabled'])) {
+        regenerate_session_on_login();
+        unset($_SESSION['user_id']);
+        clear_remember_cookie($userId);
+
+        $code = create_two_factor_challenge($userId, $theme);
+        $emailResult = send_two_factor_email(
+            $row,
+            dm_transactional_two_factor_code_package((string)$row['first_name'], $code)
+        );
+        if (!$emailResult['ok']) {
+            clear_two_factor_challenge();
+            error_log('Two-factor login email failed for user_id ' . $userId . ': ' . ($emailResult['error'] ?? 'unknown error'));
+            http_response_code(503);
+            echo json_encode(['ok' => false, 'error' => 'Unable to send a verification code. Please try again.']);
+            exit;
+        }
+
+        echo json_encode([
+            'ok' => true,
+            'requires_two_factor' => true,
+            'email' => mask_two_factor_email((string)$row['email']),
+        ]);
+        exit;
     }
 
     // Regenerate session ID to prevent session fixation attacks
     // This happens AFTER clearing rate limits to ensure old session data is cleared
     regenerate_session_on_login();
     $_SESSION['user_id'] = $userId;
+    record_login_device($userId);
 
     // Persist across restarts
     issue_remember_cookie($userId);
 
-    echo json_encode(['ok' => true, 'theme' => $theme]);
+    echo json_encode(['ok' => true, 'theme' => $theme, 'role' => $row['role'] ?? 'user']);
 } catch (Throwable $e) {
     error_log('login error: ' . $e->getMessage());
     http_response_code(500);

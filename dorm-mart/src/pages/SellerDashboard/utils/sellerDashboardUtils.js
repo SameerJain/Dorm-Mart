@@ -3,12 +3,18 @@ import { dateTimestamp } from "../../../utils/formatters";
 import { resolveProductPhotoUrl } from "../../../utils/imageFallback";
 
 export const EMPTY_SUMMARY_METRICS = {
+  totalPosts: 0,
   activeListings: 0,
   pendingSales: 0,
   itemsSold: 0,
-  savedDrafts: 0,
   totalViews: 0,
+  totalWishlists: 0,
 };
+
+function nonNegativeCount(value) {
+  const count = Number(value);
+  return Number.isFinite(count) && count >= 0 ? Math.floor(count) : 0;
+}
 
 export function truncateProductTitle(title, maxLength = 50) {
   if (!title || title.length <= maxLength) return title;
@@ -33,7 +39,8 @@ export function normalizeSellerListing(item) {
     sold_by: item.sold_by,
     seller_user_id: item.seller_user_id,
     buyer_user_id: item.buyer_user_id,
-    wishlisted: item.wishlisted,
+    wishlisted: nonNegativeCount(item.wishlisted),
+    views: nonNegativeCount(item.views),
     categories: Array.isArray(item.categories) ? item.categories : [],
     has_accepted_scheduled_purchase:
       item.has_accepted_scheduled_purchase === true ||
@@ -48,7 +55,11 @@ export function calculateSummaryMetrics(listings) {
       if (status === "active") metrics.activeListings += 1;
       if (status === "pending") metrics.pendingSales += 1;
       if (status === "sold") metrics.itemsSold += 1;
-      if (status === "draft") metrics.savedDrafts += 1;
+      if (["active", "pending", "sold"].includes(status)) {
+        metrics.totalPosts += 1;
+        metrics.totalViews += nonNegativeCount(listing.views);
+        metrics.totalWishlists += nonNegativeCount(listing.wishlisted);
+      }
       return metrics;
     },
     { ...EMPTY_SUMMARY_METRICS },

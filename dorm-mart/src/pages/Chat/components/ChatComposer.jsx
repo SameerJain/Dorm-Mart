@@ -105,7 +105,7 @@ export default function ChatComposer({
             type="button"
             onClick={() => setAttachedImage(null)}
             className="rounded-md p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-            aria-label="Remove attached image"
+            aria-label="Remove attached media"
             title="Remove"
           >
             <svg

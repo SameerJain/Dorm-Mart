@@ -14,11 +14,10 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Fetch unread wishlist notifications for this seller
     $stmt = $conn->prepare(
-        'SELECT product_id, title, image_url, unread_count 
-         FROM wishlist_notification 
-         WHERE seller_id = ? AND unread_count > 0'
+        'SELECT notification_id, type, title, message, image_url, severity, destination, is_read, created_at
+         FROM notifications WHERE recipient_user_id = ? AND available_at <= NOW()
+         ORDER BY created_at DESC, notification_id DESC'
     );
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare query');
@@ -27,18 +26,22 @@ try {
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $res = $stmt->get_result();
-    $unreads = [];
+    $notifications = [];
+    $unreadTotal = 0;
     while ($row = $res->fetch_assoc()) {
-        $unreads[] = [
-            'product_id'   => (int)$row['product_id'],
-            'title'        => $row['title'] ?? 'Untitled',
-            'image_url'    => $row['image_url'],
-            'unread_count' => (int)$row['unread_count'],
+        $isRead = (bool)$row['is_read'];
+        if (!$isRead) $unreadTotal++;
+        $notifications[] = [
+            'notification_id' => (int)$row['notification_id'],
+            'type' => $row['type'], 'title' => $row['title'], 'message' => $row['message'],
+            'image_url' => $row['image_url'], 'severity' => $row['severity'],
+            'destination' => $row['destination'], 'is_read' => $isRead,
+            'created_at' => $row['created_at'],
         ];
     }
     $stmt->close();
 
-    json_response(['success' => true, 'unreads' => $unreads]);
+    json_response(['success' => true, 'notifications' => $notifications, 'unread_total' => $unreadTotal]);
 } catch (Throwable $e) {
     error_log('fetch_unread_notifications error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);

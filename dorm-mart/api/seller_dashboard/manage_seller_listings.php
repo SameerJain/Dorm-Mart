@@ -38,6 +38,7 @@ try {
                 i.price_nego,
                 i.trades,
                 i.wishlisted,
+                i.view_count,
                 i.item_location AS meet_location,
                 CASE
                     WHEN EXISTS (
@@ -103,7 +104,8 @@ try {
             'priceNegotiable' => $priceNegotiable,
             'acceptTrades' => $acceptTrades,
             'meet_location' => $itemMeetLocation,
-            'wishlisted' => $row['wishlisted']
+            'wishlisted' => isset($row['wishlisted']) ? max(0, (int)$row['wishlisted']) : 0,
+            'views' => isset($row['view_count']) ? max(0, (int)$row['view_count']) : 0
         ];
     }
 

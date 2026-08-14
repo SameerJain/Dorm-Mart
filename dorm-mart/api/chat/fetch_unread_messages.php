@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
@@ -10,12 +11,7 @@ $conn->set_charset('utf8mb4');
 // Keep DB timestamps consistent (optional, remove if you don't use UTC everywhere)
 $conn->query("SET time_zone = '+00:00'");
 
-session_start(); // read the PHP session cookie to identify the caller
-
-$userId = (int)($_SESSION['user_id'] ?? 0);
-if ($userId <= 0) {
-    json_response(['success' => false, 'error' => 'Not authenticated'], 401);
-}
+$userId = require_login();
 
 $sql = 'SELECT conv_id, unread_count, first_unread_msg_id
         FROM conversation_participants

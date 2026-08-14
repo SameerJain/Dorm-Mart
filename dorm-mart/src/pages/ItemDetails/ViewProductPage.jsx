@@ -136,7 +136,7 @@ export default function ViewProduct() {
                     <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
                       About this item
                     </h3>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line break-words break-all overflow-hidden min-w-0">
+                    <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words min-w-0">
                       {normalized.description}
                     </p>
                   </div>

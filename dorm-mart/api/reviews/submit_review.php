@@ -176,6 +176,13 @@ try {
         throw new RuntimeException('Failed to insert review');
     }
 
+    $reminderStmt = $conn->prepare("DELETE FROM notifications WHERE recipient_user_id = ? AND product_id = ? AND type = 'review_reminder'");
+    if ($reminderStmt) {
+        $reminderStmt->bind_param('ii', $userId, $productId);
+        $reminderStmt->execute();
+        $reminderStmt->close();
+    }
+
     // Update seller's average seller_rating in user_accounts
     // Check if seller_rating column exists before updating (graceful degradation)
     try {

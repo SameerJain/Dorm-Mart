@@ -3,6 +3,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
@@ -21,13 +22,7 @@ if ($okPassword) {
   echo json_encode(['success' => true]);
 }
 */
-// reads PHPSESSID from Cookie header and loads that session
-session_start(); 
-$userId = (int)($_SESSION['user_id'] ?? 0);
-
-if ($userId <= 0) {
-    json_response(['success' => false, 'error' => 'Not authenticated'], 401);
-}
+$userId = require_login();
 
 $sql = "
   SELECT
@@ -40,9 +35,12 @@ $sql = "
     c.item_deleted,
     inv.title AS product_title,
     inv.seller_id AS product_seller_id,
-    inv.photos AS product_photos
+    inv.photos AS product_photos,
+    CASE WHEN inv.seller_id <> ? AND seller.reveal_contact_info = 1 THEN seller.email END AS shared_contact_email,
+    CASE WHEN inv.seller_id <> ? AND seller.reveal_contact_info = 1 THEN seller.phone_number END AS shared_contact_phone
   FROM conversations c
   LEFT JOIN INVENTORY inv ON inv.product_id = c.product_id
+  LEFT JOIN user_accounts seller ON seller.user_id = inv.seller_id
   WHERE (c.user1_id = ? AND c.user1_deleted = 0)
      OR (c.user2_id = ? AND c.user2_deleted = 0)
   ORDER BY c.created_at DESC
@@ -54,7 +52,7 @@ if (!$stmt) {
   json_response(['success' => false, 'error' => 'Server error'], 500);
 }
 
-$stmt->bind_param('ii', $userId, $userId); // 'ii' = two integers
+$stmt->bind_param('iiii', $userId, $userId, $userId, $userId);
 $stmt->execute();
 
 $res = $stmt->get_result();          // requires mysqlnd (present in XAMPP)

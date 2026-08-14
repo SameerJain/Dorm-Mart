@@ -31,24 +31,37 @@ if (!function_exists('inventory_first_photo')) {
     function inventory_first_photo($photos): ?string
     {
         foreach (inventory_json_array($photos) as $photo) {
-            if (is_string($photo) && $photo !== '') {
+            if (is_string($photo) && $photo !== '' && !inventory_is_video_path($photo)) {
                 return $photo;
             }
-            if (is_array($photo) && isset($photo['url']) && is_string($photo['url']) && $photo['url'] !== '') {
+            if (is_array($photo) && isset($photo['url']) && is_string($photo['url']) && $photo['url'] !== '' && !inventory_is_video_path($photo['url'])) {
                 return $photo['url'];
             }
         }
 
         if (is_string($photos) && trim($photos) !== '') {
+            json_decode($photos, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return null;
+            }
+
             foreach (explode(',', $photos) as $photo) {
                 $trimmed = trim($photo);
-                if ($trimmed !== '') {
+                if ($trimmed !== '' && !inventory_is_video_path($trimmed)) {
                     return $trimmed;
                 }
             }
         }
 
         return null;
+    }
+}
+
+if (!function_exists('inventory_is_video_path')) {
+    function inventory_is_video_path(string $path): bool
+    {
+        $urlPath = (string)(parse_url($path, PHP_URL_PATH) ?? $path);
+        return in_array(strtolower(pathinfo($urlPath, PATHINFO_EXTENSION)), ['mp4', 'webm', 'mov'], true);
     }
 }
 
@@ -90,6 +103,7 @@ if (!function_exists('inventory_product_payload')) {
             'price_nego'     => (bool)$row['price_nego'],
             'date_listed'    => $row['date_listed'] ?? null,
             'seller_id'      => isset($row['seller_id']) ? (int)$row['seller_id'] : null,
+            'item_status'    => $row['item_status'] ?? 'Active',
             'sold'           => (bool)$row['sold'],
             'final_price'    => $row['final_price'] !== null ? (float)$row['final_price'] : null,
             'date_sold'      => $row['date_sold'] ?? null,

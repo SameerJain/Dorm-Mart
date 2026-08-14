@@ -5,7 +5,7 @@ export default function ImageModal({
   open,
   onClose,
   onSelect,
-  title = "Add image",
+  title = "Add photo or video",
 }) {
   const closeBtnRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -15,9 +15,25 @@ export default function ImageModal({
   const [errorMsg, setErrorMsg] = useState(null);
 
   // Limits & allow-list
-  const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
-  const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-  const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+  const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+  const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+  const ALLOWED_MIME = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+  ]);
+  const ALLOWED_EXTS = new Set([
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".mp4",
+    ".webm",
+    ".mov",
+  ]);
 
   const resetPicker = useCallback(() => {
     setFile(null);
@@ -66,13 +82,27 @@ export default function ImageModal({
     return ext;
   }
 
+  function isVideoFile(f) {
+    if (f.type?.startsWith("video/")) return true;
+    const name = (f.name || "").toLowerCase();
+    return new Set([".mp4", ".webm", ".mov"]).has(
+      name.slice(name.lastIndexOf(".")),
+    );
+  }
+
   function onFileChange(e) {
     const f = e.target.files?.[0];
     if (!f) return;
 
+    const video = isVideoFile(f);
+
     // Size
-    if (f.size > MAX_BYTES) {
-      setErrorMsg("Image is too large. Max size is 2 MB.");
+    if (f.size > (video ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) {
+      setErrorMsg(
+        video
+          ? "Video is too large. Max size is 25 MB."
+          : "Image is too large. Max size is 2 MB.",
+      );
       setFile(null);
       setPreviewUrl((old) => {
         if (old) URL.revokeObjectURL(old);
@@ -83,7 +113,9 @@ export default function ImageModal({
 
     // Type
     if (!isAllowedType(f)) {
-      setErrorMsg("Only JPG/JPEG, PNG, and WEBP images are allowed.");
+      setErrorMsg(
+        "Only JPG/JPEG, PNG, WEBP, MP4, WEBM, and MOV files are allowed.",
+      );
       setFile(null);
       setPreviewUrl((old) => {
         if (old) URL.revokeObjectURL(old);
@@ -153,13 +185,21 @@ export default function ImageModal({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
             className="hidden"
             onChange={onFileChange}
           />
 
           <div className="h-56 sm:h-72 max-h-[65vh] rounded-lg border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-900/30">
-            {previewUrl ? (
+            {previewUrl && file && isVideoFile(file) ? (
+              <video
+                src={previewUrl}
+                controls
+                preload="metadata"
+                aria-label="Selected video preview"
+                className="h-full w-full object-contain"
+              />
+            ) : previewUrl ? (
               <img
                 src={previewUrl}
                 alt="Selected preview"
@@ -167,7 +207,7 @@ export default function ImageModal({
               />
             ) : (
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                No image selected
+                No photo or video selected
               </span>
             )}
           </div>
@@ -187,7 +227,7 @@ export default function ImageModal({
               onClick={openPicker}
               className="inline-flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-medium text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              Upload photo
+              Upload photo or video
             </button>
 
             <button
@@ -196,7 +236,7 @@ export default function ImageModal({
               disabled={!file || !!errorMsg}
               className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              Use image
+              Use attachment
             </button>
           </div>
         </div>

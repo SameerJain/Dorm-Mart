@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
+require_once __DIR__ . '/../helpers/profanity.php';
 require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
@@ -17,7 +18,7 @@ auth_boot_session();
 $userId = require_login();
 $sender = $userId;
 
-// This endpoint expects multipart/form-data with an image file
+// This endpoint expects multipart/form-data with an image or video attachment.
 require_multipart_formdata();
 
 /* Read form fields (sent via FormData on the client) */
@@ -27,13 +28,28 @@ $convIdParam = isset($_POST['conv_id'])     ? (int)$_POST['conv_id']            
 
 require_csrf_token($_POST['csrf_token'] ?? null);
 
-/* Validate presence of receiver and the uploaded image.
-   Caption (contentRaw) is allowed to be empty for image-only messages. */
+/* Validate presence of receiver and the uploaded attachment.
+   Caption (contentRaw) is allowed to be empty for media-only messages. */
 if ($receiver === '' || !ctype_digit($receiver) || (int)$receiver <= 0) {
     json_response(['success' => false, 'error' => 'missing_receiver'], 400);
 }
 if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
     json_response(['success' => false, 'error' => 'missing_image'], 400);
+}
+
+$senderId = (int)$sender;
+$receiverId = (int)$receiver;
+if ($senderId === $receiverId) {
+    json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
+}
+
+$receiverStmt = $conn->prepare('SELECT user_id FROM user_accounts WHERE user_id = ? LIMIT 1');
+$receiverStmt->bind_param('i', $receiverId);
+$receiverStmt->execute();
+$receiverExists = $receiverStmt->get_result()->num_rows === 1;
+$receiverStmt->close();
+if (!$receiverExists) {
+    json_response(['success' => false, 'error' => 'Receiver not found'], 404);
 }
 
 $content = $contentRaw;
@@ -49,12 +65,15 @@ if ($len > 500) {
     ], 400);
 }
 
-/* --- Validate and store the uploaded image --- */
-$MAX_BYTES = 2 * 1024 * 1024; // 2MB cap
+/* --- Validate and store the uploaded media --- */
+$MAX_BYTES = 25 * 1024 * 1024;
 $allowed = [
-    'image/jpeg' => 'jpg',
-    'image/png'  => 'png',
-    'image/webp' => 'webp',
+    'image/jpeg'      => 'jpg',
+    'image/png'       => 'png',
+    'image/webp'      => 'webp',
+    'video/mp4'       => 'mp4',
+    'video/webm'      => 'webm',
+    'video/quicktime' => 'mov',
 ];
 $imageInfo = uploaded_image_info($_FILES['image'], $MAX_BYTES, $allowed);
 if (!$imageInfo['ok']) {
@@ -64,10 +83,18 @@ if (!$imageInfo['ok']) {
     }
     json_response($payload, $imageInfo['status']);
 }
+$isVideo = strpos((string)$imageInfo['mime'], 'video/') === 0;
+if (!$isVideo && (int)$imageInfo['size'] > 2 * 1024 * 1024) {
+    json_response([
+        'success' => false,
+        'error' => 'image_too_large',
+        'max_bytes' => 2 * 1024 * 1024,
+    ], 400);
+}
 $ext = $imageInfo['extension'];
 
 /* Build destination dir under the configured uploads root. */
-$destDir = data_media_dir('chat-images');
+$destDir = data_media_dir('chat-attachments');
 if (!is_dir($destDir)) {
     if (!ensure_upload_directory($destDir)) {
         json_response(['success' => false, 'error' => 'media_dir_unwritable'], 500);
@@ -75,7 +102,6 @@ if (!is_dir($destDir)) {
 }
 
 /* Generate a unique filename to avoid collisions */
-$senderId = (int)$sender;
 $fname = sprintf(
     'u%s_%s_%s.%s',
     $senderId,
@@ -87,20 +113,14 @@ $destPath = $destDir . '/' . $fname;
 
 /* Move the uploaded temp file to the destination */
 if (!@move_uploaded_file($imageInfo['tmp_name'], $destPath)) {
-    json_response(['success' => false, 'error' => 'image_save_failed'], 500);
+    json_response(['success' => false, 'error' => 'media_save_failed'], 500);
 }
 
 /* Build the public relative URL path that your frontend can render.
    Assumes /media is web-accessible from the project root. */
-$imageRelUrl = '/media/chat-images/' . $fname;
+$imageRelUrl = '/media/chat-attachments/' . $fname;
 
 /* --- Conversation plumbing (same as create_message.php) --- */
-$receiverId = (int)$receiver;
-
-if ($senderId === $receiverId) {
-    json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
-}
-
 $u1 = min($senderId, $receiverId);
 $u2 = max($senderId, $receiverId);
 $lockKey = "conv:$u1:$u2";
@@ -109,6 +129,8 @@ $convId = null;
 $msgId  = null;
 /* will hold ISO-8601 UTC string, e.g., 2025-10-31T03:05:06Z */
 $createdIso = null;
+$filteredContent = $content;
+$committed = false;
 
 try {
     $conn->begin_transaction();
@@ -165,9 +187,9 @@ try {
             $stmt->bind_param('s', $lockKey);
             $stmt->execute();
             $stmt->close();
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Invalid conversation ID']);
-            exit;
+            @unlink($destPath);
+            $conn->rollback();
+            json_response(['success' => false, 'error' => 'Invalid conversation ID'], 403);
         }
     } else {
         $stmt = $conn->prepare('SELECT conv_id FROM conversations WHERE user1_id = ? AND user2_id = ? LIMIT 1');
@@ -203,7 +225,7 @@ try {
     }
     $stmt->close();
 
-    // If item is deleted, block image message creation
+    // If item is deleted, block media message creation
     if ($itemDeletedFlag) {
         // Release lock before exiting
         $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
@@ -211,9 +233,8 @@ try {
         $stmt->execute();
         $stmt->close();
         $conn->rollback();
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Item has been deleted. Cannot send messages.']);
-        exit;
+        @unlink($destPath);
+        json_response(['success' => false, 'error' => 'Item has been deleted. Cannot send messages.'], 403);
     }
 
     // Ensure participants exist
@@ -236,13 +257,14 @@ try {
     $stmt->execute();
     $stmt->close();
 
-    /* Insert image message (assumes messages.image_url exists) */
+    /* Insert media message (stored in the legacy messages.image_url column). */
+    $isFlagged = contains_profanity($conn, $content) ? 1 : 0;
     $stmt = $conn->prepare(
         'INSERT INTO messages
-           (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, image_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?)'
+           (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, is_flagged, image_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    $stmt->bind_param('iiissss', $convId, $senderId, $receiverId, $senderName, $receiverName, $content, $imageRelUrl);
+    $stmt->bind_param('iiisssis', $convId, $senderId, $receiverId, $senderName, $receiverName, $content, $isFlagged, $imageRelUrl);
     $stmt->execute();
     $msgId = (int)$conn->insert_id;
     $stmt->close();
@@ -273,6 +295,8 @@ try {
     $stmt->execute();
     $stmt->close();
 
+    $filteredContent = filter_profanity($conn, $content);
+
     // Release advisory lock
     $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
     $stmt->bind_param('s', $lockKey);
@@ -280,6 +304,7 @@ try {
     $stmt->close();
 
     $conn->commit();
+    $committed = true;
 
     if ($createdIso === null) {
         $createdIso = gmdate('Y-m-d\TH:i:s\Z');
@@ -292,15 +317,15 @@ try {
         'message_id'  => $msgId,
         'message'     => [
             'message_id' => $msgId,
-            'content'    => $content,       // caption (possibly empty string) - Note: No HTML encoding needed for JSON - React handles XSS protection
+            'content'    => $filteredContent,
+            'is_flagged' => (bool)$isFlagged,
             'created_at' => $createdIso,    // ISO-8601 UTC
             'image_url'  => $imageRelUrl,   // relative public path
         ],
     ], JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
-    if ($conn->errno === 0) {
-        $conn->rollback();
-    }
+    try { $conn->rollback(); } catch (Throwable $_) {}
+    if (!$committed && isset($destPath) && is_file($destPath)) @unlink($destPath);
     if (!empty($lockKey)) {
         $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
         if ($stmt) {

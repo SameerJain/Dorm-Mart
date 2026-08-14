@@ -218,6 +218,12 @@ try {
     $insertStmt->execute();
     $confirmRequestId = (int)$insertStmt->insert_id;
     $insertStmt->close();
+    $cancelReminder = $conn->prepare("DELETE FROM notifications WHERE scheduled_request_id = ? AND type = 'confirm_purchase_reminder'");
+    if ($cancelReminder) {
+        $cancelReminder->bind_param('i', $scheduledRequestId);
+        $cancelReminder->execute();
+        $cancelReminder->close();
+    }
 
     $sellerDisplayName = trim(($schedRow['seller_first'] ?? '') . ' ' . ($schedRow['seller_last'] ?? ''));
     if ($sellerDisplayName === '') {

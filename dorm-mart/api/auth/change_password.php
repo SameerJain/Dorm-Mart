@@ -68,7 +68,7 @@ try {
   $conn = db();
 
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  $stmt = $conn->prepare('SELECT hash_pass, email FROM user_accounts WHERE user_id = ? LIMIT 1');
+  $stmt = $conn->prepare('SELECT hash_pass, is_protected FROM user_accounts WHERE user_id = ? LIMIT 1');
   $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
   $res = $stmt->get_result();
@@ -84,9 +84,7 @@ try {
   $row = $res->fetch_assoc();
   $stmt->close();
   
-  // Block password change for testuser@buffalo.edu
-  $userEmail = (string)($row['email'] ?? '');
-  $isTestUser = ($userEmail === 'testuser@buffalo.edu');
+  $isProtected = (int)($row['is_protected'] ?? 0) === 1;
 
   // SECURITY NOTE: password_verify() safely checks the submitted password.
   if (!password_verify($current, (string)$row['hash_pass'])) {
@@ -104,8 +102,8 @@ try {
     exit;
   }
 
-  // Block password change for testuser@buffalo.edu - return success but don't actually update
-  if ($isTestUser) {
+  // Preserve seeded accounts without exposing which protection rule matched.
+  if ($isProtected) {
     $conn->close();
     // Return success without actually changing the password or destroying session
     echo json_encode(['ok' => true]);
@@ -120,6 +118,7 @@ try {
   $upd->bind_param('si', $newHash, $userId);  // 's' = string, 'i' = integer
   $upd->execute();
   $upd->close();
+  mark_all_login_devices_signed_out($userId);
 
   /* Rotate session id and log out to force re-auth */
   session_regenerate_id(true);

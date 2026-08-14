@@ -54,6 +54,18 @@ export async function fetchNewMessages(activeConvId, ts, signal) {
   return r.json();
 }
 
+export async function editLastMessageApi(messageId, content) {
+  const response = await csrfFetch(`${API_BASE}/chat/edit_last_message.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ message_id: messageId, content }),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.success) throw new Error(data?.error || "Unable to edit message");
+  return data.message;
+}
+
 export async function tickFetchNewMessages(
   activeConvId,
   myId,
@@ -66,16 +78,17 @@ export async function tickFetchNewMessages(
     is_typing: false,
     typing_user_first_name: null,
   };
+  const cursorTs = Number(res?.cursor_ts) || 0;
 
   const myIdNum = Number(myId);
   if (!Number.isInteger(myIdNum) || myIdNum <= 0) {
     logger.error("Invalid myId in tickFetchNewMessages:", myId);
-    return { messages: [], typingStatus };
+    return { messages: [], typingStatus, cursorTs };
   }
 
   // Always return typing status, even if no new messages
   if (!raw.length) {
-    return { messages: [], typingStatus };
+    return { messages: [], typingStatus, cursorTs };
   }
 
   const messages = raw.map((m) => {
@@ -104,6 +117,8 @@ export async function tickFetchNewMessages(
           : "them",
       content: m.content ?? "",
       ts: Date.parse(m.created_at),
+      editedAt: m.edited_at ? Date.parse(m.edited_at) : null,
+      activityTs: Date.parse(m.activity_at || m.edited_at || m.created_at),
       metadata,
     };
 
@@ -113,7 +128,7 @@ export async function tickFetchNewMessages(
     return base;
   });
 
-  return { messages, typingStatus };
+  return { messages, typingStatus, cursorTs };
 }
 
 export async function fetchUnreadMessages(signal) {
@@ -158,25 +173,10 @@ export async function fetchUnreadNotifications(signal) {
 
 export async function tickFetchUnreadNotifications(signal) {
   const res = await fetchUnreadNotifications(signal);
-  const raw = res.unreads ?? [];
-
-  // build { product_id -> { count, title } }
-  const unreads = {};
-  let total = 0;
-
-  for (const u of raw) {
-    const pid = Number(u.product_id);
-    const title = u.title ?? "";
-    const imageUrl = u.image_url ?? "";
-    const cnt = Number(u.unread_count) || 0;
-
-    if (pid > 0 && cnt > 0) {
-      unreads[pid] = { count: cnt, title, imageUrl };
-      total += cnt;
-    }
-  }
-
-  return { unreads, total };
+  return {
+    notifications: Array.isArray(res.notifications) ? res.notifications : [],
+    total: Number(res.unread_total) || 0,
+  };
 }
 
 export async function createMessageApi({

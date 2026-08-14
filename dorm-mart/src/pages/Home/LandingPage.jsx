@@ -1,96 +1,48 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import ExploreSection from "./components/ExploreSection";
-import ForYouHintModal from "./components/ForYouHintModal";
 import ForYouSection from "./components/ForYouSection";
 import HomeFeedTabs from "./components/HomeFeedTabs";
 import HomeTopBar from "./components/HomeTopBar";
 import { useHomeFeed } from "./hooks/useHomeFeed";
 
-const FOR_YOU_HINT_SESSION_KEY = "dm_for_you_feed_hint_dismissed";
-const FOR_YOU_HINT_FADE_MS = 280;
-
 export default function LandingPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     activeTab,
     errorItems,
     errorUser,
     exploreItems,
+    forYouItems,
+    hasPersonalization,
     interests,
     isLoading,
-    itemsByInterest,
-    loadingUser,
     quickFilterCategories,
     selectTab,
     wishlistedIds,
   } = useHomeFeed();
-  const [forYouHintDismissed, setForYouHintDismissed] = useState(true);
-  const [forYouHintAppeared, setForYouHintAppeared] = useState(false);
-  const [forYouHintClosing, setForYouHintClosing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [bannerIdx, setBannerIdx] = useState(0);
-  const forYouHintCloseGuardRef = useRef(false);
-  const forYouHintLeaveTimerRef = useRef(null);
+  const [showLoginSuccess, setShowLoginSuccess] = useState(
+    Boolean(location.state?.loginSuccess),
+  );
 
   const rotatingLines = isMobile
     ? ["Happy Shopping!"]
     : ["Welcome to Dorm Mart!", "Happy Shopping!"];
-  const hintWantsDisplay =
-    !loadingUser && !interests.length && !forYouHintDismissed;
-  const showForYouHintOverlay = hintWantsDisplay || forYouHintClosing;
-  const forYouHintFullyVisible = forYouHintAppeared && !forYouHintClosing;
-
   const openExternalRoute = (url) => {
     window.location.href = url;
   };
 
-  const dismissForYouHint = useCallback(() => {
-    setForYouHintDismissed(true);
-    try {
-      sessionStorage.setItem(FOR_YOU_HINT_SESSION_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const reopenForYouHint = useCallback(() => {
-    try {
-      sessionStorage.removeItem(FOR_YOU_HINT_SESSION_KEY);
-    } catch {
-      /* ignore */
-    }
-    forYouHintCloseGuardRef.current = false;
-    setForYouHintClosing(false);
-    setForYouHintAppeared(false);
-    setForYouHintDismissed(false);
-  }, []);
-
-  const closeForYouHintFade = useCallback(() => {
-    if (forYouHintCloseGuardRef.current) return;
-    forYouHintCloseGuardRef.current = true;
-    setForYouHintClosing(true);
-    if (forYouHintLeaveTimerRef.current) {
-      clearTimeout(forYouHintLeaveTimerRef.current);
-    }
-    forYouHintLeaveTimerRef.current = setTimeout(() => {
-      forYouHintLeaveTimerRef.current = null;
-      forYouHintCloseGuardRef.current = false;
-      dismissForYouHint();
-      setForYouHintClosing(false);
-    }, FOR_YOU_HINT_FADE_MS);
-  }, [dismissForYouHint]);
-
-  const navigateToPreferencesFromHint = () => {
-    if (forYouHintLeaveTimerRef.current) {
-      clearTimeout(forYouHintLeaveTimerRef.current);
-      forYouHintLeaveTimerRef.current = null;
-    }
-    forYouHintCloseGuardRef.current = false;
-    setForYouHintClosing(false);
-    setForYouHintAppeared(false);
-    dismissForYouHint();
-  };
+  useEffect(() => {
+    if (!location.state?.loginSuccess) return undefined;
+    const id = setTimeout(() => {
+      setShowLoginSuccess(false);
+      navigate(location.pathname, { replace: true, state: null });
+    }, 3000);
+    return () => clearTimeout(id);
+  }, [location.pathname, location.state?.loginSuccess, navigate]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -107,47 +59,13 @@ export default function LandingPage() {
     return () => clearInterval(id);
   }, [rotatingLines.length]);
 
-  useEffect(() => {
-    if (!hintWantsDisplay) {
-      forYouHintCloseGuardRef.current = false;
-    }
-  }, [hintWantsDisplay]);
-
-  useEffect(() => {
-    if (!hintWantsDisplay) {
-      setForYouHintAppeared(false);
-      return undefined;
-    }
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => setForYouHintAppeared(true));
-    });
-    return () => cancelAnimationFrame(id);
-  }, [hintWantsDisplay]);
-
-  useEffect(() => {
-    return () => {
-      if (forYouHintLeaveTimerRef.current) {
-        clearTimeout(forYouHintLeaveTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (showForYouHintOverlay) {
-      document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    };
-  }, [showForYouHintOverlay]);
-
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+      {showLoginSuccess && (
+        <div role="status" className="fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-lg bg-green-600 px-5 py-3 font-medium text-white shadow-lg">
+          Login Successful.
+        </div>
+      )}
       <HomeTopBar
         bannerText={rotatingLines[bannerIdx]}
         interests={interests}
@@ -157,9 +75,7 @@ export default function LandingPage() {
 
       <HomeFeedTabs
         activeTab={activeTab}
-        interests={interests}
         navigate={navigate}
-        onReopenForYouHint={reopenForYouHint}
         onSelectTab={selectTab}
         openExternalRoute={openExternalRoute}
         quickFilterCategories={quickFilterCategories}
@@ -170,8 +86,8 @@ export default function LandingPage() {
           <main className="flex flex-col gap-6 min-w-0">
             {activeTab === "forYou" && (
               <ForYouSection
-                interests={interests}
-                itemsByInterest={itemsByInterest}
+                hasPersonalization={hasPersonalization}
+                items={forYouItems}
                 navigate={navigate}
                 wishlistedIds={wishlistedIds}
               />
@@ -205,14 +121,6 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {showForYouHintOverlay && (
-        <ForYouHintModal
-          fullyVisible={forYouHintFullyVisible}
-          navigate={navigate}
-          onClose={closeForYouHintFade}
-          onNavigateToPreferences={navigateToPreferencesFromHint}
-        />
-      )}
     </div>
   );
 }

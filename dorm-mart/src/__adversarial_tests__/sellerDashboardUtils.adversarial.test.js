@@ -14,27 +14,32 @@ describe("seller dashboard utility boundaries", () => {
       image_url: "/images/lamp.jpg",
       has_accepted_scheduled_purchase: 1,
       categories: "not-array",
+      wishlisted: -2,
+      views: "7",
     });
 
     expect(listing.categories).toEqual([]);
     expect(listing.has_accepted_scheduled_purchase).toBe(true);
     expect(listing.image).toContain("/media/image.php");
+    expect(listing.wishlisted).toBe(0);
+    expect(listing.views).toBe(7);
   });
 
   test("calculates metrics from status values", () => {
     expect(
       calculateSummaryMetrics([
-        { status: "Active" },
-        { status: "pending" },
-        { status: "Sold" },
-        { status: "draft" },
+        { status: "Active", views: "4", wishlisted: 2 },
+        { status: "pending", views: 3, wishlisted: -1 },
+        { status: "Sold", views: "bad", wishlisted: 5 },
+        { status: "draft", views: 100, wishlisted: 100 },
       ]),
     ).toEqual({
+      totalPosts: 3,
       activeListings: 1,
       pendingSales: 1,
       itemsSold: 1,
-      savedDrafts: 1,
-      totalViews: 0,
+      totalViews: 7,
+      totalWishlists: 7,
     });
   });
 

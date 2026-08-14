@@ -21,6 +21,7 @@ export default function ListingForm({
   isNew,
   itemLocation,
   loadingExisting,
+  listingStatus,
   location,
   navigate,
   onFileChange,
@@ -32,6 +33,7 @@ export default function ListingForm({
   scrollPositionRef,
   selectableOptions,
   selectedCategory,
+  saveDraft,
   setAcceptTrades,
   setCategories,
   setCondition,
@@ -449,7 +451,7 @@ export default function ListingForm({
               />
             </div>
           </div>
-          {/* Photos */}
+          {/* Photos and videos */}
           <div
             className={`bg-white dark:bg-gray-950/30 rounded-2xl shadow-sm border p-6 mt-6 ${
               errors.images
@@ -458,22 +460,32 @@ export default function ListingForm({
             }`}
           >
             <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-6">
-              Photos <span className="text-red-500">*</span>
+              Photos and Videos <span className="text-red-500">*</span>
             </h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
               {images.length
                 ? images.map((img, i) => (
                     <div key={i} className="relative group">
-                      <img
-                        src={img.url}
-                        alt={`preview-${i}`}
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
+                      {img.type === "video" ? (
+                        <video
+                          src={img.url}
+                          aria-label={`video preview-${i}`}
+                          controls
+                          preload="metadata"
+                          className="w-full h-24 object-contain rounded-lg bg-black"
+                        />
+                      ) : (
+                        <img
+                          src={img.url}
+                          alt={`preview-${i}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                      )}
                       <button
                         onClick={() => removeImage(i)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="remove image"
+                        aria-label="remove media"
                       >
                         ✕
                       </button>
@@ -484,7 +496,7 @@ export default function ListingForm({
                       key={i}
                       className="h-24 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 text-sm"
                     >
-                      No photo
+                      No media
                     </div>
                   ))}
             </div>
@@ -492,8 +504,7 @@ export default function ListingForm({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
+              accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
               onChange={onFileChange}
               className="hidden"
             />
@@ -515,14 +526,13 @@ export default function ListingForm({
                     : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-200 hover:border-blue-500 hover:text-blue-600"
               }`}
             >
-              + Add Photos
+              + Add Photos or Videos
             </button>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
-              All photos are displayed as squares. You can adjust the crop area
-              when uploading.
+              Photos can be cropped before upload. Videos can be up to 25 MB.
               {images.length >= LIMITS.images && (
                 <span className="block mt-1 text-gray-600 dark:text-gray-300 font-medium">
-                  Maximum {LIMITS.images} images reached.
+                  Maximum {LIMITS.images} media files reached.
                 </span>
               )}
             </p>
@@ -540,9 +550,11 @@ export default function ListingForm({
             isEdit={isEdit}
             isNew={isNew}
             loadingExisting={loadingExisting}
+            listingStatus={listingStatus}
             location={location}
             navigate={navigate}
             publishListing={publishListing}
+            saveDraft={saveDraft}
             submitting={submitting}
           />{" "}
         </div>

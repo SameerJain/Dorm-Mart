@@ -30,12 +30,12 @@ if ($messageId <= 0) {
 }
 
 // Verify the requester is a participant in the conversation that owns this message
-// and fetch the stored image_url.
+// and fetch the stored attachment URL.
 $sql = '
   SELECT m.image_url, m.conv_id, c.user1_id, c.user2_id
     FROM messages m
     JOIN conversations c ON c.conv_id = m.conv_id
-   WHERE m.message_id = ?
+   WHERE m.message_id = ? AND m.deleted_at IS NULL
    LIMIT 1
 ';
 $stmt = $conn->prepare($sql);
@@ -63,14 +63,18 @@ if ($imageRel === '') {
   echo json_encode(['success' => false, 'error' => 'no_image']);
   exit;
 }
-if (strpos($imageRel, '/media/chat-images/') !== 0) {
+if (strpos($imageRel, '/media/chat-images/') !== 0
+    && strpos($imageRel, '/media/chat-attachments/') !== 0) {
   http_response_code(404);
   echo json_encode(['success' => false, 'error' => 'file_missing']);
   exit;
 }
 
 // Build absolute path safely from the configured chat media directory.
-$mediaRoot = real_upload_path(data_media_dir('chat-images'));
+$mediaSubdir = strpos($imageRel, '/media/chat-attachments/') === 0
+    ? 'chat-attachments'
+    : 'chat-images';
+$mediaRoot = real_upload_path(data_media_dir($mediaSubdir));
 $file = basename($imageRel);
 $absPath = $mediaRoot !== null ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
 
@@ -85,8 +89,7 @@ if (!$absPath || !$mediaRoot || strpos($absPath, $mediaRoot) !== 0 || !is_file($
 $finfo = new finfo(FILEINFO_MIME_TYPE);              // requires php-fileinfo extension
 $mime  = $finfo->file($absPath) ?: 'application/octet-stream';
 
-// Optional: allow only image/* to be served here
-if (strpos($mime, 'image/') !== 0) {
+if (strpos($mime, 'image/') !== 0 && strpos($mime, 'video/') !== 0) {
   http_response_code(415);
   echo json_encode(['success' => false, 'error' => 'unsupported_mime']);
   exit;
