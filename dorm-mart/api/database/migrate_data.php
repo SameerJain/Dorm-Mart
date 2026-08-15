@@ -12,6 +12,7 @@ header('Content-Type: application/json');                      // Return JSON to
 
 // Include security utilities for escape_html function
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/image_upload.php';
 
 require __DIR__ . '/db_connect.php';                            // Load your connection helper
 $conn = db();                                                   // Get a mysqli connection
@@ -27,9 +28,9 @@ $conn->query("
 // Copy test images from data/test-images/ to images/ directory (idempotent)
 $dataDir = dirname(__DIR__,2) . '/data';                        // Path to the data folder
 $testImagesDir = $dataDir . '/test-images';                    // Path to test-images subdirectory
-$imagesDir = dirname(__DIR__,2) . '/images';                   // Path to images directory
+$imagesDir = data_images_dir();                                // Persistent images directory
 
-if (is_dir($testImagesDir) && is_dir($imagesDir)) {
+if (is_dir($testImagesDir) && ensure_upload_directory($imagesDir)) {
   $testImageFiles = glob($testImagesDir . '/*');                // Get all files in test-images
   foreach ($testImageFiles as $testImagePath) {
     if (is_file($testImagePath)) {

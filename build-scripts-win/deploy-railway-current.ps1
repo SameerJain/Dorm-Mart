@@ -7,6 +7,7 @@ param(
     [string]$Service = "",
     [string]$Environment = "",
     [switch]$Ci,
+    [switch]$Detach,
     [switch]$RequireClean
 )
 
@@ -27,6 +28,29 @@ if (-not (Get-Command railway -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+$minimumRailwayVersion = [version]"4.30.5"
+$railwayVersionRaw = (& railway --version 2>$null) -join " "
+$railwayVersionMatch = [regex]::Match($railwayVersionRaw, '\d+\.\d+\.\d+')
+
+if (-not $railwayVersionMatch.Success) {
+    Write-Host "Could not determine the Railway CLI version." -ForegroundColor Red
+    Write-Host "Run: npm update -g @railway/cli" -ForegroundColor Yellow
+    exit 1
+}
+
+$railwayVersion = [version]$railwayVersionMatch.Value
+if ($railwayVersion -lt $minimumRailwayVersion) {
+    Write-Host "Railway CLI $railwayVersion has a known railway up upload bug." -ForegroundColor Red
+    Write-Host "Version $minimumRailwayVersion or newer is required." -ForegroundColor Yellow
+    Write-Host "Run: npm update -g @railway/cli" -ForegroundColor Yellow
+    exit 1
+}
+
+if ($Ci -and $Detach) {
+    Write-Host "Use either -Ci or -Detach, not both." -ForegroundColor Red
+    exit 1
+}
+
 $railwayUserRaw = & railway whoami 2>$null
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($railwayUserRaw)) {
     Write-Host "Railway CLI is not logged in, or your session token is expired." -ForegroundColor Red
@@ -37,6 +61,7 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($railwayUserRaw)) {
 $railwayUser = (($railwayUserRaw -join " ") -replace '[^\x20-\x7E]', '').Trim()
 
 Write-Host "Railway user: $railwayUser" -ForegroundColor Magenta
+Write-Host "Railway CLI: $railwayVersion" -ForegroundColor Magenta
 
 if ([string]::IsNullOrWhiteSpace($Note)) {
     $Note = "Railway Test"
@@ -71,11 +96,11 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
     Write-Host "Git was not found on PATH, so no local commit/dirty-file summary was shown." -ForegroundColor Yellow
 }
 
-$argsList = @("up", $dormMartPath)
+$argsList = @("up", $dormMartPath, "--message", $Note)
 
 if ($Ci) {
     $argsList += "--ci"
-} else {
+} elseif ($Detach) {
     $argsList += "--detach"
 }
 
@@ -99,4 +124,8 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "Deploy note: $Note" -ForegroundColor Magenta
-Write-Host "Railway deploy started successfully." -ForegroundColor Green
+if ($Detach) {
+    Write-Host "Railway deploy was queued. The build is still running remotely." -ForegroundColor Green
+} else {
+    Write-Host "Railway deploy completed successfully." -ForegroundColor Green
+}
