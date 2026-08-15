@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dorm Mart Test Card Auditor"
+  short_description: "Reconcile acceptance cards with the current build"
+  default_prompt: "Use $dorm-mart-audit-test-cards to audit these acceptance tests against the current Dorm Mart build."
