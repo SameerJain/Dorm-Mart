@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dorm Mart Run and Deploy"
+  short_description: "Run Dorm Mart locally and deploy it safely"
+  default_prompt: "Use $dorm-mart-run-and-deploy to run, build, or deploy Dorm Mart for this environment."
