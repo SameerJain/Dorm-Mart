@@ -114,7 +114,13 @@ try {
   $newHash = password_hash($next, PASSWORD_BCRYPT);
   
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  $upd = $conn->prepare('UPDATE user_accounts SET hash_pass = ?, hash_auth = NULL WHERE user_id = ?');
+  $upd = $conn->prepare(
+    'UPDATE user_accounts
+     SET hash_pass = ?, hash_auth = NULL, reset_token_hash = NULL,
+         reset_token_expires = NULL, last_reset_request = NULL,
+         auth_version = auth_version + 1
+     WHERE user_id = ?'
+  );
   $upd->bind_param('si', $newHash, $userId);  // 's' = string, 'i' = integer
   $upd->execute();
   $upd->close();

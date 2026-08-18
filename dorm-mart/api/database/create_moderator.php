@@ -44,7 +44,9 @@ try {
         $stmt = $conn->prepare(
             "UPDATE user_accounts
                 SET role = 'moderator', is_banned = 0, banned_at = NULL, ban_reason = NULL,
-                    is_protected = 1, hash_pass = ?, hash_auth = NULL
+                    is_protected = 1, hash_pass = ?, hash_auth = NULL,
+                    reset_token_hash = NULL, reset_token_expires = NULL,
+                    last_reset_request = NULL, auth_version = auth_version + 1
               WHERE user_id = ?"
         );
         $userId = (int)$existing['user_id'];
