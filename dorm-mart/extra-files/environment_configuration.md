@@ -9,7 +9,8 @@ Dorm Mart should get deployment-specific values from env vars, not hardcoded hos
 - For local PHP env files, set `APP_ENV=local`, `development`, `production`, or `cattle`.
 - `ENV_FILE` can point at a specific env file when needed.
 - Without `APP_ENV`, PHP keeps the legacy development-then-local fallback.
-- Railway uses service environment variables; this repo does not use `railway.toml`.
+- Railway uses service environment variables and runs schema migrations through the
+  `railway.toml` pre-deploy command. Fixture/data migrations are local-only.
 
 ## Key Vars
 

@@ -1,7 +1,8 @@
 export function parseLoginTimestamp(value) {
   if (typeof value !== "string" || !value.trim()) return null;
 
-  const parsed = new Date(value.trim().replace(" ", "T"));
+  const normalized = value.trim().replace(" ", "T");
+  const parsed = new Date(/[zZ]|[+-]\d{2}:\d{2}$/.test(normalized) ? normalized : `${normalized}Z`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 

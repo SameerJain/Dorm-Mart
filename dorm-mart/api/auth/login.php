@@ -76,9 +76,8 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 try {
     // CRITICAL: Check rate limiting FIRST, before any password verification
     // This ensures lockout error is shown regardless of whether credentials are valid or invalid
-    // Use session ID instead of email for rate limiting
-    $sessionId = session_id();
-    $rateLimitCheck = check_rate_limit($sessionId);
+    $rateLimitKey = login_rate_limit_key($email);
+    $rateLimitCheck = check_rate_limit($rateLimitKey);
     if ($rateLimitCheck['blocked']) {
         // Session is locked out - show lockout error regardless of credential validity
         $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
@@ -93,7 +92,7 @@ try {
     
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare(
-        'SELECT user_id, first_name, last_name, email, hash_pass, theme, two_factor_enabled, role, is_banned
+        'SELECT user_id, first_name, last_name, email, hash_pass, theme, two_factor_enabled, role, is_banned, auth_version
          FROM user_accounts WHERE email = ? LIMIT 1'
     );
     $stmt->bind_param('s', $email);  // 's' = string type, $email is safely bound as parameter
@@ -105,8 +104,7 @@ try {
         $conn->close();
         
         // Record failed attempt for non-existent user (but don't reveal this)
-        // Use session ID instead of email for rate limiting
-        record_failed_attempt($sessionId);
+        record_failed_attempt($rateLimitKey);
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
@@ -120,8 +118,7 @@ try {
         $conn->close();
         
         // Record failed attempt
-        // Use session ID instead of email for rate limiting
-        record_failed_attempt($sessionId);
+        record_failed_attempt($rateLimitKey);
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
@@ -142,7 +139,7 @@ try {
     // Clear rate limiting data on successful login BEFORE regenerating session ID
     // This prevents the new session from inheriting any lockout state
     require_once __DIR__ . '/../security/security.php';
-    reset_failed_attempts($sessionId);
+    reset_failed_attempts($rateLimitKey);
     
     $theme = 'light'; // default
     if (isset($row['theme'])) {
@@ -179,6 +176,7 @@ try {
     // This happens AFTER clearing rate limits to ensure old session data is cleared
     regenerate_session_on_login();
     $_SESSION['user_id'] = $userId;
+    $_SESSION['auth_version'] = (int)$row['auth_version'];
     record_login_device($userId);
 
     // Persist across restarts

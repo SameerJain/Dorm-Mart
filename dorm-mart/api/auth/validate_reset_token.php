@@ -12,55 +12,31 @@ $body  = json_request_body();
 $token = $body['token'] ?? '';
 $uid   = isset($body['uid']) ? (int)$body['uid'] : 0;
 
-if (empty($token)) {
-    json_response(['success' => false, 'error' => 'Token required'], 400);
+if (empty($token) || $uid <= 0) {
+    json_response(['success' => false, 'error' => 'Token and user ID required'], 400);
 }
 
 try {
     $conn = db();
 
-    if ($uid > 0) {
-        // Fast path: look up the specific user directly
-        $stmt = $conn->prepare('
-            SELECT user_id, hash_auth
-            FROM user_accounts
-            WHERE user_id = ?
-              AND hash_auth IS NOT NULL
-              AND reset_token_expires > NOW()
-            LIMIT 1
-        ');
-        if (!$stmt) {
-            throw new RuntimeException('Failed to prepare token lookup');
-        }
-        $stmt->bind_param('i', $uid);
-        $stmt->execute();
-        $result = $stmt->get_result();
+    $stmt = $conn->prepare('
+        SELECT user_id, reset_token_hash
+        FROM user_accounts
+        WHERE user_id = ?
+          AND reset_token_hash IS NOT NULL
+          AND reset_token_expires > UTC_TIMESTAMP()
+        LIMIT 1
+    ');
+    if (!$stmt) {
+        throw new RuntimeException('Failed to prepare token lookup');
+    }
+    $stmt->bind_param('i', $uid);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-        $isValidToken = false;
-        if ($row = $result->fetch_assoc()) {
-            $isValidToken = password_verify($token, (string)$row['hash_auth']);
-        }
-    } else {
-        // Fallback for old-style links that predate uid in the URL
-        $stmt = $conn->prepare('
-            SELECT user_id, hash_auth
-            FROM user_accounts
-            WHERE hash_auth IS NOT NULL
-              AND reset_token_expires > NOW()
-        ');
-        if (!$stmt) {
-            throw new RuntimeException('Failed to prepare token lookup');
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $isValidToken = false;
-        while ($row = $result->fetch_assoc()) {
-            if (password_verify($token, (string)$row['hash_auth'])) {
-                $isValidToken = true;
-                break;
-            }
-        }
+    $isValidToken = false;
+    if ($row = $result->fetch_assoc()) {
+        $isValidToken = password_verify($token, (string)$row['reset_token_hash']);
     }
 
     $stmt->close();

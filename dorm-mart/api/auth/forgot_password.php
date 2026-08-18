@@ -46,12 +46,12 @@ function accept_password_reset_request(): void
 function restore_password_reset_state(mysqli $conn, array $user, string $requestId): bool
 {
     try {
-        $oldHash = $user['hash_auth'] ?? null;
+        $oldHash = $user['reset_token_hash'] ?? null;
         $oldExpires = $user['reset_token_expires'] ?? null;
         $oldRequested = $user['last_reset_request'] ?? null;
         $userId = (int)$user['user_id'];
         $stmt = $conn->prepare(
-            'UPDATE user_accounts SET hash_auth = ?, reset_token_expires = ?, last_reset_request = ? WHERE user_id = ?'
+            'UPDATE user_accounts SET reset_token_hash = ?, reset_token_expires = ?, last_reset_request = ? WHERE user_id = ?'
         );
         $stmt->bind_param('sssi', $oldHash, $oldExpires, $oldRequested, $userId);
         $stmt->execute();
@@ -265,7 +265,7 @@ try {
     $conn = db();
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email, hash_auth, reset_token_expires, last_reset_request FROM user_accounts WHERE email = ?');
+    $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email, reset_token_hash, reset_token_expires, last_reset_request FROM user_accounts WHERE email = ?');
     $stmt->bind_param('s', $email);  // 's' = string type, safely bound as parameter
     $stmt->execute();
     $result = $stmt->get_result();
@@ -306,7 +306,7 @@ try {
 
     // Save the prior state so a rejected email can be compensated without
     // holding a database transaction open during the provider request.
-    $stmt = $conn->prepare('UPDATE user_accounts SET hash_auth = ?, reset_token_expires = ?, last_reset_request = NOW() WHERE user_id = ?');
+    $stmt = $conn->prepare('UPDATE user_accounts SET reset_token_hash = ?, reset_token_expires = ?, last_reset_request = NOW() WHERE user_id = ?');
     $stmt->bind_param('ssi', $hashedToken, $expiresAt, $user['user_id']);
     $stmt->execute();
     $stmt->close();

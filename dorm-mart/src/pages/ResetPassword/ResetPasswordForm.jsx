@@ -85,8 +85,8 @@ function ResetPasswordForm() {
 
   // Check if user already completed password reset for this specific token
   useEffect(() => {
-    // Handle missing token
-    if (!token) {
+    // Reset links are scoped to one account so token validation stays O(1).
+    if (!token || !uid || !/^\d+$/.test(uid)) {
       navigate("/login?error=invalid_reset_link", { replace: true });
       return;
     }
@@ -100,7 +100,7 @@ function ResetPasswordForm() {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, ...(uid ? { uid: parseInt(uid, 10) } : {}) }),
+            body: JSON.stringify({ token, uid: parseInt(uid, 10) }),
           },
         );
         const data = await response.json();
@@ -182,7 +182,7 @@ function ResetPasswordForm() {
         body: JSON.stringify({
           token,
           newPassword,
-          ...(uid ? { uid: parseInt(uid, 10) } : {}),
+          uid: parseInt(uid, 10),
         }),
       });
 

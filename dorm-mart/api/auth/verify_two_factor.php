@@ -40,7 +40,7 @@ if (!password_verify($code, (string)$challenge['code_hash'])) {
 $userId = (int)$challenge['user_id'];
 try {
     $conn = db();
-    $stmt = $conn->prepare('SELECT two_factor_enabled, theme, role, is_banned FROM user_accounts WHERE user_id = ? LIMIT 1');
+    $stmt = $conn->prepare('SELECT two_factor_enabled, theme, role, is_banned, auth_version FROM user_accounts WHERE user_id = ? LIMIT 1');
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $user = $stmt->get_result()->fetch_assoc();
@@ -60,6 +60,7 @@ try {
     regenerate_session_on_login();
     clear_two_factor_challenge();
     $_SESSION['user_id'] = $userId;
+    $_SESSION['auth_version'] = (int)$user['auth_version'];
     record_login_device($userId);
     issue_remember_cookie($userId);
 

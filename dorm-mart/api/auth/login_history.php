@@ -14,7 +14,11 @@ try {
     $conn = db();
     $stmt = $conn->prepare(
         'SELECT login_id, session_hash, device_type, browser, operating_system,
-                ip_address, location, logged_in_at, last_seen_at, signed_out_at
+                ip_address, location,
+                DATE_FORMAT(logged_in_at, "%Y-%m-%dT%H:%i:%sZ") AS logged_in_at,
+                DATE_FORMAT(last_seen_at, "%Y-%m-%dT%H:%i:%sZ") AS last_seen_at,
+                CASE WHEN signed_out_at IS NULL THEN NULL
+                     ELSE DATE_FORMAT(signed_out_at, "%Y-%m-%dT%H:%i:%sZ") END AS signed_out_at
          FROM login_history
          WHERE user_id = ?
          ORDER BY last_seen_at DESC

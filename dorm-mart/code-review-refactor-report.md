@@ -1,5 +1,53 @@
 # Thermo-Nuclear Code Quality Review And Refactor Report
 
+## 2026-08-15 CodeRabbit-Style Security Audit
+
+### Resolved findings
+
+- **P0 — committed production moderator credential:** the repeatable seed no longer
+  creates or resets a moderator password. Forward migration `022` disables only an
+  account that still has the exposed hash and revokes its authentication state.
+- **P1 — password reset overwrote remember-me state:** reset links now use a dedicated
+  `reset_token_hash`; validation requires the link's user ID and no longer scans users.
+- **P1 — server sessions survived credential changes and bans:** sessions carry an
+  `auth_version` checked on every authenticated request. Password changes, resets,
+  bans, and moderator reprovisioning increment it and clear persistent tokens.
+- **P1 — login throttling was tied to disposable PHP sessions:** failures now use a
+  SHA-256 email/client-address key, a ten-minute window, an atomic counter, and a
+  three-minute lockout after four failures.
+- **P1 — private chat uploads were publicly proxyable:** generic media requests return
+  404 for chat paths; participant-authorized delivery remains in the chat endpoint.
+- **P1 — hiding a conversation deleted shared purchase records:** the endpoint now
+  changes only the requesting participant's existing hide flag and preserves all
+  shared messages, purchases, confirmations, participants, and inventory state.
+- **P2 — migration failures could be recorded as successful:** both CLI runners enable
+  strict MySQL errors, consume every multi-query result, return nonzero on failure,
+  and write their ledger only after the SQL file completes.
+- **P2 — login-history dates were timezone ambiguous:** the API emits explicit UTC
+  ISO-8601 values and the UI treats legacy timezone-less values as UTC.
+
+### Deployment and residual risk
+
+- Schema corrections are forward-only in migrations `021` and `022`; schema files
+  `001` through `020` remain unchanged. Migration `023` reconciles installations that
+  applied the first local revision of `021`. Railway runs migrations before release.
+- The default moderator remains disabled until deliberately reprovisioned with the
+  CLI tool. Removing the working-tree secret does not remove it from Git history;
+  repository history should be treated as permanently exposed.
+- Safe dependency patches are applied. Remaining npm advisories originate from the
+  Create React App 5 build chain and require a separately tested build-tool migration;
+  `npm audit fix --force` is intentionally not used.
+
+### Verification
+
+- Local XAMPP MySQL applied `021`, `022`, and reconciliation migration `023`; a
+  second run applied nothing. Clean-install and failed-migration ledger probes passed.
+- Railway production deployment `0a4d7eb8-4369-4946-a086-2f75161046e9` applied the
+  same three migrations in its pre-deploy container and reached `SUCCESS`.
+- Jest: 22 suites and 57 tests passed. PHP: 306 files linted cleanly. The production
+  React build passed, Composer reported no advisories, and npm audit was reduced to
+  28 transitive findings (0 critical, 14 high, 5 moderate, 9 low).
+
 ## Scope
 
 Reviewed owned Dorm Mart application code: React `src`, PHP `api`, app configuration, migrations, and fixtures where relevant. Excluded third-party `vendor`, `node_modules`, generated `build` output, binary assets, PDFs, and lockfile churn.
