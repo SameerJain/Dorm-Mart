@@ -34,6 +34,7 @@ $sql = "
     c.product_id,
     c.item_deleted,
     inv.title AS product_title,
+    inv.item_status AS product_status,
     inv.seller_id AS product_seller_id,
     inv.photos AS product_photos,
     CASE WHEN inv.seller_id <> ? AND seller.reveal_contact_info = 1 THEN seller.email END AS shared_contact_email,

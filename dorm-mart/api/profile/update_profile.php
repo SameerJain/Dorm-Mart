@@ -10,6 +10,7 @@ require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/image_upload.php';
 require_once __DIR__ . '/profile_helpers.php';
 
 init_json_endpoint('POST');
@@ -53,7 +54,7 @@ try {
         }
     }
     if ($photoKey !== null) {
-        $photoPath = sanitize_profile_photo_value($data[$photoKey]);
+        $photoPath = sanitize_profile_photo_value($data[$photoKey], $userId);
         if ($photoPath === null) {
             $setClauses[] = 'profile_photo = NULL';
         } else {
@@ -106,11 +107,16 @@ function sanitize_bio_value($value): ?string
     if ($value === null) {
         return null;
     }
-    $bio = trim((string)$value);
+    if (!is_string($value)) {
+        json_response(['success' => false, 'error' => 'Invalid bio'], 400);
+    }
+    $bio = trim($value);
     if ($bio === '') {
         return null;
     }
-    $bio = mb_substr($bio, 0, 200);
+    if (mb_strlen($bio) > 200) {
+        json_response(['success' => false, 'error' => 'Bio is too long'], 400);
+    }
     return $bio;
 }
 
@@ -119,7 +125,10 @@ function sanitize_link_value($value): ?string
     if ($value === null) {
         return null;
     }
-    $link = trim((string)$value);
+    if (!is_string($value)) {
+        json_response(['success' => false, 'error' => 'Invalid Instagram URL'], 400);
+    }
+    $link = trim($value);
     if ($link === '') {
         return null;
     }
@@ -132,28 +141,30 @@ function sanitize_link_value($value): ?string
     return $link;
 }
 
-function sanitize_profile_photo_value($value): ?string
+function sanitize_profile_photo_value($value, int $userId): ?string
 {
     if ($value === null) {
         return null;
     }
-    $url = trim((string)$value);
+    if (!is_string($value)) {
+        json_response(['success' => false, 'error' => 'Invalid profile photo path'], 400);
+    }
+    $url = trim($value);
     if ($url === '') {
         return null;
     }
     if (strlen($url) > 255) {
         json_response(['success' => false, 'error' => 'Profile photo URL is too long'], 400);
     }
-    $allowedSchemes = ['http://', 'https://', '/media/', '/images/'];
-    $isAllowed = false;
-    foreach ($allowedSchemes as $prefix) {
-        if (str_starts_with($url, $prefix)) {
-            $isAllowed = true;
-            break;
-        }
+    $pattern = '#^/images/profile_' . $userId . '_[a-f0-9]{16}\.(?:jpg|png|webp)$#D';
+    if (!preg_match($pattern, $url)) {
+        json_response(['success' => false, 'error' => 'Profile photo must reference your uploaded image'], 400);
     }
-    if (!$isAllowed) {
-        json_response(['success' => false, 'error' => 'Profile photo must reference an allowed path'], 400);
+    $root = real_upload_path(data_images_dir());
+    $path = $root !== null ? realpath($root . DIRECTORY_SEPARATOR . basename($url)) : false;
+    $prefix = $root !== null ? rtrim($root, '/\\') . DIRECTORY_SEPARATOR : '';
+    if ($path === false || !str_starts_with($path, $prefix) || !is_file($path)) {
+        json_response(['success' => false, 'error' => 'Profile photo was not found'], 400);
     }
 
     return $url;

@@ -12,13 +12,14 @@
     "cross-env": "^10.1.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router-dom": "^7.9.3",
+    "react-router-dom": "^7.18.2",
     "react-scripts": "5.0.1",
     "tailwindcss": "^3.4.17",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
+    "start:api": "php -S localhost:8080 router.php",
     "_commint_start-local": "used to enforce locally running react to load .env.development",
     "start-local-mac": "env-cmd -f .env.development bash -c 'echo Using $REACT_APP_API_BASE && react-scripts start'",
     "start-local-win": "env-cmd -f .env.development cross-env react-scripts start",
@@ -33,6 +34,7 @@
     "build-cattle-mac": "env-cmd -f .env.cattle bash -c 'echo Building prod && GENERATE_SOURCEMAP=false react-scripts build'",
     "build-cattle-win": "env-cmd -f .env.cattle cross-env GENERATE_SOURCEMAP=false react-scripts build",
     "test": "react-scripts test --runInBand",
+    "test:backend": "php api/api_test_files/adversarial_validation_test.php",
     "eject": "react-scripts eject",
     "build-deploy": "npm run build-local-win && deploy.bat"
   },
@@ -58,7 +60,7 @@
   "devDependencies": {
     "autoprefixer": "^10.4.21",
     "env-cmd": "^11.0.0",
-    "postcss": "^8.5.6"
+    "postcss": "^8.5.26"
   },
   "_comment_proxy": "used to connect local react to locally running php server",
   "proxy": "http://localhost:8080"

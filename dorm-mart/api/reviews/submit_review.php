@@ -6,6 +6,8 @@ require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/image_upload.php';
+require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -17,33 +19,33 @@ try {
     require_csrf_token($payload['csrf_token'] ?? null);
 
     // Validate product_id
-    $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
+    $productId = request_int($payload, 'product_id');
     if ($productId <= 0) {
         json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
     }
 
     // Validate rating (seller rating, 0-5 in 0.5 increments)
-    $rating = isset($payload['rating']) ? (float)$payload['rating'] : -1;
-    if ($rating < 0 || $rating > 5) {
-        json_response(['success' => false, 'error' => 'Seller rating must be between 0 and 5'], 400);
+    $rating = strict_decimal_value($payload['rating'] ?? null);
+    if ($rating === null || $rating < 0.5 || $rating > 5) {
+        json_response(['success' => false, 'error' => 'Seller rating must be between 0.5 and 5'], 400);
     }
     // Check for 0.5 increments
-    if (fmod($rating * 2, 1) !== 0.0) {
+    if (abs(($rating * 2) - round($rating * 2)) > 0.000001) {
         json_response(['success' => false, 'error' => 'Seller rating must be in 0.5 increments'], 400);
     }
 
     // Validate product_rating (0-5 in 0.5 increments)
-    $productRating = isset($payload['product_rating']) ? (float)$payload['product_rating'] : -1;
-    if ($productRating < 0 || $productRating > 5) {
-        json_response(['success' => false, 'error' => 'Product rating must be between 0 and 5'], 400);
+    $productRating = strict_decimal_value($payload['product_rating'] ?? null);
+    if ($productRating === null || $productRating < 0.5 || $productRating > 5) {
+        json_response(['success' => false, 'error' => 'Product rating must be between 0.5 and 5'], 400);
     }
     // Check for 0.5 increments
-    if (fmod($productRating * 2, 1) !== 0.0) {
+    if (abs(($productRating * 2) - round($productRating * 2)) > 0.000001) {
         json_response(['success' => false, 'error' => 'Product rating must be in 0.5 increments'], 400);
     }
 
     // Validate review_text (1-1000 chars, required)
-    $reviewText = isset($payload['review_text']) ? trim((string)$payload['review_text']) : '';
+    $reviewText = is_string($payload['review_text'] ?? null) ? trim($payload['review_text']) : '';
     if ($reviewText === '') {
         json_response(['success' => false, 'error' => 'Review text is required'], 400);
     }
@@ -52,39 +54,42 @@ try {
     }
 
     // Validate optional image URLs (up to 3 images)
-    $image1Url = isset($payload['image1_url']) ? trim((string)$payload['image1_url']) : null;
-    $image2Url = isset($payload['image2_url']) ? trim((string)$payload['image2_url']) : null;
-    $image3Url = isset($payload['image3_url']) ? trim((string)$payload['image3_url']) : null;
+    $rawImageUrls = [];
+    foreach (['image1_url', 'image2_url', 'image3_url'] as $imageKey) {
+        $value = $payload[$imageKey] ?? null;
+        if ($value !== null && !is_string($value)) {
+            json_response(['success' => false, 'error' => 'Invalid review image URL'], 400);
+        }
+        $rawImageUrls[] = is_string($value) ? trim($value) : null;
+    }
     
     // Ensure images are from our upload directory (security check)
-    $validateImageUrl = function($url) {
+    $validateImageUrl = function($url) use ($userId) {
         if ($url === null || $url === '') return null;
-        if (!str_starts_with($url, '/media/review-images/')) {
-            return null;
+        $pattern = '#^/media/review-images/review_u' . $userId
+            . '_\d{8}_\d{6}_[a-f0-9]{12}\.(?:jpg|png|webp)$#D';
+        if (!preg_match($pattern, $url)) {
+            json_response(['success' => false, 'error' => 'Review images must belong to your upload session'], 400);
         }
-        if (mb_strlen($url) > 500) {
-            return null;
+        $root = real_upload_path(data_media_dir('review-images'));
+        $path = $root !== null ? realpath($root . DIRECTORY_SEPARATOR . basename($url)) : false;
+        $prefix = $root !== null ? rtrim($root, '/\\') . DIRECTORY_SEPARATOR : '';
+        if ($path === false || !str_starts_with($path, $prefix) || !is_file($path)) {
+            json_response(['success' => false, 'error' => 'Review image not found'], 400);
         }
         return $url;
     };
-    
-    $image1Url = $validateImageUrl($image1Url);
-    $image2Url = $validateImageUrl($image2Url);
-    $image3Url = $validateImageUrl($image3Url);
+
+    [$image1Url, $image2Url, $image3Url] = array_map($validateImageUrl, $rawImageUrls);
+    $presentImageUrls = array_values(array_filter([$image1Url, $image2Url, $image3Url]));
+    if (count($presentImageUrls) !== count(array_unique($presentImageUrls))) {
+        json_response(['success' => false, 'error' => 'Review images must be unique'], 400);
+    }
 
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Check if the product exists and get seller_id
-    $stmt = $conn->prepare('SELECT seller_id FROM INVENTORY WHERE product_id = ? LIMIT 1');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare product lookup');
-    }
-    $stmt->bind_param('i', $productId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $productRow = $result ? $result->fetch_assoc() : null;
-    $stmt->close();
+    $productRow = review_product($conn, $productId);
 
     if (!$productRow) {
         json_response(['success' => false, 'error' => 'Product not found'], 404);

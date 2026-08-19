@@ -12,11 +12,12 @@ $moderatorId = require_moderator();
 $input = json_request_body();
 require_csrf_token($input['csrf_token'] ?? null);
 
-$targetId = (int)($input['user_id'] ?? 0);
-$shouldBan = filter_var($input['banned'] ?? true, FILTER_VALIDATE_BOOL);
-$reason = trim((string)($input['reason'] ?? 'Moderator action'));
+$targetId = request_int($input, 'user_id');
+$shouldBan = strict_boolean_value($input['banned'] ?? true);
+$reasonValue = $input['reason'] ?? 'Moderator action';
+$reason = is_string($reasonValue) ? trim($reasonValue) : '';
 
-if ($targetId <= 0 || $targetId === $moderatorId) {
+if ($targetId <= 0 || $targetId === $moderatorId || $shouldBan === null || $reason === '') {
     json_response(['success' => false, 'error' => 'Invalid user'], 400);
 }
 if ((function_exists('mb_strlen') ? mb_strlen($reason, 'UTF-8') : strlen($reason)) > 255) {
@@ -37,7 +38,13 @@ try {
     }
 
     if ($shouldBan) {
-        $stmt = $conn->prepare('UPDATE user_accounts SET is_banned = 1, banned_at = NOW(), ban_reason = ?, hash_auth = NULL WHERE user_id = ?');
+        $stmt = $conn->prepare(
+            'UPDATE user_accounts
+             SET is_banned = 1, banned_at = UTC_TIMESTAMP(), ban_reason = ?,
+                 hash_auth = NULL, reset_token_hash = NULL, reset_token_expires = NULL,
+                 last_reset_request = NULL, auth_version = auth_version + 1
+             WHERE user_id = ?'
+        );
         $stmt->bind_param('si', $reason, $targetId);
     } else {
         $stmt = $conn->prepare('UPDATE user_accounts SET is_banned = 0, banned_at = NULL, ban_reason = NULL WHERE user_id = ?');
@@ -45,6 +52,10 @@ try {
     }
     $stmt->execute();
     $stmt->close();
+
+    if ($shouldBan) {
+        mark_all_login_devices_signed_out($targetId);
+    }
 
     json_response(['success' => true, 'user_id' => $targetId, 'is_banned' => $shouldBan]);
 } catch (Throwable $e) {

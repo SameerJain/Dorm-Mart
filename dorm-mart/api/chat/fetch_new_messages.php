@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../helpers/profanity.php';
+require_once __DIR__ . '/../helpers/request.php';
 require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
@@ -13,8 +14,12 @@ $userId = require_login();
 $conn = db();
 $conn->query("SET time_zone = '+00:00'");
 
-$convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
-$tsSec  = isset($_GET['ts']) ? (int)$_GET['ts'] : 0;
+$convId = request_int($_GET, 'conv_id');
+$tsSec  = array_key_exists('ts', $_GET) ? strict_integer_value($_GET['ts']) : 0;
+
+if ($convId <= 0 || $tsSec === null || $tsSec < 0) {
+    json_response(['success' => false, 'error' => 'Invalid conversation query'], 400);
+}
 
 // AUTHORIZATION: verify the authenticated user is a participant in this conversation
 if ($convId > 0) {
@@ -121,15 +126,26 @@ $typingStatus = [
     'is_typing' => false,
     'typing_user_first_name' => null
 ];
+$conversationStatus = null;
 
 if ($convId > 0) {
     // Verify user has access to this conversation and get other user's ID
-    $convStmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? LIMIT 1');
+    $convStmt = $conn->prepare(
+        'SELECT c.user1_id, c.user2_id, c.item_deleted, inv.item_status AS product_status
+           FROM conversations c
+           LEFT JOIN INVENTORY inv ON inv.product_id = c.product_id
+          WHERE c.conv_id = ?
+          LIMIT 1'
+    );
     $convStmt->bind_param('i', $convId);
     $convStmt->execute();
     $convRes = $convStmt->get_result();
     if ($convRes && $convRes->num_rows > 0) {
         $convRow = $convRes->fetch_assoc();
+        $conversationStatus = [
+            'product_status' => $convRow['product_status'] ?? null,
+            'item_deleted' => (bool)($convRow['item_deleted'] ?? false),
+        ];
         $otherUserId = ((int)$convRow['user1_id'] === $userId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
         
         if ($otherUserId > 0) {
@@ -163,6 +179,7 @@ json_response([
     'conv_id'  => $convId,
     'messages' => $messages, // array of only-new messages
     'typing_status' => $typingStatus, // typing status for other user
+    'conversation_status' => $conversationStatus,
     // Keep a one-second overlap so messages/edits sharing a timestamp are not missed.
     'cursor_ts' => max(0, time() - 1),
 ], 200, JSON_UNESCAPED_SLASHES);

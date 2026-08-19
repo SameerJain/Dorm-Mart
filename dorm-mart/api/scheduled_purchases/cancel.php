@@ -17,7 +17,7 @@ try {
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $requestId = isset($payload['request_id']) ? (int)$payload['request_id'] : 0;
+    $requestId = request_int($payload, 'request_id');
 
     if ($requestId <= 0) {
         json_response(['success' => false, 'error' => 'Invalid request'], 400);

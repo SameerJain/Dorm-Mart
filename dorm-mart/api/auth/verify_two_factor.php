@@ -8,11 +8,11 @@ init_json_endpoint('POST', ['ok' => false, 'error' => 'Method Not Allowed']);
 require_once __DIR__ . '/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/two_factor.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 auth_boot_session();
-$data = json_decode((string)file_get_contents('php://input'), true);
-if (!is_array($data)) $data = [];
-$code = trim((string)($data['code'] ?? ''));
+$data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON payload']);
+$code = is_string($data['code'] ?? null) ? trim($data['code']) : '';
 
 if (!preg_match('/^\d{6}$/', $code)) {
     json_response(['ok' => false, 'error' => 'Enter the 6-digit verification code.'], 400);
@@ -40,7 +40,7 @@ if (!password_verify($code, (string)$challenge['code_hash'])) {
 $userId = (int)$challenge['user_id'];
 try {
     $conn = db();
-    $stmt = $conn->prepare('SELECT two_factor_enabled, theme, role, is_banned FROM user_accounts WHERE user_id = ? LIMIT 1');
+    $stmt = $conn->prepare('SELECT two_factor_enabled, theme, role, is_banned, auth_version FROM user_accounts WHERE user_id = ? LIMIT 1');
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $user = $stmt->get_result()->fetch_assoc();
@@ -60,6 +60,7 @@ try {
     regenerate_session_on_login();
     clear_two_factor_challenge();
     $_SESSION['user_id'] = $userId;
+    $_SESSION['auth_version'] = (int)$user['auth_version'];
     record_login_device($userId);
     issue_remember_cookie($userId);
 

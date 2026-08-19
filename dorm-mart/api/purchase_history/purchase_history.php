@@ -21,16 +21,23 @@ try {
     require_csrf_token($payload['csrf_token'] ?? null);
 
     // Get filter parameters (with defaults for backward compatibility)
-    $dateRange = isset($payload['dateRange']) ? (string)$payload['dateRange'] : (isset($payload['year']) ? 'Last Year' : 'All Time');
-    $sort = isset($payload['sort']) ? (string)$payload['sort'] : 'Newest First';
+    $dateRange = $payload['dateRange'] ?? (isset($payload['year']) ? 'Last Year' : 'All Time');
+    $sort = $payload['sort'] ?? 'Newest First';
+    $allowedDateRanges = ['Last 30 Days', 'Last 3 Months', 'Last Year', 'All Time'];
+    $allowedSorts = ['Newest First', 'Oldest First', 'Price: Low to High', 'Price: High to Low'];
+    if (!is_string($dateRange) || !in_array($dateRange, $allowedDateRanges, true)
+        || !is_string($sort) || !in_array($sort, $allowedSorts, true)) {
+        json_response(['success' => false, 'error' => 'Invalid purchase history filters'], 400);
+    }
     
     // Handle legacy year parameter for backward compatibility
     if (isset($payload['year']) && !isset($payload['dateRange'])) {
-        $year = (int)$payload['year'];
+        $year = strict_integer_value($payload['year']);
         $currentYear = (int)date('Y');
-        if ($year >= 2016 && $year <= $currentYear + 1) {
-            $dateRange = 'Last Year'; // Approximate conversion
+        if ($year === null || $year < 2016 || $year > $currentYear + 1) {
+            json_response(['success' => false, 'error' => 'Invalid purchase history year'], 400);
         }
+        $dateRange = 'Last Year'; // Approximate legacy conversion
     }
 
     // Calculate date range

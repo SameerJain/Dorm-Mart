@@ -15,8 +15,9 @@ if ($isHttps) {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 }
 
-$token = $_GET['token'] ?? '';
-$uid = (isset($_GET['uid']) && ctype_digit($_GET['uid'])) ? (int)$_GET['uid'] : 0;
+$token = is_string($_GET['token'] ?? null) ? $_GET['token'] : '';
+$uidValue = $_GET['uid'] ?? null;
+$uid = is_string($uidValue) && ctype_digit($uidValue) ? (int)$uidValue : 0;
 
 // Validate token format: must be a 64-character hex string
 if (!empty($token) && !preg_match('/^[0-9a-f]{64}$/i', $token)) {

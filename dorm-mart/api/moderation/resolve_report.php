@@ -12,8 +12,8 @@ $moderatorId = require_moderator();
 $input = json_request_body();
 require_csrf_token($input['csrf_token'] ?? null);
 
-$reportId = (int)($input['report_id'] ?? 0);
-$status = (string)($input['status'] ?? 'resolved');
+$reportId = request_int($input, 'report_id');
+$status = is_string($input['status'] ?? null) ? $input['status'] : '';
 if ($reportId <= 0 || !in_array($status, ['resolved', 'dismissed'], true)) {
     json_response(['success' => false, 'error' => 'Invalid report update'], 400);
 }

@@ -30,19 +30,15 @@ $userId = require_login();
 /* Read body (JSON or form) - IMPORTANT: Do NOT HTML-encode passwords before hashing */
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-  $raw  = file_get_contents('php://input');
-  $data = json_decode($raw, true);
-  if (!is_array($data)) {
-    $data = [];
-  }
+  $data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON payload']);
   // Passwords must remain raw - they're hashed, not displayed
-  $current = isset($data['currentPassword']) ? (string)$data['currentPassword'] : '';
-  $next    = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
+  $current = is_string($data['currentPassword'] ?? null) ? $data['currentPassword'] : '';
+  $next = is_string($data['newPassword'] ?? null) ? $data['newPassword'] : '';
   require_csrf_token($data['csrf_token'] ?? null);
 } else {
   // Passwords must remain raw - they're hashed, not displayed
-  $current = isset($_POST['currentPassword']) ? (string)$_POST['currentPassword'] : '';
-  $next    = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
+  $current = is_string($_POST['currentPassword'] ?? null) ? $_POST['currentPassword'] : '';
+  $next = is_string($_POST['newPassword'] ?? null) ? $_POST['newPassword'] : '';
   require_csrf_token($_POST['csrf_token'] ?? null);
 }
 
@@ -114,7 +110,13 @@ try {
   $newHash = password_hash($next, PASSWORD_BCRYPT);
   
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  $upd = $conn->prepare('UPDATE user_accounts SET hash_pass = ?, hash_auth = NULL WHERE user_id = ?');
+  $upd = $conn->prepare(
+    'UPDATE user_accounts
+     SET hash_pass = ?, hash_auth = NULL, reset_token_hash = NULL,
+         reset_token_expires = NULL, last_reset_request = NULL,
+         auth_version = auth_version + 1
+     WHERE user_id = ?'
+  );
   $upd->bind_param('si', $newHash, $userId);  // 's' = string, 'i' = integer
   $upd->execute();
   $upd->close();

@@ -20,6 +20,10 @@ import useChatTypingStatus from "./hooks/useChatTypingStatus";
 import useChatUsernames from "./hooks/useChatUsernames";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
+import {
+  buildDisplayMessages,
+  parseChatMetadata,
+} from "./utils/chatPageUtils";
 
 /** Root Chat page: wires context, sidebar, messages, and composer together */
 export default function ChatPage() {
@@ -352,17 +356,6 @@ export default function ChatPage() {
     setDeleteError("");
   }
 
-  /** Helper to parse metadata once and cache it */
-  const parseMetadata = useCallback((metadata) => {
-    if (!metadata) return null;
-    if (typeof metadata === "object") return metadata;
-    try {
-      return JSON.parse(metadata);
-    } catch {
-      return null;
-    }
-  }, []);
-
   /** Determine if current user is the seller (seller perspective) */
   const isSellerPerspective =
     activeConversation?.productId &&
@@ -390,7 +383,7 @@ export default function ChatPage() {
     shouldShowBuyerRatingPrompt,
   } = useMemo(() => {
     const accepted = messages.some((m) => {
-      const meta = parseMetadata(m.metadata);
+      const meta = parseChatMetadata(m.metadata);
       const msgType = meta?.type;
       return (
         (msgType === "confirm_accepted" ||
@@ -415,236 +408,45 @@ export default function ChatPage() {
     isSellerPerspective,
     activeConversation?.productId,
     activeReceiverId,
-    parseMetadata,
   ]);
 
-  /** Memoize filtered messages computation to avoid re-running complex logic on every render */
-  const filteredMessages = useMemo(() => {
-    if (!messages.length) return [];
-
-    // Filter out duplicate confirm_request messages if a response exists
-    // Build a map of confirm_request_id to response messages
-    const confirmResponses = new Map();
-    const confirmRequestIds = new Set(); // Track all confirm_request_ids we've seen
-    let latestConfirmAcceptedTs = null;
-
-    // Pre-parse all metadata once to avoid repeated parsing
-    const messagesWithParsedMetadata = messages.map((m) => ({
-      ...m,
-      parsedMetadata: parseMetadata(m.metadata),
-    }));
-
-    // First pass: identify all confirm_request messages and their IDs
-    messagesWithParsedMetadata.forEach((m) => {
-      const metadata = m.parsedMetadata;
-      const messageType = metadata?.type;
-      const confirmRequestId = metadata?.confirm_request_id;
-
-      if (messageType === "confirm_request" && confirmRequestId) {
-        confirmRequestIds.add(confirmRequestId);
-      }
-    });
-
-    // Second pass: identify response messages and map them to request IDs
-    messagesWithParsedMetadata.forEach((m) => {
-      const metadata = m.parsedMetadata;
-      const messageType = metadata?.type;
-      const confirmRequestId = metadata?.confirm_request_id;
-
-      // Check if this is a response message
-      if (
-        confirmRequestId &&
-        (messageType === "confirm_accepted" ||
-          messageType === "confirm_denied" ||
-          messageType === "confirm_auto_accepted")
-      ) {
-        // Track that we have a response for this confirm_request_id
-        confirmResponses.set(confirmRequestId, true);
-
-        // Track the latest confirm_accepted/confirm_auto_accepted timestamp
-        if (
-          (messageType === "confirm_accepted" ||
-            messageType === "confirm_auto_accepted") &&
-          metadata?.is_successful !== false &&
-          m.ts
-        ) {
-          if (!latestConfirmAcceptedTs || m.ts > latestConfirmAcceptedTs) {
-            latestConfirmAcceptedTs = m.ts;
-          }
-        }
-      }
-
-      // Also check enriched metadata for confirm_purchase_status
-      // This handles cases where backend enriches messages with status
-      const enrichedStatus = metadata?.confirm_purchase_status;
-      if (
-        confirmRequestId &&
-        enrichedStatus &&
-        (enrichedStatus === "buyer_accepted" ||
-          enrichedStatus === "buyer_declined" ||
-          enrichedStatus === "auto_accepted")
-      ) {
-        confirmResponses.set(confirmRequestId, true);
-
-        if (
-          (enrichedStatus === "buyer_accepted" ||
-            enrichedStatus === "auto_accepted") &&
-          metadata?.is_successful !== false &&
-          m.ts
-        ) {
-          if (!latestConfirmAcceptedTs || m.ts > latestConfirmAcceptedTs) {
-            latestConfirmAcceptedTs = m.ts;
-          }
-        }
-      }
-    });
-
-    // Filter messages: hide confirm_request if a response exists for the same confirm_request_id
-    // Also deduplicate: if multiple response messages exist for the same confirm_request_id, keep only the latest one
-    const responseMessagesByRequestId = new Map(); // Track confirm_request_id -> array of response messages
-
-    // First, collect all response messages grouped by confirm_request_id
-    messagesWithParsedMetadata.forEach((m) => {
-      const metadata = m.parsedMetadata;
-      const messageType = metadata?.type;
-      const confirmRequestId = metadata?.confirm_request_id;
-
-      if (
-        confirmRequestId &&
-        (messageType === "confirm_accepted" ||
-          messageType === "confirm_denied" ||
-          messageType === "confirm_auto_accepted")
-      ) {
-        if (!responseMessagesByRequestId.has(confirmRequestId)) {
-          responseMessagesByRequestId.set(confirmRequestId, []);
-        }
-        responseMessagesByRequestId.get(confirmRequestId).push(m);
-      }
-    });
-
-    // For each confirm_request_id with responses, find the latest one
-    const latestResponseByRequestId = new Map();
-    responseMessagesByRequestId.forEach(
-      (responseMessages, confirmRequestId) => {
-        // Sort by timestamp descending and take the first (latest) one
-        const sorted = responseMessages.sort((a, b) => {
-          const tsA = a.ts || 0;
-          const tsB = b.ts || 0;
-          return tsB - tsA; // Descending order
-        });
-        latestResponseByRequestId.set(confirmRequestId, sorted[0]);
-      },
-    );
-
-    // Now filter messages
-    let filtered = messagesWithParsedMetadata.filter((m) => {
-      const metadata = m.parsedMetadata;
-      const messageType = metadata?.type;
-      const confirmRequestId = metadata?.confirm_request_id;
-
-      // If this is a confirm_request and we have a response for it, hide it
-      // This ensures only the response message (confirm_accepted/confirm_denied) is shown
-      if (
-        messageType === "confirm_request" &&
-        confirmRequestId &&
-        confirmResponses.has(confirmRequestId)
-      ) {
-        return false; // Hide this message
-      }
-
-      // If this is a response message, only show it if it's the latest one for this confirm_request_id
-      if (
-        confirmRequestId &&
-        (messageType === "confirm_accepted" ||
-          messageType === "confirm_denied" ||
-          messageType === "confirm_auto_accepted")
-      ) {
-        const latestResponse = latestResponseByRequestId.get(confirmRequestId);
-        // Only show this message if it's the latest one (same message object reference)
-        return latestResponse === m;
-      }
-
-      return true; // Show this message
-    });
-
-    // Insert virtual messages for review/rating prompts right after the latest confirm_accepted message
-    if (
-      latestConfirmAcceptedTs !== null &&
-      hasAcceptedConfirm &&
-      activeConversation?.productId
-    ) {
-      const virtualMessages = [];
-
-      // Add review prompt for buyers
-      if (shouldShowReviewPrompt) {
-        virtualMessages.push({
-          message_id: `review_prompt_${activeConversation.productId}`,
-          sender: "system",
-          content: "",
-          ts: latestConfirmAcceptedTs + 1, // Place right after confirm_accepted
-          metadata: {
-            type: "review_prompt",
-          },
-          parsedMetadata: { type: "review_prompt" },
-        });
-      }
-
-      // Add buyer rating prompt for sellers
-      if (shouldShowBuyerRatingPrompt && activeReceiverId) {
-        virtualMessages.push({
-          message_id: `buyer_rating_prompt_${activeConversation.productId}_${activeReceiverId}`,
-          sender: "system",
-          content: "",
-          ts: latestConfirmAcceptedTs + 2, // Place after review prompt if both exist
-          metadata: {
-            type: "buyer_rating_prompt",
-          },
-          parsedMetadata: { type: "buyer_rating_prompt" },
-        });
-      }
-
-      // Insert virtual messages into the array and sort by timestamp
-      filtered = [...filtered, ...virtualMessages].sort((a, b) => {
-        const tsA = a.ts || 0;
-        const tsB = b.ts || 0;
-        if (tsA !== tsB) return tsA - tsB;
-        // If timestamps are equal, ensure virtual messages come after regular messages
-        const aMsgId = String(a.message_id || "");
-        const bMsgId = String(b.message_id || "");
-        const aIsVirtual =
-          aMsgId.startsWith("review_prompt_") ||
-          aMsgId.startsWith("buyer_rating_prompt_");
-        const bIsVirtual =
-          bMsgId.startsWith("review_prompt_") ||
-          bMsgId.startsWith("buyer_rating_prompt_");
-        if (aIsVirtual && !bIsVirtual) return 1;
-        if (!aIsVirtual && bIsVirtual) return -1;
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [
-    messages,
-    hasAcceptedConfirm,
-    activeConversation?.productId,
-    shouldShowReviewPrompt,
-    shouldShowBuyerRatingPrompt,
-    activeReceiverId,
-    parseMetadata,
-  ]);
+  const filteredMessages = useMemo(
+    () =>
+      buildDisplayMessages({
+        activeReceiverId,
+        hasAcceptedConfirm,
+        messages,
+        productId: activeConversation?.productId,
+        shouldShowBuyerRatingPrompt,
+        shouldShowReviewPrompt,
+      }),
+    [
+      activeReceiverId,
+      activeConversation?.productId,
+      hasAcceptedConfirm,
+      messages,
+      shouldShowBuyerRatingPrompt,
+      shouldShowReviewPrompt,
+    ],
+  );
 
   /** Header background color based on buyer vs seller perspective */
   const headerBgColor = isSellerPerspective
     ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
     : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
+  const isListingDraft = activeConversation?.productStatus === "Draft";
 
   /** Seller-only confirm state (null if not seller perspective) */
   const confirmState = isSellerPerspective
-    ? (confirmStatus ?? {
-        can_confirm: false,
-        message: "Checking Confirm Purchase status...",
-      })
+    ? isListingDraft
+      ? {
+          can_confirm: false,
+          message: "Publish this listing before confirming a purchase.",
+        }
+      : (confirmStatus ?? {
+          can_confirm: false,
+          message: "Checking Confirm Purchase status...",
+        })
     : null;
 
   /** Disable Confirm Purchase button if cannot confirm */
@@ -657,6 +459,7 @@ export default function ChatPage() {
     if (
       !activeConvId ||
       !activeConversation?.productId ||
+      isListingDraft ||
       hasActiveScheduledPurchase
     )
       return;
@@ -667,7 +470,8 @@ export default function ChatPage() {
 
   /** Navigate to Confirm Purchase flow for seller */
   function handleConfirmPurchase() {
-    if (!activeConvId || !activeConversation?.productId) return;
+    if (!activeConvId || !activeConversation?.productId || isListingDraft)
+      return;
     navigate("/app/seller-dashboard/confirm-purchase", {
       state: { convId: activeConvId, productId: activeConversation.productId },
     });
@@ -675,7 +479,7 @@ export default function ChatPage() {
 
   return (
     <div
-      className="h-[100dvh] md:h-[calc(100dvh-var(--nav-h))] w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+      className={`${isMobileList ? "h-[calc(100dvh-64px)]" : "h-[100dvh]"} md:h-[calc(100dvh-var(--nav-h))] w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100`}
       style={{ "--nav-h": "64px" }}
     >
       <div className="mx-auto h-full max-w-[1200px] px-4 py-6">
@@ -730,7 +534,6 @@ export default function ChatPage() {
               messages={messages}
               messagesByConv={messagesByConv}
               editMessage={editMessage}
-              parseMetadata={parseMetadata}
               scrollRef={scrollRef}
               typingUserName={typingUserName}
             />

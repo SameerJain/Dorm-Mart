@@ -23,6 +23,7 @@ function UserPreferences() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const [availableCategories, setAvailableCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
@@ -165,16 +166,23 @@ function UserPreferences() {
           interests: selectedInterests,
           theme: theme,
         };
-        await csrfFetch(`${API_BASE}/profile/user_preferences.php`, {
+        const response = await csrfFetch(`${API_BASE}/profile/user_preferences.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify(body),
           signal: controller.signal,
         });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result.ok !== true) {
+          throw new Error(result.error || "Unable to save preferences.");
+        }
+        setSaveError("");
       } catch (e) {
-        if (e.name !== "AbortError")
+        if (e.name !== "AbortError") {
           logger.warn("UserPreferences: POST failed", e);
+          setSaveError(e.message || "Unable to save preferences.");
+        }
       }
     }, 400);
     return () => {
@@ -201,6 +209,11 @@ function UserPreferences() {
       </div>
 
       <div className="space-y-8">
+        {saveError && (
+          <p role="alert" className="rounded-lg bg-red-100 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
+            {saveError}
+          </p>
+        )}
         {/* Notification Settings */}
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">

@@ -33,6 +33,7 @@ dorm-mart/deploy.bat
 *.toml
 railway.toml
 nixpacks.toml
+!dorm-mart/railway.toml
 
 # Logs
 npm-debug.log*

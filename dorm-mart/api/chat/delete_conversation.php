@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 require_once __DIR__ . '/../auth/auth_handle.php';
@@ -9,185 +8,74 @@ require_once __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('POST');
 
+$conn = null;
 try {
     $userId = require_login();
-
-    $conn = db();
-    $conn->set_charset('utf8mb4');
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $convId = isset($payload['conv_id']) ? (int)$payload['conv_id'] : 0;
+    $convId = request_int($payload, 'conv_id');
     if ($convId <= 0) {
         json_response(['success' => false, 'error' => 'Invalid conversation ID'], 400);
     }
 
-    // Verify user is a participant in this conversation
-    $checkStmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
-    if (!$checkStmt) {
-        throw new RuntimeException('Failed to prepare conversation check');
-    }
-    $checkStmt->bind_param('i', $convId);
-    $checkStmt->execute();
-    $checkRes = $checkStmt->get_result();
-    $convRow = $checkRes ? $checkRes->fetch_assoc() : null;
-    $checkStmt->close();
+    $conn = db();
+    $conn->set_charset('utf8mb4');
+    $conn->begin_transaction();
 
-    if (!$convRow) {
+    $stmt = $conn->prepare(
+        'SELECT user1_id, user2_id, user1_deleted, user2_deleted
+         FROM conversations
+         WHERE conv_id = ?
+         LIMIT 1
+         FOR UPDATE'
+    );
+    $stmt->bind_param('i', $convId);
+    $stmt->execute();
+    $conversation = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$conversation) {
+        $conn->rollback();
         json_response(['success' => false, 'error' => 'Conversation not found'], 404);
     }
 
-    $user1Id = (int)$convRow['user1_id'];
-    $user2Id = (int)$convRow['user2_id'];
-    $isUser1 = $userId === $user1Id;
-    $isUser2 = $userId === $user2Id;
-
+    $isUser1 = $userId === (int)$conversation['user1_id'];
+    $isUser2 = $userId === (int)$conversation['user2_id'];
     if (!$isUser1 && !$isUser2) {
-        json_response(['success' => false, 'error' => 'Not authorized to delete this conversation'], 403);
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'Not authorized to hide this conversation'], 403);
     }
 
-    // Check if already deleted by this user
-    if (($isUser1 && (int)$convRow['user1_deleted'] === 1) || ($isUser2 && (int)$convRow['user2_deleted'] === 1)) {
-        json_response(['success' => false, 'error' => 'Conversation already deleted'], 409);
+    $alreadyHidden = $isUser1
+        ? (int)$conversation['user1_deleted'] === 1
+        : (int)$conversation['user2_deleted'] === 1;
+    if ($alreadyHidden) {
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'Conversation already hidden'], 409);
     }
 
-    // Get count of scheduled purchases to delete
-    $countStmt = $conn->prepare('SELECT COUNT(*) as cnt FROM scheduled_purchase_requests WHERE conversation_id = ?');
-    $countStmt->bind_param('i', $convId);
-    $countStmt->execute();
-    $countRes = $countStmt->get_result();
-    $countRow = $countRes ? $countRes->fetch_assoc() : null;
-    $countStmt->close();
-    $scheduledPurchaseCount = $countRow ? (int)$countRow['cnt'] : 0;
+    $column = $isUser1 ? 'user1_deleted' : 'user2_deleted';
+    $stmt = $conn->prepare("UPDATE conversations SET {$column} = 1 WHERE conv_id = ?");
+    $stmt->bind_param('i', $convId);
+    $stmt->execute();
+    $stmt->close();
 
-    // Get scheduled purchases to update item status BEFORE deleting
-    $scheduledStmt = $conn->prepare('SELECT request_id, inventory_product_id, status FROM scheduled_purchase_requests WHERE conversation_id = ?');
-    $scheduledStmt->bind_param('i', $convId);
-    $scheduledStmt->execute();
-    $scheduledRes = $scheduledStmt->get_result();
-    $scheduledPurchases = [];
-    $requestIds = [];
-    while ($row = $scheduledRes->fetch_assoc()) {
-        $requestId = (int)$row['request_id'];
-        $scheduledPurchases[] = [
-            'request_id' => $requestId,
-            'inventory_product_id' => (int)$row['inventory_product_id'],
-            'status' => (string)$row['status'],
-        ];
-        $requestIds[] = $requestId;
-    }
-    $scheduledStmt->close();
-
-    // Update item status back to "Active" for accepted scheduled purchases BEFORE deleting
-    // Only if no other accepted purchases exist for those items (excluding the ones we're about to delete)
-    foreach ($scheduledPurchases as $sp) {
-        if ($sp['status'] === 'accepted') {
-            $productId = $sp['inventory_product_id'];
-            // Check if there are other accepted scheduled purchases for this item (excluding ones we're deleting)
-            $placeholders = implode(',', array_fill(0, count($requestIds), '?'));
-            $checkOtherStmt = $conn->prepare("
-                SELECT COUNT(*) as cnt
-                FROM scheduled_purchase_requests spr
-                WHERE spr.inventory_product_id = ?
-                  AND spr.status = 'accepted'
-                  AND spr.request_id NOT IN ($placeholders)
-                  AND COALESCE((
-                    SELECT CASE
-                      WHEN cpr.status IN ('buyer_accepted', 'auto_accepted') AND cpr.is_successful = 0 THEN 0
-                      ELSE 1
-                    END
-                    FROM confirm_purchase_requests cpr
-                    WHERE cpr.scheduled_request_id = spr.request_id
-                    ORDER BY cpr.confirm_request_id DESC
-                    LIMIT 1
-                  ), 1) = 1
-            ");
-            if (!$checkOtherStmt) {
-                throw new RuntimeException('Failed to prepare accepted schedule check');
-            }
-            $params = array_merge([$productId], $requestIds);
-            $types = 'i' . str_repeat('i', count($requestIds));
-            $checkOtherStmt->bind_param($types, ...$params);
-            $checkOtherStmt->execute();
-            $checkOtherRes = $checkOtherStmt->get_result();
-            $checkOtherRow = $checkOtherRes ? $checkOtherRes->fetch_assoc() : null;
-            $checkOtherStmt->close();
-
-            $hasOtherAccepted = $checkOtherRow && (int)$checkOtherRow['cnt'] > 0;
-
-            // Only set back to Active if no other accepted scheduled purchases exist
-            if (!$hasOtherAccepted) {
-                $itemStatusStmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND item_status = ?');
-                if ($itemStatusStmt) {
-                    $activeStatus = 'Active';
-                    $pendingStatus = 'Pending';
-                    $itemStatusStmt->bind_param('sis', $activeStatus, $productId, $pendingStatus);
-                    $itemStatusStmt->execute();
-                    $itemStatusStmt->close();
-                }
-            }
-        }
-    }
-
-    // Delete scheduled purchases AFTER updating item status
-    $deleteScheduledStmt = $conn->prepare('DELETE FROM scheduled_purchase_requests WHERE conversation_id = ?');
-    $deleteScheduledStmt->bind_param('i', $convId);
-    $deleteScheduledStmt->execute();
-    $deleteScheduledStmt->close();
-
-    $cpStmt = $conn->prepare('DELETE FROM conversation_participants WHERE conv_id = ? AND user_id = ?');
-    if ($cpStmt) {
-        $cpStmt->bind_param('ii', $convId, $userId);
-        $cpStmt->execute();
-        $cpStmt->close();
-    }
-
-
-    // Mark conversation as deleted for this user
-    if ($isUser1) {
-        $updateStmt = $conn->prepare('UPDATE conversations SET user1_deleted = 1 WHERE conv_id = ?');
-    } else {
-        $updateStmt = $conn->prepare('UPDATE conversations SET user2_deleted = 1 WHERE conv_id = ?');
-    }
-    if (!$updateStmt) {
-        throw new RuntimeException('Failed to prepare update');
-    }
-    $updateStmt->bind_param('i', $convId);
-    $updateStmt->execute();
-    $updateStmt->close();
-
-    $flagStmt = $conn->prepare('SELECT user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
-    if ($flagStmt) {
-        $flagStmt->bind_param('i', $convId);
-        $flagStmt->execute();
-        $flagRes = $flagStmt->get_result();
-        $flagRow = $flagRes ? $flagRes->fetch_assoc() : null;
-        $flagStmt->close();
-
-        // If both users have deleted this conversation, hard-delete it.
-        if ($flagRow && (int)$flagRow['user1_deleted'] === 1 && (int)$flagRow['user2_deleted'] === 1) {
-            // Thanks to ON DELETE CASCADE on fk_msg_conv and fk_cp_conv,
-            // this will also delete all messages and conversation_participants rows.
-            $delConvStmt = $conn->prepare('DELETE FROM conversations WHERE conv_id = ?');
-            if ($delConvStmt) {
-                $delConvStmt->bind_param('i', $convId);
-                $delConvStmt->execute();
-                $delConvStmt->close();
-            }
-        }
-    }
-    
+    $conn->commit();
+    $conn->close();
     json_response([
         'success' => true,
-        'message' => 'Conversation deleted successfully',
-        'deleted_scheduled_purchases' => $scheduledPurchaseCount,
+        'hidden' => true,
+        'message' => 'Conversation hidden successfully',
     ]);
-    
-    $conn->close();
 } catch (Throwable $e) {
-    error_log('delete_conversation error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
-    if (isset($conn)) {
+    if ($conn instanceof mysqli) {
+        try {
+            $conn->rollback();
+        } catch (Throwable $ignored) {
+        }
         $conn->close();
     }
+    error_log('delete_conversation error: ' . $e->getMessage());
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

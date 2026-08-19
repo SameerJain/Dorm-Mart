@@ -62,3 +62,21 @@ test("loads and persists the seller contact-sharing toggle", async () => {
     contactPhone: "(716) 555-0123",
   });
 });
+
+test("shows backend validation failures instead of silently losing changes", async () => {
+  csrfFetch.mockResolvedValue({
+    ok: false,
+    json: async () => ({ ok: false, error: "Invalid phone number" }),
+  });
+  render(<UserPreferences />);
+
+  const phoneInput = screen.getByLabelText("Phone number (optional)");
+  await waitFor(() =>
+    expect(phoneInput).toHaveProperty("value", "(716) 555-0123"),
+  );
+  fireEvent.change(phoneInput, { target: { value: "+" } });
+
+  expect(
+    (await screen.findByRole("alert", {}, { timeout: 1500 })).textContent,
+  ).toContain("Invalid phone number");
+});

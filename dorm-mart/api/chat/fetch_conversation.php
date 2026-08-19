@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../helpers/profanity.php';
+require_once __DIR__ . '/../helpers/request.php';
 require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
@@ -14,7 +15,7 @@ $userId = require_login();
 
 // --- input: conv_id must come from the query string ---
 // e.g. GET /api/chat/fetch_conversation.php?conv_id=123
-$convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
+$convId = request_int($_GET, 'conv_id');
 if ($convId <= 0) {
     json_response(['success' => false, 'error' => 'conv_id is required'], 400);
 }

@@ -16,6 +16,9 @@ function db(): mysqli
 
     if (empty($dbname) || $dbname === false) {
         error_log('db_connect: DB_NAME is not set or empty');
+        if (php_sapi_name() === 'cli') {
+            throw new RuntimeException('Database configuration error');
+        }
         die(json_encode(["success" => false, "message" => "Database configuration error"]));
     }
 
@@ -25,6 +28,9 @@ function db(): mysqli
     // Validate database name format (alphanumeric, underscore, hyphen only)
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $dbname)) {
         error_log('db_connect: DB_NAME contains invalid characters');
+        if (php_sapi_name() === 'cli') {
+            throw new RuntimeException('Database configuration error');
+        }
         die(json_encode(["success" => false, "message" => "Database configuration error"]));
     }
 
@@ -33,12 +39,18 @@ function db(): mysqli
         $conn = new mysqli($servername, $username, $password);
     } catch (mysqli_sql_exception $e) {
         error_log('db_connect: Connection failed: ' . $e->getMessage());
+        if (php_sapi_name() === 'cli') {
+            throw new RuntimeException('Database connection error', 0, $e);
+        }
         die(json_encode(["success" => false, "message" => "Database connection error"]));
     }
 
     // check if db connected successfully
     if ($conn->connect_error) {
         error_log('db_connect: Connection failed: ' . $conn->connect_error);
+        if (php_sapi_name() === 'cli') {
+            throw new RuntimeException('Database connection error');
+        }
         die(json_encode(["success" => false, "message" => "Database connection error"]));
     }
 
@@ -52,6 +64,9 @@ function db(): mysqli
         // Use backticks for identifier escaping in CREATE DATABASE
         if (!$conn->query("CREATE DATABASE `$dbname`")) {
             error_log('db_connect: Failed to create database: ' . $conn->error);
+            if (php_sapi_name() === 'cli') {
+                throw new RuntimeException('Database initialization error');
+            }
             die(json_encode(["success" => false, "message" => "Database initialization error"]));
         }
     }

@@ -34,8 +34,8 @@ try {
         json_response(['success' => false, 'error' => 'This account cannot be deleted'], 403);
     }
 
-    $confirmation = isset($input['confirmation']) ? (string)$input['confirmation'] : '';
-    $password = isset($input['currentPassword']) ? (string)$input['currentPassword'] : '';
+    $confirmation = is_string($input['confirmation'] ?? null) ? $input['confirmation'] : '';
+    $password = is_string($input['currentPassword'] ?? null) ? $input['currentPassword'] : '';
     if ($confirmation !== 'DELETE MY ACCOUNT' || $password === '' || strlen($password) > 64) {
         json_response(['success' => false, 'error' => 'Invalid account deletion confirmation'], 400);
     }
@@ -333,7 +333,7 @@ function account_delete_owned_images(array $paths, int $userId): void
         if (!is_string($path) || !str_starts_with($path, '/images/')) continue;
         $filename = basename(rawurldecode($path));
         $isOwnedUpload = str_starts_with($filename, 'profile_' . $userId . '_')
-            || str_starts_with($filename, 'img_');
+            || str_starts_with($filename, 'img_u' . $userId . '_');
         if (!$isOwnedUpload) continue;
 
         $file = $imagesDir . DIRECTORY_SEPARATOR . $filename;

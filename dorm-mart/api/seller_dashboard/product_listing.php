@@ -31,7 +31,10 @@ try {
   require $API_ROOT . '/auth/auth_handle.php';
   require $API_ROOT . '/database/db_connect.php';
   require $API_ROOT . '/helpers/image_upload.php';
+  require $API_ROOT . '/helpers/request.php';
   require_once $API_ROOT . '/helpers/notifications.php';
+  require_once $API_ROOT . '/scheduled_purchases/helpers.php';
+  require_multipart_formdata();
 
   auth_boot_session();
   $userId = require_login();
@@ -43,43 +46,55 @@ try {
   $conn->set_charset('utf8mb4');
 
   // --- Read FormData ---
-  $mode   = isset($_POST['mode']) ? trim((string)$_POST['mode']) : 'create';   // 'create' | 'update'
-  $itemId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-  $status = ($_POST['status'] ?? 'Active') === 'Draft' ? 'Draft' : 'Active';
+  $mode = is_string($_POST['mode'] ?? null) ? trim($_POST['mode']) : 'create';
+  $itemId = request_int($_POST, 'id');
+  $status = is_string($_POST['status'] ?? null) ? $_POST['status'] : 'Active';
   $savingDraft = $status === 'Draft';
 
-  if (!in_array($mode, ['create', 'update'], true)) {
+  if (!in_array($mode, ['create', 'update'], true) || !in_array($status, ['Active', 'Draft'], true)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid listing mode.']);
     exit;
   }
 
-  $titleRaw = isset($_POST['title']) ? trim((string)$_POST['title']) : '';
+  $titleRaw = is_string($_POST['title'] ?? null) ? trim($_POST['title']) : '';
 
   // Accept new categories[] or legacy tags[]
   $catsRaw = $_POST['categories'] ?? ($_POST['tags'] ?? []);
   $catsArr = is_array($catsRaw) ? $catsRaw : [$catsRaw];
-  $catsArr = array_values(array_filter(array_map('trim', $catsArr), fn($v)=>$v!==''));
-  // Enforce max 3 categories
-  if (count($catsArr) > 3) { $catsArr = array_slice($catsArr, 0, 3); }
+  if (array_filter($catsArr, fn($value) => !is_string($value))) {
+    json_response(['ok' => false, 'error' => 'Invalid categories'], 400);
+  }
+  $catsArr = array_values(array_unique(array_filter(array_map('trim', $catsArr), fn($v)=>$v!=='')));
+  if (count($catsArr) > 3) {
+    json_response(['ok' => false, 'error' => 'Select no more than 3 categories'], 400);
+  }
 
   // Accept new itemLocation or legacy meetLocation
-  $itemLocationRaw  = (($t = ($_POST['itemLocation'] ?? ($_POST['meetLocation'] ?? ''))) !== '') ? trim((string)$t) : null;
+  $locationValue = $_POST['itemLocation'] ?? ($_POST['meetLocation'] ?? '');
+  $itemLocationRaw = is_string($locationValue) && $locationValue !== '' ? trim($locationValue) : null;
 
   // Item condition
-  $itemCondition = (($t = $_POST['condition'] ?? '') !== '') ? trim((string)$t) : null;
+  $conditionValue = $_POST['condition'] ?? '';
+  $itemCondition = is_string($conditionValue) && $conditionValue !== '' ? trim($conditionValue) : null;
 
-  $descriptionRaw = (($t = $_POST['description'] ?? '') !== '') ? trim((string)$t) : null;
+  $descriptionValue = $_POST['description'] ?? '';
+  $descriptionRaw = is_string($descriptionValue) && $descriptionValue !== '' ? trim($descriptionValue) : null;
 
   $title = $titleRaw;
   $description = $descriptionRaw;
   $itemLocation = $itemLocationRaw;
 
-  $priceStr  = isset($_POST['price']) ? trim((string)$_POST['price']) : '';
+  $priceStr = is_string($_POST['price'] ?? null) ? trim($_POST['price']) : '';
   $price     = ($priceStr !== '' && preg_match('/^(?:\d{1,4}(?:\.\d{1,2})?|\.\d{1,2})$/', $priceStr)) ? (float)$priceStr : null;
 
-  $trades    = isset($_POST['acceptTrades'])    ? (int)$_POST['acceptTrades']    : 0; // 0/1
-  $priceNego = isset($_POST['priceNegotiable']) ? (int)$_POST['priceNegotiable'] : 0; // 0/1
+  $tradesValue = strict_boolean_value($_POST['acceptTrades'] ?? false);
+  $priceNegoValue = strict_boolean_value($_POST['priceNegotiable'] ?? false);
+  if ($tradesValue === null || $priceNegoValue === null) {
+    json_response(['ok' => false, 'error' => 'Invalid listing options'], 400);
+  }
+  $trades = $tradesValue ? 1 : 0;
+  $priceNego = $priceNegoValue ? 1 : 0;
 
   // --- Validation ---
   $errors = [];
@@ -108,8 +123,13 @@ try {
   if (!$savingDraft && empty($catsArr)) {
     $errors['categories'] = 'Select at least one category.';
   } else {
+    $allowedCategories = json_decode((string)file_get_contents($API_ROOT . '/categories/categories.json'), true);
+    $allowedCategories = is_array($allowedCategories) ? $allowedCategories : [];
     foreach ($catsArr as $_cat) {
-      if (mb_strlen($_cat) > 100) { $errors['categories'] = 'Category name is too long.'; break; }
+      if (mb_strlen($_cat) > 100 || !in_array($_cat, $allowedCategories, true)) {
+        $errors['categories'] = 'Invalid category.';
+        break;
+      }
     }
   }
 
@@ -163,6 +183,13 @@ try {
       exit;
     }
 
+    if ($status === 'Draft' && scheduled_purchase_has_active_accepted($conn, $itemId, 0)) {
+      json_response([
+        'ok' => false,
+        'error' => 'Cancel or complete the accepted scheduled purchase before saving this listing as a draft.'
+      ], 409);
+    }
+
     $publishingDraft = (int)($statusStr === 'Draft' && $status === 'Active');
     $activatingListing = (int)($statusStr !== 'Active' && $status === 'Active');
   }
@@ -203,20 +230,41 @@ try {
     // Accept existingPhotos[] from POST (can be array or single value)
     $existingPhotosRaw = $_POST['existingPhotos'] ?? [];
     if (is_array($existingPhotosRaw)) {
-      $existingPhotos = array_values(array_filter(array_map('trim', $existingPhotosRaw), fn($v) => $v !== ''));
+      if (array_filter($existingPhotosRaw, fn($value) => !is_string($value))) {
+        json_response(['ok' => false, 'error' => 'Invalid existing media'], 400);
+      }
+      $existingPhotos = array_values(array_unique(array_filter(array_map('trim', $existingPhotosRaw), fn($v) => $v !== '')));
     } elseif (is_string($existingPhotosRaw) && $existingPhotosRaw !== '') {
       $existingPhotos = [trim($existingPhotosRaw)];
+    } elseif ($existingPhotosRaw !== []) {
+      json_response(['ok' => false, 'error' => 'Invalid existing media'], 400);
     }
-    // Limit existing photos to max 6 total
     if (count($existingPhotos) > 6) {
-      $existingPhotos = array_slice($existingPhotos, 0, 6);
+      json_response(['ok' => false, 'error' => 'Maximum 6 media files allowed'], 400);
+    }
+
+    $storedExistingPhotos = [];
+    if (is_string($existing['photos'] ?? null) && $existing['photos'] !== '') {
+      $decodedPhotos = json_decode($existing['photos'], true);
+      $storedExistingPhotos = is_array($decodedPhotos)
+        ? $decodedPhotos
+        : array_values(array_filter(array_map('trim', explode(',', $existing['photos']))));
+    }
+    foreach ($existingPhotos as $existingPhoto) {
+      if (!in_array($existingPhoto, $storedExistingPhotos, true)) {
+        json_response(['ok' => false, 'error' => 'Existing media does not belong to this listing'], 400);
+      }
     }
   }
 
   // Process new image and video uploads
   $newImageUrls = [];
   $newImagePaths = [];
-  if (!empty($_FILES['images']) && is_array($_FILES['images']['tmp_name'])) {
+  $validatedUploads = [];
+  if (!empty($_FILES['images'])) {
+    if (!is_array($_FILES['images']) || !is_array($_FILES['images']['tmp_name'] ?? null)) {
+      json_response(['ok' => false, 'error' => 'Invalid media upload'], 400);
+    }
     $maxFiles        = max(0, 6 - count($existingPhotos));
     $allowedMimeExts = [
       'image/jpeg'     => ['extension' => 'jpg',  'max_bytes' => 2 * 1024 * 1024],
@@ -227,38 +275,79 @@ try {
       'video/quicktime'=> ['extension' => 'mov',  'max_bytes' => 25 * 1024 * 1024],
     ];
     $finfo = new finfo(FILEINFO_MIME_TYPE);
-    $cnt = 0;
 
     foreach ($_FILES['images']['tmp_name'] as $i => $tmpPath) {
-      if ($cnt >= $maxFiles) break;
-      if (($_FILES['images']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
-      if (!is_uploaded_file($tmpPath)) continue;
+      $uploadError = $_FILES['images']['error'][$i] ?? UPLOAD_ERR_NO_FILE;
+      if ($uploadError === UPLOAD_ERR_NO_FILE) continue;
+      if ($uploadError !== UPLOAD_ERR_OK || !is_string($tmpPath) || !is_uploaded_file($tmpPath)) {
+        json_response(['ok' => false, 'error' => 'Invalid media upload'], 400);
+      }
+      if (count($validatedUploads) >= $maxFiles) {
+        json_response(['ok' => false, 'error' => 'Maximum 6 media files allowed'], 400);
+      }
 
       $mime = $finfo->file($tmpPath) ?: 'application/octet-stream';
-      if (!isset($allowedMimeExts[$mime])) continue;
-      $sz = @filesize($tmpPath);
-      if ($sz === false || $sz > $allowedMimeExts[$mime]['max_bytes']) continue;
-      $ext = $allowedMimeExts[$mime]['extension'];
-
-      $fname = uniqid('img_', true) . '.' . $ext;
-      if (move_uploaded_file($tmpPath, $imageDirFs . $fname)) {
-        $newImageUrls[] = $imageBaseUrl . '/' . $fname;
-        $newImagePaths[] = $imageDirFs . $fname;
-        $cnt++;
+      if (!isset($allowedMimeExts[$mime])) {
+        json_response(['ok' => false, 'error' => 'Unsupported media type'], 400);
       }
+      $sz = @filesize($tmpPath);
+      if ($sz === false || $sz <= 0 || $sz > $allowedMimeExts[$mime]['max_bytes']) {
+        json_response(['ok' => false, 'error' => 'Media file is too large or empty'], 400);
+      }
+      if (!uploaded_image_dimensions_are_safe($tmpPath, $mime)) {
+        json_response(['ok' => false, 'error' => 'Invalid or oversized image dimensions'], 400);
+      }
+      $validatedUploads[] = [
+        'tmp_path' => $tmpPath,
+        'extension' => $allowedMimeExts[$mime]['extension'],
+        'is_photo' => str_starts_with($mime, 'image/'),
+      ];
     }
   }
 
-  // Merge existing media with new uploads (limit total to 6)
-  $imageUrls = array_merge($existingPhotos, $newImageUrls);
-  if (count($imageUrls) > 6) {
-    $imageUrls = array_slice($imageUrls, 0, 6);
+  if (count($existingPhotos) + count($validatedUploads) > 6) {
+    json_response(['ok' => false, 'error' => 'Maximum 6 media files allowed'], 400);
   }
 
-  if (!$savingDraft && empty($imageUrls)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Validation failed', 'errors' => ['images' => 'At least one photo or video is required.']]);
-    exit;
+  $isPhotoUrl = static function (string $url): bool {
+    $path = parse_url($url, PHP_URL_PATH);
+    $extension = is_string($path) ? strtolower(pathinfo($path, PATHINFO_EXTENSION)) : '';
+    return in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true);
+  };
+  $existingPhotoCount = count(array_filter($existingPhotos, $isPhotoUrl));
+  $newPhotoCount = count(array_filter(
+    $validatedUploads,
+    static fn(array $upload): bool => $upload['is_photo']
+  ));
+  if (!$savingDraft && $existingPhotoCount + $newPhotoCount < 1) {
+    $photoError = 'At least one photo is required. Videos are optional and count toward the 6-media limit.';
+    json_response([
+      'ok' => false,
+      'error' => $photoError,
+      'errors' => ['images' => $photoError],
+    ], 400);
+  }
+
+  foreach ($validatedUploads as $upload) {
+    $fname = 'img_u' . $userId . '_' . bin2hex(random_bytes(12)) . '.' . $upload['extension'];
+    $newImagePath = $imageDirFs . $fname;
+    if (!move_uploaded_file($upload['tmp_path'], $newImagePath)) {
+      throw new RuntimeException('Unable to save uploaded media');
+    }
+    $newImageUrls[] = $imageBaseUrl . '/' . $fname;
+    $newImagePaths[] = $newImagePath;
+  }
+
+  // Merge existing media with new uploads.
+  $imageUrls = array_merge($existingPhotos, $newImageUrls);
+  foreach ($imageUrls as $index => $url) {
+    if (!$isPhotoUrl($url)) continue;
+    if ($index > 0) {
+      unset($imageUrls[$index]);
+      array_unshift($imageUrls, $url);
+      $imageUrls = array_values($imageUrls);
+    }
+    break;
   }
 
   // --- JSON columns ---

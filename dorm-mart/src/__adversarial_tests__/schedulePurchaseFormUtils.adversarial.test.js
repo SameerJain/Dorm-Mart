@@ -36,6 +36,9 @@ describe("schedule purchase form utility boundaries", () => {
       /Cannot enter a price/,
     );
     expect(validateNegotiatedPrice("10000").error).toMatch(/9999.99/);
+    expect(validateNegotiatedPrice("1abc").error).toMatch(/valid price/);
+    expect(validateNegotiatedPrice("1e3").error).toMatch(/valid price/);
+    expect(validateNegotiatedPrice("1.999").error).toMatch(/valid price/);
   });
 
   test("calculates month day limits without component-local date math", () => {

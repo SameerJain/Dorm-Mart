@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dorm Mart Refactor and Test"
+  short_description: "Refactor Dorm Mart safely with adversarial tests"
+  default_prompt: "Use $dorm-mart-refactor-and-test to simplify this code and preserve its behavior with tests."

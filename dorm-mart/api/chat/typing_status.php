@@ -18,10 +18,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $body = json_request_body_or_error(['success' => false, 'error' => 'Invalid JSON']);
     require_csrf_token($body['csrf_token'] ?? null);
 
-    $conversationId = isset($body['conversation_id']) ? (int)$body['conversation_id'] : 0;
-    $isTyping = isset($body['is_typing']) ? (bool)$body['is_typing'] : false;
+    $conversationId = request_int($body, 'conversation_id');
+    $isTyping = strict_boolean_value($body['is_typing'] ?? false);
 
-    if ($conversationId <= 0) {
+    if ($conversationId <= 0 || $isTyping === null) {
         json_response(['success' => false, 'error' => 'conversation_id is required'], 400);
     }
 
@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Get typing status for other person in conversation
-    $conversationId = isset($_GET['conversation_id']) ? (int)$_GET['conversation_id'] : 0;
+    $conversationId = request_int($_GET, 'conversation_id');
     
     if ($conversationId <= 0) {
         json_response(['success' => false, 'error' => 'conversation_id is required'], 400);

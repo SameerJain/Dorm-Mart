@@ -1,4 +1,4 @@
-import ItemCardNew from "../../../components/ItemCardNew";
+import ListingGrid from "./ListingGrid";
 
 export default function ForYouSection({
   hasPersonalization,
@@ -28,23 +28,7 @@ export default function ForYouSection({
       </header>
 
       {items.length ? (
-        <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(210px,1fr))] overflow-x-hidden min-w-0">
-          {items.map((item, index) => (
-            <ItemCardNew
-              key={item.id ?? index}
-              id={item.id}
-              title={item.title}
-              price={item.price}
-              tags={item.tags}
-              image={item.img || undefined}
-              status={item.status}
-              seller={item.seller}
-              sellerUsername={item.sellerUsername}
-              sellerEmail={item.sellerEmail}
-              isWishlisted={wishlistedIds.has(item.id)}
-            />
-          ))}
-        </div>
+        <ListingGrid items={items} wishlistedIds={wishlistedIds} />
       ) : (
         <p className="text-sm text-gray-400 dark:text-gray-500 italic">
           No active listings are available yet.

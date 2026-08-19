@@ -1,11 +1,17 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import PreLoginBranding from "../../components/PreLoginBranding";
 import PreLoginNavLinks from "../../components/PreLoginNavLinks";
 import { integerNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
 import { useEmailPolicy } from "../../hooks/useEmailPolicy";
-import { submitAccountRequest } from "./accountCreationRequest";
+import {
+  ACCOUNT_REQUEST_RATE_LIMIT_MESSAGE,
+  applyAccountRequestLockout,
+  consumeAccountRequestAttempt,
+  getAccountRequestRateLimit,
+  submitAccountRequest,
+} from "./accountCreationRequest";
 
 function FieldError({ children, className = "" }) {
   if (!children) return null;
@@ -35,9 +41,28 @@ function CreateAccountPage() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
+  const [rateLimitBlockedUntil, setRateLimitBlockedUntil] = useState(
+    () => getAccountRequestRateLimit().blockedUntil,
+  );
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
+  const rateLimited = rateLimitBlockedUntil > Date.now();
 
   useBodyScrollLock(showNotice);
+
+  useEffect(() => {
+    const remaining = rateLimitBlockedUntil - Date.now();
+    if (remaining <= 0) return undefined;
+    const timer = window.setTimeout(() => {
+      setRateLimitBlockedUntil(0);
+      setErrors((current) => {
+        if (current.submit !== ACCOUNT_REQUEST_RATE_LIMIT_MESSAGE) return current;
+        const next = { ...current };
+        delete next.submit;
+        return next;
+      });
+    }, remaining);
+    return () => window.clearTimeout(timer);
+  }, [rateLimitBlockedUntil]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -136,10 +161,23 @@ function CreateAccountPage() {
     e.preventDefault();
     if (!validate()) return;
 
+    const clientRateLimit = consumeAccountRequestAttempt();
+    if (!clientRateLimit.allowed) {
+      setRateLimitBlockedUntil(clientRateLimit.blockedUntil);
+      setErrors({ submit: ACCOUNT_REQUEST_RATE_LIMIT_MESSAGE });
+      return;
+    }
+    setRateLimitBlockedUntil(clientRateLimit.blockedUntil);
+
     setLoading(true);
     try {
       const result = await submitAccountRequest(formData);
       if (!result.accepted) {
+        if (result.rateLimited) {
+          setRateLimitBlockedUntil(
+            applyAccountRequestLockout(result.retryAfterSeconds),
+          );
+        }
         setErrors({ submit: result.error });
         return;
       }
@@ -336,18 +374,27 @@ function CreateAccountPage() {
                     </span>
                   </label>
                 </div>
-                <FieldError>{errors.submit}</FieldError>
+                <FieldError>
+                  {errors.submit ||
+                    (rateLimited ? ACCOUNT_REQUEST_RATE_LIMIT_MESSAGE : "")}
+                </FieldError>
 
                 {/* Confirm button - Minimum 44px height for touch targets */}
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || rateLimited}
                   className={`w-full min-h-[44px] text-white py-3 sm:py-3.5 md:py-5 lg:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 font-medium text-base sm:text-lg md:text-xl lg:text-base active:scale-95
-                    ${loading ? "bg-sky-300 cursor-not-allowed" : "bg-sky-500 hover:bg-sky-600 hover:scale-105 hover:shadow-lg"}
+                    ${loading || rateLimited ? "bg-sky-300 cursor-not-allowed" : "bg-sky-500 hover:bg-sky-600 hover:scale-105 hover:shadow-lg"}
                   `}
                 >
-                  <span>{loading ? "Submitting…" : "Confirm"}</span>
-                  {!loading && (
+                  <span>
+                    {loading
+                      ? "Submitting…"
+                      : rateLimited
+                        ? "Try again later"
+                        : "Confirm"}
+                  </span>
+                  {!loading && !rateLimited && (
                     <svg
                       className="w-5 h-5"
                       fill="currentColor"

@@ -20,7 +20,7 @@ try {
     
     require_csrf_token($input['csrf_token'] ?? null);
     
-    $id = isset($input['id']) ? (int)$input['id'] : 0;
+    $id = request_int($input, 'id');
     if ($id <= 0) {
         json_response(['success' => false, 'error' => 'Invalid id'], 400);
     }
