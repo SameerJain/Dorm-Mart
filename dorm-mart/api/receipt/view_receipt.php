@@ -7,6 +7,7 @@ require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../confirm_purchases/helpers.php';
 require_once __DIR__ . '/../helpers/inventory.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('GET');
 
@@ -14,13 +15,12 @@ try {
     auth_boot_session();
     $userId = require_login();
 
-    $productParam = trim((string)($_GET['product_id'] ?? $_GET['id'] ?? ''));
-    $confirmParam = trim((string)($_GET['confirm_request_id'] ?? $_GET['confirm_id'] ?? ''));
+    $productValue = $_GET['product_id'] ?? ($_GET['id'] ?? null);
+    $confirmValue = $_GET['confirm_request_id'] ?? ($_GET['confirm_id'] ?? null);
+    $productId = $productValue === null ? 0 : strict_integer_value($productValue);
+    $confirmRequestId = $confirmValue === null ? 0 : strict_integer_value($confirmValue);
 
-    $productId = $productParam !== '' && ctype_digit($productParam) ? (int)$productParam : 0;
-    $confirmRequestId = $confirmParam !== '' && ctype_digit($confirmParam) ? (int)$confirmParam : 0;
-
-    if ($productId <= 0 && $confirmRequestId <= 0) {
+    if ($productId === null || $confirmRequestId === null || ($productId <= 0 && $confirmRequestId <= 0)) {
         json_response(['success' => false, 'error' => 'product_id or confirm_request_id is required','product_id' => $productId, 'confirm_request_id' => $confirmRequestId], 400);
     }
 

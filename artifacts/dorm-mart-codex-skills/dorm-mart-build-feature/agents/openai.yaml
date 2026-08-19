@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dorm Mart Feature Builder"
+  short_description: "Build Dorm Mart features across React, PHP, and MySQL"
+  default_prompt: "Use $dorm-mart-build-feature to implement this feature end to end in Dorm Mart."

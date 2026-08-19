@@ -5,6 +5,58 @@ declare(strict_types=1);
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
 
+function confirm_purchase_conversation(mysqli $conn, int $conversationId, int $productId): ?array
+{
+    $stmt = $conn->prepare(
+        'SELECT c.conv_id, c.product_id, inv.seller_id, inv.title AS item_title
+           FROM conversations c
+           INNER JOIN INVENTORY inv ON inv.product_id = c.product_id
+          WHERE c.conv_id = ? AND c.product_id = ?
+          LIMIT 1'
+    );
+    if (!$stmt) throw new RuntimeException('Failed to prepare conversation lookup');
+    $stmt->bind_param('ii', $conversationId, $productId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function confirm_purchase_latest_accepted_schedule(
+    mysqli $conn,
+    int $conversationId,
+    int $productId,
+    ?int $sellerId = null
+): ?array {
+    $stmt = $conn->prepare(
+        'SELECT spr.*, inv.title AS item_title, inv.listing_price,
+                buyer.first_name AS buyer_first, buyer.last_name AS buyer_last
+           FROM scheduled_purchase_requests spr
+           INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
+           INNER JOIN user_accounts buyer ON buyer.user_id = spr.buyer_user_id
+          WHERE spr.conversation_id = ?
+            AND spr.inventory_product_id = ?
+            AND spr.status = \'accepted\'
+            AND (? = 0 OR spr.seller_user_id = ?)
+          ORDER BY COALESCE(spr.updated_at, spr.buyer_response_at) DESC, spr.request_id DESC
+          LIMIT 1'
+    );
+    if (!$stmt) throw new RuntimeException('Failed to prepare scheduled purchase lookup');
+    $sellerFilter = $sellerId ?? 0;
+    $stmt->bind_param('iiii', $conversationId, $productId, $sellerFilter, $sellerFilter);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function confirm_purchase_utc_atom($value): ?string
+{
+    if ($value === null || $value === '') return null;
+    $date = date_create((string)$value, new DateTimeZone('UTC'));
+    return $date ? $date->format(DateTime::ATOM) : null;
+}
+
 /**
  * Fetches display names for the given user ids.
  *

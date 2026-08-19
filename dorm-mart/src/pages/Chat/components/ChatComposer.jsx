@@ -24,6 +24,8 @@ export default function ChatComposer({
   submitComposer,
   taRef,
 }) {
+  const isListingDraft = activeConversation?.productStatus === "Draft";
+
   return (
     <div
       className={`sticky bottom-0 z-10 max-w-full overflow-x-hidden border-t border-gray-200 p-4 dark:border-gray-700 relative ${activeConversation?.item_deleted ? "bg-gray-100 dark:bg-gray-700" : "bg-white dark:bg-gray-800"}`}
@@ -42,14 +44,16 @@ export default function ChatComposer({
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <button
             onClick={handleSchedulePurchase}
-            disabled={hasActiveScheduledPurchase}
+            disabled={hasActiveScheduledPurchase || isListingDraft}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
-              hasActiveScheduledPurchase
+              hasActiveScheduledPurchase || isListingDraft
                 ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white"
                 : "bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-900 text-white"
             }`}
             title={
-              hasActiveScheduledPurchase
+              isListingDraft
+                ? "Publish this listing before scheduling a purchase"
+                : hasActiveScheduledPurchase
                 ? "There is already a Scheduled Purchase for this item"
                 : ""
             }

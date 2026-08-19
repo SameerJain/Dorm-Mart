@@ -79,6 +79,12 @@ export async function tickFetchNewMessages(
     typing_user_first_name: null,
   };
   const cursorTs = Number(res?.cursor_ts) || 0;
+  const conversationStatus = res?.conversation_status
+    ? {
+        productStatus: res.conversation_status.product_status || null,
+        itemDeleted: Boolean(res.conversation_status.item_deleted),
+      }
+    : null;
 
   const myIdNum = Number(myId);
   if (!Number.isInteger(myIdNum) || myIdNum <= 0) {
@@ -88,7 +94,7 @@ export async function tickFetchNewMessages(
 
   // Always return typing status, even if no new messages
   if (!raw.length) {
-    return { messages: [], typingStatus, cursorTs };
+    return { messages: [], typingStatus, cursorTs, conversationStatus };
   }
 
   const messages = raw.map((m) => {
@@ -128,7 +134,7 @@ export async function tickFetchNewMessages(
     return base;
   });
 
-  return { messages, typingStatus, cursorTs };
+  return { messages, typingStatus, cursorTs, conversationStatus };
 }
 
 export async function fetchUnreadMessages(signal) {

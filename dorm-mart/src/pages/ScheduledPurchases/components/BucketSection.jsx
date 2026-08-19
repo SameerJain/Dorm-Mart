@@ -4,7 +4,9 @@ import {
   resolveProductPhotoUrl,
   withFallbackImage,
 } from "../../../utils/imageFallback";
+import { Link } from "react-router-dom";
 import PurchaseCard from "./PurchaseCard";
+import { getRequestState } from "../utils/ongoingPurchaseViewUtils";
 
 function ItemGroup({ itemGroup, bucketKey, purchaseCardProps }) {
   const requests = itemGroup?.buckets?.[bucketKey];
@@ -20,20 +22,42 @@ function ItemGroup({ itemGroup, bucketKey, purchaseCardProps }) {
           proxyUnknown: true,
         })
       : null;
+  const completedRequest = requests.find(
+    (request) =>
+      getRequestState(request) === "completed" &&
+      request.inventory_product_id,
+  );
+  const receiptPath = completedRequest
+    ? `/app/viewReceipt?id=${encodeURIComponent(completedRequest.inventory_product_id)}`
+    : null;
+  const itemTitle = itemGroup.item.title || "Unknown Item";
+  const itemHeader = (
+    <>
+      <img
+        src={withFallbackImage(thumbUrl)}
+        alt={receiptPath ? "" : itemTitle}
+        onError={onProductImageError}
+        className="w-8 h-8 rounded object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
+      />
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 break-words overflow-wrap-anywhere group-hover:underline">
+        {itemTitle}
+      </h3>
+    </>
+  );
 
   return (
     <div className="min-w-0">
-      <div className="flex items-center gap-3 mb-3">
-        <img
-          src={withFallbackImage(thumbUrl)}
-          alt={itemGroup.item.title || "Item"}
-          onError={onProductImageError}
-          className="w-8 h-8 rounded object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
-        />
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 break-words overflow-wrap-anywhere">
-          {itemGroup.item.title || "Unknown Item"}
-        </h3>
-      </div>
+      {receiptPath ? (
+        <Link
+          to={receiptPath}
+          state={{ returnTo: "/app/seller-dashboard/ongoing-purchases" }}
+          className="group flex items-center gap-3 mb-3 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+        >
+          {itemHeader}
+        </Link>
+      ) : (
+        <div className="flex items-center gap-3 mb-3">{itemHeader}</div>
+      )}
       <div className="space-y-3">
         {requests.map((req) => (
           <PurchaseCard

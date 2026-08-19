@@ -13,8 +13,8 @@ try {
     $userId = require_login();
     $input = json_request_body();
     require_csrf_token($input['csrf_token'] ?? null);
-    $messageId = isset($input['message_id']) ? (int)$input['message_id'] : 0;
-    $content = trim((string)($input['content'] ?? ''));
+    $messageId = request_int($input, 'message_id');
+    $content = is_string($input['content'] ?? null) ? trim($input['content']) : '';
     $length = function_exists('mb_strlen') ? mb_strlen($content, 'UTF-8') : strlen($content);
 
     if ($messageId <= 0 || $content === '') json_response(['success' => false, 'error' => 'Message cannot be empty'], 400);

@@ -105,7 +105,7 @@ function ensure_session(): void
 
   require_once __DIR__ . '/../database/db_connect.php';
   $conn = db();
-  $stmt = $conn->prepare('SELECT hash_auth FROM user_accounts WHERE user_id = ? LIMIT 1');
+  $stmt = $conn->prepare('SELECT hash_auth, auth_version FROM user_accounts WHERE user_id = ? LIMIT 1');
   $stmt->bind_param('i', $uid);
   $stmt->execute();
   $res  = $stmt->get_result();
@@ -126,6 +126,7 @@ function ensure_session(): void
   // success → hydrate session and rotate token
   session_regenerate_id(true);
   $_SESSION['user_id'] = $uid;
+  $_SESSION['auth_version'] = (int)$row['auth_version'];
   record_login_device($uid);
 
   $newToken = bin2hex(random_bytes(32));
@@ -158,16 +159,16 @@ function require_login(): int
   }
   $userId = (int) $_SESSION['user_id'];
   $account = auth_account($userId);
-  if (!$account) {
-    unset($_SESSION['user_id']);
+  if (!$account || !isset($_SESSION['auth_version'])
+      || (int)$_SESSION['auth_version'] !== (int)$account['auth_version']) {
+    logout_destroy_session();
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(401);
     echo json_encode(['ok' => false, 'success' => false, 'error' => 'Not authenticated']);
     exit;
   }
   if ((int)$account['is_banned'] === 1) {
-    unset($_SESSION['user_id']);
-    clear_remember_cookie($userId);
+    logout_destroy_session();
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(403);
     echo json_encode(['ok' => false, 'success' => false, 'error' => 'Account suspended']);
@@ -187,7 +188,7 @@ function auth_account(int $userId): ?array
 
   require_once __DIR__ . '/../database/db_connect.php';
   $conn = db();
-  $stmt = $conn->prepare('SELECT user_id, role, is_banned FROM user_accounts WHERE user_id = ? LIMIT 1');
+  $stmt = $conn->prepare('SELECT user_id, role, is_banned, auth_version FROM user_accounts WHERE user_id = ? LIMIT 1');
   $stmt->bind_param('i', $userId);
   $stmt->execute();
   $account = $stmt->get_result()->fetch_assoc() ?: null;
@@ -265,7 +266,7 @@ function validate_csrf_token(string $token): bool {
   return hash_equals($_SESSION['csrf_token'], $token);
 }
 
-function require_csrf_token(?string $token): void {
+function require_csrf_token($token): void {
   if (!is_string($token) || $token === '' || !validate_csrf_token($token)) {
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(403);

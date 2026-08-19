@@ -103,7 +103,7 @@ function AboutUs() {
                 {developer.email}
               </a>
 
-              <div className="mt-5 grid w-full grid-cols-3 gap-2">
+              <div className="mt-5 grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
                 <a
                   href={`mailto:${developer.email}`}
                   className="rounded-lg bg-blue-600 px-2 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-800 dark:hover:bg-blue-900"

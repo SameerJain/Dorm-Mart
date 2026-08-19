@@ -29,8 +29,7 @@ function SettingsLayout({ children }) {
   return (
     // Back to normal: no `relative`, still using the height minus nav
     <div
-      className="w-full flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden"
-      style={{ height: "calc(100vh - 64px)" }}
+      className="h-[calc(100dvh-64px)] w-full flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden"
     >
       {/* Mobile hamburger menu button - only visible on mobile */}
       <div className="lg:hidden p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
@@ -56,7 +55,7 @@ function SettingsLayout({ children }) {
       </div>
 
       {/* Full-width grid that also stretches to full height */}
-      <div className="grid flex-1 w-full grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 px-6 pt-6 pb-8 min-h-0">
+      <div className="grid flex-1 w-full grid-cols-1 lg:grid-cols-[280px_1fr] gap-3 lg:gap-6 px-3 sm:px-6 pt-3 sm:pt-6 pb-4 sm:pb-8 min-h-0">
         {/* Desktop Sidebar (hidden on mobile) */}
         <aside className="hidden h-full rounded-xl p-0 text-white shadow bg-blue-600 dark:bg-blue-800 dark:shadow-lg dark:shadow-black/25 dark:ring-1 dark:ring-white/10 lg:block">
           <div className="px-4 py-3">

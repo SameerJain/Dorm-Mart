@@ -5,6 +5,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('POST', ['ok' => false, 'error' => 'Method Not Allowed']);
 
@@ -16,21 +17,34 @@ try {
     $userId = require_login();
 
     // Parse JSON body or form data
-    $raw = file_get_contents('php://input');
+    $contentLength = filter_var($_SERVER['CONTENT_LENGTH'] ?? null, FILTER_VALIDATE_INT);
+    if ($contentLength !== false && $contentLength > MAX_JSON_REQUEST_BYTES) {
+        json_response(['ok' => false, 'error' => 'Request body is too large'], 413);
+    }
+    $raw = file_get_contents('php://input', false, null, 0, MAX_JSON_REQUEST_BYTES + 1);
+    if (is_string($raw) && strlen($raw) > MAX_JSON_REQUEST_BYTES) {
+        json_response(['ok' => false, 'error' => 'Request body is too large'], 413);
+    }
     $body = [];
     if ($raw !== false && strlen(trim((string)$raw)) > 0) {
-        $tmp = json_decode($raw, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) {
-            $body = $tmp;
+        $decodedBody = decode_json_object($raw);
+        if ($decodedBody === null) {
+            json_response(['ok' => false, 'error' => 'Invalid JSON payload'], 400);
         }
+        $body = $decodedBody;
     }
     if (empty($body)) {
         // Fallback to form-encoded
         $body = $_POST ?? [];
     }
 
-    $qRaw      = isset($body['q']) ? trim((string)$body['q']) : (isset($body['search']) ? trim((string)$body['search']) : '');
-    $category  = isset($body['category']) ? trim((string)$body['category']) : '';
+    $queryValue = $body['q'] ?? ($body['search'] ?? '');
+    $categoryValue = $body['category'] ?? '';
+    if (!is_string($queryValue) || !is_string($categoryValue)) {
+        json_response(['ok' => false, 'error' => 'Invalid search filters'], 400);
+    }
+    $qRaw = trim($queryValue);
+    $category = trim($categoryValue);
     
     $q = $qRaw;
     if (mb_strlen($q) > 200) {
@@ -41,33 +55,54 @@ try {
     if (isset($body['categories'])) {
         if (is_array($body['categories'])) {
             foreach ($body['categories'] as $c) {
-                $c = trim((string)$c);
+                if (!is_string($c)) {
+                    json_response(['ok' => false, 'error' => 'Invalid category value'], 400);
+                }
+                $c = trim($c);
                 if ($c !== '') $categories[] = $c;
             }
         } else {
-            $parts = explode(',', (string)$body['categories']);
+            if (!is_string($body['categories'])) {
+                json_response(['ok' => false, 'error' => 'Invalid category value'], 400);
+            }
+            $parts = explode(',', $body['categories']);
             foreach ($parts as $c) {
                 $c = trim($c);
                 if ($c !== '') $categories[] = $c;
             }
         }
     }
-    $condition = isset($body['condition']) ? trim((string)$body['condition']) : '';
-    $location  = isset($body['location']) ? trim((string)$body['location']) : '';
+    $condition = is_string($body['condition'] ?? '') ? trim($body['condition'] ?? '') : null;
+    $location = is_string($body['location'] ?? '') ? trim($body['location'] ?? '') : null;
     $ALLOWED_CONDITIONS = ['Like New', 'Excellent', 'Good', 'Fair', 'For Parts'];
     $ALLOWED_LOCATIONS  = ['North Campus', 'South Campus', 'Ellicott', 'Other'];
     $ALLOWED_CATEGORIES = json_decode(
         file_get_contents(__DIR__ . '/../categories/categories.json'), true
     ) ?? [];
-    $categories = array_values(array_filter($categories, fn($c) => in_array($c, $ALLOWED_CATEGORIES, true)));
-    if ($condition !== '' && !in_array($condition, $ALLOWED_CONDITIONS, true)) {
+    $categories = array_values(array_unique($categories));
+    if (count($categories) > count($ALLOWED_CATEGORIES)
+        || array_filter($categories, fn($c) => !in_array($c, $ALLOWED_CATEGORIES, true))) {
+        json_response(['ok' => false, 'error' => 'Invalid category value'], 400);
+    }
+    if ($category !== '' && !in_array($category, $ALLOWED_CATEGORIES, true)) {
+        json_response(['ok' => false, 'error' => 'Invalid category value'], 400);
+    }
+    if ($condition === null || ($condition !== '' && !in_array($condition, $ALLOWED_CONDITIONS, true))) {
         json_response(['ok' => false, 'error' => 'Invalid condition value'], 400);
     }
-    if ($location !== '' && !in_array($location, $ALLOWED_LOCATIONS, true)) {
+    if ($location === null || ($location !== '' && !in_array($location, $ALLOWED_LOCATIONS, true))) {
         json_response(['ok' => false, 'error' => 'Invalid location value'], 400);
     }
-    $status    = isset($body['status']) ? strtoupper(trim((string)$body['status'])) : '';
+    $statusValue = $body['status'] ?? '';
+    if (!is_string($statusValue)) {
+        json_response(['ok' => false, 'error' => 'Invalid status value'], 400);
+    }
+    $status = strtoupper(trim($statusValue));
     $pricePattern = '/^(?:\d{1,4}(?:\.\d{1,2})?|\.\d{1,2})$/';
+    if ((isset($body['minPrice']) && !is_string($body['minPrice']) && !is_int($body['minPrice']) && !is_float($body['minPrice']))
+        || (isset($body['maxPrice']) && !is_string($body['maxPrice']) && !is_int($body['maxPrice']) && !is_float($body['maxPrice']))) {
+        json_response(['ok' => false, 'error' => 'Invalid price filter'], 400);
+    }
     $minPriceRaw = isset($body['minPrice']) ? trim((string)$body['minPrice']) : '';
     $maxPriceRaw = isset($body['maxPrice']) ? trim((string)$body['maxPrice']) : '';
     $minPrice = null;
@@ -93,7 +128,11 @@ try {
     if ($minPrice !== null && $maxPrice !== null && $minPrice > $maxPrice) {
         json_response(['ok' => false, 'error' => 'Minimum price cannot be greater than maximum price'], 400);
     }
-    $sort      = isset($body['sort']) ? strtolower(trim((string)$body['sort'])) : '';
+    $sortValue = $body['sort'] ?? '';
+    if (!is_string($sortValue)) {
+        json_response(['ok' => false, 'error' => 'Invalid sort value'], 400);
+    }
+    $sort = strtolower(trim($sortValue));
     $ALLOWED_SORTS = ['', 'best', 'best_match', 'relevance', 'new', 'newest', 'old', 'oldest', 'price_asc', 'price_desc'];
     if (!in_array($sort, $ALLOWED_SORTS, true)) {
         json_response(['ok' => false, 'error' => 'Invalid sort value'], 400);
@@ -101,12 +140,20 @@ try {
     // Optional: include description in search when true
     $includeDesc = false;
     if (isset($body['includeDescription'])) {
-        $v = strtolower(trim((string)$body['includeDescription']));
-        $includeDesc = in_array($v, ['1','true','yes','on'], true);
+        $includeDesc = strict_boolean_value($body['includeDescription']);
+        if ($includeDesc === null) {
+            json_response(['ok' => false, 'error' => 'Invalid description-search option'], 400);
+        }
     } elseif (isset($body['scope'])) {
-        $includeDesc = strtolower(trim((string)$body['scope'])) !== 'title';
+        if (!is_string($body['scope']) || !in_array(strtolower(trim($body['scope'])), ['title', 'all'], true)) {
+            json_response(['ok' => false, 'error' => 'Invalid search scope'], 400);
+        }
+        $includeDesc = strtolower(trim($body['scope'])) !== 'title';
     }
-    $limit     = isset($body['limit']) ? max(1, min(100, (int)$body['limit'])) : 50;
+    $limit = array_key_exists('limit', $body) ? strict_integer_value($body['limit']) : 50;
+    if ($limit === null || $limit < 1 || $limit > 100) {
+        json_response(['ok' => false, 'error' => 'Invalid result limit'], 400);
+    }
 
     mysqli_report(MYSQLI_REPORT_OFF);
     $mysqli = db();
@@ -202,16 +249,30 @@ try {
 
     // Optional toggles
     $priceNegoIn = null;
-    if (isset($body['priceNego'])) $priceNegoIn = (string)$body['priceNego'];
-    if (isset($body['priceNegotiable'])) $priceNegoIn = (string)$body['priceNegotiable'];
+    $hasPriceNego = isset($body['priceNego']) || isset($body['priceNegotiable']);
+    $priceNego = isset($body['priceNego']) ? strict_boolean_value($body['priceNego']) : null;
+    $priceNegotiable = isset($body['priceNegotiable']) ? strict_boolean_value($body['priceNegotiable']) : null;
+    if ((isset($body['priceNego']) && $priceNego === null)
+        || (isset($body['priceNegotiable']) && $priceNegotiable === null)) {
+        json_response(['ok' => false, 'error' => 'Invalid negotiable-price option'], 400);
+    }
+    if ($priceNego !== null && $priceNegotiable !== null && $priceNego !== $priceNegotiable) {
+        json_response(['ok' => false, 'error' => 'Conflicting negotiable-price options'], 400);
+    }
+    $priceNegoIn = $priceNego ?? $priceNegotiable;
+    if ($hasPriceNego && $priceNegoIn === null) {
+        json_response(['ok' => false, 'error' => 'Invalid negotiable-price option'], 400);
+    }
     if ($priceNegoIn !== null) {
-        $priceNegoBool = in_array(strtolower(trim($priceNegoIn)), ['1','true','yes','on'], true);
-        if ($priceNegoBool) {
+        if ($priceNegoIn) {
             $where[] = 'i.price_nego = 1';
         }
     }
     if (isset($body['trades'])) {
-        $tradesBool = in_array(strtolower(trim((string)$body['trades'])), ['1','true','yes','on'], true);
+        $tradesBool = strict_boolean_value($body['trades']);
+        if ($tradesBool === null) {
+            json_response(['ok' => false, 'error' => 'Invalid trades option'], 400);
+        }
         if ($tradesBool) {
             $where[] = 'i.trades = 1';
         }

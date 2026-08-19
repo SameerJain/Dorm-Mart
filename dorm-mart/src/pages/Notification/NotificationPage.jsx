@@ -18,6 +18,10 @@ const jsonHeaders = {
   Accept: "application/json",
 };
 
+export function isSafeNotificationDestination(value) {
+  return typeof value === "string" && /^\/app(?:[/?]|$)/.test(value);
+}
+
 export default function NotificationPage() {
   const ctx = useContext(ChatContext);
   const items = Array.isArray(ctx?.unreadNotificationsByProduct)
@@ -58,7 +62,7 @@ export default function NotificationPage() {
   }
 
   async function openNotification(notification) {
-    if (!notification.destination) return;
+    if (!isSafeNotificationDestination(notification.destination)) return;
 
     if (!notification.is_read) {
       try {
@@ -81,7 +85,7 @@ export default function NotificationPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             Notifications
           </h1>
@@ -109,7 +113,9 @@ export default function NotificationPage() {
                     proxyUnknown: true,
                   })
                 : null;
-              const clickable = Boolean(notification.destination);
+              const clickable = isSafeNotificationDestination(
+                notification.destination,
+              );
               return (
                 <div
                   key={notification.notification_id}

@@ -1,8 +1,49 @@
 import { MEET_LOCATION_OPTIONS } from "../../../constants/meetLocations";
 import { decimalNumericKeyDownHandler } from "../../../utils/numericInputKeyHandlers";
-import { CATEGORIES_MAX, LIMITS } from "../utils/listingFormConfig";
+import {
+  CATEGORIES_MAX,
+  hasListingPhoto,
+  LIMITS,
+} from "../utils/listingFormConfig";
 import ListingActions from "./ListingActions";
 import SafetyTips from "./SafetyTips";
+
+const errorBorder = (error) =>
+  error
+    ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
+    : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900";
+
+const inputClass = (error, extra = "") =>
+  `w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${extra} ${errorBorder(error)}`;
+
+function FieldError({ error, className = "" }) {
+  return error ? (
+    <p className={`mt-1 text-sm text-red-600 dark:text-red-400 ${className}`}>
+      {error}
+    </p>
+  ) : null;
+}
+
+function ToggleOption({ checked, description, label, onChange }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-900/30">
+      <div>
+        <label className="text-lg font-medium text-gray-900 dark:text-gray-100">
+          {label}
+        </label>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          {description}
+        </p>
+      </div>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+      />
+    </div>
+  );
+}
 
 export default function ListingForm({
   acceptTrades,
@@ -10,6 +51,7 @@ export default function ListingForm({
   catFetchError,
   catLoading,
   categories,
+  clearError,
   condition,
   description,
   errors,
@@ -48,6 +90,8 @@ export default function ListingForm({
   submitting,
   title,
 }) {
+  const hasPhoto = hasListingPhoto(images);
+
   return (
     <div ref={formTopRef}>
       {/* Top-of-Form Error Banner */}
@@ -118,11 +162,7 @@ export default function ListingForm({
                 onChange={(e) =>
                   handleInputChange("title", e.target.value, setTitle)
                 }
-                className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                  errors.title
-                    ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
-                    : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
-                }`}
+                className={inputClass(errors.title)}
                 placeholder="Enter a descriptive title for your item"
                 maxLength={LIMITS.title}
               />
@@ -134,11 +174,7 @@ export default function ListingForm({
                   {title.length}/{LIMITS.title}
                 </p>
               </div>
-              {errors.title && (
-                <p className="text-red-600 dark:text-red-400 text-sm mt-1">
-                  {errors.title}
-                </p>
-              )}
+              <FieldError error={errors.title} />
             </div>
 
             {/* Item Condition */}
@@ -151,19 +187,9 @@ export default function ListingForm({
                   value={condition}
                   onChange={(e) => {
                     setCondition(e.target.value);
-                    if (errors.condition) {
-                      setErrors((prev) => {
-                        const ne = { ...prev };
-                        delete ne.condition;
-                        return ne;
-                      });
-                    }
+                    clearError("condition");
                   }}
-                  className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                    errors.condition
-                      ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
-                      : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
-                  }`}
+                  className={inputClass(errors.condition)}
                 >
                   <option value="" disabled>
                     Select An Option
@@ -174,11 +200,7 @@ export default function ListingForm({
                   <option>Fair</option>
                   <option>For Parts</option>
                 </select>
-                {errors.condition && (
-                  <p className="text-red-600 dark:text-red-400 text-sm mt-1">
-                    {errors.condition}
-                  </p>
-                )}
+                <FieldError error={errors.condition} />
               </div>
             </div>
 
@@ -195,50 +217,26 @@ export default function ListingForm({
                     disabled={categories.length >= CATEGORIES_MAX}
                     onChange={(e) => {
                       const selected = e.target.value;
-                      if (selected) {
-                        // Automatically add the selected category
-                        setSelectedCategory(selected);
-                        // Check if already added
-                        if (categories.includes(selected)) {
-                          setSelectedCategory("");
-                          return;
-                        }
-                        // Check max limit
-                        if (categories.length >= CATEGORIES_MAX) {
-                          setErrors((p) => ({
-                            ...p,
-                            categories: `Select at most ${CATEGORIES_MAX} categories`,
-                          }));
-                          setSelectedCategory("");
-                          return;
-                        }
-                        // Add the category
-                        const next = [...categories, selected];
-                        setCategories(next);
-                        setSelectedCategory("");
-                        setErrors((p) => {
-                          const ne = { ...p };
-                          if (next.length && next.length <= CATEGORIES_MAX)
-                            delete ne.categories;
-                          return ne;
-                        });
-                      } else {
-                        setSelectedCategory("");
-                        if (errors.categories) {
-                          setErrors((p) => {
-                            const ne = { ...p };
-                            delete ne.categories;
-                            return ne;
-                          });
-                        }
+                      setSelectedCategory("");
+                      if (!selected) {
+                        clearError("categories");
+                        return;
                       }
+                      if (categories.includes(selected)) return;
+                      if (categories.length >= CATEGORIES_MAX) {
+                        setErrors((current) => ({
+                          ...current,
+                          categories: `Select at most ${CATEGORIES_MAX} categories`,
+                        }));
+                        return;
+                      }
+                      setCategories([...categories, selected]);
+                      clearError("categories");
                     }}
-                    className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                    className={`w-full rounded-lg border p-4 transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500 ${
                       categories.length >= CATEGORIES_MAX
                         ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800"
-                        : errors.categories
-                          ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
-                          : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
+                        : errorBorder(errors.categories)
                     }`}
                   >
                     <option value="" disabled>
@@ -287,11 +285,7 @@ export default function ListingForm({
                   </div>
                 </div>
 
-                {errors.categories && (
-                  <p className="text-red-600 dark:text-red-400 text-sm mt-1">
-                    {errors.categories}
-                  </p>
-                )}
+                <FieldError error={errors.categories} />
               </div>
             </div>
 
@@ -310,11 +304,7 @@ export default function ListingForm({
                   )
                 }
                 rows={6}
-                className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none ${
-                  errors.description
-                    ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
-                    : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
-                }`}
+                className={inputClass(errors.description, "resize-none")}
                 placeholder="Describe the item — condition, usage, and history."
                 maxLength={LIMITS.description}
               />
@@ -323,11 +313,7 @@ export default function ListingForm({
                   {description.length}/{LIMITS.description}
                 </p>
               </div>
-              {errors.description && (
-                <p className="text-red-600 dark:text-red-400 text-sm mt-1">
-                  {errors.description}
-                </p>
-              )}
+              <FieldError error={errors.description} />
             </div>
           </div>
         </div>
@@ -347,19 +333,9 @@ export default function ListingForm({
                 value={itemLocation}
                 onChange={(e) => {
                   setItemLocation(e.target.value);
-                  if (errors.itemLocation) {
-                    setErrors((prev) => {
-                      const ne = { ...prev };
-                      delete ne.itemLocation;
-                      return ne;
-                    });
-                  }
+                  clearError("itemLocation");
                 }}
-                className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                  errors.itemLocation
-                    ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
-                    : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
-                }`}
+                className={inputClass(errors.itemLocation)}
               >
                 <option value="" disabled>
                   Select An Option
@@ -372,11 +348,7 @@ export default function ListingForm({
                   ),
                 )}
               </select>
-              {errors.itemLocation && (
-                <p className="text-red-600 dark:text-red-400 text-sm mt-1">
-                  {errors.itemLocation}
-                </p>
-              )}
+              <FieldError error={errors.itemLocation} />
             </div>
 
             {/* Price */}
@@ -400,56 +372,27 @@ export default function ListingForm({
                     // Only convert to number when needed (validation/submission)
                     handleInputChange("price", value, setPrice);
                   }}
-                  className={`w-full pl-8 pr-4 py-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                    errors.price
-                      ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
-                      : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
-                  }`}
+                  className={`w-full rounded-lg border py-4 pl-8 pr-4 transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500 ${errorBorder(errors.price)}`}
                   placeholder="0.00"
                 />
               </div>
-              {errors.price && (
-                <p className="text-red-600 dark:text-red-400 text-sm mt-1">
-                  {errors.price}
-                </p>
-              )}
+              <FieldError error={errors.price} />
             </div>
           </div>
           {/* Pricing Options */}
           <div className="mt-6 space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/30 rounded-lg">
-              <div>
-                <label className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                  Accepting Trades
-                </label>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Open to trade offers for your item
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                checked={acceptTrades}
-                onChange={() => setAcceptTrades((s) => !s)}
-                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/30 rounded-lg">
-              <div>
-                <label className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                  Price Negotiable
-                </label>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Willing to negotiate on price
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                checked={priceNegotiable}
-                onChange={() => setPriceNegotiable((s) => !s)}
-                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-            </div>
+            <ToggleOption
+              checked={acceptTrades}
+              description="Open to trade offers for your item"
+              label="Accepting Trades"
+              onChange={() => setAcceptTrades((value) => !value)}
+            />
+            <ToggleOption
+              checked={priceNegotiable}
+              description="Willing to negotiate on price"
+              label="Price Negotiable"
+              onChange={() => setPriceNegotiable((value) => !value)}
+            />
           </div>
           {/* Photos and videos */}
           <div
@@ -504,7 +447,11 @@ export default function ListingForm({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
+              accept={
+                hasPhoto
+                  ? "image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
+                  : "image/jpeg,image/png,image/webp"
+              }
               onChange={onFileChange}
               className="hidden"
             />
@@ -526,10 +473,11 @@ export default function ListingForm({
                     : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-200 hover:border-blue-500 hover:text-blue-600"
               }`}
             >
-              + Add Photos or Videos
+              {hasPhoto ? "+ Add Photos or Videos" : "+ Add a Photo"}
             </button>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
-              Photos can be cropped before upload. Videos can be up to 25 MB.
+              At least one photo is required. Add up to {LIMITS.images} photos
+              and videos total; videos can be up to 25 MB.
               {images.length >= LIMITS.images && (
                 <span className="block mt-1 text-gray-600 dark:text-gray-300 font-medium">
                   Maximum {LIMITS.images} media files reached.

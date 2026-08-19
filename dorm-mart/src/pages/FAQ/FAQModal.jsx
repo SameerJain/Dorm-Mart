@@ -1,27 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { TABS } from "./faqUtils";
-import HomeFAQ from "./HomeFAQ";
-import ChatFAQ from "./ChatFAQ";
-import SellerDashboardFAQ from "./SellerDashboardFAQ";
-import PurchasesFAQ from "./PurchasesFAQ";
-import ReviewsFAQ from "./ReviewsFAQ";
-import SettingsFAQ from "./SettingsFAQ";
-import WishlistFAQ from "./WishlistFAQ";
-import NotificationsFAQ from "./NotificationsFAQ";
-import ProfileFAQ from "./ProfileFAQ";
-
-const TAB_CONTENT = {
-  home: <HomeFAQ />,
-  wishlist: <WishlistFAQ />,
-  chat: <ChatFAQ />,
-  purchases: <PurchasesFAQ />,
-  reviews: <ReviewsFAQ />,
-  seller: <SellerDashboardFAQ />,
-  notifications: <NotificationsFAQ />,
-  profile: <ProfileFAQ />,
-  settings: <SettingsFAQ />,
-};
+import { FAQ_CONTENT } from "./faqContent";
 
 function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
   const navigate = useNavigate();
@@ -157,7 +137,7 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
                 pb-2
               "
             >
-              {TAB_CONTENT[activeView]}
+              {FAQ_CONTENT[activeView]}
             </div>
           </div>
         </div>

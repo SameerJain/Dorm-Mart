@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dorm Mart Security Hardening"
+  short_description: "Review and harden Dorm Mart security boundaries"
+  default_prompt: "Use $dorm-mart-harden-security to review and harden this Dorm Mart flow."

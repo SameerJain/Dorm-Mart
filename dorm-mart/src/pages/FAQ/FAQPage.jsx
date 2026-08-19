@@ -2,27 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { TABS } from "./faqUtils";
 import PageBackButton from "../../components/PageBackButton";
-import HomeFAQ from "./HomeFAQ";
-import ChatFAQ from "./ChatFAQ";
-import SellerDashboardFAQ from "./SellerDashboardFAQ";
-import PurchasesFAQ from "./PurchasesFAQ";
-import ReviewsFAQ from "./ReviewsFAQ";
-import SettingsFAQ from "./SettingsFAQ";
-import WishlistFAQ from "./WishlistFAQ";
-import NotificationsFAQ from "./NotificationsFAQ";
-import ProfileFAQ from "./ProfileFAQ";
-
-const TAB_CONTENT = {
-  home: <HomeFAQ />,
-  wishlist: <WishlistFAQ />,
-  chat: <ChatFAQ />,
-  purchases: <PurchasesFAQ />,
-  reviews: <ReviewsFAQ />,
-  seller: <SellerDashboardFAQ />,
-  notifications: <NotificationsFAQ />,
-  profile: <ProfileFAQ />,
-  settings: <SettingsFAQ />,
-};
+import { FAQ_CONTENT } from "./faqContent";
 
 function FAQPage() {
   const navigate = useNavigate();
@@ -108,7 +88,7 @@ function FAQPage() {
           {/* content */}
           <div className="flex-1 mt-2 md:mt-0">
             <div className="faq-content px-1 sm:px-4 pt-3 sm:pt-4 pb-2">
-              {TAB_CONTENT[activeView]}
+              {FAQ_CONTENT[activeView]}
             </div>
           </div>
         </div>

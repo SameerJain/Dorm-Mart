@@ -24,30 +24,27 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/device_history.php';
 
 // Get request data
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-    $raw = file_get_contents('php://input');
-    $data = json_decode($raw, true);
-    if (!is_array($data)) {
-        $data = [];
-    }
+    $data = json_request_body_or_error(['success' => false, 'error' => 'Invalid JSON payload']);
     // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
-    $token = isset($data['token']) ? trim((string)$data['token']) : '';
-    $newPassword = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
-    $uid = isset($data['uid']) ? (int)$data['uid'] : 0;
+    $token = is_string($data['token'] ?? null) ? trim($data['token']) : '';
+    $newPassword = is_string($data['newPassword'] ?? null) ? $data['newPassword'] : '';
+    $uid = request_int($data, 'uid');
 } else {
     // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
-    $token = isset($_POST['token']) ? trim((string)$_POST['token']) : '';
-    $newPassword = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
-    $uid = isset($_POST['uid']) ? (int)$_POST['uid'] : 0;
+    $token = is_string($_POST['token'] ?? null) ? trim($_POST['token']) : '';
+    $newPassword = is_string($_POST['newPassword'] ?? null) ? $_POST['newPassword'] : '';
+    $uid = request_int($_POST, 'uid');
 }
 
 // Validate inputs
-if (empty($token) || empty($newPassword)) {
+if (!preg_match('/^[a-f0-9]{64}$/D', $token) || $newPassword === '' || $uid <= 0) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Token and new password are required']);
+    echo json_encode(['success' => false, 'error' => 'Token, user ID, and new password are required']);
     exit;
 }
 
@@ -70,48 +67,24 @@ try {
     
     $isValidToken = false;
     $userId = null;
-
-    if ($uid > 0) {
-        // Fast path: look up the specific user directly
-        $stmt = $conn->prepare('
-            SELECT user_id, hash_auth
-            FROM user_accounts
-            WHERE user_id = ?
-              AND hash_auth IS NOT NULL
-              AND reset_token_expires > NOW()
-            LIMIT 1
-        ');
-        if (!$stmt) {
-            throw new RuntimeException('Failed to prepare token lookup');
-        }
-        $stmt->bind_param('i', $uid);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($row = $result->fetch_assoc()) {
-            if (password_verify($token, (string)$row['hash_auth'])) {
-                $isValidToken = true;
-                $userId = (int)$row['user_id'];
-            }
-        }
-    } else {
-        // Fallback for old-style links that predate uid in the URL
-        $stmt = $conn->prepare('
-            SELECT user_id, hash_auth
-            FROM user_accounts
-            WHERE hash_auth IS NOT NULL
-              AND reset_token_expires > NOW()
-        ');
-        if (!$stmt) {
-            throw new RuntimeException('Failed to prepare token lookup');
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
-            if (password_verify($token, (string)$row['hash_auth'])) {
-                $isValidToken = true;
-                $userId = (int)$row['user_id'];
-                break;
-            }
+    $stmt = $conn->prepare('
+        SELECT user_id, reset_token_hash
+        FROM user_accounts
+        WHERE user_id = ?
+          AND reset_token_hash IS NOT NULL
+          AND reset_token_expires > UTC_TIMESTAMP()
+        LIMIT 1
+    ');
+    if (!$stmt) {
+        throw new RuntimeException('Failed to prepare token lookup');
+    }
+    $stmt->bind_param('i', $uid);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        if (password_verify($token, (string)$row['reset_token_hash'])) {
+            $isValidToken = true;
+            $userId = (int)$row['user_id'];
         }
     }
 
@@ -129,7 +102,9 @@ try {
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare('
         UPDATE user_accounts 
-        SET hash_pass = ?, hash_auth = NULL, reset_token_expires = NULL 
+        SET hash_pass = ?, hash_auth = NULL, reset_token_hash = NULL,
+            reset_token_expires = NULL, last_reset_request = NULL,
+            auth_version = auth_version + 1
         WHERE user_id = ?
     ');
     $stmt->bind_param('si', $hashedPassword, $userId);  // 's' = string, 'i' = integer
@@ -144,6 +119,7 @@ try {
 
     $stmt->close();
     $conn->close();
+    mark_all_login_devices_signed_out((int)$userId);
 
     echo json_encode([
         'success' => true,

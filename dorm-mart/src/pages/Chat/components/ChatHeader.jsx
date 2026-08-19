@@ -20,6 +20,8 @@ export default function ChatHeader({
   navigate,
   setIsMobileList,
 }) {
+  const isListingDraft = activeConversation?.productStatus === "Draft";
+
   return (
     <div
       className={`relative border-4 ${headerBgColor} px-5 py-4 overflow-hidden`}
@@ -97,7 +99,7 @@ export default function ChatHeader({
               />
             </div>
           )}
-          {activeConversation?.productId && (
+          {activeConversation?.productId && !isListingDraft && (
             <button
               onClick={() => {
                 navigate(`/app/viewProduct/${activeConversation.productId}`, {
@@ -126,6 +128,32 @@ export default function ChatHeader({
           </PageBackButton>
         </div>
       </div>
+      {isListingDraft && (
+        <div
+          role="status"
+          className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          <span>
+            {isSellerPerspective
+              ? "This listing is saved as a draft and hidden from buyers. Messaging remains available."
+              : "This listing is currently unavailable. Messaging remains available."}
+          </span>
+          {isSellerPerspective && activeConversation?.productId && (
+            <button
+              type="button"
+              onClick={() => {
+                navigate(
+                  `/app/product-listing/edit/${activeConversation.productId}`,
+                  { state: { returnTo: `/app/chat?conv=${activeConvId}` } },
+                );
+              }}
+              className="rounded-lg bg-amber-600 px-3 py-1.5 font-medium text-white transition-colors hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600"
+            >
+              Edit / Publish
+            </button>
+          )}
+        </div>
+      )}
       {(activeConversation?.sharedContactEmail ||
         activeConversation?.sharedContactPhone) && (
         <address className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-blue-200 pt-3 text-xs not-italic text-slate-600 dark:border-blue-800 dark:text-gray-300 sm:text-sm">

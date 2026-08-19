@@ -73,7 +73,7 @@ export default function ImageModal({
 
   function isAllowedType(f) {
     // Prefer MIME, but fall back to extension if needed
-    if (f.type && ALLOWED_MIME.has(f.type)) return true;
+    if (f.type) return ALLOWED_MIME.has(f.type);
 
     const name = (f.name || "").toLowerCase();
     const ext = ALLOWED_EXTS.has(
@@ -83,7 +83,7 @@ export default function ImageModal({
   }
 
   function isVideoFile(f) {
-    if (f.type?.startsWith("video/")) return true;
+    if (f.type) return ALLOWED_MIME.has(f.type) && f.type.startsWith("video/");
     const name = (f.name || "").toLowerCase();
     return new Set([".mp4", ".webm", ".mov"]).has(
       name.slice(name.lastIndexOf(".")),

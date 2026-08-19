@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dorm Mart Database Manager"
+  short_description: "Create and verify Dorm Mart migrations and seed data"
+  default_prompt: "Use $dorm-mart-manage-database to make this Dorm Mart schema or seed-data change safely."

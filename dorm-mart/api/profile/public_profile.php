@@ -12,7 +12,10 @@ init_json_endpoint('GET');
 try {
     auth_boot_session();
 
-    $usernameParam = trim((string)($_GET['username'] ?? ''));
+    if (!is_string($_GET['username'] ?? null)) {
+        json_response(['success' => false, 'error' => 'Invalid username'], 400);
+    }
+    $usernameParam = trim($_GET['username']);
     if ($usernameParam === '') {
         json_response(['success' => false, 'error' => 'Username is required'], 400);
     }

@@ -1,13 +1,18 @@
 <?php
 declare(strict_types=1);
 
-// Serves uploaded product, profile, review, and chat media.
+// Serves public product, profile, and review media. Chat media requires participant auth.
 
 // Include security utilities
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
 set_security_headers();
 set_secure_cors();
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
+    header('Allow: GET');
+    http_response_code(405);
+    exit('Method Not Allowed');
+}
 
 // Must match upload_profile_photo.php / product_listing.php: uploads honor DATA_UPLOADS_DIR.
 $imageDir = real_upload_path(data_images_dir());
@@ -21,6 +26,15 @@ function stream_media(string $path): void
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $mime  = finfo_file($finfo, $path);
     finfo_close($finfo);
+
+    $allowed = [
+        'image/jpeg', 'image/png', 'image/webp',
+        'video/mp4', 'video/webm', 'video/quicktime',
+    ];
+    if (!in_array($mime, $allowed, true)) {
+        http_response_code(404);
+        exit('Media not found');
+    }
 
     header('Content-Type: ' . $mime);
     header('Content-Length: ' . filesize($path));
@@ -37,7 +51,11 @@ function media_path_in_root(string $root, string $filename): ?string
 
 // 1) ?file=filename.png
 if (isset($_GET['file']) && $_GET['file'] !== '') {
-    $path = media_path_in_root($imageDir, (string)$_GET['file']);
+    if (!is_string($_GET['file'])) {
+        http_response_code(400);
+        exit('Invalid file');
+    }
+    $path = media_path_in_root($imageDir, $_GET['file']);
     if ($path === null) {
         http_response_code(404);
         exit('Image not found');
@@ -45,8 +63,12 @@ if (isset($_GET['file']) && $_GET['file'] !== '') {
     stream_media($path);
 }
 
-// 2) ?url=/data/images/filename.png OR /media/review-images/filename.jpg OR /media/chat-images/filename.jpg
+// 2) ?url=/data/images/filename.png OR /media/review-images/filename.jpg
 if (isset($_GET['url']) && $_GET['url'] !== '') {
+    if (!is_string($_GET['url'])) {
+        http_response_code(400);
+        exit('Invalid url');
+    }
     $url = $_GET['url'];
 
     // strip query part if present
@@ -76,17 +98,11 @@ if (isset($_GET['url']) && $_GET['url'] !== '') {
         $mediaRoot = real_upload_path(data_media_dir('review-images'));
         $path = $mediaRoot !== null ? media_path_in_root($mediaRoot, $file) : null;
     }
-    // Handle /media/chat-images/ paths
-    elseif (str_starts_with($url, '/media/chat-images/')) {
-        $file = basename(substr($url, strlen('/media/chat-images/')));
-        $mediaRoot = real_upload_path(data_media_dir('chat-images'));
-        $path = $mediaRoot !== null ? media_path_in_root($mediaRoot, $file) : null;
-    }
-    // Handle /media/chat-attachments/ paths
-    elseif (str_starts_with($url, '/media/chat-attachments/')) {
-        $file = basename(substr($url, strlen('/media/chat-attachments/')));
-        $mediaRoot = real_upload_path(data_media_dir('chat-attachments'));
-        $path = $mediaRoot !== null ? media_path_in_root($mediaRoot, $file) : null;
+    // Private chat media is intentionally unavailable from this generic endpoint.
+    elseif (str_starts_with($url, '/media/chat-images/')
+        || str_starts_with($url, '/media/chat-attachments/')) {
+        http_response_code(404);
+        exit('Image not found');
     }
     // Handle other /media/ paths — basename() prevents traversal, realpath() prevents symlink escape
     elseif (str_starts_with($url, '/media/')) {

@@ -1,3 +1,5 @@
+import ListingPriceSummary from "./ListingPriceSummary";
+
 export default function ProductActionsPanel({
   normalized,
   myId,
@@ -21,27 +23,11 @@ export default function ProductActionsPanel({
         />
       )}
 
-      <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-semibold text-gray-900 dark:text-gray-100">
-          ${normalized.price?.toFixed(2)}
-        </span>
-        {normalized.priceNego ? (
-          <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-full px-2 py-0.5">
-            Price Negotiable
-          </span>
-        ) : null}
-        {normalized.trades ? (
-          <span className="text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-full px-2 py-0.5">
-            Open to trades
-          </span>
-        ) : null}
-      </div>
-      <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1">
-        {normalized.sold ? "Not available" : "In Stock"}
-      </p>
-      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-        Pickup: {normalized.itemLocation || "On campus"}
-      </p>
+      <ListingPriceSummary
+        normalized={normalized}
+        price={`$${normalized.price?.toFixed(2)}`}
+        truncatePickup
+      />
 
       <div className="mt-3 space-y-2 flex flex-col items-center">
         {isSellerViewingOwnProduct ? (
