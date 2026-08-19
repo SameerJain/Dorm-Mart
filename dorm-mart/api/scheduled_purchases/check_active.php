@@ -16,7 +16,7 @@ try {
 
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
+    $productId = request_int($payload, 'product_id');
 
     if ($productId <= 0) {
         json_response(['success' => false, 'error' => 'Invalid product_id'], 400);

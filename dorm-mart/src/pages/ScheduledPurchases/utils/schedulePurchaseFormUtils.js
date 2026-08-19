@@ -26,6 +26,9 @@ export function validateNegotiatedPrice(
 ) {
   const trimmed = negotiatedPrice.trim();
   if (!trimmed) return { value: null, error: "" };
+  if (!/^\d{1,10}(?:\.\d{1,2})?$/.test(trimmed)) {
+    return { value: null, error: "Please enter a valid price." };
+  }
   if (isTrade) {
     return {
       value: null,

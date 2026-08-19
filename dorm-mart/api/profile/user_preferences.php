@@ -91,22 +91,37 @@ try {
     $body = json_request_body();
     require_csrf_token($body['csrf_token'] ?? null);
 
-    $frequency = in_array(($body['promoFrequency'] ?? 'off'), ['off', 'daily', 'weekly'], true) ? $body['promoFrequency'] : 'off';
+    $frequency = $body['promoFrequency'] ?? 'off';
+    if (!is_string($frequency) || !in_array($frequency, ['off', 'daily', 'weekly'], true)) {
+      json_response(['ok' => false, 'error' => 'Invalid promotional email frequency'], 400);
+    }
     $promo = $frequency === 'off' ? 0 : 1;
-    $reveal = isset($body['revealContact']) ? (int)!!$body['revealContact'] : 0;
-    $phone = trim((string)($body['contactPhone'] ?? ''));
+    $revealValue = strict_boolean_value($body['revealContact'] ?? false);
+    if ($revealValue === null) {
+      json_response(['ok' => false, 'error' => 'Invalid contact visibility setting'], 400);
+    }
+    $reveal = $revealValue ? 1 : 0;
+    $phoneValue = $body['contactPhone'] ?? '';
+    if (!is_string($phoneValue)) {
+      json_response(['ok' => false, 'error' => 'Invalid phone number'], 400);
+    }
+    $phone = trim($phoneValue);
     if ($phone !== '' && (!preg_match('/^[0-9+().\-\s]{1,25}$/', $phone) || !preg_match('/\d/', $phone))) {
       json_response(['ok' => false, 'error' => 'Invalid phone number'], 400);
     }
     $phone = $phone !== '' ? $phone : null;
     $allowedCategories = allowed_preference_categories();
-    $interests = isset($body['interests']) && is_array($body['interests'])
-        ? array_slice(array_values(array_unique(array_filter(
-            $body['interests'],
-            fn($category) => is_string($category) && in_array($category, $allowedCategories, true)
-        ))), 0, 3)
-        : [];
-    $theme = (isset($body['theme']) && $body['theme'] === 'dark') ? 1 : 0;
+    $interestsValue = $body['interests'] ?? [];
+    if (!is_array($interestsValue) || count($interestsValue) > 3
+        || array_filter($interestsValue, fn($category) => !is_string($category) || !in_array($category, $allowedCategories, true))) {
+      json_response(['ok' => false, 'error' => 'Invalid interest categories'], 400);
+    }
+    $interests = array_values(array_unique($interestsValue));
+    $themeValue = $body['theme'] ?? 'light';
+    if (!is_string($themeValue) || !in_array($themeValue, ['light', 'dark'], true)) {
+      json_response(['ok' => false, 'error' => 'Invalid theme'], 400);
+    }
+    $theme = $themeValue === 'dark' ? 1 : 0;
     
     // Prepare the 3 category values
     $int1 = $interests[0] ?? null;

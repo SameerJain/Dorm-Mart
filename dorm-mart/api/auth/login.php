@@ -15,6 +15,7 @@ dm_enforce_https();
 require __DIR__ . '/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/two_factor.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 // Initialize session for rate limiting (must be done before checking rate limits)
 auth_boot_session();
@@ -34,25 +35,34 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-    $raw  = file_get_contents('php://input');
-    // XSS PROTECTION: Decode JSON first, then validate individual fields (don't HTML-encode JSON)
-    $data = json_decode($raw, true);
-    if (!is_array($data)) {
+    $raw = file_get_contents('php://input', false, null, 0, MAX_JSON_REQUEST_BYTES + 1);
+    $data = is_string($raw) ? decode_json_object($raw) : null;
+    if ($data === null) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Invalid JSON format']);
         exit;
     }
-    
-    $emailRaw = strtolower(trim((string)($data['email'] ?? '')));
-    $passwordRaw = (string)($data['password'] ?? '');
+
+    if (!is_string($data['email'] ?? null) || !is_string($data['password'] ?? null)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Invalid credentials format']);
+        exit;
+    }
+    $emailRaw = strtolower(trim($data['email']));
+    $passwordRaw = $data['password'];
 } else {
-    $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
-    $passwordRaw = (string)($_POST['password'] ?? '');
+    if (!is_string($_POST['email'] ?? null) || !is_string($_POST['password'] ?? null)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Invalid credentials format']);
+        exit;
+    }
+    $emailRaw = strtolower(trim($_POST['email']));
+    $passwordRaw = $_POST['password'];
 }
 
 // Accept any valid email format (to support existing non-UB accounts)
 $email = validate_input($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
-$password = validate_input($passwordRaw, 64);
+$password = strlen($passwordRaw) <= 64 ? $passwordRaw : false;
 
 if ($email === false || $password === false) {
     http_response_code(400);

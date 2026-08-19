@@ -6,6 +6,7 @@ require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -16,8 +17,8 @@ try {
 
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $conversationId = isset($payload['conversation_id']) ? (int)$payload['conversation_id'] : 0;
-    $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
+    $conversationId = request_int($payload, 'conversation_id');
+    $productId = request_int($payload, 'product_id');
 
     if ($conversationId <= 0 || $productId <= 0) {
         json_response(['success' => false, 'error' => 'conversation_id and product_id are required'], 400);
@@ -26,22 +27,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $convStmt = $conn->prepare('
-        SELECT c.conv_id, c.product_id, inv.seller_id
-        FROM conversations c
-        INNER JOIN INVENTORY inv ON inv.product_id = c.product_id
-        WHERE c.conv_id = ? AND c.product_id = ?
-        LIMIT 1
-    ');
-    if (!$convStmt) {
-        throw new RuntimeException('Failed to prepare conversation lookup');
-    }
-    $convStmt->bind_param('ii', $conversationId, $productId);
-    $convStmt->execute();
-    $convRes = $convStmt->get_result();
-    $convRow = $convRes ? $convRes->fetch_assoc() : null;
-    $convStmt->close();
+    $convRow = confirm_purchase_conversation($conn, $conversationId, $productId);
 
     if (!$convRow) {
         json_response(['success' => false, 'error' => 'Conversation not found for this product'], 404);
@@ -51,81 +37,13 @@ try {
         json_response(['success' => false, 'error' => 'You are not the seller for this listing'], 403);
     }
 
-    // Fetch the latest accepted scheduled purchase for this conversation/item
-    $schedSql = <<<SQL
-        SELECT
-            spr.request_id,
-            spr.inventory_product_id,
-            spr.seller_user_id,
-            spr.buyer_user_id,
-            spr.meet_location,
-            spr.meeting_at,
-            spr.description,
-            spr.negotiated_price,
-            spr.trade_item_description,
-            spr.is_trade,
-            spr.snapshot_price_nego,
-            spr.snapshot_trades,
-            spr.snapshot_meet_location,
-            spr.buyer_response_at,
-            inv.title AS item_title,
-            inv.listing_price,
-            buyer.first_name AS buyer_first,
-            buyer.last_name AS buyer_last
-        FROM scheduled_purchase_requests spr
-        INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
-        INNER JOIN user_accounts buyer ON buyer.user_id = spr.buyer_user_id
-        WHERE spr.conversation_id = ?
-          AND spr.inventory_product_id = ?
-          AND spr.status = 'accepted'
-          AND spr.request_id = (
-            SELECT spr2.request_id
-            FROM scheduled_purchase_requests spr2
-            WHERE spr2.conversation_id = spr.conversation_id
-              AND spr2.inventory_product_id = spr.inventory_product_id
-              AND spr2.status = 'accepted'
-            ORDER BY COALESCE(spr2.updated_at, spr2.buyer_response_at) DESC, spr2.request_id DESC
-            LIMIT 1
-          )
-          AND NOT EXISTS (
-            SELECT 1
-            FROM confirm_purchase_requests cpr
-            WHERE cpr.scheduled_request_id = spr.request_id
-              AND cpr.confirm_request_id = (
-                SELECT cpr2.confirm_request_id
-                FROM confirm_purchase_requests cpr2
-                WHERE cpr2.scheduled_request_id = spr.request_id
-                ORDER BY cpr2.confirm_request_id DESC
-                LIMIT 1
-              )
-              AND cpr.status IN ('buyer_accepted', 'auto_accepted')
-              AND cpr.is_successful = 0
-          )
-        ORDER BY COALESCE(spr.updated_at, spr.buyer_response_at) DESC, spr.request_id DESC
-        LIMIT 1
-    SQL;
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $schedStmt = $conn->prepare($schedSql);
-    if (!$schedStmt) {
-        throw new RuntimeException('Failed to prepare scheduled purchase lookup');
-    }
-    $schedStmt->bind_param('ii', $conversationId, $productId);
-    $schedStmt->execute();
-    $schedRes = $schedStmt->get_result();
-    $schedRow = $schedRes ? $schedRes->fetch_assoc() : null;
-    $schedStmt->close();
+    $schedRow = confirm_purchase_latest_accepted_schedule($conn, $conversationId, $productId);
 
     if (!$schedRow) {
         json_response(['success' => false, 'error' => 'No accepted scheduled purchase found for this chat'], 404);
     }
 
-    $meetingIso = null;
-    if (!empty($schedRow['meeting_at'])) {
-        $mt = date_create($schedRow['meeting_at'], new DateTimeZone('UTC'));
-        if ($mt) {
-            $meetingIso = $mt->format(DateTime::ATOM);
-        }
-    }
+    $meetingIso = confirm_purchase_utc_atom($schedRow['meeting_at'] ?? null);
     $buyerFullName = trim(($schedRow['buyer_first'] ?? '') . ' ' . ($schedRow['buyer_last'] ?? ''));
     if ($buyerFullName === '') {
         $buyerFullName = 'User ' . (int)$schedRow['buyer_user_id'];

@@ -4,8 +4,13 @@
  * Routes API requests to PHP files, serves React SPA for all other routes
  */
 
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+ini_set('log_errors', '1');
+
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $requestPath = parse_url($requestUri, PHP_URL_PATH);
+header_remove('X-Powered-By');
 
 function router_is_https_request(): bool
 {
@@ -15,7 +20,7 @@ function router_is_https_request(): bool
 
 function router_csp_header(): string
 {
-    return "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' wss:; frame-ancestors 'none';";
+    return "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' wss:; frame-ancestors 'none';";
 }
 
 // Route API requests to PHP files
@@ -51,6 +56,12 @@ if (strpos($requestPath, '/api/') === 0) {
     $apiRoot = realpath(__DIR__ . '/api');
     $resolved = $apiRoot !== false ? realpath($apiFile) : false;
     if ($resolved === false || $apiRoot === false || strpos($resolved, $apiRoot . DIRECTORY_SEPARATOR) !== 0) {
+        http_response_code(404);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'API endpoint not found']);
+        exit;
+    }
+    if (strtolower((string)pathinfo($resolved, PATHINFO_EXTENSION)) !== 'php') {
         http_response_code(404);
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'error' => 'API endpoint not found']);
@@ -97,6 +108,14 @@ if (strpos($requestPath, '/api/') === 0) {
 $decodedRequestPath = rawurldecode($requestPath);
 if (strpos($decodedRequestPath, "\0") !== false
     || preg_match('#(?:^|[\\\\/])\.\.(?:[\\\\/]|$)#', $decodedRequestPath)) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo '404 Not Found';
+    exit;
+}
+
+// Uploaded media must be served through an authorization-aware API endpoint.
+if (str_starts_with($decodedRequestPath, '/media/')) {
     http_response_code(404);
     header('Content-Type: text/plain; charset=utf-8');
     echo '404 Not Found';

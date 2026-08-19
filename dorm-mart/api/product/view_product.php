@@ -7,6 +7,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../helpers/recommendations.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('GET', ['ok' => false, 'error' => 'Method Not Allowed']);
 
@@ -18,12 +19,11 @@ try {
     $userId = require_login();
 
     // Accept product_id from query (supports `id` or `product_id`)
-    $prodStr = isset($_GET['product_id']) ? (string)$_GET['product_id'] : (isset($_GET['id']) ? (string)$_GET['id'] : '');
-    $prodStr = trim($prodStr);
-    if ($prodStr === '' || !ctype_digit($prodStr)) {
+    $productValue = $_GET['product_id'] ?? ($_GET['id'] ?? null);
+    $productId = strict_integer_value($productValue);
+    if ($productId === null || $productId <= 0) {
         json_response(['ok' => false, 'error' => 'Invalid or missing product_id'], 400);
     }
-    $productId = (int)$prodStr;
 
     mysqli_report(MYSQLI_REPORT_OFF);
     $mysqli = db();

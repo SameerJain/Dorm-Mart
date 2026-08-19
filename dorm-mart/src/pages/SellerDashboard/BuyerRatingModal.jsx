@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import StarRating from "../Reviews/StarRating";
+import EditableStarRating from "../Reviews/EditableStarRating";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { API_BASE } from "../../utils/apiConfig";
 import { apiGetJson, csrfPostJson } from "../../utils/apiClient";
 import { formatDate } from "../../utils/formatters";
 import logger from "../../utils/logger";
 import { readRatingValue } from "./utils/sellerDashboardUtils";
+import SubmitConfirmationDialog from "../../components/SubmitConfirmationDialog";
 
 /**
  * BuyerRatingModal Component
@@ -39,6 +41,13 @@ function BuyerRatingModal({
   const [pendingSubmit, setPendingSubmit] = useState(false);
 
   const maxChars = 250;
+
+  const resetConfirmation = () => {
+    setShowConfirmModal(false);
+    setConfirmMessage("");
+    setConfirmCallback(null);
+    setPendingSubmit(false);
+  };
 
   const fetchExistingRating = useCallback(async () => {
     try {
@@ -285,23 +294,11 @@ function BuyerRatingModal({
           ) : (
             // Rating form
             <form onSubmit={handleSubmit}>
-              {/* Rating Section */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Rate this Buyer <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center gap-4">
-                  <StarRating
-                    rating={rating}
-                    onRatingChange={setRating}
-                    readOnly={false}
-                    size={40}
-                  />
-                  <span className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                    {rating.toFixed(1)}
-                  </span>
-                </div>
-              </div>
+              <EditableStarRating
+                label="Rate this Buyer"
+                rating={rating}
+                onChange={setRating}
+              />
 
               {/* Review Text Section */}
               <div className="mb-6">
@@ -377,77 +374,12 @@ function BuyerRatingModal({
         </div>
       </div>
 
-      {/* Confirmation Modal */}
-      {showConfirmModal && (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          aria-modal="true"
-          onClick={(e) => {
-            // Close confirmation modal if clicking backdrop
-            if (e.target === e.currentTarget) {
-              setShowConfirmModal(false);
-              setConfirmMessage("");
-              setConfirmCallback(null);
-              setPendingSubmit(false); // Reset pending submit flag
-            }
-          }}
-        >
-          <div
-            className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 pt-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                Ready to Submit?
-              </h2>
-              <p className="mt-2 text-gray-600 dark:text-gray-300">
-                {confirmMessage}
-              </p>
-            </div>
-            <div className="px-6 py-4 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowConfirmModal(false);
-                  setConfirmMessage("");
-                  setConfirmCallback(null);
-                  setPendingSubmit(false); // Reset pending submit flag
-                }}
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (confirmCallback) {
-                    try {
-                      // confirmCallback is the actual callback function - call it directly
-                      await confirmCallback();
-                    } catch (err) {
-                      // Error is already handled in proceedWithSubmit
-                      // Reset confirmation modal state on error
-                      setShowConfirmModal(false);
-                      setConfirmMessage("");
-                      setConfirmCallback(null);
-                      setPendingSubmit(false);
-                    }
-                  } else {
-                    setShowConfirmModal(false);
-                    setConfirmMessage("");
-                    setConfirmCallback(null);
-                    setPendingSubmit(false);
-                  }
-                }}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SubmitConfirmationDialog
+        isOpen={showConfirmModal}
+        message={confirmMessage}
+        onCancel={resetConfirmation}
+        onConfirm={confirmCallback}
+      />
     </div>
   );
 }

@@ -9,6 +9,11 @@
 
 require_once __DIR__ . '/../config/app_config.php';
 
+// API failures belong in server logs, never in HTTP responses.
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+ini_set('log_errors', '1');
+
 // SECURITY HEADERS
 
 /**
@@ -21,7 +26,7 @@ function is_https_request(): bool {
 }
 
 function security_csp_header(): string {
-    return "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' wss:; frame-ancestors 'none';";
+    return "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' wss:; frame-ancestors 'none';";
 }
 
 function require_local_or_cli_access(): void {
@@ -66,6 +71,16 @@ function dm_enforce_https(): void
 }
 
 function set_security_headers() {
+    set_exception_handler(static function (Throwable $error): void {
+        error_log('Unhandled API error: ' . $error->getMessage());
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store');
+        }
+        echo json_encode(['ok' => false, 'success' => false, 'error' => 'Server error']);
+    });
+
     // Content Security Policy - unsafe-eval removed; production React bundles don't need it
     header('Content-Security-Policy: ' . security_csp_header());
 
@@ -114,6 +129,7 @@ function set_secure_cors() {
     if ($origin === '' || !in_array($origin, $allowedOrigins, true)) {
         // Reject requests from untrusted origins
         http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['ok' => false, 'error' => 'Origin not allowed']);
         exit;
     }
@@ -231,6 +247,103 @@ function validate_input($input, $maxLength = 255, $allowedChars = null) {
 }
 
 // RATE LIMITING FUNCTIONS
+
+const ACCOUNT_CREATION_MAX_ATTEMPTS = 4;
+const ACCOUNT_CREATION_ATTEMPT_WINDOW_MINUTES = 10;
+const ACCOUNT_CREATION_LOCKOUT_MINUTES = 3;
+
+/** Build an opaque account-creation key without using the submitted email. */
+function account_creation_rate_limit_key(): string
+{
+    $forwarded = trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))[0]);
+    $remote = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
+    $ip = filter_var($forwarded, FILTER_VALIDATE_IP)
+        ? $forwarded
+        : (filter_var($remote, FILTER_VALIDATE_IP) ? $remote : 'unknown');
+
+    return hash('sha256', "account_creation\0" . $ip);
+}
+
+/** Atomically consume one account-creation attempt. */
+function consume_account_creation_attempt(): array
+{
+    $conn = null;
+    try {
+        require_once __DIR__ . '/../database/db_connect.php';
+        $conn = db();
+        $rateLimitKey = account_creation_rate_limit_key();
+        $conn->begin_transaction();
+
+        $stmt = $conn->prepare(
+            'INSERT IGNORE INTO account_creation_rate_limits
+                (rate_limit_key, attempt_count, last_attempt_at, lockout_until)
+             VALUES (?, 0, NULL, NULL)'
+        );
+        $stmt->bind_param('s', $rateLimitKey);
+        $stmt->execute();
+        $stmt->close();
+
+        $stmt = $conn->prepare(
+            'SELECT attempt_count, last_attempt_at, lockout_until,
+                    GREATEST(0, TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), lockout_until)) AS retry_after_seconds
+             FROM account_creation_rate_limits
+             WHERE rate_limit_key = ?
+             FOR UPDATE'
+        );
+        $stmt->bind_param('s', $rateLimitKey);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $retryAfterSeconds = (int)($row['retry_after_seconds'] ?? 0);
+        if ($retryAfterSeconds > 0) {
+            $conn->commit();
+            $conn->close();
+            return ['blocked' => true, 'retry_after_seconds' => $retryAfterSeconds];
+        }
+
+        $attempts = (int)($row['attempt_count'] ?? 0);
+        $lastAttempt = $row['last_attempt_at'] ?? null;
+        if (($row['lockout_until'] ?? null) !== null
+            || $lastAttempt === null
+            || strtotime((string)$lastAttempt) < time() - (ACCOUNT_CREATION_ATTEMPT_WINDOW_MINUTES * 60)) {
+            $attempts = 0;
+        }
+
+        $attempts++;
+        $startsLockout = $attempts >= ACCOUNT_CREATION_MAX_ATTEMPTS;
+        $stmt = $conn->prepare(
+            'UPDATE account_creation_rate_limits
+             SET attempt_count = ?,
+                 last_attempt_at = UTC_TIMESTAMP(),
+                 lockout_until = CASE WHEN ? = 1
+                    THEN DATE_ADD(UTC_TIMESTAMP(), INTERVAL 3 MINUTE)
+                    ELSE NULL END
+             WHERE rate_limit_key = ?'
+        );
+        $lock = $startsLockout ? 1 : 0;
+        $stmt->bind_param('iis', $attempts, $lock, $rateLimitKey);
+        $stmt->execute();
+        $stmt->close();
+        $conn->commit();
+        $conn->close();
+
+        return [
+            'blocked' => false,
+            'retry_after_seconds' => $startsLockout ? ACCOUNT_CREATION_LOCKOUT_MINUTES * 60 : 0,
+        ];
+    } catch (Throwable $e) {
+        if ($conn instanceof mysqli) {
+            try {
+                $conn->rollback();
+            } catch (Throwable $ignored) {
+            }
+            $conn->close();
+        }
+        error_log('account-creation rate-limit update failed: ' . $e->getMessage());
+        return ['blocked' => false, 'retry_after_seconds' => 0];
+    }
+}
 
 /** Build a stable, non-reversible key without storing an email address or raw IP. */
 function login_rate_limit_key(string $normalizedEmail): string

@@ -111,7 +111,7 @@ function DeleteAccountPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" onClick={isSubmitting ? undefined : closeModal} />
           <div
-            className="relative z-10 w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-800"
+            className="relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-gray-700 dark:bg-gray-800 sm:p-6"
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-account-title"

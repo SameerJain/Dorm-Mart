@@ -12,6 +12,7 @@ init_json_endpoint('POST');
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../scheduled_purchases/helpers.php';
 
 try {
     $userId = require_login();
@@ -23,8 +24,8 @@ try {
 
     require_csrf_token($input['csrf_token'] ?? null);
 
-    $id = isset($input['id']) ? (int)$input['id'] : 0;
-    $status = isset($input['status']) ? (string)$input['status'] : '';
+    $id = request_int($input, 'id');
+    $status = is_string($input['status'] ?? null) ? $input['status'] : '';
 
     $valid = ['Active','Pending','Draft','Sold'];
     if ($id <= 0 || !in_array($status, $valid, true)) {
@@ -46,6 +47,12 @@ try {
     $statusStr = isset($existing['item_status']) ? (string)$existing['item_status'] : '';
     if ($soldFlag === 1 || $statusStr === 'Sold') {
         json_response(['success' => false, 'error' => 'Sold listings cannot be edited.'], 403);
+    }
+    if ($status === 'Draft' && scheduled_purchase_has_active_accepted($conn, $id, 0)) {
+        json_response([
+            'success' => false,
+            'error' => 'Cancel or complete the accepted scheduled purchase before saving this listing as a draft.'
+        ], 409);
     }
 
     // Enforce cap on active listings per seller when activating

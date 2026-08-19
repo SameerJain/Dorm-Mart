@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint('GET');
 
@@ -13,25 +15,15 @@ try {
     $userId = require_login();
 
     // Validate product_id
-    $productIdParam = trim((string)($_GET['product_id'] ?? ''));
-    if (!ctype_digit($productIdParam)) {
+    $productId = strict_integer_value($_GET['product_id'] ?? null);
+    if ($productId === null || $productId <= 0) {
         json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
     }
-    $productId = (int)$productIdParam;
 
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Verify that the current user is the seller of this product
-    $stmt = $conn->prepare('SELECT seller_id FROM INVENTORY WHERE product_id = ? LIMIT 1');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare product lookup');
-    }
-    $stmt->bind_param('i', $productId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $productRow = $result ? $result->fetch_assoc() : null;
-    $stmt->close();
+    $productRow = review_product($conn, $productId);
 
     if (!$productRow) {
         json_response(['success' => false, 'error' => 'Product not found'], 404);

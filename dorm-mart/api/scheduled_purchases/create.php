@@ -16,10 +16,14 @@ try {
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $inventoryId = isset($payload['inventory_product_id']) ? (int)$payload['inventory_product_id'] : 0;
-    $conversationId = isset($payload['conversation_id']) ? (int)$payload['conversation_id'] : 0;
-    $meetingAtRaw = isset($payload['meeting_at']) ? trim((string)$payload['meeting_at']) : '';
-    $description = isset($payload['description']) ? trim((string)$payload['description']) : '';
+    $inventoryId = request_int($payload, 'inventory_product_id');
+    $conversationId = request_int($payload, 'conversation_id');
+    $meetingAtRaw = is_string($payload['meeting_at'] ?? null) ? trim($payload['meeting_at']) : '';
+    $descriptionValue = $payload['description'] ?? '';
+    $description = is_string($descriptionValue) ? trim($descriptionValue) : '';
+    if ($descriptionValue !== null && !is_string($descriptionValue)) {
+        json_response(['success' => false, 'error' => 'Invalid description'], 400);
+    }
     
     if (mb_strlen($description) > 1000) {
         json_response(['success' => false, 'error' => 'Description cannot exceed 1000 characters'], 400);
@@ -29,28 +33,40 @@ try {
     $negotiatedPriceRaw = $payload['negotiated_price'] ?? null;
     $negotiatedPrice = null;
     if ($negotiatedPriceRaw !== null && $negotiatedPriceRaw !== '') {
-        $negotiatedPriceString = trim((string)$negotiatedPriceRaw);
-        if (!preg_match('/^(?:\d{1,4}(?:\.\d{1,2})?|\.\d{1,2})$/', $negotiatedPriceString)) {
+        $negotiatedPriceString = is_string($negotiatedPriceRaw)
+            ? trim($negotiatedPriceRaw)
+            : (is_int($negotiatedPriceRaw) || is_float($negotiatedPriceRaw) ? (string)$negotiatedPriceRaw : '');
+        if (!preg_match('/^(?:\d{1,10}(?:\.\d{1,2})?|\.\d{1,2})$/', $negotiatedPriceString)) {
             json_response(['success' => false, 'error' => 'Invalid negotiated price'], 400);
         }
-        $negotiatedPrice = (float)$negotiatedPriceString;
+        $negotiatedPrice = strict_decimal_value($negotiatedPriceString);
+        if ($negotiatedPrice === null) {
+            json_response(['success' => false, 'error' => 'Invalid negotiated price'], 400);
+        }
     }
-    $isTrade = isset($payload['is_trade']) ? (bool)$payload['is_trade'] : false;
+    $isTrade = strict_boolean_value($payload['is_trade'] ?? false);
+    if ($isTrade === null) {
+        json_response(['success' => false, 'error' => 'Invalid trade selection'], 400);
+    }
     $tradeItemDescription = isset($payload['trade_item_description']) && $payload['trade_item_description'] !== null
-        ? trim((string)$payload['trade_item_description']) : null;
+        ? (is_string($payload['trade_item_description']) ? trim($payload['trade_item_description']) : null) : null;
+    if (isset($payload['trade_item_description']) && $payload['trade_item_description'] !== null
+        && !is_string($payload['trade_item_description'])) {
+        json_response(['success' => false, 'error' => 'Invalid trade item description'], 400);
+    }
 
     if ($tradeItemDescription !== null && mb_strlen($tradeItemDescription) > 100) {
         json_response(['success' => false, 'error' => 'Trade item description cannot exceed 100 characters'], 400);
     }
 
     $meetLocationChoice = isset($payload['meet_location_choice'])
-        ? trim((string)$payload['meet_location_choice'])
+        ? (is_string($payload['meet_location_choice']) ? trim($payload['meet_location_choice']) : null)
         : null;
     $customMeetLocation = isset($payload['custom_meet_location'])
-        ? trim((string)$payload['custom_meet_location'])
+        ? (is_string($payload['custom_meet_location']) ? trim($payload['custom_meet_location']) : '')
         : '';
     $meetLocation = isset($payload['meet_location'])
-        ? trim((string)$payload['meet_location'])
+        ? (is_string($payload['meet_location']) ? trim($payload['meet_location']) : '')
         : '';
 
     $allowedMeetLocationChoices = ['', 'North Campus', 'South Campus', 'Ellicott', 'Other'];
@@ -78,15 +94,14 @@ try {
         json_response(['success' => false, 'error' => 'Meet location is too long'], 400);
     }
 
-    $meetingAt = date_create($meetingAtRaw);
-    if ($meetingAt === false) {
+    $meetingAt = strict_iso_datetime_value($meetingAtRaw);
+    if ($meetingAt === null) {
         json_response(['success' => false, 'error' => 'Invalid meeting date/time'], 400);
     }
     
     // Check if meeting is more than 3 months in the future
-    $now = new DateTime('now', new DateTimeZone('UTC'));
-    $threeMonthsFromNow = clone $now;
-    $threeMonthsFromNow->modify('+3 months');
+    $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+    $threeMonthsFromNow = $now->modify('+3 months');
     
     if ($meetingAt > $threeMonthsFromNow) {
         json_response(['success' => false, 'error' => 'Meeting date cannot be more than 3 months in advance'], 400);
@@ -97,7 +112,7 @@ try {
         json_response(['success' => false, 'error' => 'Meeting date cannot be in the past'], 400);
     }
     
-    $meetingAt->setTimezone(new DateTimeZone('UTC'));
+    $meetingAt = $meetingAt->setTimezone(new DateTimeZone('UTC'));
     $meetingAtDb = $meetingAt->format('Y-m-d H:i:s');
 
     $conn = db();

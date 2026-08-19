@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/../helpers/api_bootstrap.php';
+require __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('POST', ['ok' => false, 'error' => 'Method Not Allowed']);
 
@@ -11,21 +12,21 @@ require __DIR__ . '/../database/db_connect.php';
 auth_boot_session();
 $userId = require_login();
 
-$prod_id = isset($_POST['product_id']) ? trim($_POST['product_id']) : '';
-if ($prod_id === '' || !ctype_digit($prod_id)) {
-    json_response(['ok'=>false,'error'=>'Invalid or missing product_id'], 400);
-}
-$productId = (int)$prod_id;
+try {
+    $productId = strict_integer_value($_POST['product_id'] ?? null);
+    if ($productId === null || $productId <= 0) {
+        json_response(['ok'=>false,'error'=>'Invalid or missing product_id'], 400);
+    }
 
-$conn = db();
-$conn->set_charset('utf8mb4');
+    $conn = db();
+    $conn->set_charset('utf8mb4');
 
 // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
 $sql = "SELECT 
     product_id,
     title,
-    tags,
-    meet_location,
+    categories AS tags,
+    item_location AS meet_location,
     item_condition,
     description,
     photos,
@@ -94,4 +95,8 @@ $productOutput = [
     'sold_to' => $row['sold_to'],
 ];
 
-json_response(['ok'=>true, 'product'=>$productOutput], 200, JSON_UNESCAPED_SLASHES);
+    json_response(['ok'=>true, 'product'=>$productOutput], 200, JSON_UNESCAPED_SLASHES);
+} catch (Throwable $e) {
+    error_log('get_item_info error: ' . $e->getMessage());
+    json_response(['ok' => false, 'error' => 'Server error'], 500);
+}

@@ -43,6 +43,35 @@ export const DEFAULT_FORM = {
   images: [],
 };
 
+export function hasListingPhoto(media) {
+  return Array.isArray(media) && media.some((item) => item?.type === "image");
+}
+
+function fileExtension(file) {
+  const name = (file?.name || "").toLowerCase();
+  return name.slice(name.lastIndexOf("."));
+}
+
+export function isListingVideo(file) {
+  return file?.type
+    ? ALLOWED_VIDEO_MIME_TYPES.has(file.type)
+    : ALLOWED_VIDEO_EXTENSIONS.has(fileExtension(file));
+}
+
+export function isAllowedListingMedia(file) {
+  if (file?.type) {
+    return (
+      ALLOWED_IMAGE_MIME_TYPES.has(file.type) ||
+      ALLOWED_VIDEO_MIME_TYPES.has(file.type)
+    );
+  }
+  const extension = fileExtension(file);
+  return (
+    ALLOWED_IMAGE_EXTENSIONS.has(extension) ||
+    ALLOWED_VIDEO_EXTENSIONS.has(extension)
+  );
+}
+
 export function getPreviewBoxSize() {
   if (typeof window === "undefined") {
     return 480;

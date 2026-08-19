@@ -266,7 +266,7 @@ function validate_csrf_token(string $token): bool {
   return hash_equals($_SESSION['csrf_token'], $token);
 }
 
-function require_csrf_token(?string $token): void {
+function require_csrf_token($token): void {
   if (!is_string($token) || $token === '' || !validate_csrf_token($token)) {
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(403);

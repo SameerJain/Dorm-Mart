@@ -16,7 +16,7 @@ if (empty($_SESSION['user_id'])) {
 $userId = require_login();
 $input = json_request_body();
 require_csrf_token($input['csrf_token'] ?? null);
-$messageId = isset($input['message_id']) ? (int)$input['message_id'] : 0;
+$messageId = request_int($input, 'message_id');
 
 if ($messageId <= 0) {
     json_response(['success' => false, 'error' => "message ID doesn't exist"], 404);

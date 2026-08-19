@@ -25,6 +25,10 @@ function notification_insert(mysqli $conn, array $n): void
     $image = $n['image_url'] ?? null;
     $severity = $n['severity'] ?? 'info';
     $destination = $n['destination'] ?? null;
+    if ($destination !== null
+        && (!is_string($destination) || !preg_match('#^/app(?:[/?]|$)#D', $destination))) {
+        throw new InvalidArgumentException('Notification destination must be an internal app path');
+    }
     $metadata = isset($n['metadata']) ? json_encode($n['metadata'], JSON_UNESCAPED_SLASHES) : null;
     $key = (string)$n['idempotency_key'];
     $available = $n['available_at'] ?? gmdate('Y-m-d H:i:s');

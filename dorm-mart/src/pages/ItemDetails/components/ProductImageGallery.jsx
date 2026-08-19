@@ -43,27 +43,21 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
 
         {hasMultiplePhotos ? (
           <>
-            <button
+            <GalleryArrowButton
+              direction="previous"
               onClick={() =>
                 hasPrev && setActiveIdx((idx) => Math.max(0, idx - 1))
               }
               disabled={!hasPrev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full h-9 w-9 flex items-center justify-center disabled:opacity-40"
-              aria-label="Previous media"
-            >
-              &lsaquo;
-            </button>
-            <button
+            />
+            <GalleryArrowButton
+              direction="next"
               onClick={() =>
                 hasNext &&
                 setActiveIdx((idx) => Math.min(photoUrls.length - 1, idx + 1))
               }
               disabled={!hasNext}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full h-9 w-9 flex items-center justify-center disabled:opacity-40"
-              aria-label="Next media"
-            >
-              &rsaquo;
-            </button>
+            />
           </>
         ) : null}
       </div>
@@ -83,6 +77,33 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
         </div>
       ) : null}
     </section>
+  );
+}
+
+function GalleryArrowButton({ direction, onClick, disabled }) {
+  const isPrevious = direction === "previous";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`absolute ${isPrevious ? "left-3" : "right-3"} top-1/2 -translate-y-1/2 h-12 w-12 rounded-full flex items-center justify-center bg-gray-900/60 hover:bg-blue-600 text-white border border-white/50 shadow-lg backdrop-blur-sm transition duration-150 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/70 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-gray-900/60`}
+      aria-label={`${isPrevious ? "Previous" : "Next"} media`}
+    >
+      <svg
+        className="h-8 w-8"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d={isPrevious ? "m15 18-6-6 6-6" : "m9 6 6 6-6 6"} />
+      </svg>
+    </button>
   );
 }
 

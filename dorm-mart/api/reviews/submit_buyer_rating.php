@@ -6,6 +6,7 @@ require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -17,29 +18,33 @@ try {
     require_csrf_token($payload['csrf_token'] ?? null);
 
     // Validate product_id
-    $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
+    $productId = request_int($payload, 'product_id');
     if ($productId <= 0) {
         json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
     }
 
     // Validate buyer_user_id
-    $buyerId = isset($payload['buyer_user_id']) ? (int)$payload['buyer_user_id'] : 0;
+    $buyerId = request_int($payload, 'buyer_user_id');
     if ($buyerId <= 0) {
         json_response(['success' => false, 'error' => 'Invalid buyer_user_id'], 400);
     }
 
     // Validate rating (0-5 in 0.5 increments)
-    $rating = isset($payload['rating']) ? (float)$payload['rating'] : -1;
-    if ($rating < 0 || $rating > 5) {
-        json_response(['success' => false, 'error' => 'Rating must be between 0 and 5'], 400);
+    $rating = strict_decimal_value($payload['rating'] ?? null);
+    if ($rating === null || $rating < 0.5 || $rating > 5) {
+        json_response(['success' => false, 'error' => 'Rating must be between 0.5 and 5'], 400);
     }
     // Check for 0.5 increments
-    if (fmod($rating * 2, 1) !== 0.0) {
+    if (abs(($rating * 2) - round($rating * 2)) > 0.000001) {
         json_response(['success' => false, 'error' => 'Rating must be in 0.5 increments'], 400);
     }
 
     // Validate review_text (optional, max 250 chars if provided)
-    $reviewText = isset($payload['review_text']) ? trim((string)$payload['review_text']) : '';
+    $reviewTextValue = $payload['review_text'] ?? '';
+    $reviewText = is_string($reviewTextValue) ? trim($reviewTextValue) : '';
+    if ($reviewTextValue !== null && !is_string($reviewTextValue)) {
+        json_response(['success' => false, 'error' => 'Invalid review text'], 400);
+    }
     if (mb_strlen($reviewText) > 250) {
         json_response(['success' => false, 'error' => 'Review text must be 250 characters or less'], 400);
     }
@@ -47,16 +52,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Check if the product exists and get seller_id
-    $stmt = $conn->prepare('SELECT seller_id FROM INVENTORY WHERE product_id = ? LIMIT 1');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare product lookup');
-    }
-    $stmt->bind_param('i', $productId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $productRow = $result ? $result->fetch_assoc() : null;
-    $stmt->close();
+    $productRow = review_product($conn, $productId);
 
     if (!$productRow) {
         json_response(['success' => false, 'error' => 'Product not found'], 404);
@@ -69,19 +65,9 @@ try {
         json_response(['success' => false, 'error' => 'You can only rate buyers for your own products'], 403);
     }
 
-    // Verify that the product is sold to this buyer
-    $stmt = $conn->prepare('SELECT sold, sold_to, item_status FROM INVENTORY WHERE product_id = ? LIMIT 1');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare sold status lookup');
-    }
-    $stmt->bind_param('i', $productId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $soldRow = $result ? $result->fetch_assoc() : null;
-    $stmt->close();
-
-    $isSold = ($soldRow && ($soldRow['sold'] == 1 || strtolower($soldRow['item_status'] ?? '') === 'sold'));
-    $soldToBuyer = $soldRow && isset($soldRow['sold_to']) && (int)$soldRow['sold_to'] === $buyerId;
+    $isSold = (int)($productRow['sold'] ?? 0) === 1
+        || strtolower($productRow['item_status'] ?? '') === 'sold';
+    $soldToBuyer = isset($productRow['sold_to']) && (int)$productRow['sold_to'] === $buyerId;
 
     if (!$isSold || !$soldToBuyer) {
         json_response(['success' => false, 'error' => 'Product must be sold to this buyer'], 403);

@@ -8,6 +8,29 @@
   }
 }
 
+/*
+ * Scale the rem-based Tailwind design system on high-resolution desktops.
+ * Requiring both width and height avoids changing phones, tablets, and
+ * short laptop or ultrawide viewports.
+ */
+@media (min-width: 1536px) and (min-height: 864px) {
+  html {
+    font-size: 106.25%;
+  }
+}
+
+@media (min-width: 1920px) and (min-height: 1080px) {
+  html {
+    font-size: 112.5%;
+  }
+}
+
+@media (min-width: 3200px) and (min-height: 1800px) {
+  html {
+    font-size: 125%;
+  }
+}
+
 @layer components {
   .all-\[unset\] {
     all: unset;

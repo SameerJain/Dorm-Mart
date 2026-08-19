@@ -27,6 +27,15 @@ const NEW_MSG_POLL_MS = 250;
 const UNREAD_MSG_POLL_MS = 1500;
 const UNREAD_NOTIFICATION_POLL_MS = 3000;
 
+function startVisiblePolling(tick, intervalMs) {
+  const run = () => {
+    if (document.visibilityState === "visible") tick();
+  };
+  run();
+  const intervalId = setInterval(run, intervalMs);
+  return () => clearInterval(intervalId);
+}
+
 function projectConversationRow(row, currentUserId) {
   if (!row || !currentUserId) return null;
   const convId = Number(row.conv_id);
@@ -50,6 +59,7 @@ function projectConversationRow(row, currentUserId) {
     rawName && rawName.trim() !== "" ? rawName : `User ${receiverId}`;
   const productTitle = row.product_title || null;
   const productId = row.product_id ? Number(row.product_id) : null;
+  const productStatus = row.product_status || null;
   const productSellerId = row.product_seller_id
     ? Number(row.product_seller_id)
     : null;
@@ -62,18 +72,17 @@ function projectConversationRow(row, currentUserId) {
     receiverName,
     productTitle,
     productId,
+    productStatus,
     productSellerId,
     productImageUrl,
     sharedContactEmail,
     sharedContactPhone,
+    item_deleted: Boolean(Number(row.item_deleted)),
   };
 }
 
 export function ChatProvider({ children }) {
-  const newMsgPollRef = useRef(null);
   const lastTsRefByConv = useRef({}); // { [convId]: last-message-ts }
-  const unreadMsgPollRef = useRef(null);
-  const unreadNotifPollRef = useRef(null);
 
   const location = useLocation();
   const isOnChatRoute = location.pathname.startsWith("/app/chat");
@@ -503,25 +512,13 @@ export function ChatProvider({ children }) {
 
   // Poll the active conversation for new messages and typing status.
   useEffect(() => {
-    const stopPolling = () => {
-      if (newMsgPollRef.current) {
-        clearInterval(newMsgPollRef.current);
-        newMsgPollRef.current = null;
-      }
-    };
-
-    stopPolling();
-
     if (!isOnChatRoute || !activeConvId || !myIdRef.current) {
       return;
     }
 
-    const shouldPollNow = () => document.visibilityState === "visible";
     const inFlightRef = { ctrl: null }; // { ctrl: AbortController | null }
 
     const tick = async () => {
-      if (!shouldPollNow()) return;
-
       const currentMyId = myIdRef.current;
       if (!currentMyId) return;
 
@@ -544,6 +541,7 @@ export function ChatProvider({ children }) {
         );
 
         const incoming = result?.messages ?? [];
+        const conversationStatus = result?.conversationStatus;
         const typingStatus = result?.typingStatus ?? {
           is_typing: false,
           typing_user_first_name: null,
@@ -553,6 +551,20 @@ export function ChatProvider({ children }) {
           ...prev,
           [activeConvId]: typingStatus,
         }));
+
+        if (conversationStatus) {
+          setConversations((prev) =>
+            prev.map((conversation) =>
+              conversation.conv_id === activeConvId
+                ? {
+                    ...conversation,
+                    productStatus: conversationStatus.productStatus,
+                    item_deleted: conversationStatus.itemDeleted,
+                  }
+                : conversation,
+            ),
+          );
+        }
 
         const cursorMs = Number(result?.cursorTs) * 1000;
         if (cursorMs > 0) {
@@ -598,8 +610,7 @@ export function ChatProvider({ children }) {
       }
     };
 
-    tick();
-    newMsgPollRef.current = setInterval(tick, NEW_MSG_POLL_MS);
+    const stopPolling = startVisiblePolling(tick, NEW_MSG_POLL_MS);
 
     return () => {
       stopPolling();
@@ -610,14 +621,6 @@ export function ChatProvider({ children }) {
   }, [activeConvId, clearUnreadMsgFor, isOnChatRoute, myId]);
 
   useEffect(() => {
-    const stopPolling = () => {
-      if (unreadMsgPollRef.current) {
-        clearInterval(unreadMsgPollRef.current);
-        unreadMsgPollRef.current = null;
-      }
-    };
-    stopPolling();
-
     const notificationOn = envBool(
       process.env.REACT_APP_CHAT_NOTIFICATION_ON,
       true,
@@ -625,10 +628,7 @@ export function ChatProvider({ children }) {
     if (!notificationOn) return;
     if (!myId) return;
 
-    const shouldPollNow = () => document.visibilityState === "visible";
-
     const tick = async () => {
-      if (!shouldPollNow()) return;
       const controller = new AbortController();
       try {
         const { unreads, total } = await tickFetchUnreadMessages(
@@ -658,20 +658,10 @@ export function ChatProvider({ children }) {
       }
     };
 
-    tick();
-    unreadMsgPollRef.current = setInterval(tick, UNREAD_MSG_POLL_MS);
-    return stopPolling;
+    return startVisiblePolling(tick, UNREAD_MSG_POLL_MS);
   }, [loadConversations, myId]);
 
   useEffect(() => {
-    const stopPolling = () => {
-      if (unreadNotifPollRef.current) {
-        clearInterval(unreadNotifPollRef.current);
-        unreadNotifPollRef.current = null;
-      }
-    };
-    stopPolling();
-
     const notificationOn = envBool(
       process.env.REACT_APP_CHAT_NOTIFICATION_ON,
       true,
@@ -680,10 +670,7 @@ export function ChatProvider({ children }) {
     if (!notificationOn) return;
     if (!myId) return;
 
-    const shouldPollNow = () => document.visibilityState === "visible";
-
     const tick = async () => {
-      if (!shouldPollNow()) return;
       const controller = new AbortController();
       try {
         const { notifications, total } = await tickFetchUnreadNotifications(
@@ -698,10 +685,7 @@ export function ChatProvider({ children }) {
       }
     };
 
-    tick();
-    unreadNotifPollRef.current = setInterval(tick, UNREAD_NOTIFICATION_POLL_MS);
-
-    return stopPolling;
+    return startVisiblePolling(tick, UNREAD_NOTIFICATION_POLL_MS);
   }, [myId]);
 
   const messages = useMemo(

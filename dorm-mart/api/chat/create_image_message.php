@@ -4,7 +4,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
+require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../helpers/profanity.php';
+require_once __DIR__ . '/helpers.php';
 require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
@@ -22,15 +24,17 @@ $sender = $userId;
 require_multipart_formdata();
 
 /* Read form fields (sent via FormData on the client) */
-$receiver    = isset($_POST['receiver_id']) ? trim((string)$_POST['receiver_id']) : '';
-$contentRaw  = isset($_POST['content'])     ? trim((string)$_POST['content'])     : ''; // optional caption
-$convIdParam = isset($_POST['conv_id'])     ? (int)$_POST['conv_id']              : null;
+$receiverId = request_int($_POST, 'receiver_id');
+$contentRaw = is_string($_POST['content'] ?? null) ? trim($_POST['content']) : '';
+$convIdParam = array_key_exists('conv_id', $_POST) && $_POST['conv_id'] !== ''
+    ? strict_integer_value($_POST['conv_id'])
+    : null;
 
 require_csrf_token($_POST['csrf_token'] ?? null);
 
 /* Validate presence of receiver and the uploaded attachment.
    Caption (contentRaw) is allowed to be empty for media-only messages. */
-if ($receiver === '' || !ctype_digit($receiver) || (int)$receiver <= 0) {
+if ($receiverId <= 0 || (array_key_exists('conv_id', $_POST) && $_POST['conv_id'] !== '' && $convIdParam === null)) {
     json_response(['success' => false, 'error' => 'missing_receiver'], 400);
 }
 if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
@@ -38,7 +42,6 @@ if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
 }
 
 $senderId = (int)$sender;
-$receiverId = (int)$receiver;
 if ($senderId === $receiverId) {
     json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
 }
@@ -145,117 +148,34 @@ try {
         throw new RuntimeException('Busy. Try again.');
     }
 
-    // Look up sender/receiver names
-    $stmt = $conn->prepare(
-        'SELECT user_id, first_name, last_name
-           FROM user_accounts
-          WHERE user_id IN (?, ?)'
+    $names = chat_user_display_names($conn, $senderId, $receiverId);
+    $senderName = $names[$senderId];
+    $receiverName = $names[$receiverId];
+    $convId = chat_resolve_direct_conversation(
+        $conn,
+        $u1,
+        $u2,
+        $names[$u1],
+        $names[$u2],
+        $convIdParam
     );
-    $stmt->bind_param('ii', $senderId, $receiverId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $senderName   = 'User ' . $senderId;     // fallbacks
-    $receiverName = 'User ' . $receiverId;
-
-    while ($row = $result->fetch_assoc()) {
-        $full = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
-        if ((int)$row['user_id'] === $senderId) {
-            $senderName = $full !== '' ? $full : $senderName;
-        } elseif ((int)$row['user_id'] === $receiverId) {
-            $receiverName = $full !== '' ? $full : $receiverName;
-        }
-    }
-    $stmt->close();
-
-    $u1Name = ($u1 === $senderId) ? $senderName  : $receiverName;
-    $u2Name = ($u2 === $senderId) ? $senderName  : $receiverName;
-
-    // Validate/resolve conv_id
-    if ($convIdParam !== null && $convIdParam > 0) {
-        $stmt = $conn->prepare('SELECT conv_id FROM conversations WHERE conv_id = ? AND user1_id = ? AND user2_id = ? LIMIT 1');
-        $stmt->bind_param('iii', $convIdParam, $u1, $u2);
-        $stmt->execute();
-        $stmt->bind_result($convIdFound);
-        if ($stmt->fetch()) {
-            $convId = (int)$convIdFound;
-        }
-        $stmt->close();
-
-        if ($convId === null) {
-            $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-            $stmt->bind_param('s', $lockKey);
-            $stmt->execute();
-            $stmt->close();
-            @unlink($destPath);
-            $conn->rollback();
-            json_response(['success' => false, 'error' => 'Invalid conversation ID'], 403);
-        }
-    } else {
-        $stmt = $conn->prepare('SELECT conv_id FROM conversations WHERE user1_id = ? AND user2_id = ? LIMIT 1');
-        $stmt->bind_param('ii', $u1, $u2);
-        $stmt->execute();
-        $stmt->bind_result($convIdFound);
-        if ($stmt->fetch()) {
-            $convId = (int)$convIdFound;
-        }
-        $stmt->close();
-    }
-
-    // Create conversation if missing
     if ($convId === null) {
-        $stmt = $conn->prepare(
-            'INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname)
-             VALUES (?, ?, ?, ?)'
-        );
-        $stmt->bind_param('iiss', $u1, $u2, $u1Name, $u2Name);
-        $stmt->execute();
-        $convId = (int)$conn->insert_id;
-        $stmt->close();
+        chat_release_lock($conn, $lockKey);
+        @unlink($destPath);
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'Invalid conversation ID'], 403);
     }
-
-    // Check if conversation has item_deleted flag set
-    $stmt = $conn->prepare('SELECT item_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
-    $stmt->bind_param('i', $convId);
-    $stmt->execute();
-    $stmt->bind_result($itemDeleted);
-    $itemDeletedFlag = false;
-    if ($stmt->fetch()) {
-        $itemDeletedFlag = (bool)$itemDeleted;
-    }
-    $stmt->close();
 
     // If item is deleted, block media message creation
-    if ($itemDeletedFlag) {
-        // Release lock before exiting
-        $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-        $stmt->bind_param('s', $lockKey);
-        $stmt->execute();
-        $stmt->close();
+    if (chat_conversation_is_closed($conn, $convId)) {
+        chat_release_lock($conn, $lockKey);
         $conn->rollback();
         @unlink($destPath);
         json_response(['success' => false, 'error' => 'Item has been deleted. Cannot send messages.'], 403);
     }
 
-    // Ensure participants exist
-    $stmt = $conn->prepare(
-        'INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
-         VALUES (?, ?, 0, 0), (?, ?, 0, 0)'
-    );
-    $stmt->bind_param('iiii', $convId, $u1, $convId, $u2);
-    $stmt->execute();
-    $stmt->close();
-
-    // Conversation is active again: clear deleted flags for both participants
-    $stmt = $conn->prepare(
-        'UPDATE conversations
-           SET user1_deleted = 0,
-               user2_deleted = 0
-         WHERE conv_id = ?'
-    );
-    $stmt->bind_param('i', $convId);
-    $stmt->execute();
-    $stmt->close();
+    chat_ensure_participants($conn, $convId, $u1, $u2);
+    chat_reopen_conversation($conn, $convId);
 
     /* Insert media message (stored in the legacy messages.image_url column). */
     $isFlagged = contains_profanity($conn, $content) ? 1 : 0;
@@ -281,27 +201,11 @@ try {
     $stmt->close();
     $createdIso = $row ? (string)$row['created_at'] : null;
 
-    // Update receiver's unread counters
-    $stmt = $conn->prepare(
-        'UPDATE conversation_participants
-           SET unread_count = unread_count + 1,
-               first_unread_msg_id = CASE
-                   WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ?
-                   ELSE first_unread_msg_id
-               END
-         WHERE conv_id = ? AND user_id = ?'
-    );
-    $stmt->bind_param('iii', $msgId, $convId, $receiverId);
-    $stmt->execute();
-    $stmt->close();
+    chat_increment_unread($conn, $msgId, $convId, $receiverId);
 
     $filteredContent = filter_profanity($conn, $content);
 
-    // Release advisory lock
-    $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-    $stmt->bind_param('s', $lockKey);
-    $stmt->execute();
-    $stmt->close();
+    chat_release_lock($conn, $lockKey);
 
     $conn->commit();
     $committed = true;
@@ -326,14 +230,7 @@ try {
 } catch (Throwable $e) {
     try { $conn->rollback(); } catch (Throwable $_) {}
     if (!$committed && isset($destPath) && is_file($destPath)) @unlink($destPath);
-    if (!empty($lockKey)) {
-        $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-        if ($stmt) {
-            $stmt->bind_param('s', $lockKey);
-            $stmt->execute();
-            $stmt->close();
-        }
-    }
+    if (!empty($lockKey)) chat_release_lock($conn, $lockKey);
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Server error']);
 }

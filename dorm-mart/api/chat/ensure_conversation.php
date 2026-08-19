@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -16,8 +17,8 @@ try {
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $productId = isset($payload['product_id']) ? (int) $payload['product_id'] : 0;
-    $sellerId = isset($payload['seller_user_id']) ? (int) $payload['seller_user_id'] : 0;
+    $productId = request_int($payload, 'product_id');
+    $sellerId = request_int($payload, 'seller_user_id');
 
     if ($productId <= 0 && $sellerId <= 0) {
         json_response(['success' => false, 'error' => 'Missing product_id or seller_user_id'], 400);
@@ -93,32 +94,12 @@ try {
         if ($conversationRow) {
             // Ensure conversation participants exist even for existing conversations
             $convId = (int) $conversationRow['conv_id'];
-            $stmt = $conn->prepare('INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count) VALUES (?, ?, 0, 0), (?, ?, 0, 0)');
-            $stmt->bind_param('iiii', $convId, $orderedA, $convId, $orderedB);
-            $stmt->execute();
-            $stmt->close();
+            chat_ensure_participants($conn, $convId, $orderedA, $orderedB);
         }
 
         if (!$conversationRow) {
             // Need names for both participants
-            $stmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?)');
-            $stmt->bind_param('ii', $orderedA, $orderedB);
-            $stmt->execute();
-            $namesRes = $stmt->get_result();
-            $stmt->close();
-
-            $names = [
-                $orderedA => 'User ' . $orderedA,
-                $orderedB => 'User ' . $orderedB,
-            ];
-
-            while ($row = $namesRes->fetch_assoc()) {
-                $id = (int) $row['user_id'];
-                $full = trim((string) $row['first_name'] . ' ' . (string) $row['last_name']);
-                if ($full !== '') {
-                    $names[$id] = $full;
-                }
-            }
+            $names = chat_user_display_names($conn, $orderedA, $orderedB);
 
             $user1Name = $names[$orderedA] ?? ('User ' . $orderedA);
             $user2Name = $names[$orderedB] ?? ('User ' . $orderedB);
@@ -144,30 +125,15 @@ try {
                 'product_id' => $productId > 0 ? $productId : null,
             ];
 
-            // Ensure conversation participants rows exist for both users
-            $stmt = $conn->prepare('INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count) VALUES (?, ?, 0, 0), (?, ?, 0, 0)');
-            $stmt->bind_param('iiii', $convId, $orderedA, $convId, $orderedB);
-            $stmt->execute();
-            $stmt->close();
+            chat_ensure_participants($conn, $convId, $orderedA, $orderedB);
         }
 
-        // Release lock
-        $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-        $stmt->bind_param('s', $lockKey);
-        $stmt->execute();
-        $stmt->close();
+        chat_release_lock($conn, $lockKey);
 
         $conn->commit();
     } catch (Throwable $inner) {
         $conn->rollback();
-        if (isset($lockKey)) {
-            $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-            if ($stmt) {
-                $stmt->bind_param('s', $lockKey);
-                $stmt->execute();
-                $stmt->close();
-            }
-        }
+        if (isset($lockKey)) chat_release_lock($conn, $lockKey);
         throw $inner;
     }
 
@@ -311,20 +277,7 @@ try {
                 'created_at' => $createdIso,
             ];
 
-            $updateStmt = $conn->prepare(
-                'UPDATE conversation_participants
-                   SET unread_count = unread_count + 1,
-                       first_unread_msg_id = CASE
-                           WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ?
-                           ELSE first_unread_msg_id
-                       END
-                 WHERE conv_id = ? AND user_id = ?'
-            );
-            if ($updateStmt) {
-                $updateStmt->bind_param('iii', $autoMsgId, $convId, $sellerId);
-                $updateStmt->execute();
-                $updateStmt->close();
-            }
+            chat_increment_unread($conn, (int)$autoMsgId, $convId, $sellerId);
         }
     }
     json_response([

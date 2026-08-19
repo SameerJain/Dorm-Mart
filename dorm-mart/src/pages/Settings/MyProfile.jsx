@@ -23,7 +23,7 @@ const MAX_BYTES = 10 * 1024 * 1024; // 10 MB - reasonable limit for profile phot
 
 function isAllowedType(f) {
   // Prefer MIME, but fall back to extension if needed
-  if (f.type && ALLOWED_MIME.has(f.type)) return true;
+  if (f.type) return ALLOWED_MIME.has(f.type);
 
   const name = (f.name || "").toLowerCase();
   const ext = ALLOWED_EXTS.has(

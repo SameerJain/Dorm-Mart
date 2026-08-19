@@ -19,13 +19,12 @@ import ListingStatusBanners from "./components/ListingStatusBanners";
 import ListingSuccessModal from "./components/ListingSuccessModal";
 import useListingCategories from "./hooks/useListingCategories";
 import {
-  ALLOWED_IMAGE_EXTENSIONS,
-  ALLOWED_IMAGE_MIME_TYPES,
-  ALLOWED_VIDEO_EXTENSIONS,
-  ALLOWED_VIDEO_MIME_TYPES,
   CATEGORIES_MAX,
   DEFAULT_FORM,
   getPreviewBoxSize,
+  hasListingPhoto,
+  isAllowedListingMedia,
+  isListingVideo,
   LIMITS,
   MAX_IMAGE_BYTES,
   MAX_VIDEO_BYTES,
@@ -342,6 +341,25 @@ function ProductListingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew]);
 
+  const clearError = (field) => {
+    setErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const setMediaError = (message) =>
+    setErrors((current) => ({ ...current, images: message }));
+
+  const resetCropper = () => {
+    setShowCropper(false);
+    setCropImageSrc(null);
+    setCropImgEl(null);
+    setPendingFileName("");
+  };
+
   const handleInputChange = (field, value, setter) => {
     if (field === "title" && value.length > LIMITS.title) return;
     if (field === "description" && value.length > LIMITS.description) return;
@@ -366,13 +384,7 @@ function ProductListingPage() {
     }
 
     setter(value);
-    if (errors[field]) {
-      setErrors((prev) => {
-        const ne = { ...prev };
-        delete ne[field];
-        return ne;
-      });
-    }
+    clearError(field);
   };
 
   const removeCategory = (val) => {
@@ -426,8 +438,9 @@ function ProductListingPage() {
       newErrors.condition = "Select an item condition";
     }
 
-    if (!images || images.length === 0) {
-      newErrors.images = "At least one photo or video is required";
+    if (!hasListingPhoto(images)) {
+      newErrors.images =
+        "At least one photo is required. Videos are optional and count toward the 6-media limit.";
     }
 
     setErrors(newErrors);
@@ -435,69 +448,42 @@ function ProductListingPage() {
   };
 
   useEffect(() => {
-    if (images.length > 0 && errors.images) {
-      setErrors((prev) => {
-        const ne = { ...prev };
-        delete ne.images;
-        return ne;
-      });
-    }
-  }, [images.length]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  function isAllowedType(f) {
-    if (
-      f.type &&
-      (ALLOWED_IMAGE_MIME_TYPES.has(f.type) ||
-        ALLOWED_VIDEO_MIME_TYPES.has(f.type))
-    )
-      return true;
-
-    const name = (f.name || "").toLowerCase();
-    const extension = name.slice(name.lastIndexOf("."));
-    return (
-      ALLOWED_IMAGE_EXTENSIONS.has(extension) ||
-      ALLOWED_VIDEO_EXTENSIONS.has(extension)
-    );
-  }
-
-  function isVideoFile(file) {
-    if (file.type && ALLOWED_VIDEO_MIME_TYPES.has(file.type)) return true;
-    const name = (file.name || "").toLowerCase();
-    return ALLOWED_VIDEO_EXTENSIONS.has(name.slice(name.lastIndexOf(".")));
-  }
+    if (hasListingPhoto(images) && errors.images) clearError("images");
+  }, [images]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function onFileChange(e) {
     const files = Array.from(e.target.files || []).slice(0, 1);
     if (!files.length) return;
 
     if (images.length >= LIMITS.images) {
-      setErrors((prev) => ({
-        ...prev,
-        images: `Maximum ${LIMITS.images} media files allowed.`,
-      }));
+      setMediaError(`Maximum ${LIMITS.images} media files allowed.`);
       e.target.value = null;
       return;
     }
 
     const file = files[0];
-    const video = isVideoFile(file);
+    const video = isListingVideo(file);
 
-    if (file.size > (video ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) {
-      setErrors((prev) => ({
-        ...prev,
-        images: video
-          ? "Video is too large. Max size is 25 MB."
-          : "Image is too large. Max size is 2 MB.",
-      }));
+    if (video && !hasListingPhoto(images)) {
+      setMediaError("Add at least one photo before adding videos.");
       e.target.value = null;
       return;
     }
 
-    if (!isAllowedType(file)) {
-      setErrors((prev) => ({
-        ...prev,
-        images: "Only JPG/JPEG, PNG, WEBP, MP4, WEBM, and MOV files are allowed.",
-      }));
+    if (file.size > (video ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) {
+      setMediaError(
+        video
+          ? "Video is too large. Max size is 25 MB."
+          : "Image is too large. Max size is 2 MB.",
+      );
+      e.target.value = null;
+      return;
+    }
+
+    if (!isAllowedListingMedia(file)) {
+      setMediaError(
+        "Only JPG/JPEG, PNG, WEBP, MP4, WEBM, and MOV files are allowed.",
+      );
       e.target.value = null;
       return;
     }
@@ -508,11 +494,7 @@ function ProductListingPage() {
       (errors.images.includes("too large") ||
         errors.images.includes("Only JPG/JPEG"))
     ) {
-      setErrors((prev) => {
-        const ne = { ...prev };
-        delete ne.images;
-        return ne;
-      });
+      clearError("images");
     }
 
     if (video) {
@@ -531,10 +513,7 @@ function ProductListingPage() {
       img.onload = function () {
         // Check image limit again before adding (in case user added images while file was loading)
         if (images.length >= LIMITS.images) {
-          setErrors((prev) => ({
-            ...prev,
-            images: `Maximum ${LIMITS.images} media files allowed.`,
-          }));
+          setMediaError(`Maximum ${LIMITS.images} media files allowed.`);
           e.target.value = null;
           return;
         }
@@ -543,29 +522,20 @@ function ProductListingPage() {
         const h = img.height;
         if (w === h) {
           // already square
-          setImages((prev) => [
-            ...prev,
-            {
+          setImages((prev) => {
+            const photo = {
               file,
               url: ev.target.result,
               type: "image",
-            },
-          ]);
+            };
+            return hasListingPhoto(prev) ? [...prev, photo] : [photo, ...prev];
+          });
           // Clear image error when image is added
-          if (errors.images) {
-            setErrors((prev) => {
-              const ne = { ...prev };
-              delete ne.images;
-              return ne;
-            });
-          }
+          clearError("images");
         } else {
           // Check image limit before opening cropper
           if (images.length >= LIMITS.images) {
-            setErrors((prev) => ({
-              ...prev,
-              images: `Maximum ${LIMITS.images} media files allowed.`,
-            }));
+            setMediaError(`Maximum ${LIMITS.images} media files allowed.`);
             e.target.value = null;
             return;
           }
@@ -678,14 +648,8 @@ function ProductListingPage() {
     }
 
     if (images.length >= LIMITS.images) {
-      setErrors((prev) => ({
-        ...prev,
-        images: `Maximum ${LIMITS.images} media files allowed.`,
-      }));
-      setShowCropper(false);
-      setCropImageSrc(null);
-      setCropImgEl(null);
-      setPendingFileName("");
+      setMediaError(`Maximum ${LIMITS.images} media files allowed.`);
+      resetCropper();
       return;
     }
 
@@ -723,14 +687,8 @@ function ProductListingPage() {
         }
 
         if (images.length >= LIMITS.images) {
-          setErrors((prev) => ({
-            ...prev,
-            images: `Maximum ${LIMITS.images} media files allowed.`,
-          }));
-          setShowCropper(false);
-          setCropImageSrc(null);
-          setCropImgEl(null);
-          setPendingFileName("");
+          setMediaError(`Maximum ${LIMITS.images} media files allowed.`);
+          resetCropper();
           return;
         }
 
@@ -739,23 +697,18 @@ function ProductListingPage() {
         });
         const finalUrl = URL.createObjectURL(blob);
 
-        setImages((prev) => [
-          ...prev,
-          { file: finalFile, url: finalUrl, type: "image", previewObjectUrl: true },
-        ]);
+        setImages((prev) => {
+          const photo = {
+            file: finalFile,
+            url: finalUrl,
+            type: "image",
+            previewObjectUrl: true,
+          };
+          return hasListingPhoto(prev) ? [...prev, photo] : [photo, ...prev];
+        });
 
-        if (errors.images) {
-          setErrors((prev) => {
-            const ne = { ...prev };
-            delete ne.images;
-            return ne;
-          });
-        }
-
-        setShowCropper(false);
-        setCropImageSrc(null);
-        setCropImgEl(null);
-        setPendingFileName("");
+        clearError("images");
+        resetCropper();
       },
       "image/png",
       1,
@@ -763,10 +716,7 @@ function ProductListingPage() {
   }
 
   function handleCropCancel() {
-    setShowCropper(false);
-    setCropImageSrc(null);
-    setCropImgEl(null);
-    setPendingFileName("");
+    resetCropper();
   }
 
   async function submitListing(e, status) {
@@ -924,6 +874,7 @@ function ProductListingPage() {
             catFetchError={catFetchError}
             catLoading={catLoading}
             categories={categories}
+            clearError={clearError}
             condition={condition}
             description={description}
             errors={errors}
