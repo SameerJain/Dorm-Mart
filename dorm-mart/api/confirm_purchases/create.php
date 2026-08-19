@@ -16,15 +16,15 @@ try {
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $scheduledRequestId = isset($payload['scheduled_request_id']) ? (int)$payload['scheduled_request_id'] : 0;
-    $conversationId = isset($payload['conversation_id']) ? (int)$payload['conversation_id'] : 0;
-    $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
+    $scheduledRequestId = request_int($payload, 'scheduled_request_id');
+    $conversationId = request_int($payload, 'conversation_id');
+    $productId = request_int($payload, 'product_id');
 
     $isSuccessfulRaw = $payload['is_successful'] ?? null;
     if ($isSuccessfulRaw === null) {
         json_response(['success' => false, 'error' => 'is_successful is required'], 400);
     }
-    $isSuccessful = filter_var($isSuccessfulRaw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+    $isSuccessful = strict_boolean_value($isSuccessfulRaw);
     if ($isSuccessful === null) {
         json_response(['success' => false, 'error' => 'Invalid is_successful value'], 400);
     }
@@ -32,6 +32,9 @@ try {
     $finalPriceRaw = $payload['final_price'] ?? null;
     $finalPrice = null;
     if ($finalPriceRaw !== null && $finalPriceRaw !== '') {
+        if (!is_string($finalPriceRaw) && !is_int($finalPriceRaw) && !is_float($finalPriceRaw)) {
+            json_response(['success' => false, 'error' => 'Invalid final price'], 400);
+        }
         $finalPriceString = trim((string)$finalPriceRaw);
         if (!preg_match('/^(?:\d{1,4}(?:\.\d{1,2})?|\.\d{1,2})$/', $finalPriceString)) {
             json_response(['success' => false, 'error' => 'Invalid final price'], 400);
@@ -42,12 +45,22 @@ try {
         json_response(['success' => false, 'error' => 'Final price must be between 0 and 9,999.99'], 400);
     }
 
-    $sellerNotes = isset($payload['seller_notes']) ? trim((string)$payload['seller_notes']) : '';
+    if (isset($payload['seller_notes']) && !is_string($payload['seller_notes'])) {
+        json_response(['success' => false, 'error' => 'Invalid notes'], 400);
+    }
+    if (isset($payload['failure_reason']) && !is_string($payload['failure_reason'])) {
+        json_response(['success' => false, 'error' => 'Invalid failure reason'], 400);
+    }
+    if (isset($payload['failure_reason_notes']) && !is_string($payload['failure_reason_notes'])) {
+        json_response(['success' => false, 'error' => 'Invalid failure notes'], 400);
+    }
+
+    $sellerNotes = isset($payload['seller_notes']) ? trim($payload['seller_notes']) : '';
     if (strlen($sellerNotes) > 2000) {
         json_response(['success' => false, 'error' => 'Notes cannot exceed 2000 characters'], 400);
     }
-    $failureReason = isset($payload['failure_reason']) ? trim((string)$payload['failure_reason']) : null;
-    $failureReasonNotes = isset($payload['failure_reason_notes']) ? trim((string)$payload['failure_reason_notes']) : null;
+    $failureReason = isset($payload['failure_reason']) ? trim($payload['failure_reason']) : null;
+    $failureReasonNotes = isset($payload['failure_reason_notes']) ? trim($payload['failure_reason_notes']) : null;
     $validFailureReasons = ['buyer_no_show', 'insufficient_funds', 'other'];
 
     if ($isSuccessful) {
@@ -153,21 +166,11 @@ try {
         if ((bool)$latestRow['is_successful']) {
             json_response(['success' => false, 'error' => 'This transaction has already been confirmed'], 409);
         }
-        json_response([
-            'success' => false,
-            'error' => 'This scheduled purchase was marked unsuccessful. Send a new Schedule Purchase form before confirming again.',
-        ], 409);
     }
 
     $buyerId = (int)$schedRow['buyer_user_id'];
     $itemTitle = (string)$schedRow['item_title'];
-    $meetingIso = null;
-    if (!empty($schedRow['meeting_at'])) {
-        $mt = date_create($schedRow['meeting_at'], new DateTimeZone('UTC'));
-        if ($mt) {
-            $meetingIso = $mt->format(DateTime::ATOM);
-        }
-    }
+    $meetingIso = confirm_purchase_utc_atom($schedRow['meeting_at'] ?? null);
 
     $expiresAt = new DateTime('now', new DateTimeZone('UTC'));
     $expiresAt->modify('+24 hours');

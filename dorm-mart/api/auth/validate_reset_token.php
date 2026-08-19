@@ -9,10 +9,10 @@ init_json_endpoint('POST');
 require_once __DIR__ . '/../database/db_connect.php';
 
 $body  = json_request_body();
-$token = $body['token'] ?? '';
-$uid   = isset($body['uid']) ? (int)$body['uid'] : 0;
+$token = is_string($body['token'] ?? null) ? trim($body['token']) : '';
+$uid = request_int($body, 'uid');
 
-if (empty($token) || $uid <= 0) {
+if (!preg_match('/^[a-f0-9]{64}$/D', $token) || $uid <= 0) {
     json_response(['success' => false, 'error' => 'Token and user ID required'], 400);
 }
 

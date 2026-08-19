@@ -29,24 +29,20 @@ require_once __DIR__ . '/device_history.php';
 // Get request data
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-    $raw = file_get_contents('php://input');
-    $data = json_decode($raw, true);
-    if (!is_array($data)) {
-        $data = [];
-    }
+    $data = json_request_body_or_error(['success' => false, 'error' => 'Invalid JSON payload']);
     // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
-    $token = isset($data['token']) ? trim((string)$data['token']) : '';
-    $newPassword = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
-    $uid = isset($data['uid']) ? (int)$data['uid'] : 0;
+    $token = is_string($data['token'] ?? null) ? trim($data['token']) : '';
+    $newPassword = is_string($data['newPassword'] ?? null) ? $data['newPassword'] : '';
+    $uid = request_int($data, 'uid');
 } else {
     // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
-    $token = isset($_POST['token']) ? trim((string)$_POST['token']) : '';
-    $newPassword = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
-    $uid = isset($_POST['uid']) ? (int)$_POST['uid'] : 0;
+    $token = is_string($_POST['token'] ?? null) ? trim($_POST['token']) : '';
+    $newPassword = is_string($_POST['newPassword'] ?? null) ? $_POST['newPassword'] : '';
+    $uid = request_int($_POST, 'uid');
 }
 
 // Validate inputs
-if (empty($token) || empty($newPassword) || $uid <= 0) {
+if (!preg_match('/^[a-f0-9]{64}$/D', $token) || $newPassword === '' || $uid <= 0) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Token, user ID, and new password are required']);
     exit;

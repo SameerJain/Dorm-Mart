@@ -34,6 +34,7 @@ use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/../utility/transactional_email_html.php';
 require_once __DIR__ . '/../config/app_config.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 const ACCOUNT_REQUEST_ACCEPTED_MESSAGE = 'If eligible, account instructions will be sent.';
 $accountRequestStartedAt = microtime(true);
@@ -265,20 +266,36 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // Read the JSON body from React's fetch()
-$rawInput = file_get_contents('php://input');
-$data = json_decode($rawInput, true);
-
-// Handle bad JSON
-if (!is_array($data)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid JSON body']);
-    exit;
-}
+$data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON body']);
 
 // Extract the values (before validation)
-$firstNameRaw = trim($data['firstName'] ?? '');
-$lastNameRaw = trim($data['lastName'] ?? '');
-$emailRaw = strtolower(trim($data['email'] ?? ''));
+if (!is_string($data['firstName'] ?? null)
+    || !is_string($data['lastName'] ?? null)
+    || !is_string($data['email'] ?? null)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
+    exit;
+}
+$firstNameRaw = trim($data['firstName']);
+$lastNameRaw = trim($data['lastName']);
+$emailRaw = strtolower(trim($data['email']));
+$requestId = bin2hex(random_bytes(8));
+
+// Consume quota before inspecting the email so rate-limit behavior cannot reveal
+// whether an address is registered, eligible, or deliverable.
+$accountRateLimit = consume_account_creation_attempt();
+if ($accountRateLimit['blocked']) {
+    $retryAfterSeconds = max(1, (int)$accountRateLimit['retry_after_seconds']);
+    header('Retry-After: ' . $retryAfterSeconds);
+    dm_log_auth_event('create_account', $requestId, 'rate_limited');
+    http_response_code(429);
+    echo json_encode([
+        'ok' => false,
+        'error' => 'Too many account requests. Please try again in a few minutes.',
+        'retry_after_seconds' => $retryAfterSeconds,
+    ]);
+    exit;
+}
 
 // Load email policy configuration
 require_once __DIR__ . '/../config/email_config.php';
@@ -286,26 +303,33 @@ require_once __DIR__ . '/../config/email_config.php';
 // Input validation with regex patterns
 $firstName = validate_input($firstNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
 $lastName = validate_input($lastNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
-$gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
-$gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, (int)date('Y') + 8);
-$promos    = !empty($data['promos']);
+$gradMonth = strict_integer_value($data['gradMonth'] ?? null);
+$gradYear  = strict_integer_value($data['gradYear'] ?? null);
+$promos = strict_boolean_value($data['promos'] ?? false);
+$termsAccepted = strict_boolean_value($data['terms'] ?? null);
+
+if ($gradMonth === null || $gradYear === null || $promos === null || $termsAccepted !== true) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => $termsAccepted !== true
+        ? 'You must agree to the terms'
+        : 'Invalid input format']);
+    exit;
+}
 
 // Email validation based on ALLOW_ALL_EMAILS flag
 if (ALLOW_ALL_EMAILS) {
     // Accept any valid email format
     $email = validate_input($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
     if ($email === false || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
-        exit;
+        dm_log_auth_event('create_account', $requestId, 'ineligible_request');
+        accept_account_request();
     }
 } else {
     // Only accept @buffalo.edu
     $email = validate_input($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
     if ($email === false || !preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);
-        exit;
+        dm_log_auth_event('create_account', $requestId, 'ineligible_request');
+        accept_account_request();
     }
 }
 
@@ -317,9 +341,8 @@ if ($firstName === false || $lastName === false || $email === false) {
 
 $emailLocalPart = explode('@', $email)[0] ?? '';
 if (preg_match('/^\d+$/', $emailLocalPart)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
-    exit;
+    dm_log_auth_event('create_account', $requestId, 'ineligible_request');
+    accept_account_request();
 }
 
 // Validate
@@ -354,7 +377,6 @@ if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > 
     exit;
 }
 
-$requestId = bin2hex(random_bytes(8));
 require __DIR__ . '/../database/db_connect.php';
 try {
     $conn = db();

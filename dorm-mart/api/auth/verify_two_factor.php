@@ -8,11 +8,11 @@ init_json_endpoint('POST', ['ok' => false, 'error' => 'Method Not Allowed']);
 require_once __DIR__ . '/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/two_factor.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 auth_boot_session();
-$data = json_decode((string)file_get_contents('php://input'), true);
-if (!is_array($data)) $data = [];
-$code = trim((string)($data['code'] ?? ''));
+$data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON payload']);
+$code = is_string($data['code'] ?? null) ? trim($data['code']) : '';
 
 if (!preg_match('/^\d{6}$/', $code)) {
     json_response(['ok' => false, 'error' => 'Enter the 6-digit verification code.'], 400);

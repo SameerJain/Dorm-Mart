@@ -12,8 +12,9 @@ $reporterId = require_login();
 $input = json_request_body();
 require_csrf_token($input['csrf_token'] ?? null);
 
-$messageId = (int)($input['message_id'] ?? 0);
-$reason = trim((string)($input['reason'] ?? 'Inappropriate or unsafe content'));
+$messageId = request_int($input, 'message_id');
+$reasonValue = $input['reason'] ?? 'Inappropriate or unsafe content';
+$reason = is_string($reasonValue) ? trim($reasonValue) : '';
 $reasonLength = function_exists('mb_strlen') ? mb_strlen($reason, 'UTF-8') : strlen($reason);
 if ($messageId <= 0 || $reason === '' || $reasonLength > 255) {
     json_response(['success' => false, 'error' => 'Invalid report'], 400);

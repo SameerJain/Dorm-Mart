@@ -25,8 +25,11 @@ try {
 
     $input = json_request_body();
     require_csrf_token($input['csrf_token'] ?? null);
-    $action = (string)($input['action'] ?? 'add');
-    $word = trim((string)($input['word'] ?? ''));
+    if (!is_string($input['action'] ?? 'add') || !is_string($input['word'] ?? null)) {
+        json_response(['success' => false, 'error' => 'Invalid action or word'], 400);
+    }
+    $action = $input['action'] ?? 'add';
+    $word = trim($input['word']);
     $word = function_exists('mb_strtolower') ? mb_strtolower($word, 'UTF-8') : strtolower($word);
     $length = function_exists('mb_strlen') ? mb_strlen($word, 'UTF-8') : strlen($word);
 

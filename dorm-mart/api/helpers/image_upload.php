@@ -33,6 +33,9 @@ if (!function_exists('uploaded_image_info')) {
         if (!isset($allowedMimeExtensions[$mime])) {
             return ['ok' => false, 'error' => 'unsupported_image_type', 'status' => 400];
         }
+        if (!uploaded_image_dimensions_are_safe($tmpName, $mime)) {
+            return ['ok' => false, 'error' => 'unsafe_image_dimensions', 'status' => 400];
+        }
 
         return [
             'ok' => true,
@@ -48,6 +51,34 @@ if (!function_exists('ensure_upload_directory')) {
     function ensure_upload_directory(string $directory, int $mode = 0755): bool
     {
         return is_dir($directory) || @mkdir($directory, $mode, true) || is_dir($directory);
+    }
+}
+
+if (!function_exists('uploaded_image_dimensions_are_safe')) {
+    function uploaded_image_dimensions_are_safe(
+        string $path,
+        string $expectedMime,
+        int $maxWidth = 10000,
+        int $maxHeight = 10000,
+        int $maxPixels = 25000000
+    ): bool {
+        if (!str_starts_with($expectedMime, 'image/')) {
+            return true;
+        }
+
+        $dimensions = @getimagesize($path);
+        if (!is_array($dimensions) || !isset($dimensions[0], $dimensions[1])) {
+            return false;
+        }
+        $detectedMime = (string)($dimensions['mime'] ?? '');
+        $width = (int)$dimensions[0];
+        $height = (int)$dimensions[1];
+        if ($detectedMime !== $expectedMime || $width <= 0 || $height <= 0
+            || $width > $maxWidth || $height > $maxHeight) {
+            return false;
+        }
+
+        return $width <= intdiv($maxPixels, $height);
     }
 }
 

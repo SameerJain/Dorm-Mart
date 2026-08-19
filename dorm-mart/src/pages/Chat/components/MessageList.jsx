@@ -1,4 +1,4 @@
-import fmtTime from "../utils/chatPageUtils";
+import fmtTime, { parseChatMetadata } from "../utils/chatPageUtils";
 import MessageCard from "./MessageCard";
 import ScheduleMessageCard from "./ScheduleMessageCard";
 import NextStepsMessageCard from "./NextStepsMessageCard";
@@ -116,7 +116,6 @@ export default function MessageList({
   messages,
   messagesByConv,
   editMessage,
-  parseMetadata,
   scrollRef,
   typingUserName,
 }) {
@@ -162,7 +161,7 @@ export default function MessageList({
         </p>
       ) : (
         filteredMessages.map((m) => {
-          const metadata = m.parsedMetadata || parseMetadata(m.metadata);
+          const metadata = m.parsedMetadata || parseChatMetadata(m.metadata);
           const messageType = metadata?.type;
           const isScheduleMessage =
             messageType === "schedule_request" ||
@@ -266,7 +265,9 @@ export default function MessageList({
                   {messageType === "listing_intro" ? (
                     <MessageCard
                       message={messageWithMetadata}
-                      isMine={m.sender === "me"}
+                      listingUnavailable={
+                        activeConversation?.productStatus === "Draft"
+                      }
                     />
                   ) : isScheduleMessage ? (
                     <ScheduleMessageCard

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/profile_helpers.php';
 
 init_json_endpoint('GET');
@@ -11,7 +12,7 @@ init_json_endpoint('GET');
 try {
     require_login();
 
-    $requestedId = isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0;
+    $requestedId = request_int($_GET, 'user_id');
     if ($requestedId <= 0) {
         json_response(['success' => false, 'error' => 'Invalid user_id'], 400);
     }

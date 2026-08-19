@@ -13,6 +13,22 @@ test("returns the server polling cursor even when there are no new messages", as
   jest.restoreAllMocks();
 });
 
+test("returns listing status while polling even when there are no new messages", async () => {
+  jest.spyOn(global, "fetch").mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      success: true,
+      messages: [],
+      conversation_status: { product_status: "Draft", item_deleted: false },
+    }),
+  });
+
+  await expect(tickFetchNewMessages(2, 1, 1200)).resolves.toMatchObject({
+    conversationStatus: { productStatus: "Draft", itemDeleted: false },
+  });
+  jest.restoreAllMocks();
+});
+
 describe("notification polling", () => {
   afterEach(() => jest.restoreAllMocks());
 

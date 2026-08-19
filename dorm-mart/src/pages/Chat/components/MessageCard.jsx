@@ -6,13 +6,14 @@ import {
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../../../utils/apiConfig";
 
-const MessageCard = memo(function MessageCard({ message, isMine }) {
+const MessageCard = memo(function MessageCard({ message, listingUnavailable }) {
   const navigate = useNavigate();
   const metadata = message.metadata || {};
   const product = metadata.product || {};
   const previewText = message.content || "";
   const rawImageUrl = product.image_url;
   const productId = product.product_id;
+  const isClickable = Boolean(productId) && !listingUnavailable;
 
   const imageUrl = useMemo(() => {
     if (!rawImageUrl) return null;
@@ -21,17 +22,17 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
   }, [rawImageUrl]);
 
   const handleClick = useCallback(() => {
-    if (!productId) return;
+    if (!isClickable) return;
     // iOS Safari: blur focused inputs (e.g. chat composer <16px) and avoid carrying zoom across navigations
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
     navigate(`/app/viewProduct/${encodeURIComponent(productId)}`);
-  }, [productId, navigate]);
+  }, [isClickable, productId, navigate]);
 
   const shellClass =
     "max-w-[85%] rounded-2xl border-2 border-blue-400 bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg overflow-hidden text-left dark:border-blue-600 dark:from-blue-800 dark:to-blue-900 dark:shadow-black/30 touch-manipulation " +
-    (productId
+    (isClickable
       ? "cursor-pointer transition-all duration-200 hover:shadow-xl md:hover:scale-[1.02]"
       : "");
 
@@ -74,11 +75,16 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
             {previewText}
           </p>
         </div>
+        {listingUnavailable && (
+          <p className="text-xs font-medium text-blue-100">
+            Listing currently unavailable
+          </p>
+        )}
       </div>
     </>
   );
 
-  return productId ? (
+  return isClickable ? (
     <button type="button" onClick={handleClick} className={shellClass}>
       {body}
     </button>

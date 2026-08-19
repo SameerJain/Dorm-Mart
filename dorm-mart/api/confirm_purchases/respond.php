@@ -16,8 +16,10 @@ try {
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $confirmRequestId = isset($payload['confirm_request_id']) ? (int)$payload['confirm_request_id'] : 0;
-    $action = isset($payload['action']) ? strtolower(trim((string)$payload['action'])) : '';
+    $confirmRequestId = request_int($payload, 'confirm_request_id');
+    $action = isset($payload['action']) && is_string($payload['action'])
+        ? strtolower(trim($payload['action']))
+        : '';
 
     if ($confirmRequestId <= 0 || ($action !== 'accept' && $action !== 'decline')) {
         json_response(['success' => false, 'error' => 'Invalid request'], 400);

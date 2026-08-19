@@ -8,6 +8,7 @@ init_json_endpoint();
 require_once __DIR__ . '/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/two_factor.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 $userId = require_login();
 $method = $_SERVER['REQUEST_METHOD'] ?? '';
@@ -42,10 +43,9 @@ try {
         json_response(['ok' => false, 'error' => 'Method Not Allowed'], 405);
     }
 
-    $data = json_decode((string)file_get_contents('php://input'), true);
-    if (!is_array($data)) $data = [];
+    $data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON payload']);
     require_csrf_token($data['csrf_token'] ?? null);
-    $action = (string)($data['action'] ?? '');
+    $action = is_string($data['action'] ?? null) ? $data['action'] : '';
 
     if ($action === 'enable') {
         if ((bool)$user['two_factor_enabled']) {
@@ -87,7 +87,7 @@ try {
             json_response(['ok' => false, 'error' => 'Two-Factor Authentication is not enabled for this account.'], 409);
         }
 
-        $password = (string)($data['password'] ?? '');
+        $password = is_string($data['password'] ?? null) ? $data['password'] : '';
         if ($password === '' || strlen($password) > 64) {
             $conn->close();
             json_response(['ok' => false, 'error' => 'Enter your current account password.'], 400);

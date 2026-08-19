@@ -30,19 +30,15 @@ $userId = require_login();
 /* Read body (JSON or form) - IMPORTANT: Do NOT HTML-encode passwords before hashing */
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-  $raw  = file_get_contents('php://input');
-  $data = json_decode($raw, true);
-  if (!is_array($data)) {
-    $data = [];
-  }
+  $data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON payload']);
   // Passwords must remain raw - they're hashed, not displayed
-  $current = isset($data['currentPassword']) ? (string)$data['currentPassword'] : '';
-  $next    = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
+  $current = is_string($data['currentPassword'] ?? null) ? $data['currentPassword'] : '';
+  $next = is_string($data['newPassword'] ?? null) ? $data['newPassword'] : '';
   require_csrf_token($data['csrf_token'] ?? null);
 } else {
   // Passwords must remain raw - they're hashed, not displayed
-  $current = isset($_POST['currentPassword']) ? (string)$_POST['currentPassword'] : '';
-  $next    = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
+  $current = is_string($_POST['currentPassword'] ?? null) ? $_POST['currentPassword'] : '';
+  $next = is_string($_POST['newPassword'] ?? null) ? $_POST['newPassword'] : '';
   require_csrf_token($_POST['csrf_token'] ?? null);
 }
 

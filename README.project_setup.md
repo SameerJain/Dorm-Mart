@@ -5,7 +5,7 @@
 1. Clone the repository and navigate to the `dorm-mart` directory
 2. Run `npm install` to install dependencies
 3. Set up your local database (see `README.project_setup.md` for schema migration details)
-4. Start the development server: `npm run start-local-win` (or `-mac`) and run `php -S localhost:8080 -t .` in the `dorm-mart` directory
+4. Start the development server: `npm run start-local-win` (or `-mac`) and run `npm run start:api` in the `dorm-mart` directory
 
 Stop the React development server before running `npm install`, `npm ci`, or dependency-update commands. Replacing files in `node_modules` while the compiler is running can cause temporary missing-module errors.
 
@@ -30,8 +30,8 @@ Copy any necessary files to the server:
 # Build Method 1: Run React and PHP Server
 
 1. `npm run start-local` \*(add -win or -mac at the end depending on your machine)
-2. `php -S localhost:8080 -t .`
-   1. (C:\xampp\php\php.exe -S localhost:8080 -t .)
+2. `npm run start:api`
+   1. (`C:\xampp\php\php.exe -S localhost:8080 router.php`)
    2. (You Must be inside the dorm-mart folder for this to work)
    3. (It is recommended you also install PHP locally on your machine in addition to XAMMP)
 3. refer to "proxy" field in package.json to navigate to the local db

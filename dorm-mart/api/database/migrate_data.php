@@ -14,6 +14,39 @@ require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
 require_once __DIR__ . '/db_connect.php';
 
+function reset_local_data(mysqli $conn): array
+{
+    $host = strtolower(trim((string)getenv('DB_HOST')));
+    if (!in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
+        throw new RuntimeException('Refusing to reset data on a non-local database');
+    }
+
+    $preserved = ['schema_migrations', 'profanity_words'];
+    $tables = [];
+    $result = $conn->query(
+        "SELECT TABLE_NAME
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'"
+    );
+    while ($row = $result->fetch_row()) {
+        if (!in_array(strtolower($row[0]), $preserved, true)) {
+            $tables[] = $row[0];
+        }
+    }
+    $result->free();
+
+    $conn->query('SET FOREIGN_KEY_CHECKS = 0');
+    try {
+        foreach ($tables as $table) {
+            $conn->query('TRUNCATE TABLE `' . str_replace('`', '``', $table) . '`');
+        }
+    } finally {
+        $conn->query('SET FOREIGN_KEY_CHECKS = 1');
+    }
+
+    return $tables;
+}
+
 try {
     $conn = db();
     $conn->query(
@@ -23,6 +56,7 @@ try {
             applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB'
     );
+    $reset = reset_local_data($conn);
 
     $dataDir = dirname(__DIR__, 2) . '/data';
     $testImagesDir = $dataDir . '/test-images';
@@ -39,7 +73,7 @@ try {
     natsort($files);
     $ran = [];
 
-    // Seed data is intentionally repeatable for local test environments.
+    // Every run starts from an empty local data set, then rebuilds the test fixtures.
     foreach ($files as $path) {
         $name = basename($path);
         $sql = file_get_contents($path);
@@ -84,6 +118,7 @@ try {
     $conn->close();
     echo json_encode([
         'success' => true,
+        'reset' => array_map('escape_html', $reset),
         'applied' => array_map('escape_html', $ran),
         'test_accounts' => $protection,
     ]);

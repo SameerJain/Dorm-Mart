@@ -27,6 +27,7 @@ use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/../utility/transactional_email_html.php';
 require_once __DIR__ . '/../config/app_config.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 const PASSWORD_RESET_ACCEPTED_MESSAGE = 'If this email is registered, a reset link has been sent.';
 $passwordResetStartedAt = microtime(true);
@@ -220,15 +221,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Get request data
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-    $raw = file_get_contents('php://input');
-    // IMPORTANT: Decode JSON first, then validate - don't HTML-encode email before validation
-    $data = json_decode($raw, true);
-    if (!is_array($data)) {
-        $data = [];
-    }
-    $emailRaw = strtolower(trim((string)($data['email'] ?? '')));
+    $data = json_request_body_or_error(['success' => false, 'error' => 'Invalid JSON payload']);
+    $emailRaw = is_string($data['email'] ?? null) ? strtolower(trim($data['email'])) : '';
 } else {
-    $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
+    $emailRaw = is_string($_POST['email'] ?? null) ? strtolower(trim($_POST['email'])) : '';
 }
 
 // Load email policy configuration
