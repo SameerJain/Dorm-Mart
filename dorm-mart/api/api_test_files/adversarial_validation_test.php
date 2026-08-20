@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
+require_once __DIR__ . '/../payments/helpers.php';
 
 if (PHP_SAPI !== 'cli') {
     http_response_code(404);
@@ -60,5 +61,69 @@ if (is_file($knownImage)) {
     expect_value(uploaded_image_dimensions_are_safe($knownImage, 'image/jpeg'), true, 'known image rejected');
 }
 expect_value(uploaded_image_dimensions_are_safe(dirname(__DIR__, 2) . '/package.json', 'image/jpeg'), false, 'non-image accepted');
+
+foreach ([['0.50', 50], ['1', 100], ['9999.99', 999999]] as [$value, $expected]) {
+    expect_value(payment_amount_cents_from_value($value), $expected, 'valid Stripe payment amount rejected');
+}
+foreach (['0.49', '10000', '1.001', '-1', '', '1e2', null, true] as $value) {
+    expect_value(payment_amount_cents_from_value($value), null, 'invalid Stripe payment amount accepted');
+}
+
+$paymentSchedule = ['meeting_at' => '2026-08-20 16:00:00'];
+expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-08-20T15:59:59Z')), 'upcoming', 'payment opened before scheduled time');
+expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-08-20T16:00:00Z')), 'open', 'payment did not open at scheduled time');
+expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-08-20T16:29:59Z')), 'open', 'payment closed before 30 minutes');
+expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-08-20T16:30:00Z')), 'expired', 'payment remained open at cutoff');
+expect_value(payment_mode_for_protected(true), 'test', 'protected users must use Stripe test mode');
+expect_value(payment_mode_for_protected(false), 'live', 'normal users must use Stripe live mode');
+
+$timelySchedule = ['meeting_at' => '2026-08-20 16:00:00', 'payment_fallback_at' => null];
+$fallbackSchedule = ['meeting_at' => '2026-08-20 16:00:00', 'payment_fallback_at' => '2026-08-20 16:05:00'];
+$canceledSchedule = ['meeting_at' => '2026-08-20 16:00:00', 'payment_fallback_at' => null, 'status' => 'cancelled'];
+expect_value(
+    payment_succeeded_refund_reason($timelySchedule, new DateTimeImmutable('2026-08-20T16:10:00Z')),
+    null,
+    'timely payment was marked for refund'
+);
+expect_value(
+    payment_succeeded_refund_reason($fallbackSchedule, new DateTimeImmutable('2026-08-20T16:10:00Z')),
+    'fallback_payment',
+    'payment completed after irreversible fallback'
+);
+expect_value(
+    payment_succeeded_refund_reason($timelySchedule, new DateTimeImmutable('2026-08-20T16:30:00Z')),
+    'late_payment',
+    'late payment was allowed to complete'
+);
+expect_value(
+    payment_succeeded_refund_reason($canceledSchedule, new DateTimeImmutable('2026-08-20T16:10:00Z')),
+    'schedule_inactive',
+    'payment completed after the Scheduled Purchase was canceled'
+);
+
+expect_value(payment_can_apply_intent_failure('processing'), true, 'processing payment could not fail');
+expect_value(payment_can_apply_intent_failure('succeeded'), false, 'failed event regressed a succeeded payment');
+expect_value(payment_can_apply_intent_failure('refunded'), false, 'failed event regressed a refunded payment');
+expect_value(payment_can_apply_refund_status('refunded', 'refund_pending'), false, 'refund event regressed a completed refund');
+expect_value(payment_can_apply_refund_status('refund_failed', 'refund_pending'), false, 'older refund event regressed a failed refund');
+expect_value(payment_can_apply_refund_status('refund_failed', 'refunded'), true, 'successful refund could not recover from failed status');
+expect_value(payment_refund_needs_request('succeeded', null), true, 'new refund request was rejected');
+expect_value(payment_refund_needs_request('refund_pending', null), true, 'interrupted refund could not resume');
+expect_value(payment_refund_needs_request('refund_pending', 're_test'), false, 'known pending refund was reissued');
+expect_value(payment_refund_is_complete(1000, 400), false, 'partial refund was treated as full');
+expect_value(payment_refund_is_complete(1000, 1000), true, 'full refund was not finalized');
+expect_value(payment_can_apply_dispute_status('under_review', 'won'), true, 'dispute could not reach a terminal state');
+expect_value(payment_can_apply_dispute_status('won', 'under_review'), false, 'stale dispute event regressed a win');
+
+$v2Account = payment_normalize_stripe_account([
+    'id' => 'acct_test',
+    'configuration' => ['merchant' => ['capabilities' => [
+        'card_payments' => ['status' => 'active'],
+        'stripe_balance' => ['payouts' => ['status' => 'active']],
+    ]]],
+    'requirements' => ['entries' => []],
+]);
+expect_value($v2Account['charges_enabled'], true, 'Accounts v2 card capability was not normalized');
+expect_value($v2Account['payouts_enabled'], true, 'Accounts v2 payout capability was not normalized');
 
 echo "Adversarial backend validation passed: {$checks} checks\n";

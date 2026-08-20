@@ -8,6 +8,8 @@ require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../payments/helpers.php';
+require_once __DIR__ . '/../payments/stripe.php';
 
 init_json_endpoint('POST');
 
@@ -25,6 +27,7 @@ try {
 
     $conn = db();
     $conn->set_charset('utf8mb4');
+    $conn->begin_transaction();
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $selectSql = <<<SQL
@@ -35,12 +38,17 @@ try {
             spr.buyer_user_id,
             spr.conversation_id,
             spr.inventory_product_id,
+            spr.payment_option,
+            spr.payment_mode,
+            spr.payment_amount_cents,
+            spr.payment_fallback_at,
             inv.title AS item_title,
             inv.photos AS item_photos
         FROM scheduled_purchase_requests spr
         INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
         WHERE spr.request_id = ?
         LIMIT 1
+        FOR UPDATE
     SQL;
 
     $selectStmt = $conn->prepare($selectSql);
@@ -74,6 +82,31 @@ try {
     // Cannot cancel a declined request (buyer already rejected it)
     if ($currentStatus === 'declined') {
         json_response(['success' => false, 'error' => 'Cannot cancel a declined request'], 409);
+    }
+
+    $intentToCancel = null;
+    if (
+        $currentStatus === 'accepted'
+        && ($row['payment_option'] ?? 'manual') === 'stripe'
+        && empty($row['payment_fallback_at'])
+    ) {
+        $intentStmt = $conn->prepare(
+            "SELECT stripe_payment_intent_id, stripe_connected_account_id, payment_mode
+               FROM electronic_payments
+              WHERE scheduled_request_id = ?
+                AND status NOT IN ('succeeded','refund_pending','refund_failed','refunded','disputed','canceled')
+              LIMIT 1
+              FOR UPDATE"
+        );
+        if (!$intentStmt) throw new RuntimeException('Failed to prepare intent cancellation lookup');
+        $intentStmt->bind_param('i', $requestId);
+        $intentStmt->execute();
+        $intentToCancel = $intentStmt->get_result()->fetch_assoc() ?: null;
+        $intentStmt->close();
+        if (!payment_apply_fallback($conn, $row, 'schedule_cancelled')) {
+            $conn->rollback();
+            json_response(['success' => false, 'error' => 'A completed electronic purchase cannot be cancelled'], 409);
+        }
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
@@ -134,8 +167,6 @@ try {
         }
     }
 
-    $conn->begin_transaction();
-
     $response = [
         'success' => true,
         'data' => [
@@ -145,6 +176,30 @@ try {
     ];
 
     $conn->commit();
+
+    if ($intentToCancel) {
+        try {
+            $stripe = payment_stripe_client((string)$intentToCancel['payment_mode']);
+            $intent = $stripe->paymentIntents->retrieve(
+                (string)$intentToCancel['stripe_payment_intent_id'],
+                [],
+                payment_stripe_request_options((string)$intentToCancel['stripe_connected_account_id'])
+            );
+            if (in_array((string)$intent->status, ['requires_payment_method','requires_confirmation','requires_action','processing'], true)) {
+                $stripe->paymentIntents->cancel(
+                    (string)$intent->id,
+                    [],
+                    payment_stripe_request_options(
+                        (string)$intentToCancel['stripe_connected_account_id'],
+                        'dorm-mart-cancel-schedule-' . $requestId
+                    )
+                );
+            }
+        } catch (Throwable $e) {
+            error_log('scheduled-purchase Stripe cancellation error: ' . $e->getMessage());
+        }
+    }
+
     json_response($response);
 } catch (Throwable $e) {
     if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }

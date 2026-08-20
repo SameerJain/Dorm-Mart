@@ -36,25 +36,17 @@ export async function readApiError(response, fallbackMessage) {
   }
 }
 
-export async function apiGetJson(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    method: "GET",
-    credentials: options.credentials || "include",
-    headers: mergeHeaders({ Accept: "application/json" }, options.headers),
-  });
-
+async function requestJson(request, url, options) {
+  const response = await request(url, options);
   if (!response.ok) {
     throw new Error(await readApiError(response));
   }
-
   return readJsonResponse(response);
 }
 
-export async function csrfPostJson(url, body = {}, options = {}) {
-  const response = await csrfFetch(url, {
+function jsonRequestOptions(options, body) {
+  return {
     ...options,
-    method: options.method || "POST",
     credentials: options.credentials || "include",
     headers: mergeHeaders(
       {
@@ -64,11 +56,28 @@ export async function csrfPostJson(url, body = {}, options = {}) {
       options.headers,
     ),
     body: JSON.stringify(body || {}),
+  };
+}
+
+export function apiGetJson(url, options = {}) {
+  return requestJson(fetch, url, {
+    ...options,
+    method: "GET",
+    credentials: options.credentials || "include",
+    headers: mergeHeaders({ Accept: "application/json" }, options.headers),
   });
+}
 
-  if (!response.ok) {
-    throw new Error(await readApiError(response));
-  }
+export function apiPostJson(url, body = {}, options = {}) {
+  return requestJson(fetch, url, {
+    ...jsonRequestOptions(options, body),
+    method: "POST",
+  });
+}
 
-  return readJsonResponse(response);
+export function csrfPostJson(url, body = {}, options = {}) {
+  return requestJson(csrfFetch, url, {
+    ...jsonRequestOptions(options, body),
+    method: options.method || "POST",
+  });
 }

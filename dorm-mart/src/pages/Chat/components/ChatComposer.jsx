@@ -18,6 +18,8 @@ export default function ChatComposer({
   handleSchedulePurchase,
   hasActiveScheduledPurchase,
   isSellerPerspective,
+  onElectronicPayment,
+  paymentStatus,
   setAttachOpen,
   setAttachedImage,
   setDraft,
@@ -40,8 +42,9 @@ export default function ChatComposer({
           aria-label="Chat is closed"
         ></div>
       )}
-      {isSellerPerspective && activeConversation?.productId && (
+      {activeConversation?.productId && (isSellerPerspective || paymentStatus?.payment_option === "stripe") && (
         <div className="mb-2 flex flex-wrap items-center gap-2">
+          {isSellerPerspective && (
           <button
             onClick={handleSchedulePurchase}
             disabled={hasActiveScheduledPurchase || isListingDraft}
@@ -60,7 +63,9 @@ export default function ChatComposer({
           >
             Schedule Purchase
           </button>
+          )}
 
+          {isSellerPerspective && paymentStatus?.manual_confirm_available !== false && (
           <button
             onClick={handleConfirmPurchase}
             disabled={confirmButtonDisabled}
@@ -73,6 +78,26 @@ export default function ChatComposer({
           >
             Confirm Purchase
           </button>
+          )}
+
+          {!isSellerPerspective && paymentStatus?.can_pay && (
+            <button type="button" onClick={onElectronicPayment} className="ml-auto rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              Make an Electronic Payment
+            </button>
+          )}
+
+          {paymentStatus?.payment_option === "stripe" && !paymentStatus.fallback && !paymentStatus.completed && (
+            <p className="w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100">
+              {paymentStatus.is_test_mode ? "Test Mode · " : ""}
+              {paymentStatus.window_state === "open"
+                ? `Payment Window open · $${(paymentStatus.payment_amount_cents / 100).toFixed(2)} USD`
+                : paymentStatus.window_state === "upcoming"
+                  ? "Electronic payment opens at the scheduled time for 30 minutes."
+                  : paymentStatus.payment_status === "processing"
+                    ? "The Payment Window closed. Stripe is verifying the final payment attempt."
+                    : "The Payment Window has closed. Manual confirmation is being restored."}
+            </p>
+          )}
 
           {confirmState &&
             confirmState.message &&

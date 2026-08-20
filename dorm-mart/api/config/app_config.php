@@ -249,3 +249,44 @@ function dm_log_auth_event(string $flow, string $requestId, string $event, array
 
     error_log((string)json_encode($payload, JSON_UNESCAPED_SLASHES));
 }
+
+function dm_payments_enabled(): bool
+{
+    return dm_env_bool('PAYMENTS_ENABLED', false);
+}
+
+function dm_stripe_secret_key(string $mode): string
+{
+    return dm_env_string($mode === 'live' ? 'STRIPE_LIVE_SECRET_KEY' : 'STRIPE_TEST_SECRET_KEY');
+}
+
+function dm_stripe_publishable_key(string $mode): string
+{
+    return dm_env_string($mode === 'live' ? 'STRIPE_LIVE_PUBLISHABLE_KEY' : 'STRIPE_TEST_PUBLISHABLE_KEY');
+}
+
+function dm_stripe_webhook_secret(string $mode): string
+{
+    return dm_env_string($mode === 'live' ? 'STRIPE_LIVE_WEBHOOK_SECRET' : 'STRIPE_TEST_WEBHOOK_SECRET');
+}
+
+function dm_stripe_account_webhook_secret(string $mode): string
+{
+    return dm_env_string(
+        $mode === 'live' ? 'STRIPE_LIVE_ACCOUNT_WEBHOOK_SECRET' : 'STRIPE_TEST_ACCOUNT_WEBHOOK_SECRET'
+    );
+}
+
+function dm_stripe_payment_method_configuration(string $mode): string
+{
+    return dm_env_string(
+        $mode === 'live'
+            ? 'STRIPE_LIVE_PAYMENT_METHOD_CONFIGURATION'
+            : 'STRIPE_TEST_PAYMENT_METHOD_CONFIGURATION'
+    );
+}
+
+function dm_stripe_checkout_domain(): string
+{
+    return dm_url_origin(dm_frontend_base_url());
+}

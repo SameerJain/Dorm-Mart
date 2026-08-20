@@ -1,5 +1,52 @@
 # Thermo-Nuclear Code Quality Review And Refactor Report
 
+## 2026-08-19 search and wishlist invariants
+
+Before refactoring these flows, the following behavior is fixed:
+
+- `/app/listings` reads the existing search query aliases, sends the same JSON
+  filters to `POST api/search/get_search_items.php`, and keeps the current result
+  links, filter controls, and loading, error, and empty messages.
+- Search remains authenticated. The endpoint keeps its validation, prepared SQL,
+  result ordering, status codes, and array-shaped JSON response.
+- `/app/wishlist` loads `GET api/wishlist/get_wishlist.php` and removes items with
+  `POST api/wishlist/remove_from_wishlist.php` using the existing CSRF flow.
+- Wishlist keeps its private authenticated response, category filtering, product
+  links, removal confirmation, retry action, and loading, error, and empty states.
+- Wishlist removal keeps the same database updates, response fields, and 400, 404,
+  and 500 behavior. No endpoint, route, request field, or response field is renamed.
+
+### Implemented refactor
+
+- `SearchResultsPage.jsx` now owns routing and layout. Feature-local hooks own the
+  search and category requests, components own filters and results, and pure utils
+  own query mapping, validation, URL construction, and result normalization.
+- `WishlistPage.jsx` now derives filtered items from one item list. A feature hook
+  owns load and removal requests, while feature-local components and utils own the
+  confirmation UI, category controls, normalization, and filtering.
+- Added `apiPostJson` beside the existing GET and CSRF JSON helpers. Search keeps
+  its read-only POST contract without repeating response parsing.
+- Both async flows abort stale requests and avoid stale completion updates.
+- Nonblank production lines across search, wishlist, and the shared API helper
+  fell from 1,331 to 1,301. Tests and the audit are counted separately.
+
+### Regression coverage
+
+- Added adversarial tests for malformed prices, dates, images, list fields, query
+  aliases, price errors, URL construction, category filtering, and filter cleanup.
+- Added component tests for search loading, error, empty, and navigation states and
+  for blocking duplicate wishlist removal submissions.
+- Added `scripts/refactor-audit.js` to list large files, direct frontend fetch calls,
+  and date construction outside the shared formatter boundary.
+
+### Verification
+
+- Jest: 30 suites and 91 tests passed.
+- Backend adversarial validation: 78 checks passed.
+- Production build passed. PHP lint passed for all 149 application PHP files.
+- Browser verification exercised both routes against their API contracts, including
+  the search request body and the CSRF-protected wishlist removal body.
+
 ## 2026-08-15 CodeRabbit-Style Security Audit
 
 ### Resolved findings
@@ -129,7 +176,7 @@ Added kept Jest tests under `src/__adversarial_tests__/` covering:
 
 2. **Some untargeted pages still have local fetch/date handling.**
    - The major touched flows now use shared API/date helpers.
-   - A broad scan still finds legacy local fetch/date handling in flows such as chat context, login/reset password, search, wishlist, purchase history, profile/settings, product detail hooks, and confirm-purchase UI.
+   - A broad scan still finds legacy local fetch/date handling in flows such as chat context, login/reset password, purchase history, profile/settings, product detail hooks, and confirm-purchase UI.
    - Those were left as explicit follow-up debt rather than swept into this architecture pass because they are unrelated user workflows with larger regression surface.
    - Future feature work should continue moving local fetch parsing into `apiClient.js` instead of adding new one-off response branches.
 
@@ -138,6 +185,8 @@ Added kept Jest tests under `src/__adversarial_tests__/` covering:
    - `SellerDashboard/SellerDashboardPage.jsx`: 223 lines.
    - `Home/LandingPage.jsx`: 198 lines.
    - `ScheduledPurchases/SchedulePurchasePage.jsx`: 123 lines.
+   - `Search/SearchResultsPage.jsx`: 141 lines.
+   - `Wishlist/WishlistPage.jsx`: 247 lines.
 
 ## Verification
 

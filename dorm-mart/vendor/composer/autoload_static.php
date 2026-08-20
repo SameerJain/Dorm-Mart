@@ -8,11 +8,14 @@ class ComposerStaticInitd26c6aba39ee08216a5e59c9936ee944
 {
     public static $files = array (
         '79f66bc0a1900f77abe4a9a299057a0a' => __DIR__ . '/..' . '/starkbank/ecdsa/src/ellipticcurve.php',
+        'd92f49fe138fde4e7a3ec6f988960524' => __DIR__ . '/..' . '/stripe/stripe-php/lib/version_check.php',
+        '951c10c1f5e4e67c2a939526e4e59b0f' => __DIR__ . '/..' . '/stripe/stripe-php/lib/agent_plugin_hint.php',
     );
 
     public static $prefixLengthsPsr4 = array (
         'S' => 
         array (
+            'Stripe\\' => 7,
             'SendGrid\\Stats\\' => 15,
             'SendGrid\\Mail\\' => 14,
             'SendGrid\\Helper\\' => 16,
@@ -27,6 +30,10 @@ class ComposerStaticInitd26c6aba39ee08216a5e59c9936ee944
     );
 
     public static $prefixDirsPsr4 = array (
+        'Stripe\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/stripe/stripe-php/lib',
+        ),
         'SendGrid\\Stats\\' => 
         array (
             0 => __DIR__ . '/..' . '/sendgrid/sendgrid/lib/stats',

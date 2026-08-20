@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../payments/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -27,6 +28,7 @@ try {
 
     $conn = db();
     $conn->set_charset('utf8mb4');
+    $conn->begin_transaction();
 
     $selectStmt = $conn->prepare('
         SELECT cpr.*, inv.title AS item_title
@@ -34,6 +36,7 @@ try {
         INNER JOIN INVENTORY inv ON inv.product_id = cpr.inventory_product_id
         WHERE cpr.confirm_request_id = ?
         LIMIT 1
+        FOR UPDATE
     ');
     if (!$selectStmt) {
         throw new RuntimeException('Failed to prepare confirm lookup');
@@ -50,6 +53,14 @@ try {
 
     if ((int)$row['buyer_user_id'] !== $buyerId) {
         json_response(['success' => false, 'error' => 'You are not allowed to respond to this confirmation'], 403);
+    }
+
+    $schedule = payment_schedule($conn, (int)$row['scheduled_request_id'], true);
+    if (!$schedule) {
+        json_response(['success' => false, 'error' => 'Scheduled purchase not found'], 404);
+    }
+    if (($schedule['payment_option'] ?? 'manual') === 'stripe' && empty($schedule['payment_fallback_at'])) {
+        json_response(['success' => false, 'error' => 'This purchase is waiting for built-in payment'], 409);
     }
 
     $row = auto_finalize_confirm_request($conn, $row) ?? $row;
@@ -79,8 +90,7 @@ try {
     $selectStmt->close();
 
     if ($action === 'accept' && (bool)$row['is_successful']) {
-        mark_inventory_as_sold($conn, $row);
-        record_purchase_history($conn, $buyerId, (int)$row['inventory_product_id'], [
+        complete_successful_purchase($conn, $row, [
             'confirm_request_id' => $confirmRequestId,
             'is_successful' => (bool)$row['is_successful'],
             'final_price' => $row['final_price'] !== null ? (float)$row['final_price'] : null,
@@ -118,6 +128,9 @@ try {
         }
     }
 
+
+    $conn->commit();
+
     json_response([
         'success' => true,
         'data' => [
@@ -128,6 +141,7 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
     error_log('confirm-purchase respond error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

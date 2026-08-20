@@ -43,6 +43,10 @@ export function useSchedulePurchaseForm() {
   const [isTrade, setIsTrade] = useState(false);
   const [tradeItemDescription, setTradeItemDescription] = useState("");
   const [selectedListing, setSelectedListing] = useState(null);
+  const [paymentEligibility, setPaymentEligibility] = useState(null);
+  const [paymentEligibilityLoading, setPaymentEligibilityLoading] = useState(true);
+  const [useBuiltInPayment, setUseBuiltInPayment] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
 
   useEffect(() => {
     if (!navState || !navState.productId || !navState.convId) {
@@ -95,6 +99,41 @@ export function useSchedulePurchaseForm() {
       setSelectedListing(null);
     }
   }, [listings, navState]);
+
+  useEffect(() => {
+    if (!navState?.productId || !navState?.convId) return undefined;
+    const abort = new AbortController();
+    setPaymentEligibilityLoading(true);
+    csrfPostJson(
+      `${API_BASE}/payments/schedule_eligibility.php`,
+      {
+        product_id: Number(navState.productId),
+        conversation_id: Number(navState.convId),
+      },
+      { signal: abort.signal },
+    )
+      .then((result) => {
+        const next = result?.data || null;
+        setPaymentEligibility(next);
+        if (next?.listing_price != null) {
+          setPaymentAmount(Number(next.listing_price).toFixed(2));
+        }
+      })
+      .catch((e) => {
+        if (e.name !== "AbortError") {
+          setPaymentEligibility({
+            eligible: false,
+            reason: "Payment availability could not be checked.",
+          });
+        }
+      })
+      .finally(() => setPaymentEligibilityLoading(false));
+    return () => abort.abort();
+  }, [navState?.convId, navState?.productId]);
+
+  useEffect(() => {
+    if (isTrade) setUseBuiltInPayment(false);
+  }, [isTrade]);
 
   const validateDateTime = () => {
     setDateTimeError("");
@@ -180,6 +219,17 @@ export function useSchedulePurchaseForm() {
       setFormError(priceValidation.error);
       return;
     }
+    if (useBuiltInPayment) {
+      const amount = Number(paymentAmount);
+      if (!/^\d{1,4}(?:\.\d{1,2})?$/.test(paymentAmount.trim()) || amount < 0.5 || amount > 9999.99) {
+        setFormError("Built-in payment amount must be between $0.50 and $9,999.99.");
+        return;
+      }
+      if (!paymentEligibility?.eligible || isTrade) {
+        setFormError(paymentEligibility?.reason || "Built-in payment is unavailable.");
+        return;
+      }
+    }
 
     setIsSubmitting(true);
     try {
@@ -199,6 +249,8 @@ export function useSchedulePurchaseForm() {
           negotiated_price: priceValidation.value,
           is_trade: isTrade,
           trade_item_description: isTrade ? tradeItemDescription.trim() : null,
+          payment_option: useBuiltInPayment ? "stripe" : "manual",
+          payment_amount: useBuiltInPayment ? paymentAmount.trim() : null,
         },
       );
 
@@ -237,6 +289,9 @@ export function useSchedulePurchaseForm() {
     meetingYear,
     monthInputRef,
     negotiatedPrice,
+    paymentAmount,
+    paymentEligibility,
+    paymentEligibilityLoading,
     selectedListing,
     setCloseConfirmOpen,
     setCustomMeetLocation,
@@ -252,8 +307,11 @@ export function useSchedulePurchaseForm() {
     setMeetingMonth,
     setMeetingYear,
     setNegotiatedPrice,
+    setPaymentAmount,
     setTradeItemDescription,
+    setUseBuiltInPayment,
     tradeItemDescription,
+    useBuiltInPayment,
     yearInputRef,
   };
 }

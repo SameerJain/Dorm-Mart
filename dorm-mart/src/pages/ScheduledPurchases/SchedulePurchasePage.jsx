@@ -3,6 +3,7 @@ import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import CloseFormModal from "./components/CloseFormModal";
 import MeetLocationField from "./components/MeetLocationField";
 import NegotiationFields from "./components/NegotiationFields";
+import PaymentOption from "./components/PaymentOption";
 import ScheduleDateTimeFields from "./components/ScheduleDateTimeFields";
 import { useSchedulePurchaseForm } from "./hooks/useSchedulePurchaseForm";
 
@@ -62,6 +63,21 @@ function SchedulePurchasePage() {
               setNegotiatedPrice={form.setNegotiatedPrice}
               setTradeItemDescription={form.setTradeItemDescription}
               tradeItemDescription={form.tradeItemDescription}
+            />
+
+            <PaymentOption
+              amount={form.paymentAmount}
+              eligibility={form.paymentEligibility}
+              isTrade={form.isTrade}
+              loading={form.paymentEligibilityLoading}
+              onAmountChange={form.setPaymentAmount}
+              onToggle={(selected) => {
+                if (selected && form.negotiatedPrice.trim()) {
+                  form.setPaymentAmount(Number(form.negotiatedPrice).toFixed(2));
+                }
+                form.setUseBuiltInPayment(selected);
+              }}
+              selected={form.useBuiltInPayment}
             />
 
             <div>
