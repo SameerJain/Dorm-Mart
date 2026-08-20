@@ -60,7 +60,6 @@ try {
     $stmt->bind_param('i', $convId);
     $stmt->execute();
     $stmt->close();
-
     $conn->commit();
     $conn->close();
     json_response([

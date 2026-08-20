@@ -6,6 +6,7 @@ import ConfirmMessageCard from "./ConfirmMessageCard";
 import ReviewPromptMessageCard from "./ReviewPromptMessageCard";
 import BuyerRatingPromptMessageCard from "./BuyerRatingPromptMessageCard";
 import TypingIndicatorMessage from "./TypingIndicatorMessage";
+import PaymentSystemMessageCard from "./PaymentSystemMessageCard";
 import { API_BASE } from "../../../utils/apiConfig";
 import { csrfFetch } from "../../../utils/csrfFetch";
 import { isVideoMediaUrl } from "../../../utils/imageFallback";
@@ -109,6 +110,7 @@ export default function MessageList({
   chatByConvError,
   checkActiveScheduledPurchase,
   checkConfirmStatus,
+  checkPaymentStatus,
   conversations,
   fetchConversation,
   filteredMessages,
@@ -184,6 +186,7 @@ export default function MessageList({
           const isNextStepsMessage = messageType === "next_steps";
           const isReviewPrompt = messageType === "review_prompt";
           const isBuyerRatingPrompt = messageType === "buyer_rating_prompt";
+          const isPaymentMessage = ["payment_completed", "payment_fallback", "payment_refunded"].includes(messageType);
           const isItemDeletedMessage =
             messageType === "item_deleted" || messageType === "account_deleted";
           const messageWithMetadata = {
@@ -216,6 +219,10 @@ export default function MessageList({
                 />
               </div>
             );
+          }
+
+          if (isPaymentMessage) {
+            return <PaymentSystemMessageCard key={m.message_id} message={messageWithMetadata} />;
           }
 
           return (
@@ -279,6 +286,7 @@ export default function MessageList({
                           const controller = new AbortController();
                           await checkActiveScheduledPurchase(controller.signal);
                           await checkConfirmStatus(controller.signal);
+                          await checkPaymentStatus(controller.signal);
                         }
                       }}
                     />

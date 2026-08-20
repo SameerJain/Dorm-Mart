@@ -350,6 +350,18 @@ function mark_inventory_as_sold(mysqli $conn, array $row): void
     $wishlistDelete->close();
 }
 
+function complete_successful_purchase(mysqli $conn, array $row, array $historyPayload): void
+{
+    if (empty($row['is_successful'])) return;
+    mark_inventory_as_sold($conn, $row);
+    record_purchase_history(
+        $conn,
+        (int)$row['buyer_user_id'],
+        (int)$row['inventory_product_id'],
+        $historyPayload
+    );
+}
+
 function release_inventory_after_unsuccessful_confirm(mysqli $conn, array $row): void
 {
     if (!isset($row['is_successful']) || (bool)$row['is_successful']) {
@@ -483,8 +495,7 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
         }
 
         if ((bool)$updatedRow['is_successful']) {
-            mark_inventory_as_sold($conn, $updatedRow);
-            record_purchase_history($conn, $buyerId, (int)$updatedRow['inventory_product_id'], [
+            complete_successful_purchase($conn, $updatedRow, [
                 'confirm_request_id' => $confirmId,
                 'is_successful' => true,
                 'final_price' => $updatedRow['final_price'] !== null ? (float)$updatedRow['final_price'] : null,

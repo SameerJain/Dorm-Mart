@@ -1,9 +1,9 @@
 export const legalDocuments = {
   privacy: {
     title: "Privacy Policy — Dorm Mart",
-    updated: "October, 2025",
+    updated: "August 19, 2026",
     intro:
-      "Dorm Mart is a UB-students-only marketplace that connects buyers and sellers. We do not process payments or handle delivery. This Privacy Policy explains what we collect, why, and how we protect it.",
+      "Dorm Mart is a UB-students-only marketplace that connects buyers and sellers. Sellers may optionally accept payments processed by Stripe. Dorm Mart does not handle delivery. This Privacy Policy explains what we collect, why, and how we protect it.",
     sections: [
       {
         title: "1) Scope",
@@ -22,6 +22,8 @@ export const legalDocuments = {
               "Graduation month and year",
               "Optional preferences (e.g., promos opt-in)",
               "Listings, messages, reviews, and other user-generated content",
+              "Stripe connected-account identifiers and onboarding, payment, payout, refund, and dispute status",
+              "Transaction details such as the Scheduled Purchase, amount, currency, timestamps, and Stripe object identifiers",
             ],
           },
           {
@@ -38,7 +40,7 @@ export const legalDocuments = {
           },
         ],
         after: [
-          "We do not collect: payment card data, SSNs, or government IDs. Payments and delivery are strictly off-platform between users.",
+          "Dorm Mart does not receive or store full payment-card details. Stripe collects payment details and may collect identity, tax, bank-account, Social Security number, or government-ID information directly from sellers as needed for verification and payouts. Stripe processes that information under its own privacy policy.",
         ],
       },
       {
@@ -46,6 +48,7 @@ export const legalDocuments = {
         items: [
           "Account creation & authentication (UB email verification)",
           "Operating the marketplace (listings, search, messages, notifications)",
+          "Offering optional Stripe payments, seller onboarding, payment status, receipts, refunds, and dispute notifications",
           "Security & abuse prevention (rate limiting, fraud detection, incident response)",
           "Legal compliance (lawful requests, enforcing Terms)",
           "Product analytics (feature usage, performance)",
@@ -74,6 +77,7 @@ export const legalDocuments = {
         paragraphs: ["We do not sell your personal information.", "We may share:"],
         items: [
           "Service Providers (hosting, analytics, email delivery, error monitoring) under contracts that restrict use to our instructions.",
+          "Stripe, to create and operate connected seller accounts, process direct seller charges, confirm payments, issue refunds, support wallets, manage payouts, prevent fraud, and handle disputes and legal compliance.",
           "Safety & Legal (campus/public safety, lawful requests, rights enforcement).",
           "Business Changes (merger, acquisition, asset sale), with notice.",
         ],
@@ -97,6 +101,7 @@ export const legalDocuments = {
         items: [
           "Account data: retained while your account is active.",
           "Listings/messages/logs: retained for operational, security, and audit needs; typically 12–24 months after deletion or account closure, unless required longer for legal reasons.",
+          "Payment and refund records: retained as needed for receipts, disputes, fraud prevention, accounting, and legal obligations. Stripe retains data under its own policies.",
           "Backups: time-limited per backup rotation.",
         ],
       },
@@ -138,9 +143,10 @@ export const legalDocuments = {
         ],
       },
       {
-        title: "13) Third-Party Links & Off-Platform Transactions",
+        title: "13) Stripe and Other Third Parties",
         paragraphs: [
-          "Links to third-party sites and any off-platform communications, payments, or deliveries are outside this Policy. Review third-party privacy terms before sharing information.",
+          "Built-in payments use Stripe. Payment details entered in Stripe’s payment interface go directly to Stripe, and Stripe may use cookies or similar technologies for security and fraud prevention. Review Stripe’s privacy terms before connecting an account or paying.",
+          "Links to other third-party sites and off-platform communications, payments, or deliveries are outside this Policy. Review third-party privacy terms before sharing information.",
         ],
       },
       {
@@ -153,7 +159,7 @@ export const legalDocuments = {
   },
   terms: {
     title: "Terms and Conditions",
-    updated: "October 2025",
+    updated: "August 19, 2026",
     intro:
       "Welcome to Dorm Mart, an online marketplace exclusively for students of the University at Buffalo (UB). By creating an account or using our platform, you agree to comply with and be bound by the following Terms and Conditions. Please read them carefully before using Dorm Mart.",
     sections: [
@@ -162,7 +168,7 @@ export const legalDocuments = {
         paragraphs: ["Dorm Mart is intended solely for active University at Buffalo students.", "To use the platform, you must:"],
         items: [
           "Have a valid buffalo.edu email address.",
-          "Be at least 18 years of age or have reached the age of majority in your jurisdiction.",
+          "Be at least 18 years of age.",
           "Agree to comply with all university policies and applicable laws.",
         ],
         after: [
@@ -173,16 +179,17 @@ export const legalDocuments = {
         title: "2. Platform Purpose",
         paragraphs: [
           "Dorm Mart serves as a peer-to-peer connection platform for UB students to buy, sell, or trade goods within the campus community.",
-          "We act only as a facilitator — providing a communication and listing interface.",
+          "We provide listing, communication, scheduling, and optional Stripe payment interfaces.",
           "We do not:",
         ],
         items: [
-          "Process or guarantee payments.",
+          "Act as the seller, buyer, escrow agent, or delivery service.",
+          "Guarantee payment, item condition, delivery, or a successful handoff.",
           "Handle shipping or delivery.",
           "Verify the authenticity or condition of items listed.",
         ],
         after: [
-          "All transactions, payments, and deliveries are conducted solely between buyers and sellers.",
+          "When built-in payment is used, Stripe processes a direct charge for the seller. The seller, not Dorm Mart, is the merchant of record.",
         ],
       },
       {
@@ -217,17 +224,20 @@ export const legalDocuments = {
       {
         title: "5. Payments and Transactions",
         paragraphs: [
-          "Dorm Mart does not process or guarantee any payments between users.",
-          "All financial transactions must be handled independently by the buyer and seller.",
+          "A seller may offer optional built-in payment for an eligible Scheduled Purchase. Stripe processes the direct charge on the seller’s connected Stripe account in US dollars. Dorm Mart does not receive the sale proceeds, charge a platform fee, or hold funds in escrow.",
+          "The seller chooses the payment amount when proposing the schedule. Buyer acceptance locks that amount. Payment is available only from the scheduled start time until 30 minutes later, and it must succeed before the cutoff. A verified timely Stripe payment automatically marks the purchase complete even if the physical handoff has not occurred.",
+          "The seller is the merchant of record and is responsible for Stripe processing fees, refunds, chargebacks, disputes, taxes, and compliance obligations. Stripe may require identity verification and may restrict, delay, or deny account access, charges, or payouts.",
+          "If built-in payment becomes unavailable or does not succeed before the cutoff, the Scheduled Purchase permanently returns to the manual confirmation flow. A late payment is automatically submitted for a full refund. Stripe processing fees may not be returned to the seller.",
+          "After a completed built-in payment, the seller may request one full refund through Dorm Mart while Stripe permits it and may keep the listing Sold or return it to Active. Refund timing and availability are controlled by Stripe and the payment networks. Disputes are handled in the seller’s Stripe Dashboard.",
           "We are not responsible for:",
         ],
         items: [
           "Payment disputes.",
-          "Refunds, returns, or failed deliveries.",
+          "Stripe account decisions, payout timing, processing fees, refunds, returns, chargebacks, disputes, or failed deliveries.",
           "Losses resulting from fraud, scams, or user negligence.",
         ],
         after: [
-          "We strongly recommend that users exchange items and payments in person, in well-lit public spaces on or near campus, and verify items before transferring money.",
+          "Inspect the item and meet in a well-lit public space. Built-in payment does not provide escrow, buyer protection, delivery verification, or a Dorm Mart guarantee.",
         ],
       },
       {
@@ -256,7 +266,7 @@ export const legalDocuments = {
         title: "8. Privacy",
         paragraphs: [
           "Dorm Mart collects minimal user data necessary for authentication and platform functionality (e.g., name, UB email).",
-          "We do not sell or share personal information with third parties.",
+          "We do not sell personal information. We share data with service providers, including Stripe when built-in payment is used, as described in our Privacy Policy.",
           "Your account data may be deleted upon request by contacting the Dorm Mart support team.",
           "For details, see our Privacy Policy (available separately).",
         ],

@@ -15,6 +15,7 @@ import ChatHeader from "./components/ChatHeader";
 import ChatSidebar from "./components/ChatSidebar";
 import DeleteConversationModal from "./components/DeleteConversationModal";
 import MessageList from "./components/MessageList";
+import ElectronicPaymentModal from "./components/ElectronicPaymentModal";
 import useChatConversationStatus from "./hooks/useChatConversationStatus";
 import useChatTypingStatus from "./hooks/useChatTypingStatus";
 import useChatUsernames from "./hooks/useChatUsernames";
@@ -56,8 +57,9 @@ export default function ChatPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [attachOpen, setAttachOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
 
-  useBodyScrollLock(deleteConfirmOpen);
+  useBodyScrollLock(deleteConfirmOpen || paymentOpen);
   const [attachedImage, setAttachedImage] = useState(null);
 
   const taRef = useRef(null);
@@ -368,6 +370,8 @@ export default function ChatPage() {
     checkConfirmStatus,
     confirmStatus,
     hasActiveScheduledPurchase,
+    checkPaymentStatus,
+    paymentStatus,
   } = useChatConversationStatus({
     activeConvId,
     activeConversation,
@@ -387,7 +391,7 @@ export default function ChatPage() {
       const msgType = meta?.type;
       return (
         (msgType === "confirm_accepted" ||
-          msgType === "confirm_auto_accepted") &&
+          msgType === "confirm_auto_accepted" || msgType === "payment_completed") &&
         meta?.is_successful !== false
       );
     });
@@ -516,6 +520,8 @@ export default function ChatPage() {
               handleProfileHeaderClick={handleProfileHeaderClick}
               headerBgColor={headerBgColor}
               isSellerPerspective={isSellerPerspective}
+              onElectronicPayment={() => setPaymentOpen(true)}
+              paymentStatus={paymentStatus}
               navigate={navigate}
               setIsMobileList={setIsMobileList}
             />
@@ -527,6 +533,7 @@ export default function ChatPage() {
               chatByConvError={chatByConvError}
               checkActiveScheduledPurchase={checkActiveScheduledPurchase}
               checkConfirmStatus={checkConfirmStatus}
+              checkPaymentStatus={checkPaymentStatus}
               conversations={conversations}
               fetchConversation={fetchConversation}
               filteredMessages={filteredMessages}
@@ -572,6 +579,17 @@ export default function ChatPage() {
           isDeleting={isDeleting}
           onCancel={handleDeleteCancel}
           onConfirm={handleDeleteConfirm}
+        />
+      )}
+      {paymentOpen && paymentStatus?.scheduled_request_id && (
+        <ElectronicPaymentModal
+          scheduledRequestId={paymentStatus.scheduled_request_id}
+          onClose={() => setPaymentOpen(false)}
+          onStatusChange={async () => {
+            const controller = new AbortController();
+            await checkPaymentStatus(controller.signal);
+            if (activeConvId) await fetchConversation(activeConvId);
+          }}
         />
       )}
     </div>

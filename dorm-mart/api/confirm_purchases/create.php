@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../payments/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -87,6 +88,7 @@ try {
 
     $conn = db();
     $conn->set_charset('utf8mb4');
+    $conn->begin_transaction();
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $schedStmt = $conn->prepare('
@@ -103,6 +105,10 @@ try {
             spr.trade_item_description,
             spr.is_trade,
             spr.status,
+            spr.payment_option,
+            spr.payment_amount_cents,
+            spr.payment_mode,
+            spr.payment_fallback_at,
             inv.title AS item_title,
             inv.listing_price,
             buyer.first_name AS buyer_first,
@@ -118,6 +124,7 @@ try {
           AND spr.conversation_id = ?
           AND spr.status = \'accepted\'
         LIMIT 1
+        FOR UPDATE
     ');
     if (!$schedStmt) {
         throw new RuntimeException('Failed to prepare scheduled lookup');
@@ -134,6 +141,22 @@ try {
 
     if ((int)$schedRow['seller_user_id'] !== $sellerId) {
         json_response(['success' => false, 'error' => 'You cannot confirm purchases for this listing'], 403);
+    }
+
+    if (($schedRow['payment_option'] ?? 'manual') === 'stripe' && empty($schedRow['payment_fallback_at'])) {
+        $eligibility = payment_schedule_eligibility($conn, $sellerId, (int)$schedRow['buyer_user_id']);
+        $fallbackReason = null;
+        if (empty($eligibility['eligible']) || ($eligibility['mode'] ?? null) !== ($schedRow['payment_mode'] ?? null)) {
+            $fallbackReason = 'seller_account_unavailable';
+        } elseif (payment_window_state($schedRow) === 'expired') {
+            $fallbackReason = 'payment_window_expired';
+        }
+        if ($fallbackReason !== null) {
+            payment_apply_fallback($conn, $schedRow, $fallbackReason);
+            $schedRow['payment_fallback_at'] = gmdate('Y-m-d H:i:s');
+        } else {
+            json_response(['success' => false, 'error' => 'Manual confirmation is unavailable while built-in payment is active'], 409);
+        }
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
@@ -162,7 +185,7 @@ try {
     $latestRow = $latestRes ? $latestRes->fetch_assoc() : null;
     $latestStmt->close();
     
-    if ($latestRow && in_array($latestRow['status'], ['buyer_accepted', 'auto_accepted'], true)) {
+    if ($latestRow && in_array($latestRow['status'], ['buyer_accepted', 'auto_accepted', 'payment_completed'], true)) {
         if ((bool)$latestRow['is_successful']) {
             json_response(['success' => false, 'error' => 'This transaction has already been confirmed'], 409);
         }
@@ -260,6 +283,8 @@ try {
     $messageContent = $sellerDisplayName . ' submitted a Confirm Purchase form for ' . $itemTitle . '.';
     insert_confirm_chat_message($conn, $conversationId, $sellerId, $buyerId, $messageContent, $metadata);
 
+    $conn->commit();
+
     json_response([
         'success' => true,
         'data' => [
@@ -270,6 +295,7 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
     error_log('confirm-purchase create error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

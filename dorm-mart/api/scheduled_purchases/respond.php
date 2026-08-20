@@ -9,6 +9,7 @@ require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/expire_stale.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../payments/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -31,6 +32,7 @@ try {
     $conn->set_charset('utf8mb4');
 
     expire_stale_requests($conn);
+    $conn->begin_transaction();
 
     $selectSql = <<<SQL
         SELECT
@@ -49,12 +51,17 @@ try {
             spr.snapshot_price_nego,
             spr.snapshot_trades,
             spr.snapshot_meet_location,
+            spr.payment_option,
+            spr.payment_amount_cents,
+            spr.payment_mode,
+            spr.payment_fallback_at,
             inv.title AS item_title,
             inv.photos AS item_photos
         FROM scheduled_purchase_requests spr
         INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
         WHERE spr.request_id = ?
         LIMIT 1
+        FOR UPDATE
     SQL;
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
@@ -80,9 +87,17 @@ try {
         json_response(['success' => false, 'error' => 'Request has already been handled'], 409);
     }
 
+    // Lock the listing so two buyers cannot accept schedules for it concurrently.
+    $inventoryLock = $conn->prepare('SELECT product_id FROM INVENTORY WHERE product_id = ? LIMIT 1 FOR UPDATE');
+    if (!$inventoryLock) throw new RuntimeException('Failed to prepare inventory lock');
+    $inventoryProductId = (int)$row['inventory_product_id'];
+    $inventoryLock->bind_param('i', $inventoryProductId);
+    $inventoryLock->execute();
+    $inventoryLock->store_result();
+    $inventoryLock->close();
+
     // Prevent double-booking against active accepted schedules only.
     // Accepted schedules whose latest confirmation was unsuccessful are done.
-    $inventoryProductId = (int)$row['inventory_product_id'];
     if ($action === 'accept' && $inventoryProductId > 0) {
         if (scheduled_purchase_has_active_accepted($conn, $inventoryProductId, $requestId)) {
             json_response(['success' => false, 'error' => 'This item has already been accepted by another buyer'], 409);
@@ -90,8 +105,6 @@ try {
     }
 
     $nextStatus = $action === 'accept' ? 'accepted' : 'declined';
-    $conn->begin_transaction();
-
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $updateStmt = $conn->prepare('UPDATE scheduled_purchase_requests SET status = ?, buyer_response_at = NOW() WHERE request_id = ? LIMIT 1');
     if (!$updateStmt) {
@@ -230,6 +243,18 @@ try {
                 'idempotency_key' => 'confirm-reminder-' . $requestId,
                 'available_at' => $meeting->modify('+8 hours')->format('Y-m-d H:i:s'),
             ]);
+
+            if (($row['payment_option'] ?? 'manual') === 'stripe') {
+                $eligibility = payment_schedule_eligibility(
+                    $conn,
+                    (int)$row['seller_user_id'],
+                    $buyerId
+                );
+                if (empty($eligibility['eligible']) || ($eligibility['mode'] ?? null) !== ($row['payment_mode'] ?? null)) {
+                    payment_apply_fallback($conn, $row, 'seller_account_unavailable');
+                    $row['payment_fallback_at'] = gmdate('Y-m-d H:i:s');
+                }
+            }
         } elseif ($nextStatus === 'declined') {
             notification_cancel_schedule($conn, $requestId);
             // When declined, revert item status to "Active" only if no other accepted purchases exist.
@@ -270,7 +295,10 @@ try {
             // If purchase was accepted, send a separate "Next Steps" message
             // Note: This message does NOT increment unread count (no notification for either party)
             if ($action === 'accept') {
-                $nextStepsContent = 'Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities! Once the exchange is done, the seller will send the Confirm Purchase form.';
+                $usesPayment = ($row['payment_option'] ?? 'manual') === 'stripe' && empty($row['payment_fallback_at']);
+                $nextStepsContent = $usesPayment
+                    ? 'Built-in payment opens at the scheduled time for 30 minutes. A successful payment completes the purchase automatically.'
+                    : 'Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities! Once the exchange is done, the seller will send the Confirm Purchase form.';
                 scheduled_purchase_insert_chat_message($conn, $conversationId, $msgSenderId, $msgReceiverId, $nextStepsContent, [
                     'type' => 'next_steps',
                     'request_id' => $requestId,
@@ -294,6 +322,10 @@ try {
             'inventory_product_id' => (int)$row['inventory_product_id'],
             'meet_location' => $row['meet_location'] ?? '',
             'meeting_at' => $meetingAtIso,
+            'payment_option' => $row['payment_option'] ?? 'manual',
+            'payment_amount_cents' => isset($row['payment_amount_cents']) ? (int)$row['payment_amount_cents'] : null,
+            'payment_mode' => $row['payment_mode'] ?? null,
+            'payment_fallback_at' => $row['payment_fallback_at'] ?? null,
             'buyer_response_at' => $responseAtIso,
             'item' => [
                 'title' => $row['item_title'] ?? 'Untitled',

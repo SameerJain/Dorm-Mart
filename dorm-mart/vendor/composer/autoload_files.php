@@ -7,4 +7,6 @@ $baseDir = dirname($vendorDir);
 
 return array(
     '79f66bc0a1900f77abe4a9a299057a0a' => $vendorDir . '/starkbank/ecdsa/src/ellipticcurve.php',
+    'd92f49fe138fde4e7a3ec6f988960524' => $vendorDir . '/stripe/stripe-php/lib/version_check.php',
+    '951c10c1f5e4e67c2a939526e4e59b0f' => $vendorDir . '/stripe/stripe-php/lib/agent_plugin_hint.php',
 );

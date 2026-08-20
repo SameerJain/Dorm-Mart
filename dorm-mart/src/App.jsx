@@ -25,6 +25,7 @@ import AccountInfoPage from "./pages/Settings/AccountInfoPage.jsx";
 import LoggedDevicesPage from "./pages/Settings/LoggedDevicesPage.jsx";
 import DeleteAccountPage from "./pages/Settings/DeleteAccount.jsx";
 import TwoFactorAuthentication from "./pages/Settings/TwoFactorAuthentication.jsx";
+import PaymentsPage from "./pages/Settings/PaymentsPage.jsx";
 import AboutUs from "./pages/Settings/AboutUs.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.jsx";
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
@@ -205,6 +206,7 @@ export const router = createHashRouter([
           { path: "personal-information", element: <AccountInfoPage /> },
           { path: "security-options", element: <LoggedDevicesPage /> },
           { path: "two-factor-authentication", element: <TwoFactorAuthentication /> },
+          { path: "payments", element: <PaymentsPage /> },
           { path: "about-us", element: <AboutUs /> },
           { path: "delete-account", element: <DeleteAccountPage /> },
         ],

@@ -178,6 +178,10 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     metadata.is_trade === true ||
     metadata.is_trade === 1 ||
     metadata.is_trade === "1";
+  const usesBuiltInPayment = metadata.payment_option === "stripe";
+  const paymentAmount = metadata.payment_amount_cents != null
+    ? Number(metadata.payment_amount_cents) / 100
+    : null;
 
   // Determine display price: use negotiated price if available and different from listing, otherwise use listing price
   const displayPrice =
@@ -353,6 +357,14 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
                 </span>
               </p>
             )}
+          </div>
+        )}
+
+        {messageType === "schedule_request" && usesBuiltInPayment && paymentAmount !== null && (
+          <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-100">
+            <p className="font-bold">Built-in payment · {formatPrice(paymentAmount)} USD</p>
+            <p className="mt-1 text-xs leading-5">Accepting locks this amount. Payment opens at the scheduled time for 30 minutes and a successful Stripe payment completes the purchase automatically.</p>
+            {metadata.payment_mode === "test" && <p className="mt-1 text-xs font-bold uppercase tracking-wide">Test Mode — no real money</p>}
           </div>
         )}
 
