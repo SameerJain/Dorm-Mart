@@ -120,8 +120,7 @@ function payment_complete_purchase_transaction(
         'payload_snapshot' => $snapshotJson,
     ];
 
-    mark_inventory_as_sold($conn, $confirmRow);
-    record_purchase_history($conn, $buyerId, $inventoryId, [
+    complete_successful_purchase($conn, $confirmRow, [
         'confirm_request_id' => $confirmRequestId,
         'electronic_payment_id' => $electronicPaymentId,
         'is_successful' => true,
@@ -157,8 +156,10 @@ function payment_complete_purchase_transaction(
 
     $paymentUpdate = $conn->prepare(
         "UPDATE electronic_payments
-            SET status = 'succeeded', succeeded_at = ?, stripe_charge_id = COALESCE(?, stripe_charge_id), last_error_code = NULL
-          WHERE electronic_payment_id = ?"
+            SET status = CASE WHEN status = 'disputed' THEN 'disputed' ELSE 'succeeded' END,
+                succeeded_at = ?, stripe_charge_id = COALESCE(?, stripe_charge_id), last_error_code = NULL
+          WHERE electronic_payment_id = ?
+            AND status NOT IN ('refund_pending','refund_failed','refunded','canceled')"
     );
     if (!$paymentUpdate) throw new RuntimeException('Failed to prepare completed payment update');
     $paymentUpdate->bind_param('ssi', $succeededDb, $stripeChargeId, $electronicPaymentId);
@@ -167,4 +168,3 @@ function payment_complete_purchase_transaction(
 
     return ['completed' => true, 'conflict' => false, 'confirm_request_id' => $confirmRequestId];
 }
-

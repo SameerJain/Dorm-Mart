@@ -5,6 +5,9 @@
 [![Total Downloads](https://poser.pugx.org/stripe/stripe-php/downloads.svg)](https://packagist.org/packages/stripe/stripe-php)
 [![License](https://poser.pugx.org/stripe/stripe-php/license.svg)](https://packagist.org/packages/stripe/stripe-php)
 
+> [!TIP]
+> Want to chat live with Stripe engineers? Join us on our [Discord server](https://stripe.com/go/discord/php).
+
 The Stripe PHP library provides convenient access to the Stripe API from
 applications written in the PHP language. It includes a pre-defined set of
 classes for API resources that initialize themselves dynamically from API
@@ -13,7 +16,11 @@ API.
 
 ## Requirements
 
-PHP 5.6.0 and later.
+PHP 7.2.0 and later.
+
+Note that per our [language version support policy](https://docs.stripe.com/sdks/versioning?lang=php#stripe-sdk-language-version-support-policy), support for PHP 7.2 and 7.3 will be removed soon, so upgrade your runtime if you're able to.
+
+Additional PHP versions will be dropped in future major versions, so upgrade to supported versions if possible.
 
 ## Composer
 
@@ -41,9 +48,9 @@ require_once '/path/to/stripe-php/init.php';
 
 The bindings require the following extensions in order to work properly:
 
--   [`curl`](https://secure.php.net/manual/en/book.curl.php), although you can use your own non-cURL client if you prefer
--   [`json`](https://secure.php.net/manual/en/book.json.php)
--   [`mbstring`](https://secure.php.net/manual/en/book.mbstring.php) (Multibyte String)
+- [`curl`](https://secure.php.net/manual/en/book.curl.php), although you can use your own non-cURL client if you prefer
+- [`json`](https://secure.php.net/manual/en/book.json.php)
+- [`mbstring`](https://secure.php.net/manual/en/book.mbstring.php) (Multibyte String)
 
 If you use Composer, these dependencies should be handled automatically. If you install manually, you'll want to make sure that these extensions are available.
 
@@ -68,8 +75,6 @@ You can continue to use the legacy integration patterns used prior to version [7
 ## Documentation
 
 See the [PHP API docs](https://stripe.com/docs/api/?lang=php#intro).
-
-See [video demonstrations][youtube-playlist] covering how to use the library.
 
 ## Legacy Version Support
 
@@ -201,28 +206,39 @@ You can disable this behavior if you prefer:
 \Stripe\Stripe::setEnableTelemetry(false);
 ```
 
-### Beta SDKs
+### How to use undocumented parameters and properties
 
-Stripe has features in the beta phase that can be accessed via the beta version of this package.
-We would love for you to try these and share feedback with us before these features reach the stable phase.
-Use the `composer require` command with an exact version specified to install the beta version of the stripe-php pacakge.
+In some cases, you might encounter parameters on an API request or fields on an API response that aren’t available in the SDKs.
+This might happen when they’re undocumented or when they’re in preview and you aren’t using a preview SDK.
+See [undocumented params and properties](https://docs.stripe.com/sdks/server-side?lang=php#undocumented-params-and-fields) to send those parameters or access those fields.
+
+### Public Preview SDKs
+
+Stripe has features in the [public preview phase](https://docs.stripe.com/release-phases) that can be accessed via versions of this package that have the `-beta.X` suffix like `12.2.0-beta.2`.
+We would love for you to try these as we incrementally release new features and improve them based on your feedback.
+
+The public preview SDKs are a different version of the same package as the stable SDKs. These versions are appended with `-beta.X` such as `15.0.0-beta.1`. To install, pick the latest version with the `beta` suffix by reviewing the [releases page](https://github.com/stripe/stripe-dotnet/releases/) and then use it in the `composer require` command:
 
 ```bash
-composer require stripe/stripe-php:v9.2.0-beta.1
+composer require stripe/stripe-php:v<replace-with-the-version-of-your-choice>
 ```
 
 > **Note**
-> There can be breaking changes between beta versions. Therefore we recommend pinning the package version to a specific beta version in your composer.json file. This way you can install the same version each time without breaking changes unless you are intentionally looking for the latest beta version.
+> There can be breaking changes between two versions of the public preview SDKs without a bump in the major version. Therefore we recommend pinning the package version to a specific version in your composer.json file. This way you can install the same version each time without breaking changes unless you are intentionally looking for the latest version of the public preview SDK.
 
-We highly recommend keeping an eye on when the beta feature you are interested in goes from beta to stable so that you can move from using a beta version of the SDK to the stable version.
-
-If your beta feature requires a `Stripe-Version` header to be sent, set the `apiVersion` property of `config` object by using the function `addBetaVersion`:
+Some preview features require a name and version to be set in the `Stripe-Version` header like `feature_beta=v3`. If the preview feature you are interested in has this requirement, use the function `addBetaVersion` (available only in the public preview SDKs):
 
 ```php
 Stripe::addBetaVersion("feature_beta", "v3");
 ```
 
+### Private Preview SDKs
+
+Stripe has features in the [private preview phase](https://docs.stripe.com/release-phases) that can be accessed via versions of this package that have the `-alpha.X` suffix like `12.2.0-alpha.2`. You can install the private preview SDKs by following the same instructions as for the [public preview SDKs](https://github.com/stripe/stripe-php?tab=readme-ov-file#public-preview-sdks) above and replacing the term `beta` with `alpha`. Note that access to specific private preview API features may require separate approval.
+
 ### Custom requests
+
+> This feature is only available from version 16 of this SDK.
 
 If you would like to send a request to an undocumented API (for example you are in a private beta), or if you prefer to bypass the method definitions in the library and specify your request details directly, you can use the `rawRequest` method on the StripeClient.
 
@@ -247,6 +263,9 @@ $get_response = $stripe->rawRequest('get', '/v1/beta_endpoint?caveat=emptor', nu
 New features and bug fixes are released on the latest major version of the Stripe PHP library. If you are on an older major version, we recommend that you upgrade to the latest in order to use the new features and bug fixes including those for security vulnerabilities. Older major versions of the package will continue to be available for use, but will not be receiving any updates.
 
 ## Development
+
+> [!WARNING]
+> External contributions to this repo from first-time contributors are currently on hiatus. If you'd like to see a change made to the package, please open an issue.
 
 [Contribution guidelines for this project](CONTRIBUTING.md)
 
@@ -322,4 +341,3 @@ See the "SSL / TLS compatibility issues" paragraph above for full context. If yo
 [php-cs-fixer]: https://github.com/FriendsOfPHP/PHP-CS-Fixer
 [psr3]: http://www.php-fig.org/psr/psr-3/
 [stripe-mock]: https://github.com/stripe/stripe-mock
-[youtube-playlist]: https://www.youtube.com/playlist?list=PLy1nL-pvL2M6cUbiHrfMkXxZ9j9SGBxFE

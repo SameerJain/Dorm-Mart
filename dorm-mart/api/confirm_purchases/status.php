@@ -106,7 +106,10 @@ try {
             $fallbackReason = 'payment_window_expired';
         }
         if ($fallbackReason !== null) {
-            payment_apply_fallback($conn, $schedRow, $fallbackReason);
+            $conn->begin_transaction();
+            $lockedSchedule = payment_schedule($conn, (int)$schedRow['request_id'], true);
+            if ($lockedSchedule) payment_apply_fallback($conn, $lockedSchedule, $fallbackReason);
+            $conn->commit();
             $schedRow['payment_fallback_at'] = gmdate('Y-m-d H:i:s');
             $scheduledInfo['payment_fallback_at'] = $schedRow['payment_fallback_at'];
             $scheduledInfo['prefill_final_price'] = payment_amount_string((int)$schedRow['payment_amount_cents']);
@@ -119,7 +122,20 @@ try {
     }
 
     if ($confirmRow) {
-        $confirmRow = auto_finalize_confirm_request($conn, $confirmRow) ?? $confirmRow;
+        if (!$paymentActive) {
+            $conn->begin_transaction();
+            $lockedConfirm = $conn->prepare(
+                'SELECT * FROM confirm_purchase_requests WHERE confirm_request_id = ? LIMIT 1 FOR UPDATE'
+            );
+            if (!$lockedConfirm) throw new RuntimeException('Failed to prepare confirmation lock');
+            $confirmId = (int)$confirmRow['confirm_request_id'];
+            $lockedConfirm->bind_param('i', $confirmId);
+            $lockedConfirm->execute();
+            $confirmRow = $lockedConfirm->get_result()->fetch_assoc() ?: $confirmRow;
+            $lockedConfirm->close();
+            $confirmRow = auto_finalize_confirm_request($conn, $confirmRow) ?? $confirmRow;
+            $conn->commit();
+        }
         $latestConfirm = [
             'confirm_request_id' => (int)$confirmRow['confirm_request_id'],
             'status' => $confirmRow['status'],
@@ -169,6 +185,9 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) {
+        try { $conn->rollback(); } catch (Throwable $ignored) {}
+    }
     error_log('confirm-purchase status error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

@@ -4,7 +4,7 @@
     "ext-mysqli": "*",
     "phpmailer/phpmailer": "^6.11",
     "sendgrid/sendgrid": "^8.0",
-    "stripe/stripe-php": "^16.0"
+    "stripe/stripe-php": "^21.2"
   },
   "config": {
     "platform": {

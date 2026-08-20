@@ -18,13 +18,6 @@ function payment_assert_mode(string $mode): string
     return $mode;
 }
 
-function payment_require_feature(): void
-{
-    if (!dm_payments_enabled()) {
-        throw new RuntimeException('Electronic payments are not enabled');
-    }
-}
-
 function payment_require_https_for_live(string $mode): void
 {
     if ($mode !== 'live') return;
@@ -34,12 +27,24 @@ function payment_require_https_for_live(string $mode): void
     }
 }
 
+function payment_method_configuration(string $mode): string
+{
+    $configuration = dm_stripe_payment_method_configuration(payment_assert_mode($mode));
+    if ($configuration === '') {
+        throw new RuntimeException('Stripe payment method configuration is not configured');
+    }
+    return $configuration;
+}
+
 function payment_stripe_client(string $mode): \Stripe\StripeClient
 {
     payment_assert_mode($mode);
     $secret = dm_stripe_secret_key($mode);
     if ($secret === '') {
         throw new RuntimeException('Stripe is not configured for this payment mode');
+    }
+    if (!str_starts_with($secret, $mode === 'live' ? 'sk_live_' : 'sk_test_')) {
+        throw new RuntimeException('Stripe secret key does not match the payment mode');
     }
     return new \Stripe\StripeClient($secret);
 }
@@ -60,6 +65,9 @@ function payment_stripe_publishable_config(string $mode, string $connectedAccoun
     $key = dm_stripe_publishable_key(payment_assert_mode($mode));
     if ($key === '') {
         throw new RuntimeException('Stripe publishable key is not configured');
+    }
+    if (!str_starts_with($key, $mode === 'live' ? 'pk_live_' : 'pk_test_')) {
+        throw new RuntimeException('Stripe publishable key does not match the payment mode');
     }
     return [
         'publishable_key' => $key,
