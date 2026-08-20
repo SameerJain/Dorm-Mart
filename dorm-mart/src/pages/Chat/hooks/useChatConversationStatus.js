@@ -13,6 +13,7 @@ export default function useChatConversationStatus({
   const [hasActiveScheduledPurchase, setHasActiveScheduledPurchase] =
     useState(false);
   const [confirmStatus, setConfirmStatus] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState(null);
 
   const checkActiveScheduledPurchase = useCallback(
     async (signal) => {
@@ -118,6 +119,33 @@ export default function useChatConversationStatus({
     [activeConvId, activeConversation?.productId, isSellerPerspective],
   );
 
+  const checkPaymentStatus = useCallback(
+    async (signal) => {
+      if (!activeConvId || !activeConversation?.productId) {
+        setPaymentStatus(null);
+        return;
+      }
+      try {
+        const res = await csrfFetch(`${API_BASE}/payments/status.php`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          credentials: "include",
+          signal,
+          body: JSON.stringify({
+            conversation_id: activeConvId,
+            product_id: activeConversation.productId,
+          }),
+        });
+        if (!res.ok) throw new Error("Failed to load payment status");
+        const result = await res.json();
+        setPaymentStatus(result.success ? result.data || null : null);
+      } catch (error) {
+        if (error.name !== "AbortError") logger.error("Error checking payment status:", error);
+      }
+    },
+    [activeConvId, activeConversation?.productId],
+  );
+
   useEffect(() => {
     const controller = new AbortController();
     checkActiveScheduledPurchase(controller.signal);
@@ -131,11 +159,35 @@ export default function useChatConversationStatus({
   }, [checkConfirmStatus]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    checkPaymentStatus(controller.signal);
+    return () => controller.abort();
+  }, [checkPaymentStatus]);
+
+  useEffect(() => {
+    if (!paymentStatus?.available || paymentStatus.completed) return undefined;
+    const controller = new AbortController();
+    const boundaries = [paymentStatus.window_starts_at, paymentStatus.window_ends_at]
+      .map((value) => new Date(value).getTime() - Date.now())
+      .filter((delay) => Number.isFinite(delay) && delay > 0);
+    const boundaryTimer = boundaries.length
+      ? setTimeout(() => checkPaymentStatus(controller.signal), Math.min(...boundaries) + 100)
+      : null;
+    const pollTimer = setInterval(() => checkPaymentStatus(controller.signal), 15000);
+    return () => {
+      if (boundaryTimer) clearTimeout(boundaryTimer);
+      clearInterval(pollTimer);
+      controller.abort();
+    };
+  }, [checkPaymentStatus, paymentStatus?.available, paymentStatus?.completed, paymentStatus?.window_ends_at, paymentStatus?.window_starts_at]);
+
+  useEffect(() => {
     if (!activeConversation?.productId || !isSellerPerspective) return;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       checkActiveScheduledPurchase(controller.signal);
       checkConfirmStatus(controller.signal);
+      checkPaymentStatus(controller.signal);
     }, 500);
     return () => {
       clearTimeout(timeoutId);
@@ -147,12 +199,15 @@ export default function useChatConversationStatus({
     isSellerPerspective,
     checkActiveScheduledPurchase,
     checkConfirmStatus,
+    checkPaymentStatus,
   ]);
 
   return {
     checkActiveScheduledPurchase,
     checkConfirmStatus,
+    checkPaymentStatus,
     confirmStatus,
     hasActiveScheduledPurchase,
+    paymentStatus,
   };
 }

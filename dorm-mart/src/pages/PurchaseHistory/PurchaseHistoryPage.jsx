@@ -222,6 +222,8 @@ function PurchaseHistoryPage() {
                   seller={item.sold_by}
                   date={item.transacted_at}
                   image={item.image_url}
+                  paymentStatus={item.payment_status}
+                  paymentMode={item.payment_mode}
                   autoOpenReview={
                     reviewProductId &&
                     String(item.item_id) === String(reviewProductId)

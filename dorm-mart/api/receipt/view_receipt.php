@@ -76,11 +76,15 @@ try {
 function fetch_confirm_row(mysqli $conn, int $userId, int $productId, int $confirmId): array
 {
     if ($confirmId > 0) {
-        $sql = 'SELECT * FROM confirm_purchase_requests WHERE confirm_request_id = ?';
+        $sql = 'SELECT cpr.*, ep.status AS payment_status, ep.payment_mode, ep.amount_cents AS payment_amount_cents,
+                       ep.electronic_payment_id, ep.stripe_refund_id, ep.refunded_at, ep.dispute_status
+                  FROM confirm_purchase_requests cpr
+                  LEFT JOIN electronic_payments ep ON ep.electronic_payment_id = cpr.electronic_payment_id
+                 WHERE cpr.confirm_request_id = ?';
         $params = [$confirmId];
         $types = 'i';
         if ($productId > 0) {
-            $sql .= ' AND inventory_product_id = ?';
+            $sql .= ' AND cpr.inventory_product_id = ?';
             $params[] = $productId;
             $types .= 'i';
         }
@@ -94,7 +98,12 @@ function fetch_confirm_row(mysqli $conn, int $userId, int $productId, int $confi
         if ($productId <= 0) {
             throw new InvalidArgumentException('product_id is required when confirm_request_id is not provided');
         }
-        $stmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE inventory_product_id = ? ORDER BY confirm_request_id DESC LIMIT 1');
+        $stmt = $conn->prepare('SELECT cpr.*, ep.status AS payment_status, ep.payment_mode, ep.amount_cents AS payment_amount_cents,
+                                      ep.electronic_payment_id, ep.stripe_refund_id, ep.refunded_at, ep.dispute_status
+                                 FROM confirm_purchase_requests cpr
+                                 LEFT JOIN electronic_payments ep ON ep.electronic_payment_id = cpr.electronic_payment_id
+                                WHERE cpr.inventory_product_id = ?
+                                ORDER BY cpr.confirm_request_id DESC LIMIT 1');
         if (!$stmt) {
             throw new RuntimeException('Failed to prepare confirm lookup');
         }
@@ -214,6 +223,14 @@ function build_receipt_payload(array $confirmRow, array $scheduledRow, array $sn
         'receipt_id' => (int)$confirmRow['confirm_request_id'],
         'inventory_product_id' => (int)$confirmRow['inventory_product_id'],
         'status' => $confirmRow['status'] ?? '',
+        'completion_source' => $confirmRow['completion_source'] ?? 'manual',
+        'electronic_payment_id' => isset($confirmRow['electronic_payment_id']) ? (int)$confirmRow['electronic_payment_id'] : null,
+        'payment_status' => $confirmRow['payment_status'] ?? null,
+        'payment_mode' => $confirmRow['payment_mode'] ?? null,
+        'payment_amount_cents' => isset($confirmRow['payment_amount_cents']) ? (int)$confirmRow['payment_amount_cents'] : null,
+        'stripe_refund_id' => $confirmRow['stripe_refund_id'] ?? null,
+        'refunded_at' => format_datetime_value($confirmRow['refunded_at'] ?? null),
+        'dispute_status' => $confirmRow['dispute_status'] ?? null,
         'final_price' => $finalPrice,
         'seller_notes' => $confirmRow['seller_notes'] ?? '',
         'failure_reason' => $confirmRow['failure_reason'] ?? '',

@@ -49,7 +49,7 @@ try {
                     SELECT 1 
                     FROM confirm_purchase_requests cpr 
                     WHERE cpr.scheduled_request_id = spr.request_id 
-                    AND cpr.status IN ('buyer_accepted', 'auto_accepted')
+                    AND cpr.status IN ('buyer_accepted', 'auto_accepted', 'payment_completed')
                     AND cpr.is_successful = 1
                 ) THEN 1 
                 ELSE 0 

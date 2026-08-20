@@ -17,6 +17,8 @@ function PurchasedItem({
   date,
   image,
   autoOpenReview = false,
+  paymentStatus,
+  paymentMode,
 }) {
   const productIdParam =
     id !== undefined && id !== null ? encodeURIComponent(id) : "";
@@ -131,6 +133,11 @@ function PurchasedItem({
             <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
               Sold by {seller}
             </p>
+            {paymentStatus && (
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                Stripe {String(paymentStatus).replaceAll("_", " ")}{paymentMode === "test" ? " · Test Mode" : ""}
+              </p>
+            )}
           </div>
 
           {/* Bottom: date */}

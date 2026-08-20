@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
+require_once __DIR__ . '/../payments/helpers.php';
 
 if (PHP_SAPI !== 'cli') {
     http_response_code(404);
@@ -60,5 +61,20 @@ if (is_file($knownImage)) {
     expect_value(uploaded_image_dimensions_are_safe($knownImage, 'image/jpeg'), true, 'known image rejected');
 }
 expect_value(uploaded_image_dimensions_are_safe(dirname(__DIR__, 2) . '/package.json', 'image/jpeg'), false, 'non-image accepted');
+
+foreach ([['0.50', 50], ['1', 100], ['9999.99', 999999]] as [$value, $expected]) {
+    expect_value(payment_amount_cents_from_value($value), $expected, 'valid Stripe payment amount rejected');
+}
+foreach (['0.49', '10000', '1.001', '-1', '', '1e2', null, true] as $value) {
+    expect_value(payment_amount_cents_from_value($value), null, 'invalid Stripe payment amount accepted');
+}
+
+$paymentSchedule = ['meeting_at' => '2026-08-20 16:00:00'];
+expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-08-20T15:59:59Z')), 'upcoming', 'payment opened before scheduled time');
+expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-08-20T16:00:00Z')), 'open', 'payment did not open at scheduled time');
+expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-08-20T16:29:59Z')), 'open', 'payment closed before 30 minutes');
+expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-08-20T16:30:00Z')), 'expired', 'payment remained open at cutoff');
+expect_value(payment_mode_for_protected(true), 'test', 'protected users must use Stripe test mode');
+expect_value(payment_mode_for_protected(false), 'live', 'normal users must use Stripe live mode');
 
 echo "Adversarial backend validation passed: {$checks} checks\n";

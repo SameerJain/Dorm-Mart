@@ -35,7 +35,9 @@ export default function SafetyTips() {
           <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">
             &bull;
           </span>
-          <span>Use secure payment methods (Cash, Venmo, Zelle).</span>
+          <span>
+            Inspect the item before paying. If a Scheduled Purchase offers built-in payment, use the payment button in chat during its 30-minute window; otherwise agree on a safe payment method directly with the other user.
+          </span>
         </li>
       </ul>
     </div>

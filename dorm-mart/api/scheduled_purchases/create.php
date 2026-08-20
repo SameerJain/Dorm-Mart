@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../payments/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -47,6 +48,18 @@ try {
     $isTrade = strict_boolean_value($payload['is_trade'] ?? false);
     if ($isTrade === null) {
         json_response(['success' => false, 'error' => 'Invalid trade selection'], 400);
+    }
+    $paymentOption = is_string($payload['payment_option'] ?? null)
+        ? strtolower(trim($payload['payment_option']))
+        : 'manual';
+    if (!in_array($paymentOption, ['manual', 'stripe'], true)) {
+        json_response(['success' => false, 'error' => 'Invalid payment option'], 400);
+    }
+    $paymentAmountCents = $paymentOption === 'stripe'
+        ? payment_amount_cents_from_value($payload['payment_amount'] ?? null)
+        : null;
+    if ($paymentOption === 'stripe' && $paymentAmountCents === null) {
+        json_response(['success' => false, 'error' => 'Built-in payment amount must be between $0.50 and $9,999.99'], 400);
     }
     $tradeItemDescription = isset($payload['trade_item_description']) && $payload['trade_item_description'] !== null
         ? (is_string($payload['trade_item_description']) ? trim($payload['trade_item_description']) : null) : null;
@@ -179,6 +192,18 @@ try {
         json_response(['success' => false, 'error' => 'Cannot schedule with yourself'], 400);
     }
 
+    $paymentMode = null;
+    if ($paymentOption === 'stripe') {
+        if ($isTrade) {
+            json_response(['success' => false, 'error' => 'Built-in payment is not available for trades'], 400);
+        }
+        $eligibility = payment_schedule_eligibility($conn, $sellerId, $buyerId);
+        if (empty($eligibility['eligible'])) {
+            json_response(['success' => false, 'error' => $eligibility['reason'] ?? 'Built-in payment is unavailable'], 409);
+        }
+        $paymentMode = (string)$eligibility['mode'];
+    }
+
     // Generate unique 4-character verification code for buyer-seller meetup confirmation
     $verificationCode = generate_unique_code($conn);
 
@@ -219,7 +244,7 @@ try {
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location, payment_option, payment_amount_cents, payment_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare insert');
     }
@@ -246,7 +271,7 @@ try {
     // For nullable integer (conversation_id), we pass null directly
     // For nullable strings, mysqli will handle NULL correctly
     // For nullable decimal, mysqli will handle NULL correctly
-    $stmt->bind_param('iiiissssdisiis',
+    $stmt->bind_param('iiiissssdisiissis',
         $inventoryId,
         $sellerId,
         $buyerId,
@@ -260,7 +285,10 @@ try {
         $tradeDesc,
         $snapshotPriceNegoInt,
         $snapshotTradesInt,
-        $snapLoc
+        $snapLoc,
+        $paymentOption,
+        $paymentAmountCents,
+        $paymentMode
     );
     
     if (!$stmt->execute()) {
@@ -293,6 +321,9 @@ try {
             'listing_price' => $listingPrice,
             'is_trade' => $isTrade,
             'trade_item_description' => $tradeItemDescription,
+            'payment_option' => $paymentOption,
+            'payment_amount_cents' => $paymentAmountCents,
+            'payment_mode' => $paymentMode,
         ]);
     }
 
@@ -309,6 +340,9 @@ try {
             'meeting_at' => $meetingAt->format(DateTime::ATOM),
             'verification_code' => $verificationCode,
             'status' => 'pending',
+            'payment_option' => $paymentOption,
+            'payment_amount_cents' => $paymentAmountCents,
+            'payment_mode' => $paymentMode,
         ],
     ];
 

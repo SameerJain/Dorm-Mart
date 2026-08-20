@@ -34,6 +34,18 @@ describe("scheduled purchase architecture helpers", () => {
         now,
       ),
     ).toBe("active");
+    expect(
+      getScheduleBucket(
+        { status: "accepted", meeting_at: "2026-01-02T12:00:00Z" },
+        now,
+      ),
+    ).toBe("active");
+    expect(
+      getScheduleBucket(
+        { status: "accepted", meeting_at: "2026-01-02T11:30:00Z" },
+        now,
+      ),
+    ).toBe("past");
   });
 
   test("groups buyer and seller requests by item with perspective attached", () => {
