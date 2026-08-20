@@ -30,10 +30,14 @@ Keep `PAYMENTS_ENABLED=false` until Stripe Connect, HTTPS, payment-domain regist
 and both webhook modes are configured.
 
 - `PAYMENTS_ENABLED`: Enables Scheduled Purchase electronic payments.
-- `STRIPE_TEST_PUBLISHABLE_KEY`, `STRIPE_TEST_SECRET_KEY`: Stripe test-mode API keys.
+- `STRIPE_TEST_PUBLISHABLE_KEY`, `STRIPE_TEST_SECRET_KEY`: Stripe Sandbox API keys.
 - `STRIPE_LIVE_PUBLISHABLE_KEY`, `STRIPE_LIVE_SECRET_KEY`: Stripe live-mode API keys.
 - `STRIPE_TEST_WEBHOOK_SECRET`: Signing secret for `api/payments/webhook_test.php`.
 - `STRIPE_LIVE_WEBHOOK_SECRET`: Signing secret for `api/payments/webhook_live.php`.
+- `STRIPE_TEST_ACCOUNT_WEBHOOK_SECRET`: Signing secret for `api/payments/account_webhook_test.php`.
+- `STRIPE_LIVE_ACCOUNT_WEBHOOK_SECRET`: Signing secret for `api/payments/account_webhook_live.php`.
+- `STRIPE_TEST_PAYMENT_METHOD_CONFIGURATION`: Sandbox card-only Payment Method Configuration ID.
+- `STRIPE_LIVE_PAYMENT_METHOD_CONFIGURATION`: Live card-only Payment Method Configuration ID.
 
 Live payments require an HTTPS `FRONTEND_BASE_URL`. Never commit real Stripe keys or
 webhook secrets to the repository.

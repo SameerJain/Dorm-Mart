@@ -15,7 +15,9 @@ try {
     $userId = require_login();
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
-    payment_require_feature();
+    if (!dm_payments_enabled()) {
+        json_response(['success' => false, 'error' => 'Electronic payments are not enabled'], 503);
+    }
 
     $conn = db();
     $user = payment_user($conn, $userId);
@@ -27,28 +29,41 @@ try {
     $account = payment_account($conn, $userId, $mode);
 
     if ($account && empty($account['disconnected_at'])) {
-        $remote = $stripe->accounts->retrieve((string)$account['stripe_account_id'], []);
+        $remote = $stripe->v2->core->accounts->retrieve(
+            (string)$account['stripe_account_id'],
+            ['include' => ['configuration.merchant', 'requirements']]
+        );
     } else {
-        $remote = $stripe->accounts->create([
-            'country' => 'US',
-            'email' => (string)$user['email'],
-            'controller' => [
-                'fees' => ['payer' => 'account'],
-                'losses' => ['payments' => 'stripe'],
-                'requirement_collection' => 'stripe',
-                'stripe_dashboard' => ['type' => 'full'],
+        $displayName = trim((string)$user['first_name'] . ' ' . (string)$user['last_name']);
+        $remote = $stripe->v2->core->accounts->create([
+            'contact_email' => (string)$user['email'],
+            'display_name' => $displayName !== '' ? $displayName : 'Dorm Mart seller',
+            'dashboard' => 'full',
+            'defaults' => [
+                'currency' => 'usd',
+                'profile' => [
+                    'business_url' => dm_frontend_base_url(),
+                    'product_description' => 'College marketplace sales through Dorm Mart',
+                ],
+                'responsibilities' => [
+                    'fees_collector' => 'stripe',
+                    'losses_collector' => 'stripe',
+                ],
             ],
-            'capabilities' => [
-                'card_payments' => ['requested' => true],
+            'configuration' => [
+                'merchant' => [
+                    'capabilities' => [
+                        'card_payments' => ['requested' => true],
+                    ],
+                ],
             ],
-            'business_profile' => [
-                'url' => dm_frontend_base_url(),
-            ],
+            'identity' => ['country' => 'us'],
             'metadata' => [
                 'dorm_mart_user_id' => (string)$userId,
                 'dorm_mart_mode' => $mode,
             ],
-        ], ['idempotency_key' => 'dorm-mart-account-' . $mode . '-' . $userId]);
+            'include' => ['configuration.merchant', 'requirements'],
+        ], ['idempotency_key' => 'dorm-mart-account-v2-' . $mode . '-' . $userId]);
     }
 
     $account = payment_upsert_account($conn, $userId, $mode, $remote->toArray());
@@ -66,11 +81,17 @@ try {
         }
     }
 
-    $accountLink = $stripe->accountLinks->create([
+    $accountLink = $stripe->v2->core->accountLinks->create([
         'account' => $stripeAccountId,
-        'refresh_url' => dm_frontend_url('/app/setting/payments?stripe=refresh'),
-        'return_url' => dm_frontend_url('/app/setting/payments?stripe=return'),
-        'type' => 'account_onboarding',
+        'use_case' => [
+            'type' => 'account_onboarding',
+            'account_onboarding' => [
+                'collection_options' => ['fields' => 'eventually_due'],
+                'configurations' => ['merchant'],
+                'refresh_url' => dm_frontend_url('/app/setting/payments?stripe=refresh'),
+                'return_url' => dm_frontend_url('/app/setting/payments?stripe=return'),
+            ],
+        ],
     ]);
 
     json_response([

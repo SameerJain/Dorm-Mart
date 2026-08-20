@@ -55,6 +55,14 @@ try {
         json_response(['success' => false, 'error' => 'You are not allowed to respond to this confirmation'], 403);
     }
 
+    $schedule = payment_schedule($conn, (int)$row['scheduled_request_id'], true);
+    if (!$schedule) {
+        json_response(['success' => false, 'error' => 'Scheduled purchase not found'], 404);
+    }
+    if (($schedule['payment_option'] ?? 'manual') === 'stripe' && empty($schedule['payment_fallback_at'])) {
+        json_response(['success' => false, 'error' => 'This purchase is waiting for built-in payment'], 409);
+    }
+
     $row = auto_finalize_confirm_request($conn, $row) ?? $row;
     if (($row['status'] ?? '') !== 'pending') {
         json_response(['success' => false, 'error' => 'This confirmation has already been processed'], 409);
@@ -82,8 +90,7 @@ try {
     $selectStmt->close();
 
     if ($action === 'accept' && (bool)$row['is_successful']) {
-        mark_inventory_as_sold($conn, $row);
-        record_purchase_history($conn, $buyerId, (int)$row['inventory_product_id'], [
+        complete_successful_purchase($conn, $row, [
             'confirm_request_id' => $confirmRequestId,
             'is_successful' => (bool)$row['is_successful'],
             'final_price' => $row['final_price'] !== null ? (float)$row['final_price'] : null,
@@ -94,14 +101,6 @@ try {
         ]);
     } elseif ($action === 'accept') {
         release_inventory_after_unsuccessful_confirm($conn, $row);
-    }
-
-    $schedule = payment_schedule($conn, (int)$row['scheduled_request_id'], true);
-    if (!$schedule) {
-        json_response(['success' => false, 'error' => 'Scheduled purchase not found'], 404);
-    }
-    if (($schedule['payment_option'] ?? 'manual') === 'stripe' && empty($schedule['payment_fallback_at'])) {
-        json_response(['success' => false, 'error' => 'This purchase is waiting for built-in payment'], 409);
     }
 
     $conversationId = (int)$row['conversation_id'];

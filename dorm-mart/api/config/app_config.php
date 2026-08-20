@@ -270,6 +270,22 @@ function dm_stripe_webhook_secret(string $mode): string
     return dm_env_string($mode === 'live' ? 'STRIPE_LIVE_WEBHOOK_SECRET' : 'STRIPE_TEST_WEBHOOK_SECRET');
 }
 
+function dm_stripe_account_webhook_secret(string $mode): string
+{
+    return dm_env_string(
+        $mode === 'live' ? 'STRIPE_LIVE_ACCOUNT_WEBHOOK_SECRET' : 'STRIPE_TEST_ACCOUNT_WEBHOOK_SECRET'
+    );
+}
+
+function dm_stripe_payment_method_configuration(string $mode): string
+{
+    return dm_env_string(
+        $mode === 'live'
+            ? 'STRIPE_LIVE_PAYMENT_METHOD_CONFIGURATION'
+            : 'STRIPE_TEST_PAYMENT_METHOD_CONFIGURATION'
+    );
+}
+
 function dm_stripe_checkout_domain(): string
 {
     return dm_url_origin(dm_frontend_base_url());

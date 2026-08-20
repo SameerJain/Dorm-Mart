@@ -24,23 +24,32 @@ CREATE TABLE IF NOT EXISTS connected_payment_accounts (
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-ALTER TABLE scheduled_purchase_requests
-  ADD COLUMN payment_option ENUM('manual','stripe') NOT NULL DEFAULT 'manual' AFTER trade_item_description,
-  ADD COLUMN payment_amount_cents INT UNSIGNED NULL DEFAULT NULL AFTER payment_option,
-  ADD COLUMN payment_mode ENUM('test','live') NULL DEFAULT NULL AFTER payment_amount_cents,
-  ADD COLUMN payment_fallback_at DATETIME NULL DEFAULT NULL AFTER payment_mode,
-  ADD COLUMN payment_fallback_reason VARCHAR(64) NULL DEFAULT NULL AFTER payment_fallback_at,
-  ADD COLUMN payment_fallback_notified_at DATETIME NULL DEFAULT NULL AFTER payment_fallback_reason,
-  ADD INDEX idx_scheduled_payment_window (payment_option, payment_mode, meeting_at),
-  ADD CONSTRAINT chk_scheduled_stripe_payment
-    CHECK (
-      payment_option <> 'stripe'
-      OR (
-        payment_amount_cents BETWEEN 50 AND 999999
-        AND payment_mode IS NOT NULL
-        AND is_trade = 0
+SET @scheduled_payment_exists = (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'scheduled_purchase_requests'
+    AND COLUMN_NAME = 'payment_option'
+);
+SET @scheduled_payment_sql = IF(
+  @scheduled_payment_exists = 0,
+  'ALTER TABLE scheduled_purchase_requests
+    ADD COLUMN payment_option ENUM(''manual'',''stripe'') NOT NULL DEFAULT ''manual'' AFTER trade_item_description,
+    ADD COLUMN payment_amount_cents INT UNSIGNED NULL DEFAULT NULL AFTER payment_option,
+    ADD COLUMN payment_mode ENUM(''test'',''live'') NULL DEFAULT NULL AFTER payment_amount_cents,
+    ADD COLUMN payment_fallback_at DATETIME NULL DEFAULT NULL AFTER payment_mode,
+    ADD COLUMN payment_fallback_reason VARCHAR(64) NULL DEFAULT NULL AFTER payment_fallback_at,
+    ADD COLUMN payment_fallback_notified_at DATETIME NULL DEFAULT NULL AFTER payment_fallback_reason,
+    ADD INDEX idx_scheduled_payment_window (payment_option, payment_mode, meeting_at),
+    ADD CONSTRAINT chk_scheduled_stripe_payment CHECK (
+      payment_option <> ''stripe'' OR (
+        payment_amount_cents BETWEEN 50 AND 999999 AND payment_mode IS NOT NULL AND is_trade = 0
       )
-    );
+    )',
+  'SELECT 1'
+);
+PREPARE scheduled_payment_statement FROM @scheduled_payment_sql;
+EXECUTE scheduled_payment_statement;
+DEALLOCATE PREPARE scheduled_payment_statement;
 
 CREATE TABLE IF NOT EXISTS electronic_payments (
   electronic_payment_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -121,28 +130,34 @@ CREATE TABLE IF NOT EXISTS stripe_webhook_events (
   INDEX idx_stripe_webhook_object (stripe_object_id, event_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-ALTER TABLE confirm_purchase_requests
-  MODIFY COLUMN status ENUM(
-    'pending',
-    'buyer_accepted',
-    'buyer_declined',
-    'auto_accepted',
-    'payment_completed',
-    'seller_cancelled'
-  ) NOT NULL DEFAULT 'pending',
-  ADD COLUMN completion_source ENUM('manual','stripe') NOT NULL DEFAULT 'manual' AFTER status,
-  ADD COLUMN electronic_payment_id BIGINT UNSIGNED NULL DEFAULT NULL AFTER completion_source,
-  ADD COLUMN successful_schedule_id BIGINT UNSIGNED GENERATED ALWAYS AS (
-    CASE
-      WHEN is_successful = 1 AND status IN ('buyer_accepted','auto_accepted','payment_completed')
-      THEN scheduled_request_id
-      ELSE NULL
-    END
-  ) STORED,
-  ADD UNIQUE KEY uq_confirm_successful_schedule (successful_schedule_id),
-  ADD UNIQUE KEY uq_confirm_electronic_payment (electronic_payment_id),
-  ADD CONSTRAINT fk_confirm_electronic_payment
-    FOREIGN KEY (electronic_payment_id)
-    REFERENCES electronic_payments(electronic_payment_id)
-    ON DELETE SET NULL
-    ON UPDATE CASCADE;
+SET @confirm_payment_exists = (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'confirm_purchase_requests'
+    AND COLUMN_NAME = 'completion_source'
+);
+SET @confirm_payment_sql = IF(
+  @confirm_payment_exists = 0,
+  'ALTER TABLE confirm_purchase_requests
+    MODIFY COLUMN status ENUM(
+      ''pending'', ''buyer_accepted'', ''buyer_declined'', ''auto_accepted'', ''payment_completed'', ''seller_cancelled''
+    ) NOT NULL DEFAULT ''pending'',
+    ADD COLUMN completion_source ENUM(''manual'',''stripe'') NOT NULL DEFAULT ''manual'' AFTER status,
+    ADD COLUMN electronic_payment_id BIGINT UNSIGNED NULL DEFAULT NULL AFTER completion_source,
+    ADD COLUMN successful_schedule_id BIGINT UNSIGNED GENERATED ALWAYS AS (
+      CASE
+        WHEN is_successful = 1 AND status IN (''buyer_accepted'',''auto_accepted'',''payment_completed'')
+        THEN scheduled_request_id
+        ELSE NULL
+      END
+    ) STORED,
+    ADD UNIQUE KEY uq_confirm_successful_schedule (successful_schedule_id),
+    ADD UNIQUE KEY uq_confirm_electronic_payment (electronic_payment_id),
+    ADD CONSTRAINT fk_confirm_electronic_payment
+      FOREIGN KEY (electronic_payment_id) REFERENCES electronic_payments(electronic_payment_id)
+      ON DELETE SET NULL ON UPDATE CASCADE',
+  'SELECT 1'
+);
+PREPARE confirm_payment_statement FROM @confirm_payment_sql;
+EXECUTE confirm_payment_statement;
+DEALLOCATE PREPARE confirm_payment_statement;

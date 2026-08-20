@@ -35,12 +35,25 @@ try {
         json_response(['success' => false, 'error' => 'You are not part of this transaction'], 403);
     }
 
-    // Auto finalize if the request expired without a response.
-    $confirmRow = auto_finalize_confirm_request($conn, $confirmRow) ?? $confirmRow;
-
     $scheduledRow = fetch_scheduled_request($conn, (int)$confirmRow['scheduled_request_id']);
     if (!$scheduledRow) {
         json_response(['success' => false, 'error' => 'Scheduled purchase details not found'], 500);
+    }
+
+    // Auto-finalize manual confirmation only after the payment path is manual or has irreversibly fallen back.
+    if (($scheduledRow['payment_option'] ?? 'manual') !== 'stripe' || !empty($scheduledRow['payment_fallback_at'])) {
+        $conn->begin_transaction();
+        $lock = $conn->prepare(
+            'SELECT * FROM confirm_purchase_requests WHERE confirm_request_id = ? LIMIT 1 FOR UPDATE'
+        );
+        if (!$lock) throw new RuntimeException('Failed to prepare receipt confirmation lock');
+        $confirmId = (int)$confirmRow['confirm_request_id'];
+        $lock->bind_param('i', $confirmId);
+        $lock->execute();
+        $confirmRow = $lock->get_result()->fetch_assoc() ?: $confirmRow;
+        $lock->close();
+        $confirmRow = auto_finalize_confirm_request($conn, $confirmRow) ?? $confirmRow;
+        $conn->commit();
     }
 
     $productPayload = fetch_product_payload($conn, $resolvedProductId);
@@ -64,6 +77,9 @@ try {
         ],
     ], 200, JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) {
+        try { $conn->rollback(); } catch (Throwable $ignored) {}
+    }
     error_log('view_receipt error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

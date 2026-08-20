@@ -15,7 +15,9 @@ try {
     $buyerId = require_login();
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
-    payment_require_feature();
+    if (!dm_payments_enabled()) {
+        json_response(['success' => false, 'error' => 'Electronic payments are not enabled'], 503);
+    }
     $requestId = request_int($payload, 'scheduled_request_id');
     if ($requestId <= 0) json_response(['success' => false, 'error' => 'Scheduled purchase is required'], 400);
 
@@ -61,30 +63,41 @@ try {
     $payment = $existingStmt->get_result()->fetch_assoc();
     $existingStmt->close();
 
-    if ($payment) {
-        if (in_array($payment['status'], ['canceled', 'refund_pending', 'refunded', 'disputed'], true)) {
-            json_response(['success' => false, 'error' => 'This electronic payment can no longer be retried'], 409);
+    try {
+        if ($payment) {
+            if (in_array($payment['status'], ['canceled', 'refund_pending', 'refunded', 'disputed'], true)) {
+                json_response(['success' => false, 'error' => 'This electronic payment can no longer be retried'], 409);
+            }
+            $intent = $stripe->paymentIntents->retrieve(
+                (string)$payment['stripe_payment_intent_id'],
+                [],
+                payment_stripe_request_options($connectedAccountId)
+            );
+        } else {
+            $intent = $stripe->paymentIntents->create([
+                'amount' => $amountCents,
+                'currency' => 'usd',
+                'payment_method_configuration' => payment_method_configuration($mode),
+                'description' => 'Dorm Mart purchase: ' . (string)$schedule['item_title'],
+                'metadata' => [
+                    'scheduled_request_id' => (string)$requestId,
+                    'inventory_product_id' => (string)$schedule['inventory_product_id'],
+                    'seller_user_id' => (string)$schedule['seller_user_id'],
+                    'buyer_user_id' => (string)$buyerId,
+                    'payment_mode' => $mode,
+                ],
+            ], payment_stripe_request_options($connectedAccountId, 'dorm-mart-payment-' . $mode . '-' . $requestId));
         }
-        $intent = $stripe->paymentIntents->retrieve(
-            (string)$payment['stripe_payment_intent_id'],
-            [],
-            payment_stripe_request_options($connectedAccountId)
-        );
-    } else {
-        $intent = $stripe->paymentIntents->create([
-            'amount' => $amountCents,
-            'currency' => 'usd',
-            'payment_method_types' => ['card'],
-            'description' => 'Dorm Mart purchase: ' . (string)$schedule['item_title'],
-            'metadata' => [
-                'scheduled_request_id' => (string)$requestId,
-                'inventory_product_id' => (string)$schedule['inventory_product_id'],
-                'seller_user_id' => (string)$schedule['seller_user_id'],
-                'buyer_user_id' => (string)$buyerId,
-                'payment_mode' => $mode,
-            ],
-        ], payment_stripe_request_options($connectedAccountId, 'dorm-mart-payment-' . $mode . '-' . $requestId));
+    } catch (Throwable $e) {
+        $conn->begin_transaction();
+        $locked = payment_schedule($conn, $requestId, true);
+        if ($locked) payment_apply_fallback($conn, $locked, 'stripe_unavailable');
+        $conn->commit();
+        error_log('Stripe intent request failed: ' . $e->getMessage());
+        json_response(['success' => false, 'error' => 'Stripe is unavailable; use manual confirmation'], 502);
+    }
 
+    if (!$payment) {
         $intentId = (string)$intent->id;
         $status = payment_map_intent_status((string)$intent->status);
         $accountId = (int)$account['payment_account_id'];

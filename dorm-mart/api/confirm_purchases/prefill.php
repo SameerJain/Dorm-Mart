@@ -55,7 +55,10 @@ try {
         if ($fallbackReason === null) {
             json_response(['success' => false, 'error' => 'Built-in payment is active for this purchase'], 409);
         }
-        payment_apply_fallback($conn, $schedRow, $fallbackReason);
+        $conn->begin_transaction();
+        $lockedSchedule = payment_schedule($conn, (int)$schedRow['request_id'], true);
+        if ($lockedSchedule) payment_apply_fallback($conn, $lockedSchedule, $fallbackReason);
+        $conn->commit();
         $schedRow['payment_fallback_at'] = gmdate('Y-m-d H:i:s');
     }
 
@@ -102,6 +105,9 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) {
+        try { $conn->rollback(); } catch (Throwable $ignored) {}
+    }
     error_log('confirm-purchase prefill error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

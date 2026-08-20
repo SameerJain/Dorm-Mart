@@ -22,7 +22,10 @@ try {
     if (dm_payments_enabled() && $account && empty($account['disconnected_at'])) {
         try {
             $stripe = payment_stripe_client($mode);
-            $remote = $stripe->accounts->retrieve((string)$account['stripe_account_id'], []);
+            $remote = $stripe->v2->core->accounts->retrieve(
+                (string)$account['stripe_account_id'],
+                ['include' => ['configuration.merchant', 'requirements']]
+            );
             $account = payment_upsert_account($conn, $userId, $mode, $remote->toArray());
         } catch (Throwable $e) {
             error_log('Stripe account status sync failed: user=' . $userId . ' mode=' . $mode . ' error=' . $e->getMessage());
@@ -50,4 +53,3 @@ try {
     error_log('payment account status error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Unable to load payment settings'], 500);
 }
-

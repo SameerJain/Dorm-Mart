@@ -64,8 +64,25 @@ function payment_account_ready(?array $account): bool
         && (int)($account['payouts_enabled'] ?? 0) === 1;
 }
 
+function payment_normalize_stripe_account(array $stripeAccount): array
+{
+    if (isset($stripeAccount['configuration']['merchant'])) {
+        $merchant = $stripeAccount['configuration']['merchant'];
+        $requirements = $stripeAccount['requirements']['entries'] ?? [];
+        return [
+            'id' => (string)($stripeAccount['id'] ?? ''),
+            'details_submitted' => is_array($requirements) && $requirements === [],
+            'charges_enabled' => ($merchant['capabilities']['card_payments']['status'] ?? '') === 'active',
+            'payouts_enabled' => ($merchant['capabilities']['stripe_balance']['payouts']['status'] ?? '') === 'active',
+        ];
+    }
+
+    return $stripeAccount;
+}
+
 function payment_upsert_account(mysqli $conn, int $userId, string $mode, array $stripeAccount): array
 {
+    $stripeAccount = payment_normalize_stripe_account($stripeAccount);
     $stripeId = (string)($stripeAccount['id'] ?? '');
     if ($stripeId === '') throw new InvalidArgumentException('Stripe account id is required');
     $detailsSubmitted = !empty($stripeAccount['details_submitted']) ? 1 : 0;
@@ -117,6 +134,15 @@ function payment_schedule_eligibility(mysqli $conn, int $sellerId, int $buyerId)
     $mode = payment_modes_for_pair($conn, $sellerId, $buyerId);
     if ($mode === null) {
         return ['eligible' => false, 'mode' => null, 'reason' => 'Test and live accounts cannot use built-in payment together.'];
+    }
+    if (
+        dm_stripe_secret_key($mode) === ''
+        || dm_stripe_publishable_key($mode) === ''
+        || dm_stripe_webhook_secret($mode) === ''
+        || dm_stripe_account_webhook_secret($mode) === ''
+        || dm_stripe_payment_method_configuration($mode) === ''
+    ) {
+        return ['eligible' => false, 'mode' => $mode, 'reason' => 'Stripe is not fully configured for this environment.'];
     }
     $account = payment_account($conn, $sellerId, $mode);
     if (!payment_account_ready($account)) {
@@ -210,14 +236,31 @@ function payment_insert_fallback_message(mysqli $conn, array $schedule, string $
 
 function payment_apply_fallback(mysqli $conn, array $schedule, string $reason): bool
 {
-    if (($schedule['payment_option'] ?? 'manual') !== 'stripe' || !empty($schedule['payment_fallback_at'])) {
+    if (
+        ($schedule['payment_option'] ?? 'manual') !== 'stripe'
+        || ($schedule['status'] ?? 'accepted') !== 'accepted'
+        || !empty($schedule['payment_fallback_at'])
+    ) {
         return false;
     }
     $requestId = (int)$schedule['request_id'];
     $stmt = $conn->prepare(
-        'UPDATE scheduled_purchase_requests
+        "UPDATE scheduled_purchase_requests spr
             SET payment_fallback_at = NOW(), payment_fallback_reason = ?
-          WHERE request_id = ? AND payment_fallback_at IS NULL'
+          WHERE spr.request_id = ?
+            AND spr.status = 'accepted'
+            AND spr.payment_fallback_at IS NULL
+            AND NOT EXISTS (
+                SELECT 1 FROM confirm_purchase_requests cpr
+                 WHERE cpr.scheduled_request_id = spr.request_id
+                   AND cpr.is_successful = 1
+                   AND cpr.status IN ('buyer_accepted','auto_accepted','payment_completed')
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM electronic_payments ep
+                 WHERE ep.scheduled_request_id = spr.request_id
+                   AND ep.status IN ('succeeded','refund_pending','refund_failed','refunded','disputed')
+            )"
     );
     if (!$stmt) throw new RuntimeException('Failed to prepare payment fallback');
     $stmt->bind_param('si', $reason, $requestId);
@@ -282,6 +325,42 @@ function payment_map_intent_status(string $status): string
     };
 }
 
+function payment_succeeded_refund_reason(array $schedule, DateTimeImmutable $eventTime): ?string
+{
+    if (($schedule['status'] ?? 'accepted') !== 'accepted') return 'schedule_inactive';
+    if (!empty($schedule['payment_fallback_at'])) return 'fallback_payment';
+    [$windowStart, $windowEnd] = payment_window($schedule);
+    return $eventTime < $windowStart || $eventTime >= $windowEnd ? 'late_payment' : null;
+}
+
+function payment_can_apply_intent_failure(string $currentStatus): bool
+{
+    return !in_array($currentStatus, ['succeeded', 'refund_pending', 'refund_failed', 'refunded', 'disputed', 'canceled'], true);
+}
+
+function payment_can_apply_refund_status(string $currentStatus, string $nextStatus): bool
+{
+    if ($currentStatus === 'refunded') return $nextStatus === 'refunded';
+    if ($currentStatus === 'refund_failed') return in_array($nextStatus, ['refund_failed', 'refunded'], true);
+    return in_array($nextStatus, ['refund_pending', 'refund_failed', 'refunded'], true);
+}
+
+function payment_can_apply_dispute_status(?string $currentStatus, string $nextStatus): bool
+{
+    $terminal = ['won', 'lost', 'prevented', 'warning_closed'];
+    return !in_array($currentStatus, $terminal, true) || $currentStatus === $nextStatus;
+}
+
+function payment_refund_needs_request(string $status, ?string $refundId): bool
+{
+    return $status === 'succeeded' || ($status === 'refund_pending' && ($refundId === null || $refundId === ''));
+}
+
+function payment_refund_is_complete(int $paymentAmountCents, int $refundedAmountCents): bool
+{
+    return $paymentAmountCents > 0 && $refundedAmountCents >= $paymentAmountCents;
+}
+
 function payment_finalize_refund_transaction(
     mysqli $conn,
     int $electronicPaymentId,
@@ -333,7 +412,11 @@ function payment_finalize_refund_transaction(
     $sellerId = (int)$row['schedule_seller_id'];
     $buyerId = (int)$row['schedule_buyer_id'];
     if ($conversationId > 0 && $sellerId > 0 && $buyerId > 0) {
-        $isLateRefund = in_array(($row['refund_reason'] ?? ''), ['late_payment', 'completion_conflict'], true);
+        $isLateRefund = in_array(
+            ($row['refund_reason'] ?? ''),
+            ['late_payment', 'completion_conflict', 'fallback_payment', 'schedule_inactive'],
+            true
+        );
         insert_confirm_chat_message(
             $conn,
             $conversationId,
