@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../payments/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -27,6 +28,7 @@ try {
 
     $conn = db();
     $conn->set_charset('utf8mb4');
+    $conn->begin_transaction();
 
     $selectStmt = $conn->prepare('
         SELECT cpr.*, inv.title AS item_title
@@ -34,6 +36,7 @@ try {
         INNER JOIN INVENTORY inv ON inv.product_id = cpr.inventory_product_id
         WHERE cpr.confirm_request_id = ?
         LIMIT 1
+        FOR UPDATE
     ');
     if (!$selectStmt) {
         throw new RuntimeException('Failed to prepare confirm lookup');
@@ -93,6 +96,14 @@ try {
         release_inventory_after_unsuccessful_confirm($conn, $row);
     }
 
+    $schedule = payment_schedule($conn, (int)$row['scheduled_request_id'], true);
+    if (!$schedule) {
+        json_response(['success' => false, 'error' => 'Scheduled purchase not found'], 404);
+    }
+    if (($schedule['payment_option'] ?? 'manual') === 'stripe' && empty($schedule['payment_fallback_at'])) {
+        json_response(['success' => false, 'error' => 'This purchase is waiting for built-in payment'], 409);
+    }
+
     $conversationId = (int)$row['conversation_id'];
     $metadataType = $action === 'accept' ? 'confirm_accepted' : 'confirm_denied';
     $metadata = build_confirm_response_metadata($row, $metadataType);
@@ -118,6 +129,9 @@ try {
         }
     }
 
+
+    $conn->commit();
+
     json_response([
         'success' => true,
         'data' => [
@@ -128,6 +142,7 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
     error_log('confirm-purchase respond error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

@@ -172,6 +172,7 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
 
     $filtered = [];
     $productIds = [];
+    $paymentIds = [];
     foreach ($decoded as $entry) {
         if (!is_array($entry)) {
             continue;
@@ -190,11 +191,16 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
             continue;
         }
 
+        $confirmPayload = is_array($entry['confirm_payload'] ?? null) ? $entry['confirm_payload'] : [];
+        $electronicPaymentId = isset($confirmPayload['electronic_payment_id']) ? (int)$confirmPayload['electronic_payment_id'] : 0;
         $filtered[] = [
             'product_id' => $productId,
             'transacted_at' => gmdate('Y-m-d H:i:s', $recordedTs),
+            'completion_source' => $confirmPayload['completion_source'] ?? 'manual',
+            'electronic_payment_id' => $electronicPaymentId ?: null,
         ];
         $productIds[$productId] = $productId;
+        if ($electronicPaymentId > 0) $paymentIds[$electronicPaymentId] = $electronicPaymentId;
     }
 
     if (empty($filtered)) {
@@ -211,6 +217,23 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
     }
 
     $rows = [];
+    $paymentStatuses = [];
+    if ($paymentIds) {
+        $ids = array_values($paymentIds);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $paymentStmt = $conn->prepare("SELECT electronic_payment_id, status, payment_mode, refunded_at, dispute_status FROM electronic_payments WHERE electronic_payment_id IN ($placeholders)");
+        if (!$paymentStmt) throw new RuntimeException('Failed to prepare purchase payment status lookup');
+        $types = str_repeat('i', count($ids));
+        $bind = [$types];
+        foreach ($ids as $index => $id) { $ids[$index] = (int)$id; $bind[] = &$ids[$index]; }
+        call_user_func_array([$paymentStmt, 'bind_param'], $bind);
+        $paymentStmt->execute();
+        $paymentResult = $paymentStmt->get_result();
+        while ($paymentRow = $paymentResult->fetch_assoc()) {
+            $paymentStatuses[(int)$paymentRow['electronic_payment_id']] = $paymentRow;
+        }
+        $paymentStmt->close();
+    }
     foreach ($filtered as $entry) {
         $productId = $entry['product_id'];
         $meta = $metadata[$productId] ?? [];
@@ -218,6 +241,7 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
         $title = $meta['title'] ?? ('Item #' . $productId);
         $sellerName = $meta['seller_name'] ?? 'Unknown seller';
         $imageUrl = $meta['image_url'] ?? '';
+        $payment = !empty($entry['electronic_payment_id']) ? ($paymentStatuses[(int)$entry['electronic_payment_id']] ?? null) : null;
         $rows[] = [
             'item_id' => $productId,
             'title' => $title,
@@ -226,6 +250,11 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
             'image_url' => format_purchase_history_image_url($meta['image_url'] ?? ''),
             'categories' => $meta['categories'] ?? [],
             'price' => $meta['price'] ?? null,
+            'completion_source' => $entry['completion_source'],
+            'payment_status' => $payment['status'] ?? null,
+            'payment_mode' => $payment['payment_mode'] ?? null,
+            'refunded_at' => $payment['refunded_at'] ?? null,
+            'dispute_status' => $payment['dispute_status'] ?? null,
         ];
     }
 

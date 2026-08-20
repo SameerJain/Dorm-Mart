@@ -1,803 +1,295 @@
 # Dorm Mart Project Handoff
 
-## How to read this
+## Comparison scope
+
+This handoff compares the end-of-sprint snapshot from December 2, 2025 with the current code snapshot.
+
+- **December baseline:** `fec6ac5f9ba28f089e045a2168794218c78a5233` (`Merge pull request #198 from cse442-software-engineering-ub/dev`).
+- **Current code snapshot:** `28500d5041eeb429a408f349d163750bd55238c8` on `145-Setup-Railway-Deployment-System`.
+- **Scale:** 919 tracked files differ when dependency/vendor files are included. Excluding `dorm-mart/vendor` and `package-lock.json`, 617 files differ: 294 added, 164 deleted, 114 modified, and 45 renamed.
+- **Purpose:** this is a practical guide to the current architecture and behavior, not a file-by-file diff. Generated dependencies, bulk image cleanup, and fixture churn are summarized.
 
-This document is for teammates returning to Dorm Mart after the last main sprint version.
+The current app is still a React frontend with a PHP/MySQL backend. The largest changes since December are the feature-based code reorganization, Railway deployment support, personalized recommendations, expanded notifications, account-security pages, moderation, safer authentication/session handling, and a real automated test suite.
+
+## Start here when returning
+
+- Read this file first, then `README.project_setup.md` for commands and `dorm-mart/extra-files/environment_configuration.md` for environment variables.
+- Run npm/PHP commands from `dorm-mart`; the repository root intentionally has no `package.json`.
+- Apply schema migrations before testing newer features: `php api/database/migrate_schema.php`.
+- Do **not** run `php api/database/migrate_data.php` against shared or production data. It refuses non-local database hosts and resets local application data before rebuilding fixtures.
+- Do not assume a December path still exists. Most PHP endpoints and several React page folders were renamed or moved.
+- Production chat uses HTTP polling. `dorm-mart/extra-files/README.websocket.md` is explicitly archived documentation for a retired Ratchet experiment.
+
+## Current application structure
+
+The router is `dorm-mart/src/App.jsx` and uses a hash router.
+
+Public routes include:
+
+- `/`, `/login`, `/create-account`, `/forgot-password`, and `/reset-password`.
+- `/privacy-policy` and `/terms-of-service`, which now render accessible React legal-document pages from `src/pages/Legal`.
+
+Authenticated routes live under `/app`, including:
+
+- Home, listings/search, listing creation/editing, product and receipt views.
+- Purchase history, notifications, chat, wishlist, public profiles, seller dashboard, and scheduled purchases.
+- Settings pages for profile, account information, preferences, password changes, logged devices, two-factor authentication, the team page, and account deletion.
+- `/app/moderation`, guarded in the UI for moderators and independently protected by role checks in every moderation API.
+
+Unknown routes use `NotFoundPage`. The December raw-loader behavior for unfinished settings pages has been replaced with implemented pages or the normal 404 page.
+
+## Major changes since December
+
+### Authentication, account creation, and password recovery
+
+- Account creation uses a generated temporary password delivered by email. SendGrid is preferred when configured; SMTP/PHPMailer is the fallback.
+- Account-creation requests are rate-limited in both the browser and backend. The backend returns the same generic accepted response for eligible submissions, duplicate accounts, email-policy rejections, and delivery/internal failures to reduce account enumeration; malformed form fields can still return validation errors.
+- An account is retained only when the temporary-password email is delivered. If delivery fails, the newly inserted account is removed. This is different from the earlier handoff wording that said account creation would survive email failure.
+- Registration requires acceptance of the Terms of Service and records promotional-email preferences.
+- `ALLOW_ALL_EMAILS` controls whether registration is restricted to `@buffalo.edu`; login continues to accept any valid email so existing non-UB accounts can sign in.
+- Forgot-password responses and reset links were hardened. Current reset links include a user ID plus a hashed, expiring token so validation can target one account instead of scanning all active reset tokens.
+- Reset and change-password flows clear reset/remember state, increment `auth_version`, and invalidate other authenticated sessions.
+- Password changes require the current password and reject reuse of the current password.
+- Login still has rate limiting, but authentication now also checks banned status and session version on protected requests.
+
+### Two-factor authentication and login history
+
+- Users can enable email-based two-factor authentication at `/app/setting/two-factor-authentication`.
+- A successful password check for a 2FA-enabled account starts a six-digit email challenge. Codes last 10 minutes and allow at most five failed attempts.
+- Disabling 2FA requires the current password. Enabling it must successfully send the confirmation email before the setting is saved.
+- Successful sessions are recorded with browser, operating system, device type, IP address, approximate location, login time, last-seen time, and sign-out time.
+- `/app/setting/security-options` is now the Logged Devices page. It is currently a read-only history view; users secure an unknown login by changing their password, which invalidates other sessions.
+- Sessions use a server-side session plus a rotated remember token. `auth_version` provides centralized invalidation after password resets, password changes, bans, and other security-sensitive changes.
+
+### Account information, preferences, and deletion
+
+- The former Personal Information placeholder is now a read-only Account Info page showing name, email, graduation date, join date, and links to legal pages.
+- User Preferences now includes:
+  - up to three interested categories;
+  - light/dark theme;
+  - promotional email frequency (`off`, `daily`, or `weekly`);
+  - optional seller phone number; and
+  - a switch controlling whether buyers in the seller's chats can see the seller's email/phone.
+- `scripts/send_promotional_digests.php` is a CLI job for due daily/weekly interest-matched listing emails. Adding the script does not schedule it automatically; the deployment must provide a cron/scheduled job.
+- The About Us page is implemented at `/app/setting/about-us` with the current team and contact links.
+- Account deletion is implemented and requires both the exact confirmation phrase and current password. It removes the user's owned/private data and listings, closes affected chats, notifies users who wishlisted removed items, anonymizes retained counterpart-facing chat/history records, deletes owned uploads, and signs the user out.
+- Protected fixture and moderator accounts cannot be deleted. Seed-account protection is applied after local data migration.
+
+### Home feed and recommendations
+
+- The December category-only home logic has become a ranked recommendation feed.
+- `api/helpers/recommendations.php` combines selected interests, listing views, wishlist activity, purchase categories, popularity, recency, and exact-product signals.
+- Product views and wishlist changes are stored in `user_listing_behavior`; behavior tracking is best-effort so a missing/new migration does not break the buyer action.
+- The home API excludes the current user's own listings and only returns active, unsold listings.
+- “For You” remains usable when no interests are selected. In that case it shows popular/recent listings while the system learns behavior; it is no longer disabled as the old handoff stated.
+- “Explore More” shows randomized items, with a responsive target of at least 30 when enough listings exist.
+- The selected home tab is stored in session storage.
+- Image failures consistently fall back to the placeholder asset instead of relying on a hardcoded product image.
+
+### Search
+
+- Search lives under `src/pages/Search` and calls `api/search/get_search_items.php`.
+- Current filtering supports query text, one or more allowed categories, condition, location, price range, negotiable/trades flags, and allowed sort modes.
+- Search can optionally include descriptions and ranks best-match results using exact/prefix/title/description relevance.
+- Search returns only active, unsold listings and enforces a bounded result limit.
+- Price fields use strict decimal validation. Malformed values, out-of-range values, and `minPrice > maxPrice` are rejected instead of being silently coerced.
+
+### Listings and seller dashboard
+
+- Listing creation/editing is organized under `src/pages/ItemForms` and `api/seller_dashboard`.
+- Sellers can save incomplete listings as drafts and later edit/publish them. Drafts are private to their seller, including direct product URLs.
+- Publishing applies full validation, requires at least one image, and counts toward the 25-active-listing limit. Saving a draft is still allowed at that limit.
+- Sold listings cannot be edited, reactivated, or deleted through normal listing endpoints.
+- A listing with an active accepted scheduled purchase cannot be moved back to Draft until that purchase is cancelled or completed.
+- Listing image uploads validate actual MIME type, byte size, and safe pixel dimensions; filenames/extensions are not trusted.
+- Published listing views are counted only for non-seller views. Seller dashboard statistics now include view counts.
+- The seller dashboard is componentized into filters, metrics, rows, review hooks, and listing hooks. It includes Draft as a filter/status.
+- Price changes, added images, Pending/Active/Sold transitions, and deletion can produce notifications for users who wishlisted the item.
+
+### Product and receipt pages
+
+- Product and receipt code moved from `src/itemDetails` into `src/pages/ItemDetails` with shared hooks, normalizers, fact rows, action panels, and image galleries.
+- Product endpoints moved to `api/product/view_product.php` and `api/product/get_item_info.php`.
+- Product responses carry listing/sold/final-price information used by receipts, reviews, scheduled purchases, and seller actions.
+- The image gallery supports multiple images with thumbnail and previous/next controls.
+- Receipt price presentation now distinguishes listing price, negotiated/final price, and trades.
+- Legacy purchase-history rows deliberately use their stored title/seller/image snapshots. They are not joined to inventory by unrelated auto-increment IDs.
+
+### Chat
+
+- Production chat is polling-based. `ChatContext.jsx` polls `fetch_new_messages.php` for messages, edits, deletions, typing state, and listing/conversation status.
+- Chat is split into composer, header, sidebar, list, message cards, special purchase/review cards, image modal, typing hooks, and utilities.
+- Users can send text and image messages, see typing indicators, delete a conversation from their own list, and report another user's message.
+- A sender can edit only their latest eligible text message in a conversation. Image/system/deleted messages cannot be edited.
+- `api/chat/delete_message.php` supports soft-deleting the sender's latest message, but the current React UI does not expose an individual-message delete button.
+- Deleted messages are retained as records and rendered as “This message was deleted”; their content/media no longer count toward unread badges.
+- Profanity matches are stored as flagged raw messages for moderators, while normal chat readers receive filtered text.
+- Seller contact information appears in buyer chats only when the seller enabled contact sharing.
+- Item or account deletion closes the affected chat and shows a system message. Private chat media is served only through `serve_chat_image.php` after participant authorization.
+- Scheduled-purchase, confirmation, review, and buyer-rating cards are integrated into the message stream.
+
+### Moderation
+
+- Users can report messages directly from chat. One reporter/message pair is kept unique; reporting the same message again reopens/updates that report.
+- Moderator accounts have a safety dashboard showing flagged messages, reports, and banned-user statistics.
+- Moderators can resolve/dismiss reports, ban/unban non-moderators, and maintain the profanity word/phrase list.
+- Banning invalidates the target's sessions and authentication tokens. All protected APIs also reject banned users, so the React route guard is not the security boundary.
+- Moderator accounts must be provisioned from the CLI, for example:
+
+  ```powershell
+  php api/database/create_moderator.php moderator@example.com "use-a-strong-password" "Dorm Mart" "Moderator"
+  ```
 
-- **Baseline being compared against:** commit `fec6ac5` by IkeSvit.
-- **Downloaded baseline folder used for comparison:** `C:\Users\samee\Downloads\Dorm-Mart-fec6ac5f9ba28f089e045a2168794218c78a5233`.
-- **Current project version:** branch `192-Refactor-Codebase` at commit `b684fd7`.
-- **Important:** this document also includes the current uncommitted local edits in the working tree, not just committed Git history.
-- **Scale of change:** the Git diff from `fec6ac5` to `b684fd7`, plus current uncommitted edits, is very large: hundreds of files changed, including frontend pages, backend APIs, migrations, seed data, deployment files, dependencies, and media cleanup.
-- **How this is organized:** page-by-page first, then cross-cutting backend, deployment, data, and codebase changes.
+- The old committed default moderator credential was revoked by migration `022_revoke_default_moderator.sql`; `data/029_moderator_account.sql` no longer seeds a password.
 
-This is meant to help you understand the project as it exists now before taking new work. It is not a raw diff dump. Generated files, vendor dependency churn, image files, and bulk media changes are summarized instead of listed one by one.
+### Scheduled and confirmed purchases
 
-## Current high-level state
+- Scheduled purchase frontend code moved from `SellerDashboard` into `src/pages/ScheduledPurchases`.
+- Ongoing purchases are grouped into actionable/time-based buckets with feature-local hooks, form utilities, cards, and modals.
+- Stale unanswered schedule requests expire lazily when related list/chat flows run; the current expiry window remains three days.
+- Accepted schedules can create timed 24-hour/1-hour buyer reminders and a seller Confirm Purchase reminder.
+- Wishlist users are notified when an item becomes pending, returns to sale, is sold, or is removed.
+- An accepted confirmation counts as a completed sale only when `is_successful = 1`. An unsuccessful accepted outcome does not sell inventory, write purchase history, create review prompts, or keep the item locked from another schedule/confirmation.
+- Purchase-history insertion uses an atomic JSON append to avoid lost updates from simultaneous completions.
+- The December `scheduled-purchases/report-issue/:requestId` route and `ReportIssuePage.jsx` were removed. Safety reporting now centers on individual chat-message reports.
 
-Dorm Mart is still a React frontend plus PHP/MySQL backend marketplace app, but the structure is much cleaner than the sprint baseline.
+### Reviews and ratings
 
-The **main** app routes now live in `dorm-mart/src/App.jsx`, with route groups under:
+- Product review and buyer-rating APIs use shared lookup/authorization helpers and stricter validation.
+- Review stars can be edited interactively through `EditableStarRating`.
+- Review prompts in chat and purchase history reflect whether a review/rating already exists.
+- Review uploads validate MIME, size, and image dimensions and use the configured media storage path.
+- Review images are displayed without the old forced zoom behavior so the full image remains visible.
 
-- `/` for the welcome/pre-login entry point.
-- `/login`, `/create-account`, `/forgot-password`, and `/reset-password` for auth flows.
-- `/app` for the signed-in app shell.
-- `/app/listings`, `/app/product-listing`, `/app/viewProduct`, `/app/viewReceipt`, `/app/purchase-history`, `/app/chat`, `/app/wishlist`, `/app/profile`, `/app/seller-dashboard`, `/app/setting`, and `/app/faq` for the main user-facing areas.
+### Notifications and wishlist
 
-Compared with the sprint baseline, many old loose files were moved into clearer folders. Many backend endpoints were renamed from dash or camelCase paths to underscore/lowercase paths. If you remember an old path from the sprint, do not assume it still exists.
+- The legacy wishlist notification counter was migrated into a general `notifications` table with type, severity, destination, metadata, availability time, read state, and idempotency key.
+- Notifications now cover wishlist saves; item price/image/status changes; schedule requests, responses, cancellations, expiry, and reminders; confirm-purchase requests; review reminders; item deletion; and sold/back-on-sale events.
+- Destinations are restricted to internal `/app` paths before insertion and checked again before frontend navigation.
+- The Notifications page supports opening/marking read, deleting one notification, and clearing all notifications.
+- Wishlist add/remove operations also update recommendation behavior and continue to maintain item wishlist counts.
 
-## Pre-login pages
+### Legal pages, responsive UI, and accessibility
 
-### What was added
+- Privacy Policy and Terms of Service are now React pages under `src/pages/Legal`, linked from login, account creation, account information, and moderation.
+- Static PDF copies still exist under `public/pdfs`, but no current source code links to them; treat them as legacy assets unless a deployment still needs them.
+- Public/pre-login pages are grouped under a layout that suppresses authenticated dark-mode state and avoids theme flicker.
+- Modal body-scroll locking, mobile touch targets, small-screen spacing, long-word wrapping, image fallbacks, and dark-mode colors were improved across the app.
+- A shared error boundary, page back button, confirmation dialog, API client, CSRF wrapper, formatting utilities, and feature-specific utility modules replaced many one-off implementations.
 
-- Better tablet and horizontal-range responsive layouts across the pre-login flow.
-- Better reset-password email flow support, especially because the reset page is opened from emailed links.
-- Shared pre-login styling pieces were cleaned up through components such as `PreLoginBranding` and `PreLoginNavLinks`.
-- The pre-login pages now behave more like normal public pages: you can visit them without being trapped by the old redirect behavior.
+## Backend and security architecture
 
-### What changed
+### Endpoint organization
 
-- The old pre-login redirector behavior was removed. Previously, if you were logged in and wanted to get out of the logged-in flow, you could be forced into awkward navigation where the sign-out button was the only clean path. Now it behaves like a normal website.
-- Mobile/tablet spacing was adjusted so pre-login forms are less likely to cut off bottom text on small devices.
-- Dark-mode state no longer causes a quick blackout/flicker on the public login email box.
-- Password reset pages were polished so they work better from actual email links and not only from local navigation.
+Current feature folders include:
 
-### What was removed
+- `api/auth`, `api/categories`, `api/chat`, `api/confirm_purchases`, `api/listings`;
+- `api/media`, `api/moderation`, `api/product`, `api/profile`, `api/purchase_history`;
+- `api/receipt`, `api/reviews`, `api/scheduled_purchases`, `api/search`;
+- `api/seller_dashboard`, and `api/wishlist`.
 
-- The old forced redirect behavior from public/pre-login pages.
-- The temporary forgot-password testing keyword/backdoor was removed in the current uncommitted working tree. Typing `testflow` into forgot password no longer skips straight to confirmation.
+Shared code lives under `api/config`, `api/helpers`, `api/security`, `api/utility`, and `api/database`. These are libraries or CLI tools, not public HTTP endpoints.
 
-### Teammate notes
+### Important security behavior
 
-- Treat pre-login pages as real public pages now, not only as a gate into `/app`.
-- The public pages still need to respect theme behavior, but should not flash logged-in dark-mode styling before the page settles.
+- Authenticated mutations use CSRF tokens and prepared SQL statements.
+- Request helpers strictly parse JSON, integers, decimals, booleans, ISO dates, and maximum request sizes.
+- Authentication checks session version and banned state on each protected request.
+- Password reset tokens and remember-me tokens have separate storage/state.
+- Uploads use MIME inspection, safe dimension limits, randomized user-scoped filenames, and path-containment checks.
+- Product/profile/review media use `api/media/image.php`; private chat media requires conversation membership.
+- The Railway router rejects traversal/null bytes, non-PHP API targets, raw `/media` access, and HTTP access to config, helper, database, utility, security, and test directories.
+- Static responses include content-type, frame, referrer, permissions, opener, HSTS-on-HTTPS, and HTML CSP headers.
+- CORS origins and notification destinations are allowlisted rather than reflected blindly.
+- Legacy blacklist-style XSS input rejection was removed. The current approach preserves normal text, uses prepared statements for SQL, validates data shapes/URLs, and escapes output.
 
-## Login page
+## Database migrations and development data
 
-### What was added
+- Schema migration files were consolidated from the December many-file history into clearer base migrations `001`–`009`, followed by additive migrations through `024`.
+- Newer migrations add general notifications, promotional frequency, view counts, login history, account deletion support, recommendation behavior, 2FA, seller phone numbers, moderation/profanity, message soft deletion, session versioning, default-moderator revocation, schema reconciliation, and account-creation rate limits.
+- Migration numbering intentionally has gaps (for example `017`); execution is based on natural filename order plus the `schema_migrations` ledger, not contiguous numbering.
+- `migrate_schema.php` is CLI-only, applies only unapplied filenames, and records them in `schema_migrations`.
+- Railway runs `php api/database/migrate_schema.php` before deployment through `dorm-mart/railway.toml`.
+- `migrate_data.php` is CLI-only and local-only. Every run truncates local application tables (preserving the schema ledger and profanity words), copies fixture images, reapplies all SQL files in `data`, and marks fixture accounts protected.
+- `api/database/wipe_data.php` is intentionally destructive and requires `--confirm-wipe` or `--confirm-rebuild`.
+- Do not rename an already-applied schema migration. The ledger keys by filename.
 
-- Required-field enforcement was added to the login email and password inputs in the current uncommitted working tree.
-- Better frontend error wording was added so login failures explain the problem more clearly.
-- PDF behavior for Terms of Service and Privacy Policy was improved for Railway.
+## Run, test, and deploy
 
-### What changed
+### Local development on Windows
 
-- Terms of Service and Privacy Policy PDF naming was fixed for Railway.
-- PDF links now open in a new tab on Railway.
-- The iPhone SE layout was adjusted upward so bottom text does not get cut off.
-- The brief dark-mode blackout/flicker on the email field was fixed.
-- Login text, spacing, and smaller viewport behavior were polished.
+From the repository root, run:
 
-### What was removed
+```powershell
+build-scripts-win\dev.bat
+```
 
-- The broken/awkward PDF behavior where Railway could use odd names or open/download behavior.
-- The visual flash where the login email field briefly looked wrong when the logged-in account used dark mode.
+The launcher starts XAMPP Apache/MySQL when their ports are free, then opens React on port 3000 and PHP on port 8080. It resolves paths relative to the repository, so it need not be launched from a specific working directory.
 
-### Related backend/API notes
+Manual equivalent from `dorm-mart`:
 
-- Auth endpoints were renamed to underscore paths where appropriate, such as `forgot_password.php`, `reset_password.php`, `validate_reset_token.php`, and `get_csrf_token.php`.
-- CSRF handling was expanded across authenticated mutation endpoints.
-- Login rate limiting and session lockout behavior moved toward database/session-backed hardening instead of loose lockout files.
+```powershell
+npm install
+npm run start-local-win
+npm run start:api
+```
 
-## Create Account page
+### Tests and build
 
-### What was added
+The old handoff statement that Jest had no matching tests is no longer true. The current tree has 25 frontend test files, including adversarial utility coverage and component tests for account creation, chat, moderation, notifications, listing actions, scheduled purchases, settings, and 2FA.
 
-- A configurable email policy now exists. `ALLOW_ALL_EMAILS` can allow any valid email address instead of only UB emails.
-- Backend account creation can send styled welcome/promo emails through SendGrid on Railway, with PHPMailer fallback locally.
-- Welcome-email and promo-email delivery paths log SendGrid/SMTP outcomes server-side for troubleshooting, but these logs are not user-facing.
+From `dorm-mart`:
 
-### What changed
+```powershell
+npm test -- --watchAll=false
+npm run test:backend
+npm run build
+```
 
-- Desktop layout was polished so the right side no longer scrolls unnecessarily.
-- Mobile/small-screen layout bugs were fixed.
-- File, field, and backend validation are more consistent with the frontend.
-- Create-account error messages now better match the active email policy.
+`test:backend` runs the CLI adversarial validation checks in `api/api_test_files/adversarial_validation_test.php`. Older ad hoc PHP tests remain under `api/api_test_files`; they are not all part of that command and are blocked from HTTP access.
 
-### What was removed
+### Apache, Aptitude, and Cattle packages
 
-- Hardcoded assumptions that only UB email addresses could be used in every environment.
-- Some email logging was cleaned up, but SendGrid/SMTP error and outcome logging remains intentionally available in server logs.
-
-### Related backend/API notes
-
-- Email policy lives under backend config files such as `api/config/email_config.php` and is exposed through an email-policy API.
-- Welcome and promotional email HTML was moved toward shared transactional email helpers.
-- Account creation still succeeds even if the welcome email fails; the email error is logged instead of blocking the user.
-
-## Home page
-
-### What was added
-
-- Session-based saving for the selected home feed tab.
-- A pop-up explaining how to unlock the "For You" feed.
-- Disabled/grayed-out state for "For You" when the user has no interested categories set.
-- Better placeholder image behavior when an item image cannot be found.
-
-### What changed
-
-- On mobile, the filters button was shifted slightly left for better alignment.
-- The "For You" and "Explore More" switch is centered on smaller screens instead of sitting awkwardly on the left.
-- The item-card hover effect was removed on mobile because it interfered with touch scrolling.
-- Landing banner wording, capitalization, and naming were cleaned up.
-- The "New" tag position was adjusted to align better with the "Wishlist" tag.
-- Hardcoded image behavior was cleaned up, including removal of the hardcoded taco image.
-- Bright blue colors were muted, especially for dark mode accessibility.
-
-### What was removed
-
-- Mobile item-card hover effects that made touch scrolling feel bad.
-- Hardcoded taco image usage.
-- Confusing enabled-looking "For You" behavior when the user had not configured interests.
-
-### Related backend/API notes
-
-- Home listings moved from the old loose `api/landingListings.php` path to `api/listings/landing_listings.php`.
-- Active category fetching moved into `api/categories`.
-- Image URLs should go through the media/image handling path when needed, especially on Railway.
-
-## Search page
-
-### What was added
-
-- Cleaner search input wording and positioning.
-- More consistent item-card behavior with the home page.
-
-### What changed
-
-- The search placeholder was changed from a more specific phrase like "search name, category, or description" to a simpler "Search" because the full behavior was not implemented yet.
-- A stray second period in the search description was removed.
-- Layout and positioning were polished.
-- Search price filter fields now use the same two-decimal listing-price style input pattern instead of accepting arbitrary decimal strings.
-
-### What was removed
-
-- The "Available" tag was removed because all visible search items were available anyway, so the tag added noise without useful information.
-
-### Related backend/API notes
-
-- Search endpoint naming moved from `api/search/getSearchItems.php` to `api/search/get_search_items.php`.
-- Numeric input guards were applied broadly across the app, including search-related numeric fields where relevant.
-- The current working tree rejects malformed search `minPrice`/`maxPrice` values and rejects `minPrice > maxPrice` instead of casting bad strings to `0`.
-
-## My Profile page
-
-### What was added
-
-- File type enforcement when selecting a profile picture from the user's computer.
-- More consistent frontend boxes matching the rest of the site.
-- Button border styling was aligned with home-page buttons.
-
-### What changed
-
-- Save/delete behavior for bio and Instagram text boxes was cleaned up.
-- Button text and text sizes were changed for consistency.
-- The clear fade-out behavior for the save button was removed.
-- The save button no longer shows a spinning animation when deleting bio or Instagram text, because that animation caused bugs.
-
-### What was removed
-
-- Buggy save-button spinner behavior on delete actions.
-- The clear fade-out effect for the save button.
-
-### Related backend/API notes
-
-- Profile APIs were organized under `api/profile`, including profile fetch/update, public profile, username lookup, user preferences, and profile photo upload.
-- Public profile frontend code moved from the old lower-case folder to `src/pages/PublicProfile`.
-
-## Chat page
-
-### What was added
-
-- A send button on the right side of the composer.
-- A better-aligned image upload button beside the text box.
-- Special message button states for review-related messages. If a review already exists for a buyer or product, the button text/color updates accordingly.
-- Typing indicator support.
-- Conversation deletion modal/component support.
-- More modular chat components: composer, header, sidebar, message list, message cards, special message cards, image modal, and typing indicator.
-
-### What changed
-
-- The image upload button was moved up so it lines up with the text box.
-- Mobile text-box zoom was fixed to avoid horizontal scrolling after tapping the chat input.
-- Item title font size was increased without clipping the text.
-- On mobile, participant name was shrunk and the item photo was removed from the top chat banner to make room for the item name.
-- The mobile back button was renamed to "Chats" while keeping the back arrow.
-- Chat blues and special-message colors were muted for dark mode and accessibility.
-- Chat state handling was reorganized into `ChatContext.jsx` and `chatContextUtils.js`.
-
-### What was removed
-
-- The old chat context file names and utility structure.
-- Mobile top-banner clutter that made long item names harder to read.
-
-### Related backend/API notes
-
-- Chat APIs now include image messages, served chat images, delete conversation, unread/new message polling, typing status, and conversation ensuring/fetching.
-- CSRF is used on chat mutations.
-- Scheduled purchase expiry updates also surface through chat messages.
-
-## Wishlist page
-
-### What was added
-
-- Truncation for long item names in the removal confirmation popup.
-- More consistent item-card layout matching the home page.
-- Better positioning for wishlist tags and remove tags.
-
-### What changed
-
-- Mobile hover effects on wishlist item cards were removed because they did not work well with touch scrolling.
-- The purple wishlist tag and red X tag were moved inward from the corner.
-- The overflow bug in "Are you sure you want to remove (item-name)" was fixed through truncation.
-
-### What was removed
-
-- Mobile hover behavior that interfered with scrolling.
-- The older wishlist card frontend layout.
-
-### Related backend/API notes
-
-- Wishlist APIs support add, remove, status checks, unread notification fetch, mark item read, mark all read, and full wishlist fetch.
-- Wishlist schema/data was consolidated into the newer migration structure.
-
-## User Preferences page
-
-### What was added
-
-- Dark theme support for the Theme box.
-- Safer behavior for setting interested categories.
-- Promo email preference logic tied to the styled email system.
-
-### What changed
-
-- Mobile scrolling was fixed so the page does not zoom unexpectedly.
-- A rapid-click bug was fixed where interested categories could appear to assign themselves if "set interested categories" was clicked very quickly.
-- Button borders were updated to match the newer style.
-- A race condition was fixed where switching to dark mode and navigating to user preferences very quickly could leave the page stuck or reset incorrectly.
-
-### What was removed
-
-- The old fragile category-setting behavior that could get out of sync under rapid clicks.
-
-### Related backend/API notes
-
-- User preferences moved under `api/profile/user_preferences.php`.
-- Category preferences are constrained to known allowed categories.
-- Promo opt-in can send an intro promotional email once, using SendGrid on Railway when configured.
-
-## Change Password page
-
-### What was added
-
-- A password requirement row component for clearer, reusable requirement display.
-- Dark-mode-compatible success/error popup styling.
-
-### What changed
-
-- The password-change popup was updated to match the app's theme and work correctly in dark mode.
-- Password validation became more consistent between frontend and backend.
-
-### What was removed
-
-- Older popup styling that did not fit the theme and did not behave well in dark mode.
-
-### Related backend/API notes
-
-- `api/auth/change_password.php` now participates in stronger CSRF and input validation behavior.
-- Password length and validation constraints are enforced server-side.
-
-## Seller Dashboard page
-
-### What was added
-
-- A backend/frontend cap limiting a user to 25 active listings.
-- Cleaner seller-dashboard API organization under `api/seller_dashboard`.
-- Set-item-status endpoint support in the organized folder.
-
-### What changed
-
-- The buyer popup title was changed to "Buyer Rating."
-- Seller-dashboard related files were moved out of the older mixed folder structure.
-- Button designs and active form designs were polished to match the rest of the app.
-
-### What was removed
-
-- Old `api/seller-dashboard` dash-folder paths in favor of underscore paths.
-- Some older SellerDashboard page responsibilities were moved into the ScheduledPurchases area.
-
-### Related backend/API notes
-
-- The current uncommitted working tree hardens listing image upload by checking actual MIME type instead of trusting the filename extension.
-- Sold items are blocked from being edited on the backend.
-- Listing deletion, management, product listing, and status-setting now live under `api/seller_dashboard`.
-
-## Individual Item / Active Listing page
-
-### What was added
-
-- Shared detail-row styling and item-detail components.
-- More robust product detail hooks and utilities.
-- Better long-word handling.
-- Standardized back button styling through shared components.
-
-### What changed
-
-- Email text is no longer colored blue when there is no real `mailto` feature.
-- Long words now wrap more naturally instead of continuing onto the next line awkwardly.
-- The back button was standardized to match other back buttons across the site.
-- Image fallback/proxy behavior was improved.
-- "sendto" style mobile behavior was removed because it caused visual bugs and did not work as intended.
-
-### What was removed
-
-- Blue email styling that implied clickable email behavior.
-- Broken or visually buggy mobile send-to behavior.
-- Older item detail files under `src/itemDetails`.
-
-### Related backend/API notes
-
-- Product APIs moved from loose paths like `api/viewProduct.php` and `api/get_item_info.php` to `api/product/view_product.php` and `api/product/get_item_info.php`.
-- Product details now include sold/date_sold/sold_to information needed by receipts, reviews, and active listing logic.
-
-## Individual Item Receipt page
-
-### What was added
-
-- Cleaner receipt detail components and helpers.
-- Better image display behavior for completed review images.
-
-### What changed
-
-- The receipt page frontend was reverted closer to an older design because the newer design felt too clunky/gummy.
-- The bottom "Back to Results" button was removed.
-- Completed review image zoom-in was removed so the whole image can be seen.
-- Time display and review image wording align better with purchase-history behavior.
-
-### What was removed
-
-- The bottom "Back to Results" button.
-- Broken/annoying completed-review image zoom behavior.
-- Mobile send-to behavior from receipt pages.
-
-### Related backend/API notes
-
-- Receipt viewing lives under `api/receipt/view_receipt.php`.
-- Receipt frontend moved into `src/pages/ItemDetails/ViewReceiptPage.jsx` plus receipt-specific components/utilities.
-
-## Notifications page
-
-### What was added
-
-- Truncation for long item names on wishlist notification cards.
-- Mobile hamburger text now uses "Notifications" with the missing "s" fixed.
-
-### What changed
-
-- Notification card text is safer against overflow.
-- Navigation wording was polished.
-
-### What was removed
-
-- Long-name overflow behavior that could break notification card layout.
-
-### Related backend/API notes
-
-- Wishlist notification API support includes unread fetch and mark-read behavior.
-- Wishlist notification seed data was cleaned up and renumbered with the rest of the data migrations.
-
-## Ongoing Purchases page
-
-### What was added
-
-- A button swap for "Leave a Review" when a review already exists.
-- Item photo shown to the left of the item name.
-- Automatic cancellation/expiry for scheduled purchase requests when the buyer does not accept in time. This is currently set to 3 days.
-- Backend lazy-expiry logic in `api/scheduled_purchases/expire_stale.php`.
-
-### What changed
-
-- Form card coloring was simplified.
-- Purchase ordering now groups scheduled purchases as happening now, needing response, upcoming, and past.
-- Active form button designs were polished.
-- Chat is updated when scheduled purchases expire.
-- Ongoing purchases moved out of the SellerDashboard folder into the ScheduledPurchases area.
-- Item grouping and scheduled-purchase bucket sorting now live in feature-local helpers instead of being embedded in the page component.
-
-### What was removed
-
-- Older cluttered form-card coloring.
-- The old ordering that made active/upcoming/past scheduled purchases harder to scan.
-
-### Related backend/API notes
-
-- Scheduled purchase APIs now live under `api/scheduled_purchases`.
-- Buyer/seller list endpoints call stale-expiry logic before returning list data.
-- Scheduled purchase frontend pages now live under `src/pages/ScheduledPurchases`.
-
-## Create New Listing page
-
-### What was added
-
-- Image cropper/modal support.
-- More modular listing form components, actions, status banners, success modal, safety tips, category hooks, and form config.
-- Numeric input guards to block invalid characters such as `e`.
-- MIME-based upload validation in the current uncommitted backend edit.
-
-### What changed
-
-- The bottom instruction line for item description was removed.
-- Button text was updated.
-- Frontend validation was brought closer to backend validation.
-- Railway image upload behavior was fixed so file paths can be found.
-
-### What was removed
-
-- The bottom item-description instruction line.
-- Extension-trusting image upload behavior. The backend now checks actual file MIME type in the current working tree.
-
-### Related backend/API notes
-
-- Product listing endpoint lives under `api/seller_dashboard/product_listing.php`.
-- Sold items cannot be edited.
-- Active listing count is capped at 25 per user.
-- Uploaded images should use the configured image directory/media route for Railway compatibility.
-
-## Purchase History page
-
-### What was added
-
-- Cleaner purchased-item display behavior.
-- Better review image presentation.
-
-### What changed
-
-- Time stamps changed from 24-hour format to 12-hour format with AM/PM.
-- Text around leaving images/reviews was changed.
-- Completed review image zoom-in was removed so the entire image is visible.
-- Purchased item components were polished.
-
-### What was removed
-
-- 24-hour timestamp display.
-- Image zoom behavior that prevented seeing the full review image.
-
-### Related backend/API notes
-
-- Purchase history APIs moved from dash paths to underscore paths under `api/purchase_history`.
-- Purchase/receipt/review data are more connected through migrations and helper APIs.
-
-## FAQ page
-
-### What was added
-
-- Scroll blocker when an FAQ popup/modal is open.
-- More FAQ topic pages.
-- Page-aware behavior so the popup opens to the info tab matching the page the user is already on.
-- Larger question-mark visual treatment.
-
-### What changed
-
-- FAQ text was rewritten to be more succinct and less repetitive.
-- Question text size was decreased.
-- FAQ files moved from `src/pages/FAQPage` to `src/pages/FAQ`.
-
-### What was removed
-
-- Repetitive older FAQ copy.
-- The older FAQPage folder organization.
-
-### Related backend/API notes
-
-- This is mainly frontend, but it matters because routes and imports changed. Use `src/pages/FAQ` now.
-
-## 404 / Not Found behavior
-
-### What was added
-
-- A dedicated 404 page.
-- Catch-all routing for unknown app routes.
-
-### What changed
-
-- Settings subroutes that are not implemented now point to `NotFoundPage` instead of throwing raw loader responses.
-- Unknown routes are handled more gracefully.
-
-### What was removed
-
-- The older raw/unfriendly missing-route behavior.
-
-## Dark theme and accessibility
-
-### What was added
-
-- Dark theme support was expanded into the User Preferences theme box.
-- Muted blue colors replaced brighter blues across the app, especially in chat special messages.
-- Dark-mode hover animation was added to better match the app theme.
-
-### What changed
-
-- Dark mode is easier on the eyes sitewide.
-- Login/pre-login dark-mode race/flicker behavior was fixed.
-- User Preferences dark-mode race condition was fixed.
-- Popups, cards, buttons, and message states were made more consistent in dark mode.
-
-### What was removed
-
-- Some overly bright blue visual treatment.
-- Fragile theme loading behavior that could race if users changed theme and navigated quickly.
-
-## Mobile and tablet responsiveness
-
-### What was added
-
-- More small-screen polish across pre-login, login, home, chat, wishlist, preferences, item detail, and ongoing purchases.
-- Reusable body scroll lock behavior for popups/modals.
-
-### What changed
-
-- Text inputs were adjusted to avoid mobile zoom/horizontal scroll in several places.
-- Touch-hostile hover effects were removed from mobile item cards.
-- Small devices like iPhone SE received targeted spacing fixes.
-- Chat mobile header was simplified to leave more room for item names.
-
-### What was removed
-
-- Several desktop-style hover and spacing behaviors that did not translate well to touch screens.
-
-## Railway, deployment, PDFs, images, and email
-
-### What was added
-
-- Railway deployment support through `dorm-mart/Procfile` and `dorm-mart/router.php`.
-- Railway routing that serves API requests to PHP files and React build files for the SPA.
-- Static security headers in the Railway router.
-- PDF MIME handling and inline PDF content disposition.
-- SendGrid mailer support for Railway/custom-domain email.
-- App config helpers for public URL, CORS origins, mail sender names, support email, and related environment-driven behavior.
-- Image proxy behavior through `api/media/image.php`.
-
-### What changed
-
-- PDFs are treated as PDFs instead of odd downloads/octet-stream files.
-- User-uploaded images should be read through the media endpoint instead of assuming raw `/images/...` paths work everywhere.
-- Railway custom domain/CORS behavior was updated.
-- Build/deploy scripts and README setup docs were updated for Railway, Aptitude, Cattle, and local development.
-
-### What was removed
-
-- Old assumptions that local Apache/XAMPP file paths also work unchanged on Railway.
-- Some temporary Railway config files were added during experimentation and later removed from Git.
-
-### Important teammate warning
-
-Railway containers can lose files stored in normal container directories after redeploys/restarts unless a volume is configured. If database rows point at uploaded images but the files are gone, the app will show the placeholder image. The setup docs mention `DATA_UPLOADS_DIR` for persistent upload storage.
-
-## Current run and deploy paths
-
-### Local development
-
-- Use `build-scripts-win/dev.bat`.
-- It runs `build-scripts-win/start-local-dev.ps1`.
-- That script tries to start XAMPP Apache/MySQL, then opens one PowerShell window for React and one for PHP.
-- React is expected at `http://localhost:3000`.
-- PHP API is expected at `http://localhost:8080`.
-
-### Local Apache simulation
-
-- Use `build-scripts-win/apache.bat`.
-- It runs `build-scripts-win/build-local-apache.ps1`.
-- It builds React, clears/copies files into `C:\xampp\htdocs\serve\dorm-mart`, and starts a PHP server.
-- Be careful: this script clears the target serve directory before copying.
-
-### Aptitude package
-
-- Use `build-scripts-win/aptitude.bat`.
-- It runs `build-scripts-win/build-aptitude.ps1`.
-- It builds a `C:\xampp\htdocs\prod-build` folder for upload.
-- Be careful: this script clears the target prod-build directory before copying.
-
-### Cattle package
-
-- Use `build-scripts-win/cattle.bat`.
-- It runs `build-scripts-win/build-cattle.ps1`.
-- It builds a `C:\xampp\htdocs\cattle-build` folder for upload.
-- Be careful: this script clears the target cattle-build directory before copying.
+- `build-scripts-win\apache.bat` builds and replaces `C:\xampp\htdocs\serve`.
+- `build-scripts-win\aptitude.bat` builds and replaces `C:\xampp\htdocs\prod-build`.
+- `build-scripts-win\cattle.bat` builds and replaces `C:\xampp\htdocs\cattle-build`.
+- These scripts deliberately clear their named target directories. Review the script and target before running it.
 
 ### Railway
 
-- Railway uses `dorm-mart/Procfile`.
-- The web command runs PHP's built-in server against `dorm-mart/router.php`.
-- The router sends `/api/...` requests to PHP files and serves the React build for non-API routes.
+- Railway builds the React app through `dorm-mart/scripts/build.sh` and starts PHP with `dorm-mart/Procfile` against `router.php`.
+- `dorm-mart/railway.toml` applies schema migrations in the pre-deploy phase. It does not load fixture data.
+- To deploy the current local snapshot without merging it first, install/link Railway CLI 4.30.5 or newer and run `build-scripts-win\railway.bat`.
+- The deployment script reports the branch, commit, and dirty files; use `-RequireClean` to reject a dirty worktree and `-Detach` only when intentionally queueing without waiting.
+- Railway filesystems are ephemeral. Set `DATA_UPLOADS_DIR` to a mounted persistent volume or uploaded product/profile/chat/review files will disappear after redeploy/restart while database references remain.
 
-## Backend/API reorganization
+Key environment variables are documented in `dorm-mart/extra-files/environment_configuration.md`. They include database credentials, frontend/API/public URLs, allowed CORS origins, mail credentials, `ALLOW_ALL_EMAILS`, `DATA_UPLOADS_DIR`, and the legacy WebSocket token secret.
 
-### What was added
+## Removed, renamed, or retired since December
 
-- Shared helpers under `api/helpers`, including API bootstrap, request/response helpers, image upload helpers, and inventory helpers.
-- Config files under `api/config`.
-- More consistent endpoint grouping:
-  - `api/auth`
-  - `api/categories`
-  - `api/chat`
-  - `api/confirm_purchases`
-  - `api/listings`
-  - `api/media`
-  - `api/product`
-  - `api/profile`
-  - `api/purchase_history`
-  - `api/receipt`
-  - `api/reviews`
-  - `api/scheduled_purchases`
-  - `api/search`
-  - `api/seller_dashboard`
-  - `api/wishlist`
+- `src/App.js` was replaced by `src/App.jsx`.
+- `src/pages/HomePage`, `src/itemDetails`, `src/pages/public_profile`, `src/pages/FAQPage`, and scheduled-purchase files under `SellerDashboard` were replaced by feature folders under `src/pages`.
+- Dash-case API folders/files such as `seller-dashboard`, `scheduled-purchases`, `forgot-password.php`, `get-csrf-token.php`, and `validate-reset-token.php` were replaced by underscore names.
+- Loose APIs such as `api/viewProduct.php`, `api/landingListings.php`, `api/userPreferences.php`, and `api/get_item_info.php` were removed after their feature-folder replacements were wired in.
+- The file-based `api/utility/lockouts` implementation was removed.
+- `input_sanitizer.php` and the old blacklist XSS behavior were removed in favor of typed validation plus output escaping.
+- `ReportIssuePage.jsx` and its scheduled-purchase route were removed.
+- Old duplicate migrations, fixture files, copied product images, unused icons, and default Create React App assets were removed or replaced.
+- Root `README.websocket.md` was removed; the remaining WebSocket guide is archived under `dorm-mart/extra-files` and is not the production architecture.
 
-### What changed
+## Developer-support artifacts
 
-- Many old dash-case folders became underscore folders.
-- Many old camelCase PHP filenames became lower/underscore names.
-- Loose API files were moved into feature folders.
-- Frontend calls were updated to use the new paths.
+`artifacts/dorm-mart-codex-skills` and its ZIP contain optional Codex workflow skills for feature building, security hardening, database work, deployment, audits, and refactor/test tasks. They are documentation/tooling artifacts and are not loaded by the React/PHP runtime.
 
-### What was removed
+## Current cautions and follow-up notes
 
-- Old loose endpoint files such as `api/viewProduct.php`, `api/landingListings.php`, `api/userPreferences.php`, and old dash-case endpoint folders.
-- Public HTTP access to dev/test/internal backend folders on Railway. The router blocks directories such as API test files, database scripts, helpers, security tools, utility scripts, and config files from being used as normal HTTP endpoints.
-- The old lockout folder under `api/utility/lockouts`.
-
-## Security and validation
-
-### What was added
-
-- Broader CSRF token usage for mutation endpoints.
-- Missing security headers across code and Railway routing.
-- Backend hardening around path traversal in the Railway router.
-- CLI-only blocking for dev scripts and internal tools.
-- Numeric input key guards to prevent typing `e` into numeric fields.
-- Backend validation matching frontend validation more closely.
-- MIME-based image upload validation in the current working tree for listing images.
-
-### What changed
-
-- Login/session rate limiting moved away from loose file lockout assumptions and toward more controlled handling.
-- API test files were renamed/moved, with quick fixes applied, but they still need future cleanup.
-- Input validation was cleaned up across auth, listings, reviews, scheduled purchases, and preferences.
-
-### What was removed
-
-- Some older, looser validation assumptions.
-- Direct HTTP access to utility/config/test/helper folders through Railway routes.
-
-## Data migrations and seed data
-
-### What was added
-
-- Consolidated migrations with clearer names:
-  - user accounts
-  - inventory
-  - chat
-  - purchases
-  - scheduled purchase requests
-  - confirm purchase requests
-  - wishlist
-  - reviews
-  - login rate limits
-- More test images under `data/test-images`.
-- Seed data for realistic marketplace content, wishlist notifications, chat conversations, reviews, ongoing purchases, scheduled purchases, profile/theme testing, and listing/chat test flows.
-
-### What changed
-
-- Migration file numbering was cleaned up so repeat numbers no longer exist.
-- Older many-step migrations were consolidated into fewer clearer migrations.
-- Seed data numbering was corrected.
-- Test seed data stopped hardcoding ID values where possible and moved toward auto-increment-aware inserts.
-- Scheduled purchase seed data date bugs were fixed.
-- Test seed image paths were changed to use images from `/data/test-images`.
-- `migrate_schema.php` and `migrate_data.php` received better error messages while keeping output secure.
-- Railway database migration behavior was synced/fixed.
-
-### What was removed
-
-- Old duplicate/renumbered migration files from the baseline.
-- Some old seed files that were replaced by cleaner combined files.
-- Duplicate or unused images in `/images`.
-
-## Frontend/codebase cleanup
-
-### What was added
-
-- `src/App.jsx` replaced the older `src/App.js`.
-- More page files use `.jsx`.
-- Shared utility files were added for API config, CSRF fetch, formatting, auth handling, image fallback, input validation, theme loading, logging, numeric input key handling, password policy, price validation, and product details.
-- Shared components were added for detail rows, error boundaries, page back buttons, profile links, and password requirement rows.
-
-### What changed
-
-- Frontend folders were reorganized so fewer unrelated files sit in `SellerDashboard` or loose `src` folders.
-- Item details moved into `src/pages/ItemDetails`.
-- Home moved into `src/pages/Home`.
-- Search moved into `src/pages/Search`.
-- Public profile moved into `src/pages/PublicProfile`.
-- Scheduled purchase pages moved into `src/pages/ScheduledPurchases`.
-- FAQ moved into `src/pages/FAQ`.
-- Old snake_case utility files were replaced with camelCase utility names where the frontend already followed that convention.
-
-### What was removed
-
-- Duplicate/unused frontend files.
-- Old public files and unused assets.
-- Old `src/itemDetails` files.
-- Old `src/pages/FAQPage` files.
-- Old `src/pages/public_profile` files.
-- Old `src/utils/auth.js`, `handle_auth.js`, and `load_theme.js` style files.
-
-## Generated/vendor/media-heavy changes
-
-This comparison includes a lot of dependency, vendor, generated, and media churn. Do not read too much product meaning into every one of these file-level changes.
-
-### Summary
-
-- Composer dependencies changed, including SendGrid and PHPMailer-related vendor files.
-- Some Symfony/PSR vendor files disappeared while SendGrid/Starkbank files appeared.
-- Image folders were cleaned up heavily.
-- Test images were added under `data/test-images`.
-- Duplicate images and unused image files were deleted or replaced.
-- Build artifacts and generated dependency files should be treated as support changes unless you are specifically debugging deployment or Composer behavior.
-
-## Current uncommitted local edits included in this handoff
-
-At the time this document was updated, the working tree includes these local edits:
-
-- Removed the redundant XSS blacklist helpers and their direct API call sites.
-- Kept normal validation, prepared statements, security headers, URL allowlists, and HTML output encoding in place.
-- Updated the XSS demo/test files so they focus on escaped output and unsafe HTML reflection, not rejecting every suspicious string.
-- Removed the stale frontend validation helper documentation entry.
-- Defined the missing `overflow-wrap-anywhere` CSS utility and applied it to high-risk user-generated text displays such as chat messages, reviews, receipt notes, scheduled purchase notes, and profile review text.
-- Tightened search price filters on both the React form and the search API so malformed decimal strings are rejected instead of silently accepted/coerced.
-- Reduced large frontend files by moving scheduled-purchase sorting/fetch helpers, schedule date/time helpers, chat username lookup, and chat typing-status handling into feature-local helper modules. No current frontend/backend source file is over 1,000 physical lines.
-- Consolidated the live promo opt-in email sender into `api/helpers/promo_email.php`; `profile/user_preferences.php` now uses that shared helper, and the stale duplicate in account creation was removed.
-- Rechecked recent refactors with production React builds and PHP syntax checks. The repo still has no matching frontend test files for Jest's default test command.
-- Updated forgot-password and create-account email confirmation copy to remind users to check their spam folder.
-- Hardened the password-reset email HTML with a visible copy/paste reset URL fallback because some mail clients de-click styled buttons on unauthenticated messages.
-- Fixed unsuccessful Confirm Purchase handling so a seller-marked unsuccessful exchange does not behave like a completed sale after buyer acceptance or auto-acceptance. Unsuccessful accepted confirmations no longer mark inventory sold, write purchase history, trigger review/rating prompts, or block the seller from sending another Confirm Purchase or Schedule Purchase form.
-- Brought chat conversation deletion cleanup into the same unsuccessful-confirm rule, so deleting a conversation does not keep an item blocked by an accepted schedule whose latest confirmation was unsuccessful.
-- Removed stale Seller Dashboard comments and corrected the listing image-upload comment to match MIME-based validation.
-
-### Security and correctness fixes (post-sprint)
-
-**Password reset table scan fixed (`api/auth/`)**
-
-`validate_reset_token.php` and `reset_password.php` previously fetched every user with an unexpired token and ran `password_verify()` on each one to find the matching user. With many users this gets progressively slower, and response timing leaks information about how many active reset requests exist.
-
-Fix: the reset link now includes `uid=USER_ID` as a URL parameter (`forgot_password.php`, `redirects/handle_password_reset_token_redirect.php`). Both endpoints accept `uid` in the request body and look up the specific user directly (`WHERE user_id = ? AND reset_token_expires > NOW()`). A fallback full-scan path is kept for any old-style links already in flight since they expire within 1 hour. `validate_reset_token.php` no longer returns `user_id` in its response since the frontend does not use it.
-
-**Purchase history race condition fixed (`api/confirm_purchases/helpers.php`)**
-
-`record_purchase_history()` previously did a SELECT to read the current JSON array, appended the new entry in PHP, then wrote it back. Two simultaneous purchase completions for the same buyer could each read the same original array and one would overwrite the other's entry.
-
-Fix: replaced with a single atomic `INSERT ... ON DUPLICATE KEY UPDATE` using MySQL's `JSON_ARRAY_APPEND`, which eliminates the read-modify-write window entirely.
-
-**Legacy purchase history metadata bug fixed (`api/purchase_history/purchase_history.php`)**
-
-`load_legacy_purchased_items()` was passing `purchased_items.item_id` values (the table's own auto-increment PK) to `load_inventory_metadata()` as if they were `INVENTORY.product_id` values. These are unrelated sequential integers from different tables with no foreign key relationship, so the metadata lookup was silently returning data for wrong or nonexistent products.
-
-Fix: removed the metadata lookup for legacy items entirely. The `purchased_items` table already stores `title`, `sold_by`, and `image_url` as a snapshot at purchase time. `categories` and `price` are returned as empty/null for legacy items since there is no `inventory_product_id` column to join on.
-
-**Unsuccessful confirm-purchase retry flow fixed (`api/confirm_purchases`, `api/scheduled_purchases`, chat)**
-
-The confirm-purchase flow stored `is_successful`, but several completion checks treated any accepted or auto-accepted confirmation as a final completed sale. That meant a seller could mark a meet-up as unsuccessful, the buyer could accept that outcome, and the app would still block another confirmation/schedule attempt as if the item had completed safely.
-
-Fix: completion checks now require both an accepted status and `is_successful = 1`. Unsuccessful accepted confirmations are terminal for that specific Confirm Purchase card, but they do not sell the item, write purchase history, show review prompts, or keep the schedule/confirm buttons locked. Scheduled-purchase cancellation, response, active checks, seller listing flags, and chat conversation deletion now use the same "active accepted schedule" rule so unsuccessful confirmations release the item flow consistently. Git history suggests the root behavior was introduced with `01f82dc` (`save state 2`) on April 28, 2026, when the confirm-purchase APIs and active scheduled-purchase check were added. The seller-dashboard accepted-schedule flag picked up the same assumption in `d2f59d0` (`web cli blocks`) on May 12, 2026.
-
-## Things to know before working again
-
-- Old paths may be wrong. Check current imports and API calls before editing from memory.
-- Railway behavior is not the same as local XAMPP behavior, especially for images, PDFs, routing, and environment variables.
-- Many UI changes were small polish fixes, but they touched many pages. Before editing a page, check its current component folder and related API path.
-- The app now has more consistent modal/button styling. New popups should follow the newer rounded-button/modal approach.
-- Sold listings are protected more strongly now; do not reintroduce edit paths for sold items.
-- Scheduled purchase expiry is lazy and tied into list/chat flows. Be careful when changing scheduled purchase status logic, especially around unsuccessful accepted confirm-purchase outcomes, which should release the flow for a new schedule instead of acting like a completed sale.
-- API test files were quick-fixed and moved, but they are not fully cleaned up.
-- Build scripts can clear target folders under `C:\xampp\htdocs`; do not run package scripts casually unless you intend to rebuild those folders.
-- The README and setup docs were updated, but this handoff is the best first read for understanding what changed since the sprint baseline.
+- The generic media endpoint intentionally refuses chat media. Do not “fix” chat images by routing them through the public product-image endpoint.
+- Uploaded files require persistent Railway storage; a placeholder with a valid database row often means the volume/path is missing, not that the React component is broken.
+- `send_promotional_digests.php` requires an external schedule; committing the file alone does not send recurring digests.
+- Logged Devices does not currently provide per-device remote sign-out. Password change/reset is the available revoke-all path.
+- The backend has a latest-message soft-delete endpoint, but there is no current individual-message delete control in the chat UI.
+- Static legal PDFs remain in `public/pdfs` even though the current UI uses native legal pages.
+- Some historical/ad hoc API tests remain for reference. Use the npm scripts and the current `.test.js/.test.jsx` suite as the normal automated checks.
+- The app has compatibility aliases for both `viewProduct`/`viewproduct` and `viewReceipt`/`viewreceipt`; prefer the canonical mixed-case routes already used by current navigation.
+- Preserve the unsuccessful-confirmation rule: an accepted but unsuccessful exchange must not sell the item or block a retry.
+- Before changing status, deletion, notification, or account-removal logic, check its effects across inventory, wishlist, chat, scheduled purchases, confirmation requests, reviews, and retained history. These flows now intentionally coordinate with each other.

@@ -1,5 +1,6 @@
 import {
   apiGetJson,
+  apiPostJson,
   csrfPostJson,
   readApiError,
   readJsonResponse,
@@ -64,6 +65,22 @@ describe("apiClient adversarial boundaries", () => {
     );
 
     await expect(apiGetJson("/api/nope")).rejects.toThrow("Nope");
+  });
+
+  test("apiPostJson sends non-mutating JSON searches through the shared boundary", async () => {
+    global.fetch.mockResolvedValueOnce(response([{ id: 7 }]));
+
+    await expect(apiPostJson("/api/search", { q: "lamp" })).resolves.toEqual([
+      { id: 7 },
+    ]);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/search",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({ q: "lamp" }),
+      }),
+    );
   });
 
   test("csrfPostJson sends a JSON CSRF request and returns parsed JSON", async () => {

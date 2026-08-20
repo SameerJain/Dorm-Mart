@@ -108,6 +108,7 @@ export function normalizeReceiptDetails(receiptData, normalizedProduct) {
     src.is_trade ?? src.trade ?? src.snapshot?.is_trade,
   );
   const receiptId = src.receipt_id ?? src.receiptId ?? null;
+  const electronicPaymentId = src.electronic_payment_id ?? null;
 
   return {
     receiptId,
@@ -130,6 +131,13 @@ export function normalizeReceiptDetails(receiptData, normalizedProduct) {
     failureReasonNotes,
     tradeItemDescription,
     isTrade: isTrade === true,
+    completionSource: src.completion_source ?? "manual",
+    electronicPaymentId,
+    paymentStatus: src.payment_status ?? null,
+    paymentMode: src.payment_mode ?? null,
+    paymentAmountCents: coerceNumber(src.payment_amount_cents),
+    refundedAt: parseDateValue(src.refunded_at),
+    disputeStatus: src.dispute_status ?? null,
   };
 }
 
@@ -156,6 +164,11 @@ export function buildPurchaseRows(details) {
     details.purchaseDate ? formatDateTime(details.purchaseDate) : null,
     { showPlaceholder: true },
   );
+  if (details.completionSource === "stripe") {
+    addRow("Payment", humanizeStatus(details.paymentStatus || "succeeded"));
+    if (details.refundedAt) addRow("Refunded", formatDateTime(details.refundedAt));
+    if (details.disputeStatus) addRow("Dispute", humanizeStatus(details.disputeStatus));
+  }
   addRow("Meeting location", details.meetLocation || null, {
     showPlaceholder: true,
   });
