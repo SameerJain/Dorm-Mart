@@ -1,6 +1,6 @@
 # CSE442 Fall 2025 "No Brainers" Group Project
 
-This repository contains the "Dorm Mart" web application, built with a React frontend and a PHP backend with XAMMP.
+This repository contains the "Dorm Mart" web application, built with a React frontend and a PHP backend with XAMPP.
 
 _Created for CSE-442: Software Engineering Concepts, The University at Buffalo._
 
@@ -13,6 +13,30 @@ _Created for CSE-442: Software Engineering Concepts, The University at Buffalo._
 **Username:** `testuser@buffalo.edu`
 
 **Password:** `1234!`
+
+## Motivation
+
+At the end of the semester, students throw out furniture, textbooks, electronics, dorm supplies, and other items that incoming students still need. We built Dorm Mart to cut down on that waste and give students a better place to buy and sell campus goods.
+
+## Quick Start
+
+To demo Dorm Mart, go to **https://dormmart.me/** and log in with the test user:
+
+- **Username:** `testuser@buffalo.edu`
+- **Password:** `1234!`
+
+To run the project locally:
+
+1. Clone the repository.
+2. Go to the app directory with `cd dorm-mart`.
+3. Install dependencies with `npm install`.
+4. Follow `README.project_setup.md` for database and environment setup.
+5. Start the frontend with `npm run start-local-win`.
+6. Start the API with `npm run start:api`.
+
+## Usage
+
+Use Dorm Mart to browse student listings, search and filter items, post goods for sale, chat with buyers or sellers, save items to a wishlist, schedule purchases, and leave reviews. The in-app FAQ has short guides for the main features.
 
 # Dorm Mart: The Complete Student Marketplace
 
@@ -78,6 +102,10 @@ workflow in one place!
 - `dorm-mart/migrations/` — Database construction files
 
 For detailed setup instructions, deployment guides, and production build steps, see `README.project_setup.md`.
+
+## Contributing
+
+Pick an open issue or describe the change you want to make before you start. Put your work on a branch, keep the change focused, and open a pull request when it is ready for review. Include testing notes, screenshots, or both when they help reviewers understand the change.
 
 # Development Team
 
