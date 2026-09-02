@@ -45,8 +45,7 @@ if (!function_exists('format_profile_media_url')) {
             return $trimmed;
         }
 
-        if (strpos($trimmed, '/api/image.php') === 0
-            || strpos($trimmed, '/api/media/image.php') === 0) {
+        if (strpos($trimmed, '/api/media/image.php') === 0) {
             return $trimmed;
         }
 

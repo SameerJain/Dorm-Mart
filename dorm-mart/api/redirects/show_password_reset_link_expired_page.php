@@ -1,5 +1,17 @@
 <?php
 // Universal page for expired/invalid reset links
+require_once __DIR__ . '/../security/security.php';
+
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('Content-Security-Policy: default-src \'none\'; style-src \'unsafe-inline\'; font-src \'self\';');
+header_remove('X-Powered-By');
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+if ($isHttps) {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -116,21 +128,14 @@
         </div>
 
         <?php
-        // Detect environment and set correct links
-        $host = $_SERVER['HTTP_HOST'] ?? '';
-        $loginLink = '/serve/dorm-mart/#/login';
-        $forgotLink = '/serve/dorm-mart/#/forgot-password';
-
-        if (strpos($host, 'aptitude.cse.buffalo.edu') !== false || strpos($host, 'cattle.cse.buffalo.edu') !== false) {
-            $loginLink = '/CSE442/2025-Fall/cse-442j/#/login';
-            $forgotLink = '/CSE442/2025-Fall/cse-442j/#/forgot-password';
-        }
+        $loginLink = dm_frontend_url('login');
+        $forgotLink = dm_frontend_url('forgot-password');
         ?>
 
-        <a href="<?php echo $loginLink; ?>" class="btn">Go to Login</a>
+        <a href="<?php echo escape_html($loginLink); ?>" class="btn">Go to Login</a>
 
         <div class="back-to-login">
-            <a href="<?php echo $forgotLink; ?>">Request New Reset Link</a>
+            <a href="<?php echo escape_html($forgotLink); ?>">Request New Reset Link</a>
         </div>
     </div>
 </body>

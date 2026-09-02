@@ -3,8 +3,9 @@
 // Include security utilities
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/auth_handle.php';
-setSecurityHeaders();
-setSecureCORS();
+dm_enforce_https();
+set_security_headers();
+set_secure_cors();
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -32,9 +33,50 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/../utility/transactional_email_html.php';
+require_once __DIR__ . '/../config/app_config.php';
+require_once __DIR__ . '/../helpers/request.php';
+
+const ACCOUNT_REQUEST_ACCEPTED_MESSAGE = 'If eligible, account instructions will be sent.';
+$accountRequestStartedAt = microtime(true);
+
+function accept_account_request(): void
+{
+    global $accountRequestStartedAt;
+    $remainingMicros = (int)max(0, (2 - (microtime(true) - $accountRequestStartedAt)) * 1000000);
+    if ($remainingMicros > 0) {
+        usleep($remainingMicros);
+    }
+    http_response_code(202);
+    echo json_encode([
+        'ok' => true,
+        'message' => ACCOUNT_REQUEST_ACCEPTED_MESSAGE,
+    ]);
+    exit;
+}
+
+function remove_undeliverable_account(mysqli $conn, int $userId, string $email, string $requestId): bool
+{
+    try {
+        $stmt = $conn->prepare('DELETE FROM user_accounts WHERE user_id = ? AND email = ?');
+        $stmt->bind_param('is', $userId, $email);
+        $stmt->execute();
+        $removed = $stmt->affected_rows === 1;
+        $stmt->close();
+        dm_log_auth_event('create_account', $requestId, $removed ? 'account_cleanup_succeeded' : 'account_cleanup_failed', [
+            'user_id' => $userId,
+        ]);
+        return $removed;
+    } catch (Throwable $e) {
+        dm_log_auth_event('create_account', $requestId, 'account_cleanup_failed', [
+            'user_id' => $userId,
+            'error' => $e->getMessage(),
+        ]);
+        return false;
+    }
+}
 
 
-function generatePassword(int $length = 8): string
+function generate_password(int $length = 8): string
 {
     // Fixed length of 8 characters
     $length = 8;
@@ -70,12 +112,12 @@ function generatePassword(int $length = 8): string
 }
 
 // Example:
-// echo generatePassword(12);
+// echo generate_password(12);
 
 /**
  * Send welcome email via SendGrid REST API (for Railway)
  */
-function sendWelcomeEmailViaSendGrid(array $user, string $tempPassword, string $apiKey): array
+function send_welcome_email_via_sendgrid(array $user, string $tempPassword, string $apiKey): array
 {
     global $PROJECT_ROOT;
     
@@ -86,17 +128,24 @@ function sendWelcomeEmailViaSendGrid(array $user, string $tempPassword, string $
         error_log("SendGrid: vendor/autoload.php not found");
         return ['ok' => false, 'error' => 'SendGrid SDK not available'];
     }
-    
+
     try {
+        error_log("SendGrid welcome email attempt started for: " . ($user['email'] ?? 'unknown'));
         $sendgrid = new \SendGrid($apiKey);
-        
+
         $pkg = dm_transactional_welcome_package($user['firstName'] ?? '', $tempPassword);
         $subject = $pkg['subject'];
         $html = $pkg['html'];
         $text = $pkg['text'];
 
+        $fromEmail = dm_mail_from_email();
+        if ($fromEmail === '') {
+            error_log("SendGrid welcome email failed: MAIL_FROM_EMAIL or GMAIL_USERNAME is not set");
+            return ['ok' => false, 'error' => 'Email configuration missing'];
+        }
+
         $email = new \SendGrid\Mail\Mail();
-        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
+        $email->setFrom($fromEmail, dm_mail_from_name());
         $email->setSubject($subject);
         $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
         $email->addContent("text/html", $html);
@@ -105,54 +154,34 @@ function sendWelcomeEmailViaSendGrid(array $user, string $tempPassword, string $
         $response = $sendgrid->send($email);
         $statusCode = $response->statusCode();
         $responseBody = $response->body();
-        
+
         error_log("SendGrid response: Status " . $statusCode . " - Body: " . $responseBody);
         
         if ($statusCode >= 200 && $statusCode < 300) {
             error_log("SendGrid email sent successfully to: " . $user['email']);
-            return ['ok' => true, 'error' => null];
+            return ['ok' => true, 'provider' => 'sendgrid', 'status' => $statusCode, 'error' => null];
         } else {
             error_log("SendGrid error: " . $statusCode . " - " . $responseBody);
-            return ['ok' => false, 'error' => 'Failed to send email via SendGrid'];
+            return ['ok' => false, 'provider' => 'sendgrid', 'status' => $statusCode, 'error' => 'Failed to send email via SendGrid'];
         }
-    } catch (Exception $e) {
-        error_log("SendGrid exception in sendWelcomeEmailViaSendGrid: " . $e->getMessage());
-        return ['ok' => false, 'error' => $e->getMessage()];
+    } catch (Throwable $e) {
+        error_log("SendGrid exception in send_welcome_email_via_sendgrid: " . $e->getMessage());
+        return ['ok' => false, 'provider' => 'sendgrid', 'error' => $e->getMessage()];
     }
 }
 
-function sendWelcomeGmail(array $user, string $tempPassword): array
+function send_welcome_gmail(array $user, string $tempPassword): array
 {
     global $PROJECT_ROOT;
 
     // Check for SendGrid API key first (Railway option)
-    $sendgridApiKey = getenv('SENDGRID_API_KEY');
-    error_log("DEBUG: Checking SendGrid API key for welcome email. Key exists: " . (!empty($sendgridApiKey) ? 'yes' : 'no'));
+    $sendgridApiKey = dm_sendgrid_api_key();
     if (!empty($sendgridApiKey)) {
         // Use SendGrid REST API for Railway
-        error_log("DEBUG: Using SendGrid for welcome email to: " . $user['email']);
-        return sendWelcomeEmailViaSendGrid($user, $tempPassword, $sendgridApiKey);
+        error_log("Welcome email using SendGrid; SENDGRID_API_KEY is configured");
+        return send_welcome_email_via_sendgrid($user, $tempPassword, $sendgridApiKey);
     }
-    error_log("DEBUG: SendGrid API key not found, falling back to PHPMailer");
-
-    // Otherwise, use existing SMTP code (cattle/aptitude/local)
-    // Check if we're on Railway (or similar platform) where env vars are set directly
-    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
-    if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
-        // Not on Railway, load from .env files
-        foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-            if (is_readable($envFile)) {
-                foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                    $line = trim($line);
-                    if ($line === '' || str_starts_with($line, '#')) continue;
-                    [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-                    putenv(trim($k) . '=' . trim($v));
-                }
-                break;
-            }
-        }
-    }
-    // On Railway, environment variables are already set, no need to load from files
+    error_log("Welcome email using SMTP fallback; SENDGRID_API_KEY is not configured");
 
     // Ensure PHP is using UTF-8 internally
     if (function_exists('mb_internal_encoding')) {
@@ -161,44 +190,43 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
 
     $mail = new PHPMailer(true);
     try {
-        // SMTP Configuration with optimizations for production servers
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = dm_smtp_host();
         $mail->SMTPAuth   = true;
         $gmailUsername = getenv('GMAIL_USERNAME');
         $gmailPassword = getenv('GMAIL_PASSWORD');
         
         // Debug: Log if credentials are missing (but don't expose passwords)
         if (empty($gmailUsername) || empty($gmailPassword)) {
-            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set. Username set: " . (!empty($gmailUsername) ? 'yes' : 'no'));
-            return ['ok' => false, 'error' => 'Email configuration missing'];
+            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set. Username set: " . (!empty($gmailUsername) ? 'yes' : 'no') . ", password set: " . (!empty($gmailPassword) ? 'yes' : 'no'));
+            return ['ok' => false, 'provider' => 'smtp', 'error' => 'Email configuration missing'];
         }
         
         $mail->Username   = $gmailUsername;
         $mail->Password   = $gmailPassword;
-        // Try STARTTLS on port 587 first (Railway may block port 465)
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+        $secure = dm_smtp_secure();
+        $mail->SMTPSecure = $secure === 'smtps' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = dm_smtp_port();
 
         // Optimizations for faster email delivery
-        $mail->Timeout = 10; // Reduced timeout for faster failure detection (Railway may block SMTP)
-        $mail->SMTPKeepAlive = false; // Close connection after sending
+        $mail->Timeout = dm_smtp_timeout();
+        $mail->SMTPKeepAlive = false;
+        $allowSelfSigned = dm_smtp_allow_self_signed();
         $mail->SMTPOptions = [
             'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
+                'verify_peer'       => !$allowSelfSigned,
+                'verify_peer_name'  => !$allowSelfSigned,
+                'allow_self_signed' => $allowSelfSigned,
             ]
         ];
-
         // Tell PHPMailer we are sending UTF-8 and how to encode it
         $mail->CharSet   = 'UTF-8';
         $mail->Encoding  = 'base64'; // robust for UTF-8; 'quoted-printable' also fine
         // Optional: $mail->setLanguage('en');
 
         // From/To
-        $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
-        $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
+        $mail->setFrom(dm_mail_from_email(), dm_mail_from_name());
+        $mail->addReplyTo(dm_mail_reply_to_email(), dm_mail_reply_to_name());
         $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
         $pkg = dm_transactional_welcome_package($user['firstName'] ?? '', $tempPassword);
@@ -211,159 +239,16 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
         $mail->Body    = $html;
         $mail->AltBody = $text;
 
+        error_log("SMTP welcome email attempt started for: " . ($user['email'] ?? 'unknown'));
         $mail->send();
-        return ['ok' => true, 'error' => null];
-    } catch (Exception $e) {
+        error_log("SMTP welcome email sent successfully to: " . ($user['email'] ?? 'unknown'));
+        return ['ok' => true, 'provider' => 'smtp', 'error' => null];
+    } catch (Throwable $e) {
         $errorMsg = $mail->ErrorInfo ?? $e->getMessage();
-        error_log("PHPMailer exception in sendWelcomeGmail: " . $errorMsg);
-        return ['ok' => false, 'error' => $errorMsg];
+        error_log("PHPMailer exception in send_welcome_gmail: " . $errorMsg);
+        return ['ok' => false, 'provider' => 'smtp', 'error' => $errorMsg];
     }
 }
-
-/**
- * Send promo welcome email via SendGrid REST API (for Railway)
- */
-function sendPromoWelcomeEmailViaSendGrid(array $user, string $apiKey): array
-{
-    global $PROJECT_ROOT;
-    
-    // Load SendGrid SDK
-    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
-        require_once $PROJECT_ROOT . '/vendor/autoload.php';
-    } else {
-        error_log("SendGrid: vendor/autoload.php not found");
-        return ['ok' => false, 'error' => 'SendGrid SDK not available'];
-    }
-    
-    try {
-        $sendgrid = new \SendGrid($apiKey);
-        
-        $pkg = dm_transactional_promo_welcome_package($user['firstName'] ?? '');
-        $subject = $pkg['subject'];
-        $html = $pkg['html'];
-        $text = $pkg['text'];
-
-        $email = new \SendGrid\Mail\Mail();
-        $email->setFrom("noreply@dormmart.me", "Dorm Mart");
-        $email->setSubject($subject);
-        $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
-        $email->addContent("text/html", $html);
-        $email->addContent("text/plain", $text);
-        
-        $response = $sendgrid->send($email);
-        
-        if ($response->statusCode() >= 200 && $response->statusCode() < 300) {
-            return ['ok' => true, 'error' => null];
-        } else {
-            $errorBody = $response->body();
-            error_log("SendGrid error in promo email: " . $response->statusCode() . " - " . $errorBody);
-            return ['ok' => false, 'error' => 'Failed to send promo email via SendGrid'];
-        }
-    } catch (Exception $e) {
-        error_log("SendGrid exception in sendPromoWelcomeEmailViaSendGrid: " . $e->getMessage());
-        return ['ok' => false, 'error' => $e->getMessage()];
-    }
-}
-
-function sendPromoWelcomeEmail(array $user): array
-{
-    global $PROJECT_ROOT;
-
-    // Check for SendGrid API key first (Railway option)
-    $sendgridApiKey = getenv('SENDGRID_API_KEY');
-    if (!empty($sendgridApiKey)) {
-        // Use SendGrid REST API for Railway
-        return sendPromoWelcomeEmailViaSendGrid($user, $sendgridApiKey);
-    }
-
-    // Otherwise, use existing SMTP code (cattle/aptitude/local)
-    // Check if we're on Railway (or similar platform) where env vars are set directly
-    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
-    if (getenv('RAILWAY_ENVIRONMENT') === false && getenv('DB_HOST') === false) {
-        // Not on Railway, load from .env files
-        foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-            if (is_readable($envFile)) {
-                foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                    $line = trim($line);
-                    if ($line === '' || str_starts_with($line, '#')) continue;
-                    [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-                    putenv(trim($k) . '=' . trim($v));
-                }
-                break;
-            }
-        }
-    }
-    // On Railway, environment variables are already set, no need to load from files
-
-    // Ensure PHP is using UTF-8 internally
-    if (function_exists('mb_internal_encoding')) {
-        @mb_internal_encoding('UTF-8');
-    }
-
-    $mail = new PHPMailer(true);
-    try {
-        // SMTP Configuration
-        $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
-        $mail->SMTPAuth   = true;
-        $gmailUsername = getenv('GMAIL_USERNAME');
-        $gmailPassword = getenv('GMAIL_PASSWORD');
-        
-        // Debug: Log if credentials are missing
-        if (empty($gmailUsername) || empty($gmailPassword)) {
-            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set in sendPromoWelcomeEmail");
-            return ['ok' => false, 'error' => 'Email configuration missing'];
-        }
-        
-        $mail->Username   = $gmailUsername;
-        $mail->Password   = $gmailPassword;
-        // Try STARTTLS on port 587 first (Railway may block port 465)
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
-
-        // Optimizations for faster email delivery
-        $mail->Timeout = 30;
-        $mail->SMTPKeepAlive = false;
-        $mail->SMTPOptions = [
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
-        ];
-
-        // Tell PHPMailer we are sending UTF-8
-        $mail->CharSet   = 'UTF-8';
-        $mail->Encoding  = 'base64';
-
-        // From/To
-        $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
-        $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
-        $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
-
-        $pkg = dm_transactional_promo_welcome_package($user['firstName'] ?? '');
-        $subject = $pkg['subject'];
-        $html = $pkg['html'];
-        $text = $pkg['text'];
-
-        $mail->Subject = $subject;
-        $mail->isHTML(true);
-        $mail->Body    = $html;
-        $mail->AltBody = $text;
-
-        $mail->send();
-        return ['ok' => true, 'error' => null];
-    } catch (Exception $e) {
-        return ['ok' => false, 'error' => $mail->ErrorInfo];
-    }
-}
-
-
-
-// Include security headers for XSS protection
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -381,55 +266,70 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // Read the JSON body from React's fetch()
-$rawInput = file_get_contents('php://input');
-$data = json_decode($rawInput, true);
-
-// Handle bad JSON
-if (!is_array($data)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid JSON body']);
-    exit;
-}
+$data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON body']);
 
 // Extract the values (before validation)
-$firstNameRaw = trim($data['firstName'] ?? '');
-$lastNameRaw = trim($data['lastName'] ?? '');
-$emailRaw = strtolower(trim($data['email'] ?? ''));
-
-// XSS PROTECTION: Check for XSS patterns in firstName and lastName fields
-// Note: SQL injection is already prevented by prepared statements and regex validation
-if (containsXSSPattern($firstNameRaw) || containsXSSPattern($lastNameRaw)) {
+if (!is_string($data['firstName'] ?? null)
+    || !is_string($data['lastName'] ?? null)
+    || !is_string($data['email'] ?? null)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
+    exit;
+}
+$firstNameRaw = trim($data['firstName']);
+$lastNameRaw = trim($data['lastName']);
+$emailRaw = strtolower(trim($data['email']));
+$requestId = bin2hex(random_bytes(8));
+
+// Consume quota before inspecting the email so rate-limit behavior cannot reveal
+// whether an address is registered, eligible, or deliverable.
+$accountRateLimit = consume_account_creation_attempt();
+if ($accountRateLimit['blocked']) {
+    $retryAfterSeconds = max(1, (int)$accountRateLimit['retry_after_seconds']);
+    header('Retry-After: ' . $retryAfterSeconds);
+    dm_log_auth_event('create_account', $requestId, 'rate_limited');
+    http_response_code(429);
+    echo json_encode([
+        'ok' => false,
+        'error' => 'Too many account requests. Please try again in a few minutes.',
+        'retry_after_seconds' => $retryAfterSeconds,
+    ]);
     exit;
 }
 
 // Load email policy configuration
 require_once __DIR__ . '/../config/email_config.php';
 
-// XSS PROTECTION: Input validation with regex patterns to prevent XSS attacks
-$firstName = validateInput($firstNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
-$lastName = validateInput($lastNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
-$gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
-$gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
-$promos    = !empty($data['promos']);
+// Input validation with regex patterns
+$firstName = validate_input($firstNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
+$lastName = validate_input($lastNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
+$gradMonth = strict_integer_value($data['gradMonth'] ?? null);
+$gradYear  = strict_integer_value($data['gradYear'] ?? null);
+$promos = strict_boolean_value($data['promos'] ?? false);
+$termsAccepted = strict_boolean_value($data['terms'] ?? null);
+
+if ($gradMonth === null || $gradYear === null || $promos === null || $termsAccepted !== true) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => $termsAccepted !== true
+        ? 'You must agree to the terms'
+        : 'Invalid input format']);
+    exit;
+}
 
 // Email validation based on ALLOW_ALL_EMAILS flag
 if (ALLOW_ALL_EMAILS) {
     // Accept any valid email format
-    $email = validateInput($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
+    $email = validate_input($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
     if ($email === false || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
-        exit;
+        dm_log_auth_event('create_account', $requestId, 'ineligible_request');
+        accept_account_request();
     }
 } else {
     // Only accept @buffalo.edu
-    $email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
+    $email = validate_input($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
     if ($email === false || !preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => 'Email must be @buffalo.edu']);
-        exit;
+        dm_log_auth_event('create_account', $requestId, 'ineligible_request');
+        accept_account_request();
     }
 }
 
@@ -437,6 +337,12 @@ if ($firstName === false || $lastName === false || $email === false) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
     exit;
+}
+
+$emailLocalPart = explode('@', $email)[0] ?? '';
+if (preg_match('/^\d+$/', $emailLocalPart)) {
+    dm_log_auth_event('create_account', $requestId, 'ineligible_request');
+    accept_account_request();
 }
 
 // Validate
@@ -472,48 +378,32 @@ if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > 
 }
 
 require __DIR__ . '/../database/db_connect.php';
-$conn = db();
 try {
-    // ============================================================================
+    $conn = db();
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // Check if email already exists using prepared statement.
-    // The '?' placeholder and bind_param() ensure $email is treated as data, not SQL.
-    // This prevents SQL injection even if malicious SQL code is in the email field.
-    // ============================================================================
     $chk = $conn->prepare('SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1');
     $chk->bind_param('s', $email);  // 's' = string type, safely bound as parameter
     $chk->execute();
     $chk->store_result();                   // needed to use num_rows without fetching
     if ($chk->num_rows > 0) {
-        http_response_code(200);
-        echo json_encode(['ok' => true]);
-        exit;
+        $chk->close();
+        $conn->close();
+        dm_log_auth_event('create_account', $requestId, 'duplicate_request');
+        accept_account_request();
     }
     $chk->close();
 
     // 2) Generate & hash password
-    // SECURITY NOTE:
-    // We NEVER store plaintext passwords. We generate a temporary password for the
-    // new user and immediately hash it with password_hash(), which automatically
-    // generates a unique SALT and embeds it into the returned hash (bcrypt here).
-    // The database only stores this salted, one-way hash (column: hash_pass).
-    $tempPassword = generatePassword(8);
+    // SECURITY NOTE: Store only the salted password hash.
+    $tempPassword = generate_password(8);
     $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
 
     // 3) Insert user
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // All user input (firstName, lastName, email, etc.) is inserted using prepared statement
-    // with parameter binding. The '?' placeholders ensure user input is treated as data,
-    // not executable SQL. This prevents SQL injection attacks even if malicious SQL code
-    // is present in any of the input fields.
-    // ============================================================================
     $sql = 'INSERT INTO user_accounts
-          (first_name, last_name, grad_month, grad_year, email, promotional, hash_pass, hash_auth, join_date, seller, theme, received_intro_promo_email)
+          (first_name, last_name, grad_month, grad_year, email, promotional, promo_frequency, hash_pass, hash_auth, join_date, seller, theme, received_intro_promo_email)
         VALUES
-          (?, ?, ?, ?, ?, ?, ?, NULL, CURRENT_DATE, 0, 0, ?)';
+          (?, ?, ?, ?, ?, ?, ?, ?, NULL, CURRENT_DATE, 0, 0, ?)';
 
     $ins = $conn->prepare($sql);
     /*
@@ -522,61 +412,70 @@ try {
     email(s), promotional(i), hash_pass(s), hash_auth(s), received_intro_promo_email(i)
 */
     $promotional = $promos ? 1 : 0;
+    $promoFrequency = $promos ? 'weekly' : 'off';
     $receivedIntroPromoEmail = $promos ? 1 : 0; // Set to TRUE if promotional emails are enabled
     $ins->bind_param(
-        'ssiisisi',
+        'ssiisissi',
         $firstName,
         $lastName,
         $gradMonth,
         $gradYear,
         $email,
         $promotional,
+        $promoFrequency,
         $hashPass,
         $receivedIntroPromoEmail,
     );
 
     $ok = $ins->execute();
+    $newUserId = (int)$conn->insert_id;
     $ins->close();
 
     if (!$ok) {
-        http_response_code(500);
-        echo json_encode(['ok' => false, 'error' => 'Insert failed']);
-        exit;
+        dm_log_auth_event('create_account', $requestId, 'insert_failed');
+        $conn->close();
+        accept_account_request();
     }
 
-    // Send welcome email (non-blocking - don't wait for it to complete)
-    // Account creation succeeds even if email fails
     try {
-        // Use a shorter timeout and don't block account creation
-        $emailResult = @sendWelcomeGmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
+        dm_log_auth_event('create_account', $requestId, 'delivery_started', ['user_id' => $newUserId]);
+        $emailResult = send_welcome_gmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
         if (!$emailResult['ok']) {
-            // Log email sending error but don't fail account creation
-            error_log("Failed to send welcome email to {$email}: " . ($emailResult['error'] ?? 'Unknown error'));
+            dm_log_auth_event('create_account', $requestId, 'delivery_failed', [
+                'user_id' => $newUserId,
+                'provider' => $emailResult['provider'] ?? 'unknown',
+                'error' => $emailResult['error'] ?? 'Unknown error',
+            ]);
+            remove_undeliverable_account($conn, $newUserId, $email, $requestId);
+            $newUserId = 0;
+            $conn->close();
+            accept_account_request();
+        } else {
+            dm_log_auth_event('create_account', $requestId, 'accepted', [
+                'user_id' => $newUserId,
+                'provider' => $emailResult['provider'] ?? 'unknown',
+            ]);
         }
     } catch (Throwable $e) {
-        // Email sending failed but account was created successfully
-        error_log("Exception sending welcome email to {$email}: " . $e->getMessage());
+        dm_log_auth_event('create_account', $requestId, 'delivery_failed', [
+            'user_id' => $newUserId,
+            'error' => $e->getMessage(),
+        ]);
+        remove_undeliverable_account($conn, $newUserId, $email, $requestId);
+        $newUserId = 0;
+        $conn->close();
+        accept_account_request();
     }
 
-    // Promo email is no longer sent during account creation
-    // Promo emails will only be sent from user preferences settings
-    // The promotional preference is still saved to the database above
-    /*
-    // Send promo welcome email if user opted into promotional emails
-    if ($promos) {
-        $promoEmailResult = sendPromoWelcomeEmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email]);
-        if (!$promoEmailResult['ok']) {
-            error_log("Failed to send promo welcome email during account creation: " . $promoEmailResult['error']);
-        }
-    }
-    */
-
-    // Success
-    echo json_encode([
-        'ok' => true
-    ]);
+    $conn->close();
+    accept_account_request();
 } catch (Throwable $e) {
-    // Log $e->getMessage() server-side
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => "There was an error"]);
+    dm_log_auth_event('create_account', $requestId, 'internal_error', ['error' => $e->getMessage()]);
+    if (isset($conn) && $conn instanceof mysqli) {
+        if (!empty($newUserId)) {
+            remove_undeliverable_account($conn, (int)$newUserId, $email, $requestId);
+        }
+        $conn->close();
+    }
+    accept_account_request();
 }

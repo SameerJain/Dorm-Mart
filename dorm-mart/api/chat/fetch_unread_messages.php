@@ -1,31 +1,17 @@
 <?php
 declare(strict_types=1);
-header('Content-Type: application/json; charset=utf-8');
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
-setSecurityHeaders();
-// Ensure CORS headers are present for React dev server and local PHP server
-setSecureCORS();
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+init_json_endpoint();
 
 $conn = db();
 $conn->set_charset('utf8mb4');
 // Keep DB timestamps consistent (optional, remove if you don't use UTC everywhere)
 $conn->query("SET time_zone = '+00:00'");
 
-session_start(); // read the PHP session cookie to identify the caller
-
-$userId = (int)($_SESSION['user_id'] ?? 0);
-if ($userId <= 0) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
-}
+$userId = require_login();
 
 $sql = 'SELECT conv_id, unread_count, first_unread_msg_id
         FROM conversation_participants
@@ -34,18 +20,14 @@ $sql = 'SELECT conv_id, unread_count, first_unread_msg_id
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Failed to prepare statement']);
-    exit;
+    json_response(['success' => false, 'error' => 'Failed to prepare statement'], 500);
 }
 
 $stmt->bind_param('i', $userId); 
 $stmt->execute();                
 $res = $stmt->get_result();
 if (!$res) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Failed to get result']);
-    exit;
+    json_response(['success' => false, 'error' => 'Failed to get result'], 500);
 }
 
 $out = [];
@@ -58,4 +40,4 @@ while ($row = $res->fetch_assoc()) {
     ];
 }
 
-echo json_encode(['success' => true, 'unreads' => $out], JSON_UNESCAPED_SLASHES);
+json_response(['success' => true, 'unreads' => $out], 200, JSON_UNESCAPED_SLASHES);

@@ -1,19 +1,15 @@
 <?php
 
 declare(strict_types=1);
-header('Content-Type: application/json');
-
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../helpers/image_upload.php';
+require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/profanity.php';
+require_once __DIR__ . '/helpers.php';
 require __DIR__ . '/../database/db_connect.php';
-setSecurityHeaders();
-setSecureCORS();
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+init_json_endpoint();
 
 $conn = db();
 $conn->set_charset('utf8mb4');
@@ -24,101 +20,91 @@ auth_boot_session();
 $userId = require_login();
 $sender = $userId;
 
-// This endpoint expects multipart/form-data with an image file
-$ctype = $_SERVER['CONTENT_TYPE'] ?? '';
-if (stripos($ctype, 'multipart/form-data') !== 0) {
-    http_response_code(415);
-    echo json_encode(['success' => false, 'error' => 'expected_multipart_formdata']);
-    exit;
-}
+// This endpoint expects multipart/form-data with an image or video attachment.
+require_multipart_formdata();
 
 /* Read form fields (sent via FormData on the client) */
-$receiver    = isset($_POST['receiver_id']) ? trim((string)$_POST['receiver_id']) : '';
-$contentRaw  = isset($_POST['content'])     ? trim((string)$_POST['content'])     : ''; // optional caption
-$convIdParam = isset($_POST['conv_id'])     ? (int)$_POST['conv_id']              : null;
+$receiverId = request_int($_POST, 'receiver_id');
+$contentRaw = is_string($_POST['content'] ?? null) ? trim($_POST['content']) : '';
+$convIdParam = array_key_exists('conv_id', $_POST) && $_POST['conv_id'] !== ''
+    ? strict_integer_value($_POST['conv_id'])
+    : null;
 
-/* Optional CSRF token support (if you include one in FormData) */
-$token = $_POST['csrf_token'] ?? null;
-if ($token !== null && !validate_csrf_token($token)) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'CSRF token validation failed']);
-    exit;
-}
+require_csrf_token($_POST['csrf_token'] ?? null);
 
-/* Validate presence of receiver and the uploaded image.
-   Caption (contentRaw) is allowed to be empty for image-only messages. */
-if ($receiver === '') {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'missing_receiver']);
-    exit;
+/* Validate presence of receiver and the uploaded attachment.
+   Caption (contentRaw) is allowed to be empty for media-only messages. */
+if ($receiverId <= 0 || (array_key_exists('conv_id', $_POST) && $_POST['conv_id'] !== '' && $convIdParam === null)) {
+    json_response(['success' => false, 'error' => 'missing_receiver'], 400);
 }
 if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'missing_image']);
-    exit;
+    json_response(['success' => false, 'error' => 'missing_image'], 400);
 }
 
-/* XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage */
-if ($contentRaw !== '' && containsXSSPattern($contentRaw)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid characters in caption']);
-    exit;
+$senderId = (int)$sender;
+if ($senderId === $receiverId) {
+    json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
 }
+
+$receiverStmt = $conn->prepare('SELECT user_id FROM user_accounts WHERE user_id = ? LIMIT 1');
+$receiverStmt->bind_param('i', $receiverId);
+$receiverStmt->execute();
+$receiverExists = $receiverStmt->get_result()->num_rows === 1;
+$receiverStmt->close();
+if (!$receiverExists) {
+    json_response(['success' => false, 'error' => 'Receiver not found'], 404);
+}
+
 $content = $contentRaw;
 
 /* Caption length guard (same policy as text messages) */
 $len = function_exists('mb_strlen') ? mb_strlen($content, 'UTF-8') : strlen($content);
 if ($len > 500) {
-    http_response_code(400);
-    echo json_encode([
+    json_response([
         'success' => false,
         'error'   => 'content_too_long',
         'max'     => 500,
         'length'  => $len
-    ]);
-    exit;
+    ], 400);
 }
 
-/* --- Validate and store the uploaded image --- */
-$MAX_BYTES = 2 * 1024 * 1024; // 5MB cap
-if ((int)$_FILES['image']['size'] > $MAX_BYTES) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'image_too_large', 'max_bytes' => $MAX_BYTES]);
-    exit;
-}
-
-/* Use fileinfo to determine the real MIME type of the temp file (prevents spoofing) */
-$finfo = new finfo(FILEINFO_MIME_TYPE); // requires php-fileinfo extension
-$mime  = $finfo->file($_FILES['image']['tmp_name']) ?: 'application/octet-stream';
-
+/* --- Validate and store the uploaded media --- */
+$MAX_BYTES = 25 * 1024 * 1024;
 $allowed = [
-    'image/jpeg' => 'jpg',
-    'image/png'  => 'png',
-    'image/webp' => 'webp',
+    'image/jpeg'      => 'jpg',
+    'image/png'       => 'png',
+    'image/webp'      => 'webp',
+    'video/mp4'       => 'mp4',
+    'video/webm'      => 'webm',
+    'video/quicktime' => 'mov',
 ];
-if (!isset($allowed[$mime])) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'unsupported_image_type']);
-    exit;
+$imageInfo = uploaded_image_info($_FILES['image'], $MAX_BYTES, $allowed);
+if (!$imageInfo['ok']) {
+    $payload = ['success' => false, 'error' => $imageInfo['error']];
+    if (isset($imageInfo['max_bytes'])) {
+        $payload['max_bytes'] = $imageInfo['max_bytes'];
+    }
+    json_response($payload, $imageInfo['status']);
 }
-$ext = $allowed[$mime];
+$isVideo = strpos((string)$imageInfo['mime'], 'video/') === 0;
+if (!$isVideo && (int)$imageInfo['size'] > 2 * 1024 * 1024) {
+    json_response([
+        'success' => false,
+        'error' => 'image_too_large',
+        'max_bytes' => 2 * 1024 * 1024,
+    ], 400);
+}
+$ext = $imageInfo['extension'];
 
-/* Build destination dir:
-   - __DIR__ = api/chat
-   - dirname(__DIR__, 2) goes up two levels to project root (dorm-mart/)
-*/
-$projectRoot = dirname(__DIR__, 2);
-$destDir     = $projectRoot . '/media/chat-images';
+/* Build destination dir under the configured uploads root. */
+$destDir = data_media_dir('chat-attachments');
 if (!is_dir($destDir)) {
-    if (!@mkdir($destDir, 0755, true) && !is_dir($destDir)) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'media_dir_unwritable']);
-        exit;
+    if (!ensure_upload_directory($destDir)) {
+        json_response(['success' => false, 'error' => 'media_dir_unwritable'], 500);
     }
 }
 
 /* Generate a unique filename to avoid collisions */
-$senderId = (int)$sender;
 $fname = sprintf(
     'u%s_%s_%s.%s',
     $senderId,
@@ -129,18 +115,15 @@ $fname = sprintf(
 $destPath = $destDir . '/' . $fname;
 
 /* Move the uploaded temp file to the destination */
-if (!@move_uploaded_file($_FILES['image']['tmp_name'], $destPath)) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'image_save_failed']);
-    exit;
+if (!@move_uploaded_file($imageInfo['tmp_name'], $destPath)) {
+    json_response(['success' => false, 'error' => 'media_save_failed'], 500);
 }
 
 /* Build the public relative URL path that your frontend can render.
    Assumes /media is web-accessible from the project root. */
-$imageRelUrl = '/media/chat-images/' . $fname;
+$imageRelUrl = '/media/chat-attachments/' . $fname;
 
 /* --- Conversation plumbing (same as create_message.php) --- */
-$receiverId = (int)$receiver;
 $u1 = min($senderId, $receiverId);
 $u2 = max($senderId, $receiverId);
 $lockKey = "conv:$u1:$u2";
@@ -149,6 +132,8 @@ $convId = null;
 $msgId  = null;
 /* will hold ISO-8601 UTC string, e.g., 2025-10-31T03:05:06Z */
 $createdIso = null;
+$filteredContent = $content;
+$committed = false;
 
 try {
     $conn->begin_transaction();
@@ -163,115 +148,43 @@ try {
         throw new RuntimeException('Busy. Try again.');
     }
 
-    // Look up sender/receiver names
-    $stmt = $conn->prepare(
-        'SELECT user_id, first_name, last_name
-           FROM user_accounts
-          WHERE user_id IN (?, ?)'
+    $names = chat_user_display_names($conn, $senderId, $receiverId);
+    $senderName = $names[$senderId];
+    $receiverName = $names[$receiverId];
+    $convId = chat_resolve_direct_conversation(
+        $conn,
+        $u1,
+        $u2,
+        $names[$u1],
+        $names[$u2],
+        $convIdParam
     );
-    $stmt->bind_param('ii', $senderId, $receiverId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $senderName   = 'User ' . $senderId;     // fallbacks
-    $receiverName = 'User ' . $receiverId;
-
-    while ($row = $result->fetch_assoc()) {
-        $full = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
-        if ((int)$row['user_id'] === $senderId) {
-            $senderName = $full !== '' ? $full : $senderName;
-        } elseif ((int)$row['user_id'] === $receiverId) {
-            $receiverName = $full !== '' ? $full : $receiverName;
-        }
-    }
-    $stmt->close();
-
-    $u1Name = ($u1 === $senderId) ? $senderName  : $receiverName;
-    $u2Name = ($u2 === $senderId) ? $senderName  : $receiverName;
-
-    // Validate/resolve conv_id
-    if ($convIdParam !== null && $convIdParam > 0) {
-        $stmt = $conn->prepare('SELECT conv_id FROM conversations WHERE conv_id = ? AND user1_id = ? AND user2_id = ? LIMIT 1');
-        $stmt->bind_param('iii', $convIdParam, $u1, $u2);
-        $stmt->execute();
-        $stmt->bind_result($convIdFound);
-        if ($stmt->fetch()) {
-            $convId = (int)$convIdFound;
-        }
-        $stmt->close();
-
-        if ($convId === null) {
-            $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-            $stmt->bind_param('s', $lockKey);
-            $stmt->execute();
-            $stmt->close();
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Invalid conversation ID']);
-            exit;
-        }
-    } else {
-        $stmt = $conn->prepare('SELECT conv_id FROM conversations WHERE user1_id = ? AND user2_id = ? LIMIT 1');
-        $stmt->bind_param('ii', $u1, $u2);
-        $stmt->execute();
-        $stmt->bind_result($convIdFound);
-        if ($stmt->fetch()) {
-            $convId = (int)$convIdFound;
-        }
-        $stmt->close();
-    }
-
-    // Create conversation if missing
     if ($convId === null) {
-        $stmt = $conn->prepare(
-            'INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname)
-             VALUES (?, ?, ?, ?)'
-        );
-        $stmt->bind_param('iiss', $u1, $u2, $u1Name, $u2Name);
-        $stmt->execute();
-        $convId = (int)$conn->insert_id;
-        $stmt->close();
-    }
-
-    // Check if conversation has item_deleted flag set
-    $stmt = $conn->prepare('SELECT item_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
-    $stmt->bind_param('i', $convId);
-    $stmt->execute();
-    $stmt->bind_result($itemDeleted);
-    $itemDeletedFlag = false;
-    if ($stmt->fetch()) {
-        $itemDeletedFlag = (bool)$itemDeleted;
-    }
-    $stmt->close();
-
-    // If item is deleted, block image message creation
-    if ($itemDeletedFlag) {
-        // Release lock before exiting
-        $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-        $stmt->bind_param('s', $lockKey);
-        $stmt->execute();
-        $stmt->close();
+        chat_release_lock($conn, $lockKey);
+        @unlink($destPath);
         $conn->rollback();
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Item has been deleted. Cannot send messages.']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid conversation ID'], 403);
     }
 
-    // Ensure participants exist
-    $stmt = $conn->prepare(
-        'INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
-         VALUES (?, ?, 0, 0), (?, ?, 0, 0)'
-    );
-    $stmt->bind_param('iiii', $convId, $u1, $convId, $u2);
-    $stmt->execute();
-    $stmt->close();
+    // If item is deleted, block media message creation
+    if (chat_conversation_is_closed($conn, $convId)) {
+        chat_release_lock($conn, $lockKey);
+        $conn->rollback();
+        @unlink($destPath);
+        json_response(['success' => false, 'error' => 'Item has been deleted. Cannot send messages.'], 403);
+    }
 
-    /* Insert image message (assumes messages.image_url exists) */
+    chat_ensure_participants($conn, $convId, $u1, $u2);
+    chat_reopen_conversation($conn, $convId);
+
+    /* Insert media message (stored in the legacy messages.image_url column). */
+    $isFlagged = contains_profanity($conn, $content) ? 1 : 0;
     $stmt = $conn->prepare(
         'INSERT INTO messages
-           (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, image_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?)'
+           (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, is_flagged, image_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    $stmt->bind_param('iiissss', $convId, $senderId, $receiverId, $senderName, $receiverName, $content, $imageRelUrl);
+    $stmt->bind_param('iiisssis', $convId, $senderId, $receiverId, $senderName, $receiverName, $content, $isFlagged, $imageRelUrl);
     $stmt->execute();
     $msgId = (int)$conn->insert_id;
     $stmt->close();
@@ -288,27 +201,14 @@ try {
     $stmt->close();
     $createdIso = $row ? (string)$row['created_at'] : null;
 
-    // Update receiver's unread counters
-    $stmt = $conn->prepare(
-        'UPDATE conversation_participants
-           SET unread_count = unread_count + 1,
-               first_unread_msg_id = CASE
-                   WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ?
-                   ELSE first_unread_msg_id
-               END
-         WHERE conv_id = ? AND user_id = ?'
-    );
-    $stmt->bind_param('iii', $msgId, $convId, $receiverId);
-    $stmt->execute();
-    $stmt->close();
+    chat_increment_unread($conn, $msgId, $convId, $receiverId);
 
-    // Release advisory lock
-    $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-    $stmt->bind_param('s', $lockKey);
-    $stmt->execute();
-    $stmt->close();
+    $filteredContent = filter_profanity($conn, $content);
+
+    chat_release_lock($conn, $lockKey);
 
     $conn->commit();
+    $committed = true;
 
     if ($createdIso === null) {
         $createdIso = gmdate('Y-m-d\TH:i:s\Z');
@@ -321,23 +221,16 @@ try {
         'message_id'  => $msgId,
         'message'     => [
             'message_id' => $msgId,
-            'content'    => $content,       // caption (possibly empty string) - Note: No HTML encoding needed for JSON - React handles XSS protection
+            'content'    => $filteredContent,
+            'is_flagged' => (bool)$isFlagged,
             'created_at' => $createdIso,    // ISO-8601 UTC
             'image_url'  => $imageRelUrl,   // relative public path
         ],
     ], JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
-    if ($conn->errno === 0) {
-        $conn->rollback();
-    }
-    if (!empty($lockKey)) {
-        $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-        if ($stmt) {
-            $stmt->bind_param('s', $lockKey);
-            $stmt->execute();
-            $stmt->close();
-        }
-    }
+    try { $conn->rollback(); } catch (Throwable $_) {}
+    if (!$committed && isset($destPath) && is_file($destPath)) @unlink($destPath);
+    if (!empty($lockKey)) chat_release_lock($conn, $lockKey);
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Server error']);
 }

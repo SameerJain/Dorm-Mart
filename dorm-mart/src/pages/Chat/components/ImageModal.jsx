@@ -1,22 +1,39 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 
 export default function ImageModal({
   open,
   onClose,
   onSelect,
-  title = "Add image",
+  title = "Add photo or video",
 }) {
-  const closeBtnRef   = useRef(null);
-  const fileInputRef  = useRef(null);
+  const closeBtnRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
   // Limits & allow-list
-  const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
-  const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-  const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+  const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+  const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+  const ALLOWED_MIME = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+  ]);
+  const ALLOWED_EXTS = new Set([
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".mp4",
+    ".webm",
+    ".mov",
+  ]);
 
   const resetPicker = useCallback(() => {
     setFile(null);
@@ -33,40 +50,15 @@ export default function ImageModal({
     onClose?.();
   }, [resetPicker, onClose]);
 
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (open) {
-      const scrollY = window.scrollY;
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-    } else {
-      const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
-    }
-    return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-    };
-  }, [open]);
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;
     closeBtnRef.current?.focus();
 
-    const onKeyDown = (e) => { if (e.key === "Escape") handleClose(); };
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") handleClose();
+    };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, handleClose]);
@@ -81,32 +73,54 @@ export default function ImageModal({
 
   function isAllowedType(f) {
     // Prefer MIME, but fall back to extension if needed
-    if (f.type && ALLOWED_MIME.has(f.type)) return true;
+    if (f.type) return ALLOWED_MIME.has(f.type);
 
     const name = (f.name || "").toLowerCase();
     const ext = ALLOWED_EXTS.has(
-      name.slice(name.lastIndexOf(".")) // includes dot
+      name.slice(name.lastIndexOf(".")), // includes dot
     );
     return ext;
+  }
+
+  function isVideoFile(f) {
+    if (f.type) return ALLOWED_MIME.has(f.type) && f.type.startsWith("video/");
+    const name = (f.name || "").toLowerCase();
+    return new Set([".mp4", ".webm", ".mov"]).has(
+      name.slice(name.lastIndexOf(".")),
+    );
   }
 
   function onFileChange(e) {
     const f = e.target.files?.[0];
     if (!f) return;
 
+    const video = isVideoFile(f);
+
     // Size
-    if (f.size > MAX_BYTES) {
-      setErrorMsg("Image is too large. Max size is 2 MB.");
+    if (f.size > (video ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) {
+      setErrorMsg(
+        video
+          ? "Video is too large. Max size is 25 MB."
+          : "Image is too large. Max size is 2 MB.",
+      );
       setFile(null);
-      setPreviewUrl((old) => { if (old) URL.revokeObjectURL(old); return null; });
+      setPreviewUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return null;
+      });
       return;
     }
 
     // Type
     if (!isAllowedType(f)) {
-      setErrorMsg("Only JPG/JPEG, PNG, and WEBP images are allowed.");
+      setErrorMsg(
+        "Only JPG/JPEG, PNG, WEBP, MP4, WEBM, and MOV files are allowed.",
+      );
       setFile(null);
-      setPreviewUrl((old) => { if (old) URL.revokeObjectURL(old); return null; });
+      setPreviewUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return null;
+      });
       return;
     }
 
@@ -136,21 +150,31 @@ export default function ImageModal({
       aria-labelledby={labelledBy}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl"
+        className="w-full max-w-sm rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h3 id={labelledBy} className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <h3
+            id={labelledBy}
+            className="text-sm font-semibold text-gray-900 dark:text-gray-100"
+          >
             {title}
           </h3>
           <button
             ref={closeBtnRef}
             onClick={handleClose}
             aria-label="Close"
-            className="rounded-md p-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="rounded-lg p-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg
+              viewBox="0 0 24 24"
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -161,21 +185,38 @@ export default function ImageModal({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
             className="hidden"
             onChange={onFileChange}
           />
 
           <div className="h-56 sm:h-72 max-h-[65vh] rounded-lg border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-900/30">
-            {previewUrl ? (
-              <img src={previewUrl} alt="Selected preview" className="h-full w-full object-contain" />
+            {previewUrl && file && isVideoFile(file) ? (
+              <video
+                src={previewUrl}
+                controls
+                preload="metadata"
+                aria-label="Selected video preview"
+                className="h-full w-full object-contain"
+              />
+            ) : previewUrl ? (
+              <img
+                src={previewUrl}
+                alt="Selected preview"
+                className="h-full w-full object-contain"
+              />
             ) : (
-              <span className="text-xs text-gray-500 dark:text-gray-400">No image selected</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                No photo or video selected
+              </span>
             )}
           </div>
 
           {errorMsg && (
-            <p className="text-xs text-red-600 dark:text-red-400" aria-live="polite">
+            <p
+              className="text-xs text-red-600 dark:text-red-400"
+              aria-live="polite"
+            >
               {errorMsg}
             </p>
           )}
@@ -186,7 +227,7 @@ export default function ImageModal({
               onClick={openPicker}
               className="inline-flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-medium text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              Upload photo
+              Upload photo or video
             </button>
 
             <button
@@ -195,7 +236,7 @@ export default function ImageModal({
               disabled={!file || !!errorMsg}
               className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              Use image
+              Use attachment
             </button>
           </div>
         </div>

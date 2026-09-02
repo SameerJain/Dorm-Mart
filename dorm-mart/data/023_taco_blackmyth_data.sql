@@ -1,9 +1,9 @@
 START TRANSACTION;
 SET FOREIGN_KEY_CHECKS = 0;
 
--- Taco + Black Myth listings (seller: general test user from 001).
--- Listing photos come from data/test-images/ (taco-image.webp, black-myth-wukong-image.jpg);
--- migrate_data.php copies those into dorm-mart/images/ before running this file, so paths are /images/<basename>.
+-- Seed: Taco and Black Myth listings.
+-- Purpose: adds two listings for the general test user from 001_general_test_user.sql.
+-- Notes: migrate_data.php copies data/test-images assets into images/ before this runs.
 
 SELECT user_id INTO @seller_id
 FROM user_accounts

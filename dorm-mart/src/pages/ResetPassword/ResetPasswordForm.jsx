@@ -1,27 +1,44 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import PreLoginBranding from "../../components/PreLoginBranding";
+import PasswordRequirementRow from "../../components/forms/PasswordRequirementRow";
+import { API_BASE } from "../../utils/apiConfig";
+import logger from "../../utils/logger";
+import {
+  buildPasswordPolicy,
+  hasDigit,
+  hasLower,
+  hasSpecial,
+  hasUpper,
+  MAX_PASSWORD_LEN,
+} from "../../utils/passwordPolicy";
 
-const MAX_LEN = 64;
+const MAX_LEN = MAX_PASSWORD_LEN;
 
-const hasLower = (s) => /[a-z]/.test(s);
-const hasUpper = (s) => /[A-Z]/.test(s);
-const hasDigit = (s) => /\d/.test(s);
-const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
+const RESET_REQUIREMENT_ROW_PROPS = {
+  className: "flex items-center gap-3 text-sm sm:text-base",
+  dotClassName:
+    "inline-flex h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full flex-shrink-0",
+  okTextClassName: "text-green-200",
+  missingTextClassName: "text-red-200",
+};
 
-function RequirementRow({ ok, text }) {
-  return (
-    <div className="flex items-center gap-3 text-sm sm:text-base">
-      <span className="inline-flex h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }} />
-      <span className={ok ? "text-green-200" : "text-red-200"}>{text}</span>
-    </div>
-  );
-}
-
-function Field({ id, label, type = "password", value, onChange, placeholder, disabled = false }) {
+function Field({
+  id,
+  label,
+  type = "password",
+  value,
+  onChange,
+  placeholder,
+  disabled = false,
+  maxLength,
+}) {
   return (
     <div className="mb-6">
-      <label htmlFor={id} className="mb-2 block text-sm sm:text-base font-semibold text-gray-300">
+      <label
+        htmlFor={id}
+        className="mb-2 block text-sm sm:text-base font-semibold text-gray-300"
+      >
         {label}
       </label>
       <input
@@ -31,10 +48,12 @@ function Field({ id, label, type = "password", value, onChange, placeholder, dis
         placeholder={placeholder}
         onChange={onChange}
         disabled={disabled}
-        className={`min-h-[44px] w-full rounded-lg border-2 px-4 sm:px-5 py-3 sm:py-3.5 text-base sm:text-lg outline-none focus:ring-4 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg ${disabled
-            ? 'border-gray-400 bg-gray-200 text-gray-500 cursor-not-allowed'
-            : 'border-gray-300 bg-white focus:ring-blue-400/30 focus:border-blue-400'
-          }`}
+        maxLength={maxLength}
+        className={`min-h-[44px] w-full rounded-lg border-2 px-4 sm:px-5 py-3 sm:py-3.5 text-base sm:text-lg outline-none focus:ring-4 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg ${
+          disabled
+            ? "border-gray-400 bg-gray-200 text-gray-500 cursor-not-allowed"
+            : "border-gray-300 bg-white focus:ring-blue-400/30 focus:border-blue-400"
+        }`}
       />
     </div>
   );
@@ -43,7 +62,8 @@ function Field({ id, label, type = "password", value, onChange, placeholder, dis
 function ResetPasswordForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams.get("token");
+  const uid = searchParams.get("uid");
 
   // Form state
   const [newPassword, setNewPassword] = useState("");
@@ -59,65 +79,51 @@ function ResetPasswordForm() {
   const [submitError, setSubmitError] = useState("");
   const [passwordMismatchError, setPasswordMismatchError] = useState("");
 
-  const policy = useMemo(
-    () => ({
-      minLen: newPassword.length >= 8,
-      lower: hasLower(newPassword),
-      upper: hasUpper(newPassword),
-      digit: hasDigit(newPassword),
-      special: hasSpecial(newPassword),
-      notTooLong: newPassword.length <= MAX_LEN,
-    }),
-    [newPassword]
-  );
+  const policy = useMemo(() => buildPasswordPolicy(newPassword), [newPassword]);
 
-  const enforceMax = (setter) => (e) => {
-    const v = e.target.value;
-    if (v.length > MAX_LEN) alert("Entered password is too long. Maximum length is 64 characters.");
-    setter(v);
-  };
+  const enforceMax = (setter) => (e) => setter(e.target.value);
 
   // Check if user already completed password reset for this specific token
   useEffect(() => {
-    // Handle missing token
-    if (!token) {
-      navigate('/login?error=invalid_reset_link', { replace: true });
+    // Reset links are scoped to one account so token validation stays O(1).
+    if (!token || !uid || !/^\d+$/.test(uid)) {
+      navigate("/login?error=invalid_reset_link", { replace: true });
       return;
     }
 
     // Validate token with backend
     const validateToken = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/validate-reset-token.php?token=${encodeURIComponent(token)}`);
+        const response = await fetch(
+          `${API_BASE}/auth/validate_reset_token.php`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, uid: parseInt(uid, 10) }),
+          },
+        );
         const data = await response.json();
-        
+
         if (data.success && data.valid) {
           setIsTokenValid(true);
         } else {
           setIsTokenValid(false);
-          setTokenError(data.message || 'Invalid or expired reset token');
+          setTokenError(data.message || "Invalid or expired reset token");
         }
       } catch (error) {
-        console.error('Token validation error:', error);
+        logger.error("Token validation error:", error);
         setIsTokenValid(false);
-        setTokenError('Failed to validate reset token');
+        setTokenError("Failed to validate reset token");
       } finally {
         setIsVerifyingToken(false);
       }
     };
 
     validateToken();
-  }, [token, navigate]);
+  }, [token, uid, navigate]);
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Enter") handleSubmit();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
-
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     // Clear previous errors
     setSubmitError("");
     setPasswordMismatchError("");
@@ -168,42 +174,49 @@ function ResetPasswordForm() {
 
     try {
       // Call the reset password API
-      const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/reset-password.php`, {
-        method: 'POST',
+      const response = await fetch(`${API_BASE}/auth/reset_password.php`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          token: token,
-          newPassword: newPassword
-        })
+          token,
+          newPassword,
+          uid: parseInt(uid, 10),
+        }),
       });
 
       const data = await response.json();
 
       if (data.success) {
         // Password reset successful - redirect to login
-        navigate('/login?message=password_reset_success', { replace: true });
+        navigate("/login?message=password_reset_success", { replace: true });
       } else {
         // Handle API errors
-        setSubmitError(data.error || 'Failed to reset password');
+        setSubmitError(data.error || "Failed to reset password");
       }
     } catch (error) {
-      console.error('Password reset error:', error);
-      setSubmitError('Network error. Please try again.');
+      logger.error("Password reset error:", error);
+      setSubmitError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, uid, navigate, newPassword, confirmPassword]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Enter") handleSubmit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleSubmit]);
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row pre-login-bg overflow-hidden">
+    <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
       {/* Form: full width below lg (matches mobile when left branding is hidden); half width on lg+ with image panel */}
-      <div
-        className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 h-screen pre-login-bg relative overflow-hidden"
-      >
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-hidden">
         {/* Branding header: same as mobile through tablet; hidden on lg+ where PreLoginBranding shows */}
         <div className="lg:hidden mb-6 sm:mb-8 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
@@ -215,9 +228,7 @@ function ResetPasswordForm() {
         </div>
 
         <div className="w-full max-w-4xl relative z-10 overflow-y-auto">
-          <div
-            className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600 min-h-[600px] flex flex-col"
-          >
+          <div className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600 min-h-[600px] flex flex-col">
             {/* Torn paper effect */}
             <div
               className="absolute inset-0 rounded-lg bg-blue-600"
@@ -247,7 +258,9 @@ function ResetPasswordForm() {
                           <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-white"></div>
                         </div>
                         <div className="ml-3">
-                          <p className="text-sm sm:text-base text-white leading-relaxed">Verifying reset link...</p>
+                          <p className="text-sm sm:text-base text-white leading-relaxed">
+                            Verifying reset link...
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -257,24 +270,36 @@ function ResetPasswordForm() {
                     <div className="mb-6 p-4 sm:p-5 bg-red-500/30 border-2 border-red-500 rounded-lg">
                       <div className="flex items-start">
                         <div className="flex-shrink-0">
-                          <svg className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          <svg
+                            className="h-5 w-5 sm:h-6 sm:w-6 text-red-600"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                         </div>
                         <div className="ml-3 flex-1">
-                          <h3 className="text-sm sm:text-base font-medium text-red-600 mb-1">Reset Link Expired</h3>
-                          <p className="text-sm sm:text-base text-red-600 leading-relaxed">{tokenError}</p>
+                          <h3 className="text-sm sm:text-base font-medium text-red-600 mb-1">
+                            Reset Link Expired
+                          </h3>
+                          <p className="text-sm sm:text-base text-red-600 leading-relaxed">
+                            {tokenError}
+                          </p>
                         </div>
                       </div>
                       <div className="mt-4 flex flex-col sm:flex-row gap-3">
                         <button
-                          onClick={() => navigate('/forgot-password')}
+                          onClick={() => navigate("/forgot-password")}
                           className="min-h-[44px] bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-md transition-colors font-medium text-base sm:text-lg active:scale-95"
                         >
                           Request New Reset Link
                         </button>
                         <button
-                          onClick={() => navigate('/login')}
+                          onClick={() => navigate("/login")}
                           className="min-h-[44px] bg-white/20 hover:bg-white/30 text-white px-5 py-3 rounded-md transition-colors font-medium text-base sm:text-lg active:scale-95"
                         >
                           Back to Login
@@ -288,12 +313,22 @@ function ResetPasswordForm() {
                     <div className="mb-6 p-4 sm:p-5 bg-red-500/30 border-2 border-red-500 rounded-lg">
                       <div className="flex items-start">
                         <div className="flex-shrink-0">
-                          <svg className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          <svg
+                            className="h-5 w-5 sm:h-6 sm:w-6 text-red-600"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                         </div>
                         <div className="ml-3 flex-1">
-                          <p className="text-sm sm:text-base text-red-600 leading-relaxed">{submitError}</p>
+                          <p className="text-sm sm:text-base text-red-600 leading-relaxed">
+                            {submitError}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -304,33 +339,45 @@ function ResetPasswordForm() {
                     <div className="mb-6 p-4 sm:p-5 bg-yellow-100/20 border border-yellow-300/30 rounded-lg">
                       <div className="flex items-start">
                         <div className="flex-shrink-0">
-                          <svg className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-300" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          <svg
+                            className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-300"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                         </div>
                         <div className="ml-3 flex-1">
-                          <p className="text-sm sm:text-base text-white leading-relaxed">{passwordMismatchError}</p>
+                          <p className="text-sm sm:text-base text-white leading-relaxed">
+                            {passwordMismatchError}
+                          </p>
                         </div>
                       </div>
                     </div>
                   )}
 
-              <Field
-                id="newPassword"
-                label="New Password"
-                value={newPassword}
-                onChange={enforceMax(setNewPassword)}
-                placeholder="Enter new password"
-                disabled={!isTokenValid || isVerifyingToken}
-              />
-              <Field
-                id="confirmPassword"
-                label="Re-enter New Password"
-                value={confirmPassword}
-                onChange={enforceMax(setConfirmPassword)}
-                placeholder="Re-enter new password"
-                disabled={!isTokenValid || isVerifyingToken}
-              />
+                  <Field
+                    id="newPassword"
+                    label="New Password"
+                    value={newPassword}
+                    onChange={enforceMax(setNewPassword)}
+                    placeholder="Enter new password"
+                    disabled={!isTokenValid || isVerifyingToken}
+                    maxLength={MAX_LEN}
+                  />
+                  <Field
+                    id="confirmPassword"
+                    label="Re-enter New Password"
+                    value={confirmPassword}
+                    onChange={enforceMax(setConfirmPassword)}
+                    placeholder="Re-enter new password"
+                    disabled={!isTokenValid || isVerifyingToken}
+                    maxLength={MAX_LEN}
+                  />
 
                   <button
                     type="button"
@@ -338,7 +385,11 @@ function ResetPasswordForm() {
                     disabled={isLoading || !isTokenValid || isVerifyingToken}
                     className="mt-6 min-h-[44px] w-full xl:w-48 bg-sky-500 hover:bg-sky-600 disabled:bg-sky-300 disabled:cursor-not-allowed text-white rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium disabled:hover:scale-100 text-base sm:text-lg active:scale-95"
                   >
-                    {isLoading ? 'Resetting...' : isVerifyingToken ? 'Verifying...' : 'Reset Password'}
+                    {isLoading
+                      ? "Resetting..."
+                      : isVerifyingToken
+                        ? "Verifying..."
+                        : "Reset Password"}
                   </button>
                 </section>
 
@@ -347,12 +398,36 @@ function ResetPasswordForm() {
                     Password Requirements:
                   </h2>
                   <div className="flex flex-col gap-3 sm:gap-4">
-                    <RequirementRow ok={policy.lower} text="At least 1 lowercase character" />
-                    <RequirementRow ok={policy.upper} text="At least 1 uppercase character" />
-                    <RequirementRow ok={policy.minLen} text="At least 8 characters" />
-                    <RequirementRow ok={policy.special} text="At least 1 special character" />
-                    <RequirementRow ok={policy.digit} text="At least 1 digit" />
-                    <RequirementRow ok={policy.notTooLong} text="No more than 64 characters" />
+                    <PasswordRequirementRow
+                      ok={policy.lower}
+                      text="At least 1 lowercase character"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
+                    <PasswordRequirementRow
+                      ok={policy.upper}
+                      text="At least 1 uppercase character"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
+                    <PasswordRequirementRow
+                      ok={policy.minLen}
+                      text="At least 8 characters"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
+                    <PasswordRequirementRow
+                      ok={policy.special}
+                      text="At least 1 special character"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
+                    <PasswordRequirementRow
+                      ok={policy.digit}
+                      text="At least 1 digit"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
+                    <PasswordRequirementRow
+                      ok={policy.notTooLong}
+                      text="No more than 64 characters"
+                      {...RESET_REQUIREMENT_ROW_PROPS}
+                    />
                   </div>
                 </section>
               </div>

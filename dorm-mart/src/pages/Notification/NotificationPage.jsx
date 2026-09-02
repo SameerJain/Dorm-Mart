@@ -1,221 +1,159 @@
-// src/pages/NotificationPage.jsx
-import React, { useContext, useMemo, useState, useEffect } from "react";
-import { ChatContext } from "../../context/ChatContext";
-import { onProductImageError } from "../../utils/imageFallback";
+import { useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { ChatContext } from "../../context/ChatContext";
+import { onProductImageError, resolveProductPhotoUrl } from "../../utils/imageFallback";
+import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
+import logger from "../../utils/logger";
 
-const BASE = process.env.REACT_APP_API_BASE || "api";
+const tones = {
+  success: "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/30",
+  warning: "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30",
+  urgent: "border-red-400 bg-red-50 dark:border-red-800 dark:bg-red-950/40",
+  info: "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800",
+};
+
+const jsonHeaders = {
+  "Content-Type": "application/json",
+  Accept: "application/json",
+};
+
+export function isSafeNotificationDestination(value) {
+  return typeof value === "string" && /^\/app(?:[/?]|$)/.test(value);
+}
 
 export default function NotificationPage() {
   const ctx = useContext(ChatContext);
-  const {
-    unreadNotificationsByProduct,
-    markAllNotificationsReadLocal,
-    markNotificationReadLocal,
-  } = ctx || {};
+  const items = Array.isArray(ctx?.unreadNotificationsByProduct)
+    ? ctx.unreadNotificationsByProduct
+    : [];
+  const navigate = useNavigate();
 
-  const navigate = useNavigate(); // for redirecting to viewProduct/:id
-
-  // Normalize object -> array for rendering
-  const items = useMemo(() => {
-    if (!unreadNotificationsByProduct) return [];
-    return Object.entries(unreadNotificationsByProduct)
-      .map(([productId, info]) => {
-        const count = Number(info?.count ?? 0);
-        const title = info?.title ?? `Listing #${productId}`;
-        const image_url = info?.image_url ?? null;
-        return {
-          productId: Number(productId),
-          title,
-          count,
-          image_url,
-        };
-      })
-      .filter((item) => item.count > 0);
-  }, [unreadNotificationsByProduct]);
-
-  const [localItems, setLocalItems] = useState([]);
-
-  useEffect(() => {
-    setLocalItems(items);
-  }, [items]);
-
-  const hasAny = localItems.length > 0;
-
-  function goToProduct(productId) {
-    if (!productId) return;
-    // Absolute path under /app, matches viewProduct/:id route
-    navigate(`/app/viewProduct/${productId}`);
+  async function remove(notificationId) {
+    try {
+      const res = await csrfFetch(`${API_BASE}/wishlist/delete_notification.php`, {
+        method: "POST",
+        headers: jsonHeaders,
+        credentials: "include",
+        body: JSON.stringify({ notification_id: notificationId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      ctx?.removeNotificationLocal?.(notificationId);
+    } catch (error) {
+      logger.error("Failed to delete notification:", error);
+      alert("Failed to delete the notification. Please try again.");
+    }
   }
 
-  async function handleMarkAllRead() {
+  async function clearAll() {
     try {
-      const res = await fetch(`${BASE}/wishlist/mark_all_items_read.php`, {
+      const res = await csrfFetch(`${API_BASE}/wishlist/clear_notifications.php`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: jsonHeaders,
         credentials: "include",
         body: JSON.stringify({}),
       });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      // Optimistic local UI update
-      setLocalItems([]);
-
-      // Also clear the global notification total + map so nav badge updates immediately
-      if (typeof markAllNotificationsReadLocal === "function") {
-        markAllNotificationsReadLocal();
-      }
-    } catch (e) {
-      console.error("Failed to mark all notifications as read:", e);
-      alert("Failed to mark all as read. Please try again.");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      ctx?.clearNotificationsLocal?.();
+    } catch (error) {
+      logger.error("Failed to clear notifications:", error);
+      alert("Failed to clear notifications. Please try again.");
     }
   }
 
-  async function handleMarkRead(productId) {
-    try {
-      const res = await fetch(`${BASE}/wishlist/mark_item_read.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ product_id: productId }),
-      });
+  async function openNotification(notification) {
+    if (!isSafeNotificationDestination(notification.destination)) return;
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+    if (!notification.is_read) {
+      try {
+        const res = await csrfFetch(`${API_BASE}/wishlist/mark_item_read.php`, {
+          method: "POST",
+          headers: jsonHeaders,
+          credentials: "include",
+          body: JSON.stringify({ notification_id: notification.notification_id }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        ctx?.markNotificationReadLocal?.(notification.notification_id);
+      } catch (error) {
+        logger.error("Failed to mark notification as read:", error);
       }
-
-      // Optimistic local UI update
-      setLocalItems((prev) =>
-        prev.filter((item) => item.productId !== productId)
-      );
-
-      // Decrement the global total + remove from map so nav badge updates
-      if (typeof markNotificationReadLocal === "function") {
-        markNotificationReadLocal(productId);
-      }
-    } catch (e) {
-      console.error("Failed to mark notification as read:", e);
-      alert("Failed to mark as read. Please try again.");
     }
+
+    navigate(notification.destination);
   }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
-              Notifications
-            </h1>
-            {hasAny && (
-              <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                Updates from buyers who saved your listings.
-              </p>
-            )}
-          </div>
-
-          {hasAny && (
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            Notifications
+          </h1>
+          {items.length > 0 && (
             <button
               type="button"
-              onClick={handleMarkAllRead}
-              className="text-xs sm:text-sm px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm"
+              onClick={clearAll}
+              className="rounded-full border px-4 py-2 text-sm text-gray-700 dark:text-gray-200"
             >
-              Mark all as read
+              Clear All
             </button>
           )}
         </div>
-
-        {/* List */}
-        {!hasAny ? (
-          <div className="mt-10 text-center">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-sm mb-3">
-              <span className="text-xl">🔔</span>
-            </div>
-            <p className="text-lg font-medium text-gray-700 dark:text-gray-200">
-              No new wishlist notifications.
-            </p>
-            <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">
-              When buyers add your listings to their wishlist, they’ll appear
-              here.
-            </p>
+        {items.length === 0 ? (
+          <div className="mt-12 text-center text-gray-600 dark:text-gray-300">
+            <div className="mb-3 text-3xl">{"\uD83D\uDD14"}</div>
+            <p className="text-lg font-medium">You have no notifications.</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {localItems.map(({ productId, title, count, image_url }) => {
-              const rawImg = image_url || null;
-              const proxied = rawImg
-                ? `${BASE}/media/image.php?url=${encodeURIComponent(String(rawImg))}`
+            {items.map((notification) => {
+              const image = notification.image_url
+                ? resolveProductPhotoUrl(notification.image_url, {
+                    apiBase: API_BASE,
+                    proxyUnknown: true,
+                  })
                 : null;
-
+              const clickable = isSafeNotificationDestination(
+                notification.destination,
+              );
               return (
                 <div
-                  key={productId}
-                  className="flex items-start gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow duration-150 min-w-0"
+                  key={notification.notification_id}
+                  className={`flex gap-4 rounded-2xl border p-4 shadow-sm ${tones[notification.severity] || tones.info}`}
                 >
-                  {/* Dot */}
-                  <div className="pt-2 flex-shrink-0">
-                    <span className="inline-block w-2 h-2 rounded-full bg-blue-600" />
-                  </div>
-
-                  {/* Main content */}
-                  <div className="flex min-w-0 flex-1 gap-3">
-                    {proxied && (
-                      <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
-                        <img
-                          src={proxied}
-                          alt={title}
-                          onError={onProductImageError}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <h2 className="min-w-0 text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
-                        <button
-                          type="button"
-                          onClick={() => goToProduct(productId)}
-                          className="block w-full min-w-0 truncate text-left hover:underline decoration-blue-500 underline-offset-2"
-                          title={title}
-                        >
-                          {title}
-                        </button>
-                      </h2>
-
-                      <p className="text-sm text-gray-700 dark:text-gray-200">
-                        This listing has{" "}
-                        <span className="font-semibold">
-                          {count} new wishlist {count === 1 ? "save" : "saves"}
-                        </span>
-                        .
-                      </p>
-
-                      <span className="inline-flex mt-1 w-fit items-center rounded-full bg-blue-50 dark:bg-blue-900/40 px-2.5 py-0.5 text-[11px] font-medium text-blue-700 dark:text-blue-200">
-                        Wishlist activity
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Action */}
-                  <div className="flex-shrink-0 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleMarkRead(productId)}
-                      className="text-xs sm:text-sm px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm"
+                  {image && (
+                    <img
+                      src={image}
+                      alt=""
+                      onError={onProductImageError}
+                      className="h-16 w-16 flex-none rounded-lg object-cover"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    disabled={!clickable}
+                    onClick={() => openNotification(notification)}
+                    className={`min-w-0 flex-1 text-left ${clickable ? "cursor-pointer" : "cursor-default"}`}
+                  >
+                    <h2
+                      className={`font-semibold text-gray-900 dark:text-gray-100 ${clickable ? "hover:underline" : ""}`}
                     >
-                      Mark read
-                    </button>
-                  </div>
+                      {notification.title}
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-700 dark:text-gray-200">
+                      {notification.message}
+                    </p>
+                    <p className="mt-2 text-xs text-gray-500">
+                      {new Date(notification.created_at).toLocaleString()}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remove(notification.notification_id)}
+                    className="self-start rounded-full border px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200"
+                  >
+                    Delete
+                  </button>
                 </div>
               );
             })}

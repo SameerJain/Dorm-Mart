@@ -3,48 +3,144 @@ const ITEM_PLACEHOLDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="800
 
 export const FALLBACK_IMAGE_URL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(ITEM_PLACEHOLDER_SVG)}`;
 
+const VIDEO_EXTENSIONS = /\.(mp4|webm|mov)(?:$|[?#])/i;
+
+export function isVideoMediaUrl(raw) {
+  if (typeof raw !== "string") return false;
+  const url = raw.trim();
+  if (VIDEO_EXTENSIONS.test(url)) return true;
+
+  try {
+    const storedUrl = new URL(url, "http://localhost").searchParams.get("url");
+    return storedUrl ? VIDEO_EXTENSIONS.test(storedUrl) : false;
+  } catch {
+    return false;
+  }
+}
+
+const LOCAL_IMAGE_PREFIXES = ["/data/images/", "/images/", "/media/"];
+
+function normalizeImageInput(raw) {
+  return typeof raw === "string" ? raw.trim() : "";
+}
+
+function isPassthroughImageUrl(url) {
+  const lower = url.toLowerCase();
+  return (
+    lower.startsWith("blob:") ||
+    lower.startsWith("data:") ||
+    url.includes("/media/image.php")
+  );
+}
+
+function localStoredImagePath(url) {
+  if (LOCAL_IMAGE_PREFIXES.some((prefix) => url.startsWith(prefix))) {
+    return url;
+  }
+
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      const parsed = new URL(url);
+      if (
+        LOCAL_IMAGE_PREFIXES.some((prefix) =>
+          parsed.pathname.startsWith(prefix),
+        )
+      ) {
+        return `${parsed.pathname}${parsed.search}`;
+      }
+    } catch {
+      return "";
+    }
+  }
+
+  return "";
+}
+
+function proxyStoredImage(base, path) {
+  return `${base}/media/image.php?url=${encodeURIComponent(path)}`;
+}
+
 /**
  * Map DB-stored paths (/images/, /data/images/, /media/) to the PHP image endpoint so the
  * browser loads files from the API host (needed for Railway / SPA-only static hosts where
  * /images/ is not served from disk). Does not wrap blob:, data:, or URLs already using image.php.
- * Absolute http(s) URLs are returned unchanged (image.php only resolves local paths).
+ * External http(s) URLs are returned unchanged; absolute URLs with local stored-image paths
+ * are proxied by path because image.php only resolves local paths.
  *
  * @param {unknown} raw
  * @param {string} apiBase e.g. process.env.REACT_APP_API_BASE or `${PUBLIC_URL}/api`, no trailing slash
  * @returns {string}
  */
 export function resolveStoredImageUrl(raw, apiBase) {
-  if (raw == null) return "";
-  const s = String(raw).trim();
+  const s = normalizeImageInput(raw);
   if (!s) return "";
-  if (s.startsWith("blob:") || s.startsWith("data:")) return s;
-  if (s.includes("/media/image.php")) return s;
+  if (isPassthroughImageUrl(s)) return s;
 
   const base = String(apiBase || "").replace(/\/$/, "");
   if (!base) return s;
 
-  if (/^https?:\/\//i.test(s)) {
-    try {
-      const u = new URL(s);
-      if (u.pathname.includes("media/image.php")) return s;
-    } catch {
-      /* ignore */
-    }
-    return s;
-  }
-
-  if (s.startsWith("/data/images/") || s.startsWith("/images/") || s.startsWith("/media/")) {
-    return `${base}/media/image.php?url=${encodeURIComponent(s)}`;
-  }
+  const storedPath = localStoredImagePath(s);
+  if (storedPath) return proxyStoredImage(base, storedPath);
 
   return s;
 }
 
-export function withFallbackImage(url) {
-  if (typeof url === "string" && url.trim() !== "") {
-    return url;
+export function resolveProductPhotoUrl(
+  raw,
+  { apiBase, publicBase = "", proxyUnknown = false } = {},
+) {
+  const s = normalizeImageInput(raw);
+  if (!s) return "";
+  if (isPassthroughImageUrl(s)) return s;
+
+  const base = String(apiBase || "").replace(/\/$/, "");
+  const storedPath = localStoredImagePath(s);
+  if (base && storedPath) {
+    return proxyStoredImage(base, storedPath);
   }
-  return FALLBACK_IMAGE_URL;
+  if (base && proxyUnknown && !/^https?:\/\//i.test(s)) {
+    return proxyStoredImage(base, s);
+  }
+
+  const publicRoot = String(publicBase || "").replace(/\/$/, "");
+  return s.startsWith("/") ? `${publicRoot}${s}` : s;
+}
+
+export function resolveProductPhotoUrls(photos, options = {}) {
+  let list = [];
+  if (Array.isArray(photos)) {
+    list = photos;
+  } else if (typeof photos === "string") {
+    try {
+      const parsed = JSON.parse(photos);
+      list = Array.isArray(parsed) ? parsed : photos.split(",");
+    } catch (_) {
+      list = photos.split(",");
+    }
+  }
+
+  return list
+    .map((photo) => resolveProductPhotoUrl(photo, options))
+    .filter(Boolean);
+}
+
+function sanitizeImageSrc(url) {
+  if (typeof url !== "string" || url.trim() === "") return "";
+  const s = url.trim();
+  const lower = s.toLowerCase();
+  if (
+    lower.startsWith("blob:") ||
+    lower.startsWith("data:image/") ||
+    s.startsWith("/") ||
+    s.startsWith("./") ||
+    /^https?:\/\//i.test(s)
+  ) return s;
+  return "";
+}
+
+export function withFallbackImage(url) {
+  const safe = sanitizeImageSrc(url);
+  return safe !== "" ? safe : FALLBACK_IMAGE_URL;
 }
 
 /**

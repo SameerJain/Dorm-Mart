@@ -1,11 +1,7 @@
 START TRANSACTION;
--- 014_testuser_longname.sql
--- Seed data for test user with maximum length first and last names, and maximum length email
--- Creates account: [242 'w' characters]@buffalo.edu (255 characters total - max allowed)
--- Password: 1234! (same hash as testuser@buffalo.edu)
--- First name: 30 'w' characters (max length per form validation)
--- Last name: 30 'w' characters (max length per form validation)
--- Email: 255 characters total (242 'w' + '@buffalo.edu' = 255)
+-- Seed: maximum-length user fields.
+-- Purpose: creates a long-name, max-length email test account.
+-- Notes: password is 1234!, using the same hash as other test accounts.
 -- Full email address (copy-paste ready):
 -- wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww@buffalo.edu
 
@@ -38,4 +34,3 @@ INSERT INTO user_accounts (
 );
 SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;
-

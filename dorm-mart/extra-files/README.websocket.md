@@ -1,153 +1,156 @@
-# Ratchet: PHP Websocket Library
+# Archived Ratchet WebSocket Guide
 
-> **Legacy / archival** — This document describes an old Ratchet (PHP) WebSocket experiment. The production app does **not** use this stack; chat and realtime features use the current backend. Kept only for historical reference.
+> **Legacy documentation:** This guide describes a retired experiment built with the Ratchet PHP WebSocket library. Dorm Mart's production chat and real-time features do not use this stack. This file is retained only for historical reference.
 
----
+## Install Ratchet
 
-## Installation
-- installing Ratchet library requires Composer (package manager of PHP)
-- install Composer if you don't have it yet
-    - `php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"`
-    - `php composer-setup.php`
-    - `php -r "unlink('composer-setup.php');"`
-    - `sudo mv composer.phar /usr/local/bin/composer`
-- run `composer require cboden/ratchet` to install Ratchet package
+Ratchet requires [Composer](https://getcomposer.org/), the PHP dependency manager.
 
-## How Websocket works
-- it establishes a TCP connection
-- client sends an HTTP request to upgrade to the websocket protocol
-- server responds confirming the upgrade request
-- client and server keep the TCP connection open
-- client and server can communicate realtime by sending messages to each other via the connection
+1. Install Composer if it is not already available:
+   ```sh
+   php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+   php composer-setup.php
+   php -r "unlink('composer-setup.php');"
+   sudo mv composer.phar /usr/local/bin/composer
+   ```
+2. Install Ratchet:
+   ```sh
+   composer require cboden/ratchet
+   ```
 
-## How Ratchet works
+## How WebSockets Work
 
-### Runnning Ratchet websocket
-Following classes are used to create a Ratchet server object and configure the server
+1. The client establishes a TCP connection and sends an HTTP request to upgrade the connection to the WebSocket protocol.
+2. The server confirms the protocol upgrade.
+3. The client and server keep the connection open and exchange messages in real time.
+
+## Create a Ratchet Server
+
+The following example wraps a message handler in Ratchet's WebSocket and HTTP servers, then listens on port `8080`:
+
 ```php
+<?php
+
 use Ratchet\Http\HttpServer;
 use Ratchet\Server\IoServer;
 use Ratchet\WebSocket\WsServer;
-require_once __DIR__ . '/DemoServer.php'
 
-// an server object to be run on Ratchet
+require_once __DIR__ . '/DemoServer.php';
+
 $demo = new DemoServer();
 
-// IoServer::factory(...) builds the TCP server and event loop.
-// HttpServer wraps the WebSocket server with the HTTP Upgrade handshake.
-// WsServer handles the WS protocol frames and hands messages to DemoApp.
 $server = IoServer::factory(
     new HttpServer(
         new WsServer($demo)
     ),
-    8080, // port the WS server listens on
-    127.0.0.1 // Bind all interfaces 
-)
+    8080,
+    '0.0.0.0'
+);
 
+$server->run();
 ```
-### Defining DemoServer interfaces
-Following Interfaces are used to define the behaviors of running server
+
+`IoServer` manages the TCP server and event loop, `HttpServer` performs the HTTP upgrade handshake, and `WsServer` processes WebSocket frames before passing messages to `DemoServer`.
+
+## Define the Message Handler
+
+A Ratchet message handler implements `MessageComponentInterface`. This simplified example stores active connections and responds to a `ping` message with `pong`:
+
 ```php
-use Ratchet\MessageComponentInterface;
+<?php
+
 use Ratchet\ConnectionInterface;
+use Ratchet\MessageComponentInterface;
 
-final class DemoServer implements MessageComponentInterface {
+final class DemoServer implements MessageComponentInterface
+{
+    private \SplObjectStorage $clients;
 
-    // clients of type \SqlObjectStorage allows us to keep track of connected users and their metadata
-    private $clients;
-    public function __construct() {
+    public function __construct()
+    {
         $this->clients = new \SplObjectStorage();
     }
 
-    // Defining onOpen, OnMessage, onClose, and onError below are required to define the behaviors of DemoServer
- 
-    // onOpen handles HTTP upgrade handshakes, and store client's connection in clients
-    public function onOpen(ConnectionInterface $conn): void {
-        $this->clients->attach($conn, ['clientId' => $clientId]);
-        // ack to the client
-        $conn -> send(json_encode([
-            'msg' => 'welcome to dorm-mart!'
-        ], JSON_UNESCAPED_SLASHES));
+    public function onOpen(ConnectionInterface $conn): void
+    {
+        $this->clients->attach($conn);
+        $conn->send(json_encode([
+            'type' => 'welcome',
+            'message' => 'Welcome to Dorm Mart!',
+        ]));
     }
 
-    // onMessage listens and handles client requests sent via socket
-    public function onMessage(ConnectionInterface $from, $msg): void {   
-        $data = json_decode(%msg, true);
-        // if ping is received, respond with pong
-        $type = $data['type'];
-        if $type == 'ping':
-            $from -> send(json_encode([
+    public function onMessage(ConnectionInterface $from, $msg): void
+    {
+        $data = json_decode($msg, true);
+
+        if (($data['type'] ?? null) === 'ping') {
+            $from->send(json_encode([
                 'type' => 'pong',
-                "msg" => "pong"
-            ]))
+                'message' => 'pong',
+            ]));
+        }
     }
 
-    // onClose handles when a client disconnects
     public function onClose(ConnectionInterface $conn): void
     {
         $this->clients->detach($conn);
     }
 
-    public function onError(ConnectionInterface $conn, \Exception $e): void {
-        // Any exception on this connection → close it
+    public function onError(ConnectionInterface $conn, \Exception $e): void
+    {
         $conn->close();
     }
 }
 ```
-## How to run the server
-- navigate to `api/ws`
-- run `php ws-server.php`
-- confirm `Ratchet WebSocket listening on address:port` message
 
-## Conclusion
-Now with the Ratchet server and the running DemoServer object, we can create a running websocket server which listens to client's requests and respond over the connection
+## Run the Archived Server
 
+1. Open the archived server directory, previously `api/ws`.
+2. Run `php ws-server.php`.
+3. Confirm that the terminal reports the listening address and port.
 
-# How React connects to Websocket
-JavsScript (thus React) relies on browser provided websocket object
-Follow along the demo code below how it is used to connect to the backend running websocket server
-## Defining browser Websocket
-Likewise how websocket interfaces were defined in MessageComponentInterface,
-browser-side websocket also requires interface definitions
+The referenced server files may no longer exist in the current application because this integration has been retired.
+
+## Connect from a Browser
+
+Browsers provide a native `WebSocket` API. The following example connects to the local server and logs incoming messages:
+
 ```js
 export function connectSocket() {
-    // this immediately sends a websocket handshake request to the specified url parameter
-    ws = new WebSocket(ws://localhost:8080);
+  const socket = new WebSocket("ws://localhost:8080");
 
-    // "open" liestens to the response expected from handshake confirmation
-    ws.addEventListener("open",  () => console.log("[ws] open"));
+  socket.addEventListener("open", () => console.log("[ws] open"));
 
-    // "message" listens to the data sent over the websocket from the server
-    ws.addEventListener("message", (e) => {
-        let parsed = JSON.parse(e.data);
-        if parsed[type] === 'pong':
-            // prints response 'pong' returned by ping request
-            console.log(parsed[msg]) 
-    })
+  socket.addEventListener("message", (event) => {
+    const data = JSON.parse(event.data);
 
-    // "close" handles disconnection 
-    ws.addEventListener("close", () => console.log("[ws] close"));
+    if (data.type === "pong") {
+      console.log(data.message);
+    }
+  });
 
-    // "error" 
-    ws.addEventListener("error", (e) => console.log("[ws] error", e));
-    
-    return ws;
+  socket.addEventListener("close", () => console.log("[ws] close"));
+  socket.addEventListener("error", (error) => console.error("[ws] error", error));
+
+  return socket;
 }
-
 ```
 
-## How to use the websocket connection on frontend to send data 
+Wait until the connection opens before sending a message:
 
 ```js
-import { connectSocket } from ./ws
+import { connectSocket } from "./ws";
 
-// sends a ping message to websocket
 export default function PingPage() {
-    const s = connectSocket();
-    const packet = JSON.stringify({ type: 'ping' });
-    s.send(packet);
+  const socket = connectSocket();
+
+  socket.addEventListener("open", () => {
+    socket.send(JSON.stringify({ type: "ping" }));
+  });
+
+  return null;
 }
 ```
 
-# Conclusion
-Now we can connect to the backend-running websocket via connectSocket function. We will have formulate JSON data to send it over the connection to the socket. Then, we will use s.send to send the data.
+This example is educational only. New Dorm Mart features should follow the application's current HTTP-based communication patterns.

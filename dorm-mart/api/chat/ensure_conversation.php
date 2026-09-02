@@ -2,43 +2,26 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/inventory.php';
+require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     $buyerId = require_login();
 
-    $payload = json_decode(file_get_contents('php://input'), true);
-    if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
-    }
+    $payload = json_request_body_or_error();
+    require_csrf_token($payload['csrf_token'] ?? null);
 
-    $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
-    $sellerId = isset($payload['seller_user_id']) ? (int)$payload['seller_user_id'] : 0;
+    $productId = request_int($payload, 'product_id');
+    $sellerId = request_int($payload, 'seller_user_id');
 
     if ($productId <= 0 && $sellerId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Missing product_id or seller_user_id']);
-        exit;
+        json_response(['success' => false, 'error' => 'Missing product_id or seller_user_id'], 400);
     }
 
     $conn = db();
@@ -47,7 +30,7 @@ try {
     $productRow = null;
 
     if ($productId > 0) {
-        $stmt = $conn->prepare('SELECT product_id, seller_id, title, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
+        $stmt = $conn->prepare("SELECT product_id, seller_id, title, photos FROM INVENTORY WHERE product_id = ? AND item_status = 'Active' AND (sold IS NULL OR sold = 0) LIMIT 1");
         if (!$stmt) {
             throw new RuntimeException('Failed to prepare product lookup');
         }
@@ -58,24 +41,22 @@ try {
         $stmt->close();
 
         if (!$productRow || empty($productRow['seller_id'])) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'error' => 'Product not found']);
-            exit;
+            json_response(['success' => false, 'error' => 'Product not found'], 404);
         }
 
-        $sellerId = (int)$productRow['seller_id'];
+        $fetchedSellerId = (int) $productRow['seller_id'];
+        if ($sellerId > 0 && $sellerId !== $fetchedSellerId) {
+            json_response(['success' => false, 'error' => 'Seller does not own this product'], 400);
+        }
+        $sellerId = $fetchedSellerId;
     }
 
     if ($sellerId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Seller not found']);
-        exit;
+        json_response(['success' => false, 'error' => 'Seller not found'], 400);
     }
 
     if ($sellerId === $buyerId) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Cannot message your own listing']);
-        exit;
+        json_response(['success' => false, 'error' => 'Cannot message your own listing'], 400);
     }
 
     $orderedA = min($buyerId, $sellerId);
@@ -92,7 +73,7 @@ try {
         $lockRes = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        if (!$lockRes || (int)$lockRes['locked'] !== 1) {
+        if (!$lockRes || (int) $lockRes['locked'] !== 1) {
             throw new RuntimeException('Could not obtain lock');
         }
 
@@ -112,33 +93,13 @@ try {
 
         if ($conversationRow) {
             // Ensure conversation participants exist even for existing conversations
-            $convId = (int)$conversationRow['conv_id'];
-            $stmt = $conn->prepare('INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count) VALUES (?, ?, 0, 0), (?, ?, 0, 0)');
-            $stmt->bind_param('iiii', $convId, $orderedA, $convId, $orderedB);
-            $stmt->execute();
-            $stmt->close();
+            $convId = (int) $conversationRow['conv_id'];
+            chat_ensure_participants($conn, $convId, $orderedA, $orderedB);
         }
 
         if (!$conversationRow) {
             // Need names for both participants
-            $stmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?)');
-            $stmt->bind_param('ii', $orderedA, $orderedB);
-            $stmt->execute();
-            $namesRes = $stmt->get_result();
-            $stmt->close();
-
-            $names = [
-                $orderedA => 'User ' . $orderedA,
-                $orderedB => 'User ' . $orderedB,
-            ];
-
-            while ($row = $namesRes->fetch_assoc()) {
-                $id = (int)$row['user_id'];
-                $full = trim((string)$row['first_name'] . ' ' . (string)$row['last_name']);
-                if ($full !== '') {
-                    $names[$id] = $full;
-                }
-            }
+            $names = chat_user_display_names($conn, $orderedA, $orderedB);
 
             $user1Name = $names[$orderedA] ?? ('User ' . $orderedA);
             $user2Name = $names[$orderedB] ?? ('User ' . $orderedB);
@@ -164,30 +125,15 @@ try {
                 'product_id' => $productId > 0 ? $productId : null,
             ];
 
-            // Ensure conversation participants rows exist for both users
-            $stmt = $conn->prepare('INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count) VALUES (?, ?, 0, 0), (?, ?, 0, 0)');
-            $stmt->bind_param('iiii', $convId, $orderedA, $convId, $orderedB);
-            $stmt->execute();
-            $stmt->close();
+            chat_ensure_participants($conn, $convId, $orderedA, $orderedB);
         }
 
-        // Release lock
-        $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-        $stmt->bind_param('s', $lockKey);
-        $stmt->execute();
-        $stmt->close();
+        chat_release_lock($conn, $lockKey);
 
         $conn->commit();
     } catch (Throwable $inner) {
         $conn->rollback();
-        if (isset($lockKey)) {
-            $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-            if ($stmt) {
-                $stmt->bind_param('s', $lockKey);
-                $stmt->execute();
-                $stmt->close();
-            }
-        }
+        if (isset($lockKey)) chat_release_lock($conn, $lockKey);
         throw $inner;
     }
 
@@ -197,19 +143,11 @@ try {
 
     // Add product details to conversation row for consistency with fetch_conversations.php
     if ($productRow) {
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
-        $conversationRow['product_title'] = (string)($productRow['title'] ?? '');
-        $conversationRow['product_seller_id'] = isset($productRow['seller_id']) ? (int)$productRow['seller_id'] : null;
-        
+        $conversationRow['product_title'] = (string) ($productRow['title'] ?? '');
+        $conversationRow['product_seller_id'] = isset($productRow['seller_id']) ? (int) $productRow['seller_id'] : null;
+
         // Extract first image URL for product_image_url
-        $firstImage = null;
-        if (!empty($productRow['photos'])) {
-            $decoded = json_decode((string)$productRow['photos'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && count($decoded)) {
-                $firstImage = $decoded[0];
-            }
-        }
-        $conversationRow['product_image_url'] = $firstImage;
+        $conversationRow['product_image_url'] = inventory_first_photo($productRow['photos'] ?? null);
     } else {
         $conversationRow['product_title'] = null;
         $conversationRow['product_seller_id'] = null;
@@ -224,13 +162,7 @@ try {
     $sellerFirst = null;
     $sellerLast = null;
     if ($productRow) {
-        $firstImage = null;
-        if (!empty($productRow['photos'])) {
-            $decoded = json_decode((string)$productRow['photos'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && count($decoded)) {
-                $firstImage = $decoded[0];
-            }
-        }
+        $firstImage = inventory_first_photo($productRow['photos'] ?? null);
 
         if ($firstImage) {
             $publicBase = (getenv('PUBLIC_URL') ?: '');
@@ -242,24 +174,24 @@ try {
                 $firstImage = $publicBase . $firstImage;
             }
         }
-
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $productDetails = [
-            'product_id' => (int)$productRow['product_id'],
-            'title' => (string)($productRow['title'] ?? ''),
+            'product_id' => (int) $productRow['product_id'],
+            'title' => (string) ($productRow['title'] ?? ''),
             'image_url' => $firstImage,
         ];
     }
 
-    $namesStmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?) LIMIT 2');
+    $sharedContactEmail = null;
+    $sharedContactPhone = null;
+    $namesStmt = $conn->prepare('SELECT user_id, first_name, last_name, email, phone_number, reveal_contact_info FROM user_accounts WHERE user_id IN (?, ?) LIMIT 2');
     if ($namesStmt) {
         $namesStmt->bind_param('ii', $buyerId, $sellerId);
         $namesStmt->execute();
         $namesRes = $namesStmt->get_result();
         while ($row = $namesRes->fetch_assoc()) {
-            $id = (int)$row['user_id'];
-            $first = trim((string)($row['first_name'] ?? ''));
-            $last = trim((string)($row['last_name'] ?? ''));
+            $id = (int) $row['user_id'];
+            $first = trim((string) ($row['first_name'] ?? ''));
+            $last = trim((string) ($row['last_name'] ?? ''));
             $full = trim($first . ' ' . $last);
             if ($id === $buyerId) {
                 $buyerFirst = $first;
@@ -270,12 +202,18 @@ try {
                 $sellerFirst = $first;
                 $sellerLast = $last;
                 $sellerName = $full !== '' ? $full : null;
+                if ((int)($row['reveal_contact_info'] ?? 0) === 1) {
+                    $sharedContactEmail = (string)($row['email'] ?? '');
+                    $sharedContactPhone = $row['phone_number'] ?: null;
+                }
             }
         }
         $namesStmt->close();
     }
+    $conversationRow['shared_contact_email'] = $sharedContactEmail;
+    $conversationRow['shared_contact_phone'] = $sharedContactPhone;
 
-    $convId = (int)$conversationRow['conv_id'];
+    $convId = (int) $conversationRow['conv_id'];
     $existingMessageCount = 0;
     $countStmt = $conn->prepare('SELECT COUNT(*) AS cnt FROM messages WHERE conv_id = ? LIMIT 1');
     if ($countStmt) {
@@ -285,7 +223,7 @@ try {
         $cntRow = $cntRes ? $cntRes->fetch_assoc() : null;
         $countStmt->close();
         if ($cntRow) {
-            $existingMessageCount = (int)$cntRow['cnt'];
+            $existingMessageCount = (int) $cntRow['cnt'];
         }
     }
 
@@ -329,9 +267,8 @@ try {
             $autoMsgStmt->close();
 
             $createdIso = gmdate('Y-m-d\TH:i:s\Z');
-            // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
             $autoMessage = [
-                'message_id' => (int)$autoMsgId,
+                'message_id' => (int) $autoMsgId,
                 'conv_id' => $convId,
                 'sender_id' => $buyerId,
                 'receiver_id' => $sellerId,
@@ -340,25 +277,10 @@ try {
                 'created_at' => $createdIso,
             ];
 
-            $updateStmt = $conn->prepare(
-                'UPDATE conversation_participants
-                   SET unread_count = unread_count + 1,
-                       first_unread_msg_id = CASE
-                           WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ?
-                           ELSE first_unread_msg_id
-                       END
-                 WHERE conv_id = ? AND user_id = ?'
-            );
-            if ($updateStmt) {
-                $updateStmt->bind_param('iii', $autoMsgId, $convId, $sellerId);
-                $updateStmt->execute();
-                $updateStmt->close();
-            }
+            chat_increment_unread($conn, (int)$autoMsgId, $convId, $sellerId);
         }
     }
-
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
-    echo json_encode([
+    json_response([
         'success' => true,
         'conversation' => $conversationRow,
         'buyer_user_id' => $buyerId,
@@ -375,8 +297,5 @@ try {
     ]);
 } catch (Throwable $e) {
     error_log('ensure_conversation error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
-
-

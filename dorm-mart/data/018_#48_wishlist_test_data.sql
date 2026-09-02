@@ -1,8 +1,7 @@
 START TRANSACTION;
--- 018_#48_wishlist_test_data.sql
--- Seed data for wishlist feature testing
--- Adds Calculus: Early Transcendentals textbook listing for testuserschedulered@buffalo.edu (Luke Skywalker)
--- This item is used to test the wishlist add/remove functionality
+-- Seed: Story #48 wishlist test listing.
+-- Purpose: adds a Calculus textbook listing for wishlist add/remove testing.
+-- Depends on: testuserschedulered@buffalo.edu.
 
 -- Capture seller user_id for linking records
 SELECT user_id INTO @seller_id
@@ -46,7 +45,6 @@ INSERT INTO INVENTORY (
 );
 
 COMMIT;
-
 
 
 
