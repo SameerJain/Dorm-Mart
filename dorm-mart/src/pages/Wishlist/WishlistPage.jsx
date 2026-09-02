@@ -1,265 +1,90 @@
-// src/pages/Wishlist/WishlistPage.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ItemCardNew from "../../components/ItemCardNew";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import RemoveWishlistItemModal from "./components/RemoveWishlistItemModal";
+import WishlistCategoryButtons from "./components/WishlistCategoryButtons";
+import { useWishlist } from "./hooks/useWishlist";
+import {
+  filterWishlistItems,
+  getWishlistCategories,
+  selectedCategoryAfterRemoval,
+} from "./utils/wishlistUtils";
 
 export default function WishlistPage() {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
-  const [allItems, setAllItems] = useState([]); // Store all items for filtering
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const { items: allItems, loading, removing, error, removeItem } = useWishlist();
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [confirmRemove, setConfirmRemove] = useState(null); // { id, title } or null
-  const [removing, setRemoving] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const categories = useMemo(
+    () => getWishlistCategories(allItems),
+    [allItems],
+  );
+  const items = useMemo(
+    () => filterWishlistItems(allItems, selectedCategory),
+    [allItems, selectedCategory],
+  );
+
+  useBodyScrollLock(showMobileFilters);
 
   useEffect(() => {
-    const controller = new AbortController();
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const r = await fetch(`${API_BASE}/wishlist/get_wishlist.php`, {
-          signal: controller.signal,
-          credentials: "include",
-        });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const json = await r.json();
-        if (json.success && Array.isArray(json.data)) {
-          // Normalize items for ItemCardNew component
-          const normalized = json.data.map((d) => {
-            const priceNum =
-              typeof d.price === "number"
-                ? d.price
-                : parseFloat(`${d.price}`.replace(/[^0-9.]/g, "")) || 0;
+    document.body.style.overflow = confirmRemove ? "hidden" : "";
+    document.documentElement.style.overflow = confirmRemove ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [confirmRemove]);
 
-            const rawImg = d.image_url || null;
-            const img = rawImg
-              ? `${API_BASE}/media/image.php?url=${encodeURIComponent(rawImg)}`
-              : null;
-
-            const createdAt = d.created_at || d.date_listed ? new Date(d.created_at || d.date_listed) : null;
-            let status = d.status || null;
-            if (!status && createdAt instanceof Date && !isNaN(createdAt)) {
-              const hours = (Date.now() - createdAt.getTime()) / 36e5;
-              status = hours < 48 ? "JUST POSTED" : "AVAILABLE";
-            }
-
-            const tags = Array.isArray(d.tags)
-              ? d.tags
-              : Array.isArray(d.categories)
-              ? d.categories
-              : typeof d.tags === "string"
-              ? d.tags.split(",").map((t) => t.trim()).filter(Boolean)
-              : [];
-
-            const sellerEmail = d.email || d.seller_email || null;
-            const sellerUsername = d.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null);
-            return {
-              id: d.product_id,
-              title: d.title || "Untitled",
-              price: priceNum,
-              img,
-              tags,
-              status: status || "AVAILABLE",
-              seller: d.seller || "Unknown Seller",
-              sellerUsername,
-              sellerEmail,
-            };
-          });
-          setAllItems(normalized);
-          setItems(normalized);
-        } else {
-          setAllItems([]);
-          setItems([]);
-        }
-      } catch (e) {
-        if (e.name !== "AbortError") {
-          console.error("get_wishlist failed:", e);
-          setError(e?.message || "Failed to load wishlist");
-          setAllItems([]);
-          setItems([]);
-        }
-      } finally {
-        setLoading(false);
-      }
-    })();
-    return () => controller.abort();
-  }, []);
-
-  // Extract unique categories from wishlist items
-  const wishlistCategories = useMemo(() => {
-    const categoriesSet = new Set();
-    allItems.forEach((item) => {
-      if (Array.isArray(item.tags)) {
-        item.tags.forEach((tag) => {
-          if (tag && typeof tag === 'string') {
-            categoriesSet.add(tag);
-          }
-        });
-      }
-    });
-    return Array.from(categoriesSet).sort();
-  }, [allItems]);
-
-  // Filter items by selected category
-  const filteredItems = useMemo(() => {
-    if (!selectedCategory) return allItems;
-    return allItems.filter((item) => {
-      const itemTags = Array.isArray(item.tags) ? item.tags.map((t) => String(t).toLowerCase()) : [];
-      return itemTags.includes(selectedCategory.toLowerCase());
-    });
-  }, [allItems, selectedCategory]);
-
-  // Update displayed items when filter changes
-  useEffect(() => {
-    setItems(filteredItems);
-  }, [filteredItems]);
-
-  // Prevent body scrolling when mobile filter panel is open
-  useEffect(() => {
-    if (showMobileFilters) {
-      // Save current scroll position
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      
-      return () => {
-        // Restore scroll position when closing
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollY);
-      };
+  async function confirmRemoveItem() {
+    if (!confirmRemove?.id) return;
+    const itemId = confirmRemove.id;
+    const removed = await removeItem(itemId);
+    if (removed) {
+      const remainingItems = allItems.filter((item) => item.id !== itemId);
+      setSelectedCategory((current) =>
+        selectedCategoryAfterRemoval(remainingItems, current),
+      );
     }
-  }, [showMobileFilters]);
-
-  // Handle remove from wishlist
-  const handleRemoveFromWishlist = (itemId, itemTitle) => {
-    setConfirmRemove({ id: itemId, title: itemTitle });
-  };
-
-  const confirmRemoveItem = async () => {
-    if (!confirmRemove || !confirmRemove.id) return;
-
-    setRemoving(true);
-    try {
-      const r = await fetch(`${API_BASE}/wishlist/remove_from_wishlist.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          product_id: Number(confirmRemove.id),
-        }),
-      });
-
-      if (!r.ok) {
-        const errorData = await r.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${r.status}`);
-      }
-
-      const json = await r.json();
-      if (json.success) {
-        // Remove item from local state
-        setAllItems((prev) => {
-          const updated = prev.filter((item) => item.id !== confirmRemove.id);
-          
-          // Check if we need to reset the filter to "All"
-          if (selectedCategory) {
-            const remainingInCategory = updated.filter((item) => {
-              const itemTags = Array.isArray(item.tags) ? item.tags.map((t) => String(t).toLowerCase()) : [];
-              return itemTags.includes(selectedCategory.toLowerCase());
-            });
-            
-            // If no items remain in the selected category, reset to "All"
-            if (remainingInCategory.length === 0) {
-              setSelectedCategory(null);
-            }
-          }
-          
-          return updated;
-        });
-        setItems((prev) => prev.filter((item) => item.id !== confirmRemove.id));
-        setConfirmRemove(null);
-      } else {
-        throw new Error(json.error || "Failed to remove from wishlist");
-      }
-    } catch (e) {
-      console.error("Remove from wishlist failed:", e);
-      setError(e?.message || "Failed to remove from wishlist");
-      setConfirmRemove(null);
-    } finally {
-      setRemoving(false);
-    }
-  };
-
-  const cancelRemove = () => {
     setConfirmRemove(null);
-  };
+  }
+
+  function selectMobileCategory(category) {
+    setSelectedCategory(category);
+    setShowMobileFilters(false);
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="w-full px-1 sm:px-2 md:px-3 py-5 pb-10">
         <div className="grid grid-cols-1 lg:grid-cols-[0.22fr,1fr] gap-3 items-start">
-          {/* LEFT - Quick Filters */}
           {allItems.length > 0 ? (
             <aside className="hidden lg:flex flex-col gap-3 sticky top-20 lg:-ml-3">
               <div className="bg-white dark:bg-gray-800 rounded-md border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4">
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                   Quick filters
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setSelectedCategory(null)}
-                    className={`px-4 py-1.5 rounded-full text-sm border ${
-                      selectedCategory === null
-                        ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
-                        : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-                    }`}
-                  >
-                    All
-                  </button>
-                  {wishlistCategories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`px-4 py-1.5 rounded-full text-sm border ${
-                        selectedCategory === cat
-                          ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
-                          : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
+                <WishlistCategoryButtons
+                  categories={categories}
+                  selectedCategory={selectedCategory}
+                  onSelect={setSelectedCategory}
+                />
               </div>
             </aside>
           ) : (
-            <aside className="hidden lg:block" aria-hidden="true"></aside>
+            <aside className="hidden lg:block" aria-hidden="true" />
           )}
 
-          {/* CENTER - Heading */}
           <div className="flex flex-col gap-6 min-w-0">
             <div className="mb-4">
               <div className="flex items-center justify-between gap-4 mb-2">
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100">
                   My Wishlist
                 </h1>
-                {/* Mobile Filter Button */}
-                {allItems.length > 0 && (
+                {allItems.length > 0 ? (
                   <button
-                    onClick={() => setShowMobileFilters(!showMobileFilters)}
+                    onClick={() => setShowMobileFilters((shown) => !shown)}
                     className="lg:hidden flex items-center gap-2 px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     aria-label="Toggle filters"
                   >
@@ -278,19 +103,20 @@ export default function WishlistPage() {
                     </svg>
                     <span className="text-sm font-medium">Filters</span>
                   </button>
-                )}
+                ) : null}
               </div>
               <p className="text-gray-600 dark:text-gray-300">
-                {selectedCategory 
+                {selectedCategory
                   ? `Items in ${selectedCategory}`
                   : "Items you've saved for later"}
-                {selectedCategory && ` (${items.length} ${items.length === 1 ? 'item' : 'items'})`}
+                {selectedCategory
+                  ? ` (${items.length} ${items.length === 1 ? "item" : "items"})`
+                  : null}
               </p>
             </div>
           </div>
 
-          {/* Empty State - Spans both columns */}
-          {!loading && !error && items.length === 0 && (
+          {!loading && !error && items.length === 0 ? (
             <div className="w-full flex flex-col items-center justify-center text-center py-12 mx-auto lg:col-start-1 lg:col-span-2">
               <svg
                 className="mx-auto h-24 w-24 text-gray-400 dark:text-gray-500 mb-4"
@@ -306,7 +132,7 @@ export default function WishlistPage() {
                 />
               </svg>
               <p className="text-gray-500 dark:text-gray-400 text-lg mb-2">
-                {selectedCategory 
+                {selectedCategory
                   ? `No items in ${selectedCategory}`
                   : "Your wishlist is empty"}
               </p>
@@ -315,36 +141,33 @@ export default function WishlistPage() {
                   ? "Try selecting a different category or clear the filter."
                   : "Start adding items you're interested in!"}
               </p>
-              {!selectedCategory && (
-                <button
-                  onClick={() => navigate("/app")}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Browse Items
-                </button>
-              )}
-              {selectedCategory && (
-                <button
-                  onClick={() => setSelectedCategory(null)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Show All Items
-                </button>
-              )}
+              <button
+                onClick={() =>
+                  selectedCategory
+                    ? setSelectedCategory(null)
+                    : navigate("/app")
+                }
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                {selectedCategory ? "Show All Items" : "Browse Items"}
+              </button>
             </div>
-          )}
+          ) : null}
 
-          {/* Content Area - Loading, Error, or Items Grid */}
-          {(loading || error || items.length > 0) && (
+          {loading || error || items.length > 0 ? (
             <main className="flex flex-col gap-6 min-w-0 lg:col-start-2">
               {loading ? (
                 <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-500 dark:text-gray-400 text-lg">Loading wishlist...</p>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400 text-lg">
+                    Loading wishlist...
+                  </p>
                 </div>
               ) : error ? (
                 <div className="text-center py-12">
-                  <p className="text-red-600 dark:text-red-400 text-lg">{error}</p>
+                  <p className="text-red-600 dark:text-red-400 text-lg">
+                    {error}
+                  </p>
                   <button
                     onClick={() => window.location.reload()}
                     className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -369,25 +192,24 @@ export default function WishlistPage() {
                       isWishlisted={true}
                       showRemoveButton={true}
                       fixedWidth={true}
-                      onRemoveFromWishlist={handleRemoveFromWishlist}
+                      onRemoveFromWishlist={(itemId, title) =>
+                        setConfirmRemove({ id: itemId, title })
+                      }
                     />
                   ))}
                 </div>
               )}
             </main>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {/* Mobile Filter Panel */}
-      {showMobileFilters && allItems.length > 0 && (
+      {showMobileFilters && allItems.length > 0 ? (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/40 z-40 lg:hidden"
             onClick={() => setShowMobileFilters(false)}
           />
-          {/* Filter Panel */}
           <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl border-t border-gray-200 dark:border-gray-700 max-h-[80vh] overflow-y-auto">
             <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -414,89 +236,23 @@ export default function WishlistPage() {
               </button>
             </div>
             <div className="p-4">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => {
-                    setSelectedCategory(null);
-                    setShowMobileFilters(false);
-                  }}
-                  className={`px-4 py-2 rounded-full text-sm border ${
-                    selectedCategory === null
-                      ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
-                      : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-                  }`}
-                >
-                  All
-                </button>
-                {wishlistCategories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => {
-                      setSelectedCategory(cat);
-                      setShowMobileFilters(false);
-                    }}
-                    className={`px-4 py-2 rounded-full text-sm border ${
-                      selectedCategory === cat
-                        ? "bg-blue-600 dark:bg-blue-800 text-white border-blue-600 dark:border-blue-700"
-                        : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+              <WishlistCategoryButtons
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onSelect={selectMobileCategory}
+                mobile={true}
+              />
             </div>
           </div>
         </>
-      )}
+      ) : null}
 
-      {/* Confirmation Modal */}
-      {confirmRemove && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="remove-confirm-title"
-        >
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full min-w-0 overflow-hidden">
-            <h2
-              id="remove-confirm-title"
-              className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4"
-            >
-              Remove from Wishlist?
-            </h2>
-            <div className="mb-6 min-w-0 text-gray-700 dark:text-gray-300 leading-relaxed">
-              <p className="min-w-0">Are you sure you want to remove</p>
-              <p
-                className="mt-1 min-w-0 max-w-full font-bold text-gray-900 dark:text-gray-100 truncate"
-                title={confirmRemove.title}
-              >
-                &ldquo;{confirmRemove.title}&rdquo;
-              </p>
-              <p className="mt-1">from your wishlist?</p>
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={cancelRemove}
-                disabled={removing}
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 disabled:opacity-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmRemoveItem}
-                disabled={removing}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {removing ? "Removing..." : "Remove"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RemoveWishlistItemModal
+        item={confirmRemove}
+        removing={removing}
+        onCancel={() => setConfirmRemove(null)}
+        onConfirm={confirmRemoveItem}
+      />
     </div>
   );
 }
-

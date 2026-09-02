@@ -4,42 +4,18 @@ declare(strict_types=1);
 
 // Include security headers for XSS protection
 require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
+set_security_headers();
 // Ensure CORS headers are present for React dev server and local PHP server
-setSecureCORS();
+set_secure_cors();
 
 header('Content-Type: application/json; charset=utf-8');
 
-// HTTPS enforcement for production (exclude localhost for development)
-$isLocalhost = (
-    ($_SERVER['HTTP_HOST'] ?? '') === 'localhost' ||
-    ($_SERVER['HTTP_HOST'] ?? '') === 'localhost:8080' ||
-    strpos($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1') === 0
-);
-
-// Check if Railway (Railway sets X-Forwarded-Proto header)
-$isRailway = (
-    strpos($_SERVER['HTTP_HOST'] ?? '', '.up.railway.app') !== false ||
-    strpos($_SERVER['HTTP_HOST'] ?? '', '.railway.app') !== false
-);
-
-// Check if request is HTTPS (check both direct HTTPS and proxy headers)
-$isHttps = (
-    (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-    (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-    (!empty($_SERVER['X-Forwarded-Proto']) && $_SERVER['X-Forwarded-Proto'] === 'https')
-);
-
-// Skip HTTPS redirect for Railway (Railway handles HTTPS at the proxy level)
-// Also skip for localhost
-if (!$isLocalhost && !$isRailway && !$isHttps) {
-    $httpsUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? '') . ($_SERVER['REQUEST_URI'] ?? '');
-    header("Location: $httpsUrl", true, 301);
-    exit;
-}
+dm_enforce_https();
 
 require __DIR__ . '/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/two_factor.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 // Initialize session for rate limiting (must be done before checking rate limits)
 auth_boot_session();
@@ -59,57 +35,45 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-    $raw  = file_get_contents('php://input');
-    // XSS PROTECTION: Decode JSON first, then validate individual fields (don't HTML-encode JSON)
-    $data = json_decode($raw, true);
-    if (!is_array($data)) {
+    $raw = file_get_contents('php://input', false, null, 0, MAX_JSON_REQUEST_BYTES + 1);
+    $data = is_string($raw) ? decode_json_object($raw) : null;
+    if ($data === null) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Invalid JSON format']);
         exit;
     }
-    
-    $emailRaw = strtolower(trim((string)($data['email'] ?? '')));
-    $passwordRaw = (string)($data['password'] ?? '');
-} else {
-    $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
-    $passwordRaw = (string)($_POST['password'] ?? '');
-}
 
-// XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-// Note: SQL injection prevented by prepared statements
-if (containsXSSPattern($emailRaw)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
-    exit;
+    if (!is_string($data['email'] ?? null) || !is_string($data['password'] ?? null)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Invalid credentials format']);
+        exit;
+    }
+    $emailRaw = strtolower(trim($data['email']));
+    $passwordRaw = $data['password'];
+} else {
+    if (!is_string($_POST['email'] ?? null) || !is_string($_POST['password'] ?? null)) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'Invalid credentials format']);
+        exit;
+    }
+    $emailRaw = strtolower(trim($_POST['email']));
+    $passwordRaw = $_POST['password'];
 }
 
 // Accept any valid email format (to support existing non-UB accounts)
-$email = validateInput($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
-$password = validateInput($passwordRaw, 64);
+$email = validate_input($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
+$password = strlen($passwordRaw) <= 64 ? $passwordRaw : false;
 
 if ($email === false || $password === false) {
     http_response_code(400);
-    // Provide more specific error message
-    if ($email === false) {
-        if (!filter_var($emailRaw, FILTER_VALIDATE_EMAIL)) {
-            echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
-        } else {
-            echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
-        }
-    } else {
-        echo json_encode(['ok' => false, 'error' => 'Invalid password format. Please check your password.']);
-    }
+    $msg = $email === false ? 'Invalid email format' : 'Invalid password format. Please check your password.';
+    echo json_encode(['ok' => false, 'error' => $msg]);
     exit;
 }
 
 if ($email === '' || $password === '') {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Missing required fields']);
-    exit;
-}
-if (strlen($email) > 255 || strlen($password) > 64) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Username or password is too large']);
     exit;
 }
 // Validate email format using PHP's built-in validator
@@ -122,9 +86,8 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 try {
     // CRITICAL: Check rate limiting FIRST, before any password verification
     // This ensures lockout error is shown regardless of whether credentials are valid or invalid
-    // Use session ID instead of email for rate limiting
-    $sessionId = session_id();
-    $rateLimitCheck = check_rate_limit($sessionId);
+    $rateLimitKey = login_rate_limit_key($email);
+    $rateLimitCheck = check_rate_limit($rateLimitKey);
     if ($rateLimitCheck['blocked']) {
         // Session is locked out - show lockout error regardless of credential validity
         $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
@@ -137,15 +100,11 @@ try {
 
     $conn = db();
     
-    // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // Using mysqli prepared statements with parameter binding (bind_param) to prevent SQL injection.
-    // The '?' placeholder ensures user input ($email) is treated as data, not executable SQL.
-    // Even if malicious SQL is in $email, it cannot execute because it's bound as a string parameter.
-    // This is the industry-standard defense against SQL injection attacks.
-    // ============================================================================
-    $stmt = $conn->prepare('SELECT user_id, hash_pass FROM user_accounts WHERE email = ? LIMIT 1');
+    $stmt = $conn->prepare(
+        'SELECT user_id, first_name, last_name, email, hash_pass, theme, two_factor_enabled, role, is_banned, auth_version
+         FROM user_accounts WHERE email = ? LIMIT 1'
+    );
     $stmt->bind_param('s', $email);  // 's' = string type, $email is safely bound as parameter
     $stmt->execute();
     $res = $stmt->get_result();
@@ -155,8 +114,7 @@ try {
         $conn->close();
         
         // Record failed attempt for non-existent user (but don't reveal this)
-        // Use session ID instead of email for rate limiting
-        record_failed_attempt($sessionId);
+        record_failed_attempt($rateLimitKey);
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
@@ -165,15 +123,12 @@ try {
     $row = $res->fetch_assoc();
     $stmt->close();
 
-    // SECURITY NOTE: password_verify() safely checks the submitted
-    // plaintext against the STORED salted hash from password_hash(). The salt is
-    // inside the hash; we never store or handle it separately.
+    // SECURITY NOTE: password_verify() safely checks the submitted password.
     if (!password_verify($password, (string)$row['hash_pass'])) {
         $conn->close();
         
         // Record failed attempt
-        // Use session ID instead of email for rate limiting
-        record_failed_attempt($sessionId);
+        record_failed_attempt($rateLimitKey);
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
@@ -181,36 +136,65 @@ try {
     }
 
     $userId = (int)$row['user_id'];
+
+    if (!empty($row['is_banned'])) {
+        $conn->close();
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'Account suspended']);
+        exit;
+    }
     
-    // SQL INJECTION PROTECTION: Prepared statement for theme query (user_id parameter bound safely)
-    $themeStmt = $conn->prepare('SELECT theme FROM user_accounts WHERE user_id = ?');
-    $themeStmt->bind_param('i', $userId);  // 'i' = integer type
-    $themeStmt->execute();
-    $themeRes = $themeStmt->get_result();
-    $themeRow = $themeRes->fetch_assoc();
-    $themeStmt->close();
     $conn->close();
     
     // Clear rate limiting data on successful login BEFORE regenerating session ID
     // This prevents the new session from inheriting any lockout state
     require_once __DIR__ . '/../security/security.php';
-    reset_failed_attempts($sessionId);
+    reset_failed_attempts($rateLimitKey);
     
     $theme = 'light'; // default
-    if ($themeRow && isset($themeRow['theme'])) {
-        $theme = $themeRow['theme'] ? 'dark' : 'light';
+    if (isset($row['theme'])) {
+        $theme = $row['theme'] ? 'dark' : 'light';
+    }
+
+    if (!empty($row['two_factor_enabled'])) {
+        regenerate_session_on_login();
+        unset($_SESSION['user_id']);
+        clear_remember_cookie($userId);
+
+        $code = create_two_factor_challenge($userId, $theme);
+        $emailResult = send_two_factor_email(
+            $row,
+            dm_transactional_two_factor_code_package((string)$row['first_name'], $code)
+        );
+        if (!$emailResult['ok']) {
+            clear_two_factor_challenge();
+            error_log('Two-factor login email failed for user_id ' . $userId . ': ' . ($emailResult['error'] ?? 'unknown error'));
+            http_response_code(503);
+            echo json_encode(['ok' => false, 'error' => 'Unable to send a verification code. Please try again.']);
+            exit;
+        }
+
+        echo json_encode([
+            'ok' => true,
+            'requires_two_factor' => true,
+            'email' => mask_two_factor_email((string)$row['email']),
+        ]);
+        exit;
     }
 
     // Regenerate session ID to prevent session fixation attacks
     // This happens AFTER clearing rate limits to ensure old session data is cleared
     regenerate_session_on_login();
     $_SESSION['user_id'] = $userId;
+    $_SESSION['auth_version'] = (int)$row['auth_version'];
+    record_login_device($userId);
 
     // Persist across restarts
     issue_remember_cookie($userId);
 
-    echo json_encode(['ok' => true, 'theme' => $theme]);
+    echo json_encode(['ok' => true, 'theme' => $theme, 'role' => $row['role'] ?? 'user']);
 } catch (Throwable $e) {
+    error_log('login error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Server error']);
 }

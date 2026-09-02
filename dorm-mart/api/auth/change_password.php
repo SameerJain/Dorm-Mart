@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 // Include security headers for XSS protection
 require __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+dm_enforce_https();
+set_security_headers();
+set_secure_cors();
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -21,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require __DIR__ . '/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 auth_boot_session();
 $userId = require_login();
@@ -28,18 +30,16 @@ $userId = require_login();
 /* Read body (JSON or form) - IMPORTANT: Do NOT HTML-encode passwords before hashing */
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-  $raw  = file_get_contents('php://input');
-  $data = json_decode($raw, true);
-  if (!is_array($data)) {
-    $data = [];
-  }
+  $data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON payload']);
   // Passwords must remain raw - they're hashed, not displayed
-  $current = isset($data['currentPassword']) ? (string)$data['currentPassword'] : '';
-  $next    = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
+  $current = is_string($data['currentPassword'] ?? null) ? $data['currentPassword'] : '';
+  $next = is_string($data['newPassword'] ?? null) ? $data['newPassword'] : '';
+  require_csrf_token($data['csrf_token'] ?? null);
 } else {
   // Passwords must remain raw - they're hashed, not displayed
-  $current = isset($_POST['currentPassword']) ? (string)$_POST['currentPassword'] : '';
-  $next    = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
+  $current = is_string($_POST['currentPassword'] ?? null) ? $_POST['currentPassword'] : '';
+  $next = is_string($_POST['newPassword'] ?? null) ? $_POST['newPassword'] : '';
+  require_csrf_token($_POST['csrf_token'] ?? null);
 }
 
 /* Validate inputs */
@@ -54,13 +54,7 @@ if (strlen($current) > $MAX_LEN || strlen($next) > $MAX_LEN) {
   echo json_encode(['ok' => false, 'error' => 'Entered password is too long']);
   exit;
 }
-if (
-  strlen($next) < 8
-  || !preg_match('/[a-z]/', $next)
-  || !preg_match('/[A-Z]/', $next)
-  || !preg_match('/\d/', $next)
-  || !preg_match('/[^A-Za-z0-9]/', $next)
-) {
+if (!validate_password_policy($next)) {
   http_response_code(400);
   echo json_encode(['ok' => false, 'error' => 'Password does not meet policy']);
   exit;
@@ -69,14 +63,8 @@ if (
 try {
   $conn = db();
 
-  // ============================================================================
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  // ============================================================================
-  // Using prepared statement with '?' placeholder and bind_param() to safely
-  // handle $userId. Even if malicious SQL is in $userId, it cannot execute
-  // because it's bound as an integer parameter, not concatenated into SQL.
-  // ============================================================================
-  $stmt = $conn->prepare('SELECT hash_pass, email FROM user_accounts WHERE user_id = ? LIMIT 1');
+  $stmt = $conn->prepare('SELECT hash_pass, is_protected FROM user_accounts WHERE user_id = ? LIMIT 1');
   $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
   $res = $stmt->get_result();
@@ -92,15 +80,9 @@ try {
   $row = $res->fetch_assoc();
   $stmt->close();
   
-  // Block password change for testuser@buffalo.edu
-  $userEmail = (string)($row['email'] ?? '');
-  $isTestUser = ($userEmail === 'testuser@buffalo.edu');
+  $isProtected = (int)($row['is_protected'] ?? 0) === 1;
 
-  /* Verify current password
-   * SECURITY NOTE: password_verify() compares the user-provided
-   * plaintext to the STORED salted hash. The salt and algorithm params are
-   * embedded inside the hash created by password_hash() when the user/account
-   * was created or changed. We never compare against or store plaintext. */
+  // SECURITY NOTE: password_verify() safely checks the submitted password.
   if (!password_verify($current, (string)$row['hash_pass'])) {
     $conn->close();
     http_response_code(401);
@@ -116,29 +98,29 @@ try {
     exit;
   }
 
-  // Block password change for testuser@buffalo.edu - return success but don't actually update
-  if ($isTestUser) {
+  // Preserve seeded accounts without exposing which protection rule matched.
+  if ($isProtected) {
     $conn->close();
     // Return success without actually changing the password or destroying session
     echo json_encode(['ok' => true]);
     exit;
   }
 
-  /* Update password; also clear any persisted token column if present
-   * SECURITY NOTE: password_hash() automatically generates a random SALT and
-   * returns a salted bcrypt hash. Only the hash is stored in the DB. */
+  // SECURITY NOTE: password_hash() stores only the salted bcrypt hash.
   $newHash = password_hash($next, PASSWORD_BCRYPT);
   
-  // ============================================================================
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  // ============================================================================
-  // The password hash and user_id are bound as parameters using bind_param().
-  // This prevents SQL injection even if malicious SQL were in these values.
-  // ============================================================================
-  $upd = $conn->prepare('UPDATE user_accounts SET hash_pass = ?, hash_auth = NULL WHERE user_id = ?');
+  $upd = $conn->prepare(
+    'UPDATE user_accounts
+     SET hash_pass = ?, hash_auth = NULL, reset_token_hash = NULL,
+         reset_token_expires = NULL, last_reset_request = NULL,
+         auth_version = auth_version + 1
+     WHERE user_id = ?'
+  );
   $upd->bind_param('si', $newHash, $userId);  // 's' = string, 'i' = integer
   $upd->execute();
   $upd->close();
+  mark_all_login_devices_signed_out($userId);
 
   /* Rotate session id and log out to force re-auth */
   session_regenerate_id(true);
@@ -148,7 +130,7 @@ try {
       'expires'  => time() - 3600,
       'path'     => '/',
       'httponly' => true,
-      'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+      'secure'   => auth_is_https_request(),
       'samesite' => 'Lax'
     ]);
   }

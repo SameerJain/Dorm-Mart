@@ -1,5 +1,7 @@
 START TRANSACTION;
--- ^ Begin a transaction so the inserts are all-or-nothing.
+-- Seed: wishlist notification test users.
+-- Purpose: creates receiver/seller accounts used by wishlist notification flows.
+-- Safe to rerun: removes and recreates only these accounts.
 SET FOREIGN_KEY_CHECKS = 0;
 
 DELETE FROM user_accounts

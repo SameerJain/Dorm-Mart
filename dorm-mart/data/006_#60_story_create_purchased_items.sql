@@ -1,5 +1,7 @@
 START TRANSACTION;
--- ^ Make the whole operation all-or-nothing.
+-- Seed: Story #60 purchased item record.
+-- Purpose: creates a purchased item for test-buyer@buffalo.edu.
+-- Depends on: 003_#60_story_create_seller_buyer_user.sql.
 
 -- 1) Pull the buyer's user_id into a session variable
 SELECT user_id INTO @buyer_id

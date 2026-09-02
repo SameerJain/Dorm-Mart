@@ -5,12 +5,19 @@ header('X-Content-Type-Options: nosniff'); // helps prevent MIME sniffing
 
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../helpers/image_upload.php';
+require_once __DIR__ . '/../helpers/request.php';
 require __DIR__ . '/../database/db_connect.php';
 
-setSecurityHeaders();    // your existing security headers
-setSecureCORS();         // your existing CORS (same-site is fine for images)
+set_security_headers();    // your existing security headers
+set_secure_cors();         // your existing CORS (same-site is fine for images)
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+  http_response_code(405);
+  echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
+  exit;
+}
 
 $conn = db();
 $conn->set_charset('utf8mb4');
@@ -19,7 +26,7 @@ auth_boot_session();
 $userId = require_login();                 // must be logged in
 
 // --- inputs ---
-$messageId = isset($_GET['message_id']) ? (int)$_GET['message_id'] : 0;
+$messageId = request_int($_GET, 'message_id');
 $forceDownload = isset($_GET['download']) && $_GET['download'] === '1';
 
 if ($messageId <= 0) {
@@ -29,12 +36,12 @@ if ($messageId <= 0) {
 }
 
 // Verify the requester is a participant in the conversation that owns this message
-// and fetch the stored image_url.
+// and fetch the stored attachment URL.
 $sql = '
   SELECT m.image_url, m.conv_id, c.user1_id, c.user2_id
     FROM messages m
     JOIN conversations c ON c.conv_id = m.conv_id
-   WHERE m.message_id = ?
+   WHERE m.message_id = ? AND m.deleted_at IS NULL
    LIMIT 1
 ';
 $stmt = $conn->prepare($sql);
@@ -62,15 +69,24 @@ if ($imageRel === '') {
   echo json_encode(['success' => false, 'error' => 'no_image']);
   exit;
 }
+if (strpos($imageRel, '/media/chat-images/') !== 0
+    && strpos($imageRel, '/media/chat-attachments/') !== 0) {
+  http_response_code(404);
+  echo json_encode(['success' => false, 'error' => 'file_missing']);
+  exit;
+}
 
-// Build absolute path safely from project root.
-// __DIR__ = api/chat → dirname(__DIR__, 2) = project root (dorm-mart/)
-$projectRoot = dirname(__DIR__, 2);
-$absPath     = realpath($projectRoot . $imageRel);  // resolves symlinks/.. segments
+// Build absolute path safely from the configured chat media directory.
+$mediaSubdir = strpos($imageRel, '/media/chat-attachments/') === 0
+    ? 'chat-attachments'
+    : 'chat-images';
+$mediaRoot = real_upload_path(data_media_dir($mediaSubdir));
+$file = basename($imageRel);
+$absPath = $mediaRoot !== null ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
+$mediaPrefix = $mediaRoot !== null ? rtrim($mediaRoot, '/\\') . DIRECTORY_SEPARATOR : null;
 
 // Security: ensure the resolved path is still under the media directory we expect
-$mediaRoot = realpath($projectRoot . '/media/chat-images');
-if (!$absPath || !$mediaRoot || strpos($absPath, $mediaRoot) !== 0 || !is_file($absPath)) {
+if (!$absPath || !$mediaPrefix || !str_starts_with($absPath, $mediaPrefix) || !is_file($absPath)) {
   http_response_code(404);
   echo json_encode(['success' => false, 'error' => 'file_missing']);
   exit;
@@ -80,19 +96,25 @@ if (!$absPath || !$mediaRoot || strpos($absPath, $mediaRoot) !== 0 || !is_file($
 $finfo = new finfo(FILEINFO_MIME_TYPE);              // requires php-fileinfo extension
 $mime  = $finfo->file($absPath) ?: 'application/octet-stream';
 
-// Optional: allow only image/* to be served here
-if (strpos($mime, 'image/') !== 0) {
+$allowedMimes = [
+  'image/jpeg', 'image/png', 'image/webp',
+  'video/mp4', 'video/webm', 'video/quicktime',
+];
+if (!in_array($mime, $allowedMimes, true)) {
   http_response_code(415);
   echo json_encode(['success' => false, 'error' => 'unsupported_mime']);
   exit;
 }
 
 // Set headers for inline view or download
-$basename = basename($absPath);                      // safe filename for header
+$basename = basename($absPath);
+$extension = strtolower((string)pathinfo($basename, PATHINFO_EXTENSION));
+$mediaType = strpos($mime, 'video/') === 0 ? 'video' : 'image';
+$downloadName = sprintf('dorm-mart-chat-%s-%d.%s', $mediaType, $messageId, $extension);
 header('Content-Type: ' . $mime);                    // tells the browser the exact type
 header('Content-Length: ' . (string)filesize($absPath));
 header('Cache-Control: private, max-age=604800');    // cache 7 days for the same user/session
-header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="' . $basename . '"');
+header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="' . ($forceDownload ? $downloadName : $basename) . '"');
 
 // Stream the file; no echoing JSON afterward.
 readfile($absPath);

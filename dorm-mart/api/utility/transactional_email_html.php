@@ -8,21 +8,25 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../config/app_config.php';
 
 function dm_transactional_footer_inner_html(): string
 {
+    $supportEmail = dm_support_email();
+    $supportEmailEscaped = escape_html($supportEmail);
+
     return '<p style="margin:0 0 10px;color:#94a3b8;font-size:12px;line-height:1.5;">This is an automated message; please do not reply to this email.</p>'
         . '<p style="margin:0;color:#64748b;font-size:12px;line-height:1.5;">Need help? Contact us at '
-        . '<a href="mailto:dormmartsupport@gmail.com" style="color:#38bdf8;text-decoration:underline;">dormmartsupport@gmail.com</a></p>';
+        . '<a href="mailto:' . $supportEmailEscaped . '" style="color:#38bdf8;text-decoration:underline;">' . $supportEmailEscaped . '</a></p>';
 }
 
 function dm_transactional_shell(string $documentTitle, ?string $preheader, string $bodyContentHtml): string
 {
-    $docTitle = escapeHtml($documentTitle);
+    $docTitle = escape_html($documentTitle);
     $hidden = '';
     if ($preheader !== null && $preheader !== '') {
         $hidden = '<div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0;">'
-            . escapeHtml($preheader) . '</div>';
+            . escape_html($preheader) . '</div>';
     }
 
     return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
@@ -53,8 +57,8 @@ function dm_transactional_shell(string $documentTitle, ?string $preheader, strin
 function dm_transactional_welcome_package(string $firstName, string $tempPassword): array
 {
     $plainFirst = $firstName !== '' ? $firstName : 'Student';
-    $f = escapeHtml($plainFirst);
-    $p = escapeHtml($tempPassword);
+    $f = escape_html($plainFirst);
+    $p = escape_html($tempPassword);
     $subject = 'Welcome to Dorm Mart';
     $preheader = 'Your temporary password and next steps for Dorm Mart.';
 
@@ -76,7 +80,7 @@ function dm_transactional_welcome_package(string $firstName, string $tempPasswor
         . "{$tempPassword}\n\n"
         . "If you want to change this password, go to Settings -> Change Password.\n\n"
         . "Happy trading,\nThe Dorm Mart Team\n\n"
-        . "(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)";
+        . "(This is an automated message; do not reply. Support: " . dm_support_email() . ")";
 
     return ['subject' => $subject, 'html' => $html, 'text' => $text];
 }
@@ -87,8 +91,8 @@ function dm_transactional_welcome_package(string $firstName, string $tempPasswor
 function dm_transactional_password_reset_package(string $firstName, string $resetLink): array
 {
     $plainFirst = $firstName !== '' ? $firstName : 'Student';
-    $f = escapeHtml($plainFirst);
-    $href = escapeHtml($resetLink);
+    $f = escape_html($plainFirst);
+    $href = escape_html($resetLink);
     $subject = 'Reset Your Password - Dorm Mart';
     $preheader = 'Use this link to reset your Dorm Mart password. It expires in one hour.';
 
@@ -97,8 +101,12 @@ function dm_transactional_password_reset_package(string $firstName, string $rese
         . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 26px;border-collapse:collapse;"><tr><td align="center">'
         . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>'
         . '<td bgcolor="#2563eb" style="background-color:#2563eb;border-radius:8px;">'
-        . '<a href="' . $href . '" target="_blank" style="display:inline-block;padding:14px 32px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Reset password</a>'
+        . '<a href="' . $href . '" target="_blank" role="button" style="display:inline-block;padding:14px 32px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Reset password</a>'
         . '</td></tr></table></td></tr></table>'
+        // Some email clients suppress styled CTA links when sender authentication is uncertain.
+        . '<p style="margin:0 0 8px;color:#94a3b8;font-size:13px;line-height:1.5;">Or use this plain reset link:</p>'
+        . '<p style="margin:0 0 22px;color:#93c5fd;font-size:13px;line-height:1.5;word-break:break-all;overflow-wrap:anywhere;">'
+        . '<a href="' . $href . '" target="_blank" style="color:#38bdf8;text-decoration:underline;word-break:break-all;overflow-wrap:anywhere;">' . $href . '</a></p>'
         . '<p style="margin:0 0 12px;color:#94a3b8;font-size:14px;">This link expires in <strong style="color:#e2e8f0;">1 hour</strong> for your security.</p>'
         . '<p style="margin:0 0 22px;color:#64748b;font-size:13px;line-height:1.5;">If you did not ask for a reset, you can ignore this email &mdash; your password will stay the same.</p>'
         . '<p style="margin:0;color:#e2e8f0;">Best regards,<br><span style="color:#38bdf8;font-weight:600;">The Dorm Mart Team</span></p>';
@@ -110,9 +118,50 @@ function dm_transactional_password_reset_package(string $firstName, string $rese
         . "Click this link to reset your password:\n{$resetLink}\n\n"
         . "This link will expire in 1 hour for security reasons.\n\n"
         . "Best regards,\nThe Dorm Mart Team\n\n"
-        . "(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)";
+        . "(This is an automated message; do not reply. Support: " . dm_support_email() . ")";
 
     return ['subject' => $subject, 'html' => $html, 'text' => $text];
+}
+
+/**
+ * @return array{subject: string, html: string, text: string}
+ */
+function dm_transactional_two_factor_code_package(string $firstName, string $code): array
+{
+    $name = $firstName !== '' ? $firstName : 'Student';
+    $subject = 'Your Dorm Mart verification code';
+    $inner = '<p style="margin:0 0 16px;color:#f1f5f9;font-size:17px;">Hi ' . escape_html($name) . ',</p>'
+        . '<p style="margin:0 0 18px;color:#cbd5e1;">Use this code to finish signing in to Dorm Mart:</p>'
+        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;border-collapse:collapse;border:1px solid #334155;">'
+        . '<tr><td style="padding:22px;text-align:center;background-color:#0f172a;font-family:\'Courier New\',Courier,monospace;font-size:30px;font-weight:700;letter-spacing:0.2em;color:#38bdf8;">'
+        . escape_html($code) . '</td></tr></table>'
+        . '<p style="margin:0 0 12px;color:#94a3b8;font-size:14px;">This code expires in 10 minutes and can only be used once.</p>'
+        . '<p style="margin:0 0 22px;color:#64748b;font-size:13px;">If you did not try to log in, change your password immediately.</p>';
+
+    return [
+        'subject' => $subject,
+        'html' => dm_transactional_shell($subject, 'Your sign-in verification code expires in 10 minutes.', $inner),
+        'text' => "Hi {$name},\n\nYour Dorm Mart verification code is: {$code}\n\nThis code expires in 10 minutes and can only be used once.\n\nIf you did not try to log in, change your password immediately.",
+    ];
+}
+
+/**
+ * @return array{subject: string, html: string, text: string}
+ */
+function dm_transactional_two_factor_enabled_package(string $firstName): array
+{
+    $name = $firstName !== '' ? $firstName : 'Student';
+    $subject = 'Two-Factor Authentication enabled';
+    $inner = '<p style="margin:0 0 16px;color:#f1f5f9;font-size:17px;">Hi ' . escape_html($name) . ',</p>'
+        . '<p style="margin:0 0 18px;color:#cbd5e1;">Two-Factor Authentication was enabled successfully on your Dorm Mart account.</p>'
+        . '<p style="margin:0 0 22px;color:#94a3b8;font-size:14px;">Future logins will require a one-time code sent to this email address.</p>'
+        . '<p style="margin:0 0 22px;color:#64748b;font-size:13px;">If you did not make this change, reset your password and contact support.</p>';
+
+    return [
+        'subject' => $subject,
+        'html' => dm_transactional_shell($subject, 'Email verification is now enabled for your account.', $inner),
+        'text' => "Hi {$name},\n\nTwo-Factor Authentication was enabled successfully on your Dorm Mart account. Future logins will require a one-time code sent to this email address.\n\nIf you did not make this change, reset your password and contact support.",
+    ];
 }
 
 /**
@@ -121,7 +170,7 @@ function dm_transactional_password_reset_package(string $firstName, string $rese
 function dm_transactional_promo_welcome_package(string $firstName): array
 {
     $plainFirst = $firstName !== '' ? $firstName : 'Student';
-    $f = escapeHtml($plainFirst);
+    $f = escape_html($plainFirst);
     $subject = 'Welcome to Dorm Mart Promotional Updates';
     $preheader = 'You are subscribed to Dorm Mart promotional updates.';
 
@@ -152,7 +201,35 @@ function dm_transactional_promo_welcome_package(string $firstName): array
         . "This is a one-time email confirming your choice. You can update preferences in account settings.\n\n"
         . "Subscribed successfully\n\n"
         . "Happy trading,\nThe Dorm Mart Team\n\n"
-        . "(This is an automated message; do not reply. Support: dormmartsupport@gmail.com)";
+        . "(This is an automated message; do not reply. Support: " . dm_support_email() . ")";
 
     return ['subject' => $subject, 'html' => $html, 'text' => $text];
+}
+
+/** @param array<int,array{title:string,price:float,url:string}> $items */
+function dm_promotional_items_package(string $firstName, array $items): array
+{
+    $name = $firstName !== '' ? $firstName : 'Student';
+    $rows = '';
+    $textRows = [];
+    foreach ($items as $item) {
+        $title = escape_html((string)$item['title']);
+        $url = escape_html((string)$item['url']);
+        $price = '$' . number_format((float)$item['price'], 2);
+        $image = !empty($item['image_cid']) ? '<a href="' . $url . '"><img src="cid:' . escape_html((string)$item['image_cid']) . '" alt="' . $title . '" width="120" style="display:block;width:120px;height:90px;object-fit:cover;border-radius:8px;border:0;"></a>' : '';
+        $rows .= '<tr><td width="136" valign="middle" style="padding:14px 16px 14px 0;border-bottom:1px solid #334155;">' . $image . '</td><td valign="middle" style="padding:14px 0;border-bottom:1px solid #334155;"><a href="' . $url . '" style="color:#38bdf8;font-weight:700;text-decoration:underline;">' . $title . '</a><br><span style="color:#cbd5e1;">' . $price . '</span></td></tr>';
+        $textRows[] = $item['title'] . ' - ' . $price . "\n" . $item['url'];
+    }
+    $settingsUrl = dm_frontend_url('app/setting/user-preferences');
+    $inner = '<p style="margin:0 0 6px;color:#38bdf8;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Fresh finds from Dorm Mart</p>'
+        . '<p style="margin:0 0 12px;color:#f1f5f9;font-size:24px;font-weight:700;">Items picked for you &#10024;</p>'
+        . '<p style="color:#cbd5e1;">Hey ' . escape_html($name) . '! We spotted a few marketplace finds you might love. Take a peek before another Bull grabs them!</p>'
+        . '<table role="presentation" width="100%" style="border-collapse:collapse;">' . $rows . '</table>'
+        . '<p style="margin:24px 0;color:#94a3b8;font-size:13px;">Change the frequency or turn these emails off in <a href="' . escape_html($settingsUrl) . '" style="color:#38bdf8;">User Preferences</a>.</p>';
+    return [
+        'subject' => 'Items picked for you - Dorm Mart',
+        'html' => dm_transactional_shell('Items picked for you - Dorm Mart', 'Fresh marketplace finds picked for you.', $inner),
+        'text' => "Items picked for you - Dorm Mart\n\nHey {$name}! We spotted a few marketplace finds you might love. Take a peek before another Bull grabs them!\n\n" . implode("\n\n", $textRows) . "\n\nManage promotional emails: {$settingsUrl}",
+        'inline_images' => array_values(array_filter(array_map(static fn($item) => $item['inline_image'] ?? null, $items))),
+    ];
 }

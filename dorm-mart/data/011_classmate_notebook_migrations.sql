@@ -1,5 +1,6 @@
--- Classmate Notebook end-to-end test story (buyer testuserA, seller testuserB).
--- Resolves user and product IDs at runtime (users from 008_testUserA-B.sql via email).
+-- Seed: Classmate Notebook end-to-end test story.
+-- Purpose: creates a sold Classmate Notebook with chat, scheduled purchase, receipt, review, and purchase history.
+-- Depends on: 008_testUserA-B.sql for testuserA@ and testuserB@.
 
 START TRANSACTION;
 

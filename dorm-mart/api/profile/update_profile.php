@@ -6,37 +6,19 @@ declare(strict_types=1);
  * Persists editable profile fields such as bio, instagram URL, and profile photo reference.
  */
 
-require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/image_upload.php';
 require_once __DIR__ . '/profile_helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+init_json_endpoint('POST');
 
 try {
     $userId = require_login();
-    $raw = file_get_contents('php://input');
-    $data = json_decode($raw, true);
-
-    if (!is_array($data)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
-    }
+    $data = json_request_body_or_error();
+    require_csrf_token($data['csrf_token'] ?? null);
 
     $setClauses = [];
     $types      = '';
@@ -72,7 +54,7 @@ try {
         }
     }
     if ($photoKey !== null) {
-        $photoPath = sanitize_profile_photo_value($data[$photoKey]);
+        $photoPath = sanitize_profile_photo_value($data[$photoKey], $userId);
         if ($photoPath === null) {
             $setClauses[] = 'profile_photo = NULL';
         } else {
@@ -83,9 +65,7 @@ try {
     }
 
     if (empty($setClauses)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'No updatable fields were provided']);
-        exit;
+        json_response(['success' => false, 'error' => 'No updatable fields were provided'], 400);
     }
 
     $conn = db();
@@ -113,14 +93,13 @@ try {
     $updatedProfile = fetch_updated_fields($conn, $userId);
     $conn->close();
 
-    echo json_encode([
+    json_response([
         'success' => true,
         'profile' => $updatedProfile,
     ]);
 } catch (Throwable $e) {
     error_log('update_profile.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
 
 function sanitize_bio_value($value): ?string
@@ -128,17 +107,16 @@ function sanitize_bio_value($value): ?string
     if ($value === null) {
         return null;
     }
-    $bio = trim((string)$value);
+    if (!is_string($value)) {
+        json_response(['success' => false, 'error' => 'Invalid bio'], 400);
+    }
+    $bio = trim($value);
     if ($bio === '') {
         return null;
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (containsXSSPattern($bio)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in bio']);
-        exit;
+    if (mb_strlen($bio) > 200) {
+        json_response(['success' => false, 'error' => 'Bio is too long'], 400);
     }
-    $bio = mb_substr($bio, 0, 200);
     return $bio;
 }
 
@@ -147,57 +125,46 @@ function sanitize_link_value($value): ?string
     if ($value === null) {
         return null;
     }
-    $link = trim((string)$value);
+    if (!is_string($value)) {
+        json_response(['success' => false, 'error' => 'Invalid Instagram URL'], 400);
+    }
+    $link = trim($value);
     if ($link === '') {
         return null;
     }
-    if (strlen($link) > 255) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Link is too long']);
-        exit;
+    if (mb_strlen($link) > 150) {
+        json_response(['success' => false, 'error' => 'Link is too long'], 400);
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (containsXSSPattern($link)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in link']);
-        exit;
+    if (!preg_match('#^https?://(www\.)?instagram\.com/[a-zA-Z0-9._]{1,30}/?$#i', $link)) {
+        json_response(['success' => false, 'error' => 'Invalid Instagram URL'], 400);
     }
     return $link;
 }
 
-function sanitize_profile_photo_value($value): ?string
+function sanitize_profile_photo_value($value, int $userId): ?string
 {
     if ($value === null) {
         return null;
     }
-    $url = trim((string)$value);
+    if (!is_string($value)) {
+        json_response(['success' => false, 'error' => 'Invalid profile photo path'], 400);
+    }
+    $url = trim($value);
     if ($url === '') {
         return null;
     }
     if (strlen($url) > 255) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Profile photo URL is too long']);
-        exit;
+        json_response(['success' => false, 'error' => 'Profile photo URL is too long'], 400);
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    if (containsXSSPattern($url)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in profile photo URL']);
-        exit;
+    $pattern = '#^/images/profile_' . $userId . '_[a-f0-9]{16}\.(?:jpg|png|webp)$#D';
+    if (!preg_match($pattern, $url)) {
+        json_response(['success' => false, 'error' => 'Profile photo must reference your uploaded image'], 400);
     }
-
-    $allowedSchemes = ['http://', 'https://', '/media/', '/images/'];
-    $isAllowed = false;
-    foreach ($allowedSchemes as $prefix) {
-        if (str_starts_with($url, $prefix)) {
-            $isAllowed = true;
-            break;
-        }
-    }
-    if (!$isAllowed) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Profile photo must reference an allowed path']);
-        exit;
+    $root = real_upload_path(data_images_dir());
+    $path = $root !== null ? realpath($root . DIRECTORY_SEPARATOR . basename($url)) : false;
+    $prefix = $root !== null ? rtrim($root, '/\\') . DIRECTORY_SEPARATOR : '';
+    if ($path === false || !str_starts_with($path, $prefix) || !is_file($path)) {
+        json_response(['success' => false, 'error' => 'Profile photo was not found'], 400);
     }
 
     return $url;
@@ -221,7 +188,7 @@ function fetch_updated_fields(mysqli $conn, int $userId): array
 
     return [
         'image_url' => format_profile_photo_url($row['profile_photo'] ?? null),
-        'bio'       => $row['bio'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
+        'bio'       => $row['bio'] ?? '',
         'instagram' => $row['instagram'] ?? '',
     ];
 }

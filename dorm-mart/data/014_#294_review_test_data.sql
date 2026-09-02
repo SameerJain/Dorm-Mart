@@ -1,9 +1,7 @@
 START TRANSACTION;
--- 010_review_test_data.sql
--- Seed data for review feature testing
--- Creates a completed purchase: Marble Notebook sold by testuserschedulered@buffalo.edu to testuser@buffalo.edu
--- Simulates organic flow: Message Seller -> Scheduled Purchase -> Confirm Purchase -> Review (user writes it)
--- Note: Review is NOT pre-seeded - user writes it themselves via the UI
+-- Seed: Task #294 Marble Notebook review flow.
+-- Purpose: creates a completed Marble Notebook purchase for review-submission testing.
+-- Notes: the review is not pre-seeded; the buyer writes it through the UI.
 
 -- Get user IDs (users must exist from previous migrations/data files)
 -- If users don't exist, these will be NULL and subsequent operations will fail
@@ -339,4 +337,3 @@ ON DUPLICATE KEY UPDATE
 -- after this data is seeded. The purchase record above allows the buyer to submit a review.
 
 COMMIT;
-

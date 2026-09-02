@@ -1,6 +1,7 @@
 START TRANSACTION;
--- data/008_testUserA-B.sql — testuserA@ / testuserB@ for Classmate (011) and other flows.
--- No fixed user_id: relies on UNIQUE(email) + upsert so re-runs keep the same row when possible.
+-- Seed: paired testuserA@ and testuserB@ accounts.
+-- Purpose: supports the Classmate Notebook flow and other buyer/seller tests.
+-- Safe to rerun: UNIQUE(email) upserts preserve rows when possible.
 
 SET SESSION foreign_key_checks = 0;
 

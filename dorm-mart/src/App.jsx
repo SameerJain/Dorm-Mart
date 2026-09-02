@@ -1,0 +1,243 @@
+// dorm-mart/src/App.jsx
+
+// essentials
+import { createHashRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
+import { useLayoutEffect } from "react";
+import RootLayout from "./pages/RootLayout";
+// auth
+import LoginPage from "./pages/LoginPage";
+import WelcomePage from "./pages/WelcomePage";
+import LandingPage from "./pages/Home/LandingPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
+import ResetPasswordConfirmation from "./pages/ResetPassword/ResetPasswordConfirmation.jsx";
+import ForgotPasswordConfirmation from "./pages/ResetPassword/ForgotPasswordConfirmation.jsx";
+import ResetPasswordForm from "./pages/ResetPassword/ResetPasswordForm.jsx";
+// app
+import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
+import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
+import ProductListingPage from "./pages/ItemForms/ProductListingPage.jsx";
+import CreateAccount from "./pages/AccountCreation/AccountCreationPage.jsx";
+import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
+import MyProfilePage from "./pages/Settings/MyProfile.jsx";
+import BuyerReviewsPage from "./pages/Settings/BuyerReviewsPage.jsx";
+import UserPreferences from "./pages/Settings/UserPreferences.jsx";
+import AccountInfoPage from "./pages/Settings/AccountInfoPage.jsx";
+import LoggedDevicesPage from "./pages/Settings/LoggedDevicesPage.jsx";
+import DeleteAccountPage from "./pages/Settings/DeleteAccount.jsx";
+import TwoFactorAuthentication from "./pages/Settings/TwoFactorAuthentication.jsx";
+import PaymentsPage from "./pages/Settings/PaymentsPage.jsx";
+import AboutUs from "./pages/Settings/AboutUs.jsx";
+import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.jsx";
+import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
+import SchedulePurchasePage from "./pages/ScheduledPurchases/SchedulePurchasePage.jsx";
+import ConfirmPurchasePage from "./pages/ScheduledPurchases/ConfirmPurchasePage.jsx";
+import OngoingPurchasesPage from "./pages/ScheduledPurchases/OngoingPurchasesPage.jsx";
+import MarkCompletedPage from "./pages/ScheduledPurchases/MarkCompletedPage.jsx";
+import ViewProduct from "./pages/ItemDetails/ViewProductPage.jsx";
+import ViewReceipt from "./pages/ItemDetails/ViewReceiptPage.jsx";
+import SearchResults from "./pages/Search/SearchResultsPage.jsx";
+import WishlistPage from "./pages/Wishlist/WishlistPage.jsx";
+import PublicProfilePage from "./pages/PublicProfile/PublicProfilePage.jsx";
+// Chat
+import { ChatProvider } from "./context/ChatContext.jsx";
+import ChatPage from "./pages/Chat/ChatPage.jsx";
+// Notification
+import NotificationPage from "./pages/Notification/NotificationPage.jsx";
+// FAQ
+import FAQPage from "./pages/FAQ/FAQPage.jsx";
+import NotFoundPage from "./pages/NotFoundPage.jsx";
+import LegalDocumentPage from "./pages/Legal/LegalDocumentPage.jsx";
+import ModeratorDashboard from "./pages/Moderator/ModeratorDashboard.jsx";
+import { useAuth } from "./context/AuthContext.jsx";
+
+function ModeratorOnly({ children }) {
+  const currentUser = useAuth();
+  return currentUser?.role === "moderator" ? children : <Navigate to="/app" replace />;
+}
+
+function PreLoginLayout() {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const hadDark = root.classList.contains("dark");
+    const prevScheme = root.style.colorScheme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prevColor = meta?.getAttribute("content") ?? null;
+    const prevBodyBackground = document.body.style.background;
+
+    root.classList.remove("dark");
+    root.style.colorScheme = "light";
+    if (meta) meta.setAttribute("content", "#ffffff");
+    // Matches .pre-login-bg (index.css) so any gap from viewport-unit rounding
+    // on mobile browsers blends into the gradient instead of showing white.
+    document.body.style.background =
+      "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%)";
+
+    return () => {
+      if (hadDark) root.classList.add("dark");
+      root.style.colorScheme = prevScheme;
+      if (meta) {
+        if (prevColor === null) meta.removeAttribute("content");
+        else meta.setAttribute("content", prevColor);
+      }
+      document.body.style.background = prevBodyBackground;
+    };
+  }, []);
+
+  return <Outlet />;
+}
+
+export const router = createHashRouter([
+  // Pre-login pages — dark mode suppressed for all children
+  {
+    element: <PreLoginLayout />,
+    children: [
+      { path: "/", element: <WelcomePage /> },
+      { path: "/login", element: <LoginPage /> },
+      { path: "/create-account", element: <CreateAccount /> },
+      { path: "/forgot-password", element: <ForgotPasswordPage /> },
+      {
+        path: "/privacy-policy",
+        element: <LegalDocumentPage documentKey="privacy" />,
+      },
+      {
+        path: "/terms-of-service",
+        element: <LegalDocumentPage documentKey="terms" />,
+      },
+      {
+        path: "/forgot-password/confirmation",
+        element: <ForgotPasswordConfirmation />,
+      },
+      { path: "/reset-password", element: <ResetPasswordForm /> },
+      {
+        path: "/reset-password/confirmation",
+        element: <ResetPasswordConfirmation />,
+      },
+    ],
+  },
+  // Main app
+  {
+    path: "/app",
+    element: (
+      <ChatProvider>
+        <RootLayout />
+      </ChatProvider>
+    ),
+    children: [
+      { index: true, element: <LandingPage /> },
+      // Search Results
+      { path: "listings", element: <SearchResults /> },
+      // Product Listing
+      {
+        path: "product-listing",
+        children: [
+          { index: true, element: <ProductListingPage /> },
+          { path: "new", element: <ProductListingPage key="new" /> },
+          { path: "edit/:id", element: <ProductListingPage key="edit" /> },
+        ],
+      },
+      // View Product
+      { path: "viewProduct", element: <ViewProduct /> },
+      { path: "viewProduct/:id", element: <ViewProduct /> },
+      { path: "viewproduct", element: <ViewProduct /> },
+      { path: "viewproduct/:id", element: <ViewProduct /> },
+      { path: "viewReceipt", element: <ViewReceipt /> },
+      { path: "viewReceipt/:id", element: <ViewReceipt /> },
+      { path: "viewreceipt", element: <ViewReceipt /> },
+      { path: "viewreceipt/:id", element: <ViewReceipt /> },
+      {
+        path: "purchase-history",
+        element: <PurchaseHistoryLayout />,
+        children: [
+          { index: true, element: <PurchaseHistoryPage /> },
+          { path: "item-detail/:id", element: <ItemDetailPage /> },
+        ],
+      },
+      {
+        path: "notification",
+        children: [{ index: true, element: <NotificationPage /> }],
+      },
+      {
+        path: "chat",
+        children: [{ index: true, element: <ChatPage /> }],
+      },
+      // Wishlist
+      {
+        path: "wishlist",
+        element: <WishlistPage />,
+      },
+      {
+        path: "profile",
+        element: <PublicProfilePage />,
+      },
+      // Seller Dashboard
+      {
+        path: "seller-dashboard",
+        element: <SellerDashboardPage />,
+      },
+      {
+        path: "seller-dashboard/schedule-purchase",
+        element: <SchedulePurchasePage />,
+      },
+      {
+        path: "seller-dashboard/confirm-purchase",
+        element: <ConfirmPurchasePage />,
+      },
+      {
+        path: "seller-dashboard/ongoing-purchases",
+        element: <OngoingPurchasesPage />,
+      },
+      {
+        path: "scheduled-purchases/mark-completed/:requestId",
+        element: <MarkCompletedPage />,
+      },
+// Settings (under /app)
+      {
+        path: "setting",
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/app/setting/my-profile" replace />,
+          },
+          { path: "my-profile", element: <MyProfilePage /> },
+          { path: "change-password", element: <ChangePasswordPage /> },
+          { path: "buyer-reviews", element: <BuyerReviewsPage /> },
+          // User Preferences
+          { path: "user-preferences", element: <UserPreferences /> },
+          { path: "personal-information", element: <AccountInfoPage /> },
+          { path: "security-options", element: <LoggedDevicesPage /> },
+          { path: "two-factor-authentication", element: <TwoFactorAuthentication /> },
+          { path: "payments", element: <PaymentsPage /> },
+          { path: "about-us", element: <AboutUs /> },
+          { path: "delete-account", element: <DeleteAccountPage /> },
+        ],
+      },
+      {
+        path: "faq",
+        element: <FAQPage />,
+      },
+      {
+        path: "moderation",
+        element: (
+          <ModeratorOnly>
+            <ModeratorDashboard />
+          </ModeratorOnly>
+        ),
+      },
+      { path: "*", element: <NotFoundPage /> },
+    ],
+  },
+  {
+    path: "*",
+    element: (
+      <ChatProvider>
+        <NotFoundPage />
+      </ChatProvider>
+    ),
+  },
+]);
+
+function App() {
+  return <RouterProvider router={router} />;
+}
+
+export default App;

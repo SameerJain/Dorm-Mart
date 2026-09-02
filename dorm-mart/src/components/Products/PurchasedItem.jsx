@@ -1,30 +1,31 @@
 import { Link } from "react-router-dom";
-import { withFallbackImage, onProductImageError, resolveStoredImageUrl } from "../../utils/imageFallback";
+import logger from "../../utils/logger";
+import {
+  withFallbackImage,
+  onProductImageError,
+  resolveStoredImageUrl,
+} from "../../utils/imageFallback";
+import { API_BASE } from "../../utils/apiConfig";
 import { useState, useEffect } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
+import { formatDateTime } from "../../utils/formatters";
 
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
-
-/** Match receipt / site style: short date + 12h time (not raw SQL 24h). */
-function formatPurchasedAt(value) {
-  if (value == null || value === "") return "";
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false }) {
-  const productIdParam = id !== undefined && id !== null ? encodeURIComponent(id) : "";
+function PurchasedItem({
+  id,
+  title,
+  seller,
+  date,
+  image,
+  autoOpenReview = false,
+  paymentStatus,
+  paymentMode,
+}) {
+  const productIdParam =
+    id !== undefined && id !== null ? encodeURIComponent(id) : "";
   const detailPath = `/app/viewReceipt?id=${productIdParam}`;
-  const displayImage = withFallbackImage(resolveStoredImageUrl(image, API_BASE));
+  const displayImage = withFallbackImage(
+    resolveStoredImageUrl(image, API_BASE),
+  );
   const detailState = { id, title, seller, date, image: displayImage };
 
   const [hasReview, setHasReview] = useState(false);
@@ -44,7 +45,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
           {
             method: "GET",
             credentials: "include",
-          }
+          },
         );
 
         if (response.ok) {
@@ -55,7 +56,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
           }
         }
       } catch (error) {
-        console.error("Error fetching review status:", error);
+        logger.error("Error fetching review status:", error);
       } finally {
         setIsLoadingReview(false);
       }
@@ -89,7 +90,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
         {
           method: "GET",
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -99,7 +100,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
         }
       }
     } catch (error) {
-      console.error("Error fetching review after submit:", error);
+      logger.error("Error fetching review after submit:", error);
     }
   };
 
@@ -107,11 +108,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
     <>
       <li className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 shadow">
         {/* Left: image */}
-        <Link
-          to={detailPath}
-          state={detailState}
-          className="block"
-        >
+        <Link to={detailPath} state={detailState} className="block">
           <img
             src={displayImage}
             alt="Item"
@@ -133,12 +130,19 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
                 {title}
               </Link>
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">Sold by {seller}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+              Sold by {seller}
+            </p>
+            {paymentStatus && (
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                Stripe {String(paymentStatus).replaceAll("_", " ")}{paymentMode === "test" ? " · Test Mode" : ""}
+              </p>
+            )}
           </div>
 
           {/* Bottom: date */}
           <p className="mt-2 sm:mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Purchased on {formatPurchasedAt(date)}
+            Purchased on {date ? formatDateTime(date) : ""}
           </p>
         </div>
 

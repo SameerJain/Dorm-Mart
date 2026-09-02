@@ -1,18 +1,20 @@
-import React, { memo, useCallback, useMemo } from "react";
-import { onProductImageError, resolveStoredImageUrl } from "../../../utils/imageFallback";
+import { memo, useCallback, useMemo } from "react";
+import {
+  onProductImageError,
+  resolveStoredImageUrl,
+} from "../../../utils/imageFallback";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from "../../../utils/apiConfig";
 
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
-
-const MessageCard = memo(function MessageCard({ message, isMine }) {
+const MessageCard = memo(function MessageCard({ message, listingUnavailable }) {
   const navigate = useNavigate();
   const metadata = message.metadata || {};
   const product = metadata.product || {};
   const previewText = message.content || "";
   const rawImageUrl = product.image_url;
   const productId = product.product_id;
-  
+  const isClickable = Boolean(productId) && !listingUnavailable;
+
   const imageUrl = useMemo(() => {
     if (!rawImageUrl) return null;
     const resolved = resolveStoredImageUrl(rawImageUrl, API_BASE);
@@ -20,17 +22,17 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
   }, [rawImageUrl]);
 
   const handleClick = useCallback(() => {
-    if (!productId) return;
+    if (!isClickable) return;
     // iOS Safari: blur focused inputs (e.g. chat composer <16px) and avoid carrying zoom across navigations
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
     navigate(`/app/viewProduct/${encodeURIComponent(productId)}`);
-  }, [productId, navigate]);
+  }, [isClickable, productId, navigate]);
 
   const shellClass =
     "max-w-[85%] rounded-2xl border-2 border-blue-400 bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg overflow-hidden text-left dark:border-blue-600 dark:from-blue-800 dark:to-blue-900 dark:shadow-black/30 touch-manipulation " +
-    (productId
+    (isClickable
       ? "cursor-pointer transition-all duration-200 hover:shadow-xl md:hover:scale-[1.02]"
       : "");
 
@@ -51,23 +53,38 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
       ) : null}
       <div className="p-4 space-y-3 overflow-hidden">
         <div className="flex items-center gap-2 min-w-0">
-          <svg className="h-5 w-5 flex-shrink-0 text-blue-100 dark:text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          <svg
+            className="h-5 w-5 flex-shrink-0 text-blue-100 dark:text-blue-200"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+            />
           </svg>
-          <p className="min-w-0 flex-1 break-words text-lg font-bold leading-tight text-white">
+          <p className="min-w-0 flex-1 break-words overflow-wrap-anywhere text-lg font-bold leading-tight text-white">
             {product.title || "Listing"}
           </p>
         </div>
         <div className="rounded-lg bg-blue-500/30 px-3 py-2 backdrop-blur-sm dark:bg-blue-950/45 dark:ring-1 dark:ring-blue-900/60">
-          <p className="whitespace-pre-wrap break-words text-sm text-blue-50 dark:text-slate-100">
+          <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere text-sm text-blue-50 dark:text-slate-100">
             {previewText}
           </p>
         </div>
+        {listingUnavailable && (
+          <p className="text-xs font-medium text-blue-100">
+            Listing currently unavailable
+          </p>
+        )}
       </div>
     </>
   );
 
-  return productId ? (
+  return isClickable ? (
     <button type="button" onClick={handleClick} className={shellClass}>
       {body}
     </button>
@@ -77,4 +94,3 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
 });
 
 export default MessageCard;
-

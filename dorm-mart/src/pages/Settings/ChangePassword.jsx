@@ -2,27 +2,24 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SettingsLayout from "./SettingsLayout";
 import PageBackButton from "../../components/PageBackButton";
+import PasswordRequirementRow from "../../components/forms/PasswordRequirementRow";
+import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
+import {
+  buildPasswordPolicy,
+  MAX_PASSWORD_LEN,
+} from "../../utils/passwordPolicy";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
-const MAX_LEN = 64;
+const MAX_LEN = MAX_PASSWORD_LEN;
 
-const hasLower = (s) => /[a-z]/.test(s);
-const hasUpper = (s) => /[A-Z]/.test(s);
-const hasDigit = (s) => /\d/.test(s);
-const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
-
-function RequirementRow({ ok, text }) {
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }} />
-      <span className={ok ? "text-green-700" : "text-red-700"}>{text}</span>
-    </div>
-  );
-}
-
-function Field({ id, label, type = "password", value, onChange, placeholder }) {
+function Field({ id, label, type = "password", value, onChange, placeholder, maxLength }) {
   return (
     <div className="mb-6">
-      <label htmlFor={id} className="mb-2 block text-base font-medium text-slate-700">
+      <label
+        htmlFor={id}
+        className="mb-2 block text-base font-medium text-slate-700"
+      >
         {label}
       </label>
       <input
@@ -31,6 +28,7 @@ function Field({ id, label, type = "password", value, onChange, placeholder }) {
         value={value}
         placeholder={placeholder}
         onChange={onChange}
+        maxLength={maxLength}
         className="h-11 w-full rounded-xl border border-slate-300 bg-slate-100 px-4 text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:focus:bg-gray-800"
       />
     </div>
@@ -56,52 +54,9 @@ function ChangePasswordPage() {
   const [countdown, setCountdown] = useState(5);
   const timerRef = useRef(null);
 
-  // Prevent body scroll when success modal is open
-  useEffect(() => {
-    if (showNotice) {
-      const scrollY = window.scrollY;
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-    } else {
-      const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
-    }
-    return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-    };
-  }, [showNotice]);
+  useBodyScrollLock(showNotice);
 
-  const policy = useMemo(
-    () => ({
-      minLen: nextPw.length >= 8,
-      lower: hasLower(nextPw),
-      upper: hasUpper(nextPw),
-      digit: hasDigit(nextPw),
-      special: hasSpecial(nextPw),
-      notTooLong: nextPw.length <= MAX_LEN,
-    }),
-    [nextPw]
-  );
-
-  const enforceMax = (setter) => (e) => {
-    const v = e.target.value;
-    if (v.length > MAX_LEN) alert("Entered password is too long. Maximum length is 64 characters.");
-    setter(v);
-  };
+  const policy = useMemo(() => buildPasswordPolicy(nextPw), [nextPw]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -113,7 +68,6 @@ function ChangePasswordPage() {
 
   const LOGIN_ROUTE = "/";
 
-  // Start 5s countdown only after success modal shows
   useEffect(() => {
     if (!showNotice) return;
     setCountdown(5);
@@ -138,45 +92,26 @@ function ChangePasswordPage() {
   }, [showNotice, navigate]);
 
   const handleSubmit = async () => {
-    if (!current && !nextPw && !confirmPw) {
-      alert("The new password text box must have an entry put into it.");
-      return;
-    }
-    if (!current || !nextPw || !confirmPw) {
-      alert("Please fill in all required fields.");
+    if (!current.trim() || !nextPw.trim() || !confirmPw.trim()) {
+      alert("Please fill in all password fields.");
       return;
     }
     if (nextPw !== confirmPw) {
       alert("The new password that was entered is different from the re-entry of the password.");
       return;
     }
-    if (current.length > MAX_LEN || nextPw.length > MAX_LEN || confirmPw.length > MAX_LEN) {
-      alert("Entered password is too long. Maximum length is 64 characters.");
-      return;
-    }
-    if (nextPw.length < 8) {
-      alert("The new password must have at least 8 characters.");
-      return;
-    }
-    if (!hasLower(nextPw)) {
-      alert("The new password must have at least 1 lowercase letter.");
-      return;
-    }
-    if (!hasUpper(nextPw)) {
-      alert("The new password must have at least 1 uppercase letter.");
-      return;
-    }
-    if (!hasDigit(nextPw)) {
-      alert("The new password must have at least 1 digit.");
-      return;
-    }
-    if (!hasSpecial(nextPw)) {
-      alert("The new password must have at least 1 special character.");
-      return;
-    }
+    const policyChecks = [
+      [!policy.minLen,  "The new password must have at least 8 characters."],
+      [!policy.lower,   "The new password must have at least 1 lowercase letter."],
+      [!policy.upper,   "The new password must have at least 1 uppercase letter."],
+      [!policy.digit,   "The new password must have at least 1 digit."],
+      [!policy.special, "The new password must have at least 1 special character."],
+    ];
+    const failed = policyChecks.find(([bad]) => bad);
+    if (failed) { alert(failed[1]); return; }
 
     try {
-      const res = await fetch("api/auth/change_password.php", {
+      const res = await csrfFetch(`${API_BASE}/auth/change_password.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -209,22 +144,25 @@ function ChangePasswordPage() {
             id="currentPassword"
             label="Current Password"
             value={current}
-            onChange={enforceMax(setCurrent)}
+            onChange={(e) => setCurrent(e.target.value)}
             placeholder="Enter current password"
+            maxLength={MAX_LEN}
           />
           <Field
             id="newPassword"
             label="New Password"
             value={nextPw}
-            onChange={enforceMax(setNextPw)}
+            onChange={(e) => setNextPw(e.target.value)}
             placeholder="Enter new password"
+            maxLength={MAX_LEN}
           />
           <Field
             id="confirmPassword"
             label="Re-enter New Password"
             value={confirmPw}
-            onChange={enforceMax(setConfirmPw)}
+            onChange={(e) => setConfirmPw(e.target.value)}
             placeholder="Re-enter new password"
+            maxLength={MAX_LEN}
           />
 
           <button
@@ -241,33 +179,58 @@ function ChangePasswordPage() {
             Password must contain:
           </h2>
           <div className="flex flex-col gap-2">
-            <RequirementRow ok={policy.lower} text="At least 1 lowercase character" />
-            <RequirementRow ok={policy.upper} text="At least 1 uppercase character" />
-            <RequirementRow ok={policy.minLen} text="At least 8 characters" />
-            <RequirementRow ok={policy.special} text="At least 1 special character" />
-            <RequirementRow ok={policy.digit} text="At least 1 digit" />
-            <RequirementRow ok={policy.notTooLong} text="No more than 64 characters" />
+            <PasswordRequirementRow
+              ok={policy.lower}
+              text="At least 1 lowercase character"
+            />
+            <PasswordRequirementRow
+              ok={policy.upper}
+              text="At least 1 uppercase character"
+            />
+            <PasswordRequirementRow
+              ok={policy.minLen}
+              text="At least 8 characters"
+            />
+            <PasswordRequirementRow
+              ok={policy.special}
+              text="At least 1 special character"
+            />
+            <PasswordRequirementRow ok={policy.digit} text="At least 1 digit" />
+            <PasswordRequirementRow
+              ok={policy.notTooLong}
+              text="No more than 64 characters"
+            />
           </div>
         </section>
       </div>
 
-      {/* Success Notice Modal */}
       {showNotice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* backdrop */}
-          <div className="absolute inset-0 bg-black bg-opacity-50" />
-          {/* card */}
           <div
-            className="relative z-10 w-full max-w-lg mx-4 rounded-xl shadow-2xl border border-white/10"
-            style={{ backgroundColor: "#3d3eb5" }}
+            className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm"
+            aria-hidden
+          />
+          <div
+            className="relative z-10 mx-4 w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-2xl ring-1 ring-black/5 dark:border-gray-700 dark:bg-gray-800 dark:ring-white/10"
+            role="dialog"
+            aria-labelledby="password-changed-title"
+            aria-modal="true"
           >
             <div className="p-6">
-              <h3 className="text-2xl font-serif text-white mb-3 text-center">Password Changed</h3>
-              <p className="text-white/90 text-center leading-relaxed">
+              <h3
+                id="password-changed-title"
+                className="mb-3 text-center font-serif text-2xl font-semibold text-blue-600 dark:text-blue-400"
+              >
+                Password Changed
+              </h3>
+              <p className="text-center leading-relaxed text-gray-700 dark:text-gray-300">
                 Your password was changed successfully.
                 <br />
                 You will be taken to our log in page in{" "}
-                <span className="font-semibold">{countdown}</span> seconds.
+                <span className="font-semibold text-gray-900 dark:text-gray-100">
+                  {countdown}
+                </span>{" "}
+                seconds.
               </p>
             </div>
           </div>

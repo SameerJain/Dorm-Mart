@@ -5,19 +5,21 @@ used to generate and provide a token for ws connection.
 this resolves the problem when ws handshake request doesn't include user's cookie on http
 */
 declare(strict_types=1);
+
+require_once __DIR__ . '/../security/security.php';
+require __DIR__ . '/../utility/load_env.php';
+
+load_env(); // must set getenv/$_ENV
+dm_enforce_https();
+init_security();
+
 header('Content-Type: application/json');
 
-require __DIR__ . '/../utility/load_env.php';
-load_env(); // must set getenv/$_ENV
-session_start();
+require_once __DIR__ . '/../auth/auth_handle.php';
+auth_boot_session();
 
 // Require auth via normal session
-$userId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
-if ($userId <= 0) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
-}
+$userId = require_login();
 
 $secret = getenv('WS_TOKEN_SECRET');            // put this in your .env
 if (!$secret) {

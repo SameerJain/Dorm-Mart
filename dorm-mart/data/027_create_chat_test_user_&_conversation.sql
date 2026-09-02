@@ -1,8 +1,8 @@
 SET SESSION foreign_key_checks = 0;
 
--- Remove only conversations tied to the three chat seed accounts.
--- (A global DELETE FROM conversations here used to wipe every other data seed
--- that ran earlier in migrate_data, e.g. review flows and typing-indicator chats.)
+-- Seed: dedicated chat test users and conversations.
+-- Purpose: creates three chat accounts, their conversations, participants, and messages.
+-- Safety: cleanup is scoped to these accounts to avoid wiping other seeded flows.
 DELETE c FROM conversations c
 WHERE EXISTS (
     SELECT 1 FROM user_accounts ua

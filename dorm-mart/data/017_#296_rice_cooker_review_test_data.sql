@@ -1,9 +1,7 @@
 START TRANSACTION;
--- 011_rice_cooker_review_test_data.sql
--- Seed data for seller review viewing tests
--- Creates a completed purchase: Rice Cooker sold by testuserschedulered@buffalo.edu to testuserscheduleyellow@buffalo.edu (Han Solo)
--- Includes a pre-seeded review with image
--- Simulates organic flow: Message Seller -> Scheduled Purchase -> Confirm Purchase -> Review
+-- Seed: Task #296 Rice Cooker seller review flow.
+-- Purpose: creates a completed Rice Cooker purchase with a pre-seeded review image.
+-- Depends on: scheduled purchase users and review image assets.
 
 -- Get user IDs (users must exist from previous migrations/data files)
 -- If users don't exist, these will be NULL and subsequent operations will fail
@@ -357,4 +355,3 @@ INSERT INTO product_reviews (
 );
 
 COMMIT;
-

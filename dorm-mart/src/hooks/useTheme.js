@@ -1,18 +1,20 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from "react";
+import logger from "../utils/logger";
 import {
   applyThemeToDOM,
   getEffectivePendingTheme,
   THEME_CACHE_KEY,
   THEME_PENDING_KEY,
-} from '../utils/load_theme.js';
-
-const API_BASE = process.env.REACT_APP_API_BASE || '/api';
+} from "../utils/loadTheme.js";
+import { API_BASE } from "../utils/apiConfig";
+import { csrfFetch } from "../utils/csrfFetch";
 
 export function useTheme() {
   const readDOM = () =>
-    typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
-      ? 'dark'
-      : 'light';
+    typeof document !== "undefined" &&
+    document.documentElement.classList.contains("dark")
+      ? "dark"
+      : "light";
 
   const [theme, setTheme] = useState(readDOM);
   const saveControllerRef = useRef(null);
@@ -27,10 +29,10 @@ export function useTheme() {
     } catch (_) {}
 
     try {
-      const res = await fetch(`${API_BASE}/profile/userPreferences.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+      const res = await csrfFetch(`${API_BASE}/profile/user_preferences.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ theme: newTheme }),
         signal: controller.signal,
       });
@@ -40,7 +42,7 @@ export function useTheme() {
         } catch (_) {}
       }
     } catch (e) {
-      if (e.name !== 'AbortError') console.warn('Failed to save theme:', e);
+      if (e.name !== "AbortError") logger.warn("Failed to save theme:", e);
     }
   }, []);
 
@@ -52,18 +54,18 @@ export function useTheme() {
       try {
         localStorage.setItem(
           THEME_PENDING_KEY,
-          JSON.stringify({ theme: newTheme, ts: Date.now() })
+          JSON.stringify({ theme: newTheme, ts: Date.now() }),
         );
       } catch (_) {}
 
       saveTheme(newTheme);
     },
-    [saveTheme]
+    [saveTheme],
   );
 
   /** Align React state + DOM with server when user has not toggled recently (avoids fighting updateTheme). */
   const syncFromServerIfNoPending = useCallback((serverTheme) => {
-    if (serverTheme !== 'dark' && serverTheme !== 'light') return;
+    if (serverTheme !== "dark" && serverTheme !== "light") return;
     if (getEffectivePendingTheme()) return;
     setTheme(serverTheme);
     applyThemeToDOM(serverTheme);

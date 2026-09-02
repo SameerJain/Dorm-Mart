@@ -5,7 +5,9 @@
 1. Clone the repository and navigate to the `dorm-mart` directory
 2. Run `npm install` to install dependencies
 3. Set up your local database (see `README.project_setup.md` for schema migration details)
-4. Start the development server: `npm run start-local-win` (or `-mac`) and run `php -S localhost:8080 -t .` in the `dorm-mart` directory
+4. Start the development server: `npm run start-local-win` (or `-mac`) and run `npm run start:api` in the `dorm-mart` directory
+
+Stop the React development server before running `npm install`, `npm ci`, or dependency-update commands. Replacing files in `node_modules` while the compiler is running can cause temporary missing-module errors.
 
 # POSIX Demo (ssh into Aptitude to user terminal)
 
@@ -28,8 +30,8 @@ Copy any necessary files to the server:
 # Build Method 1: Run React and PHP Server
 
 1. `npm run start-local` \*(add -win or -mac at the end depending on your machine)
-2. `php -S localhost:8080 -t .`
-   1. (C:\xampp\php\php.exe -S localhost:8080 -t .)
+2. `npm run start:api`
+   1. (`C:\xampp\php\php.exe -S localhost:8080 router.php`)
    2. (You Must be inside the dorm-mart folder for this to work)
    3. (It is recommended you also install PHP locally on your machine in addition to XAMMP)
 3. refer to "proxy" field in package.json to navigate to the local db
@@ -46,8 +48,18 @@ Copy any necessary files to the server:
    3. (These list of files and folders are subject to change as the project grows)
 6. Navigate to localhost/serve/dorm-mart from your browser since that is the file path
 7. You now should have the app running on your local apache server
-8. Make sure to migrate to apply db schema to your local mysql: `php migrate_schema.php`
-9. To add contents to your local db, run `php migrate_data.php`
+8. Make sure to migrate to apply db schema to your local mysql: `php api/database/migrate_schema.php`
+9. To add contents to your local db, run `php api/database/migrate_data.php`
+
+### Moderator account
+
+After applying schema migrations, create or promote a moderator without committing privileged credentials:
+
+```powershell
+php api/database/create_moderator.php moderator@buffalo.edu "use-a-strong-password" "Dorm Mart" "Moderator"
+```
+
+Moderator accounts use the normal login page and are sent to `/app/moderation` after login.
 
 # Test Server Build: APTITUDE (How to build and upload prod app to aptitude)
 
@@ -78,7 +90,6 @@ Copy any necessary files to the server:
    The "homepage" field in your package.json tells the React build tools (like react-scripts) what the base URL of your app will be. - It makes sure all asset paths (like CSS, JS, images) inside the build are prefixed with /CSE442/2025-Fall/cse-442j/, so they load correctly when hosted under that subpath instead of at the root. - The key piece is that homepage only affects asset paths, not route handling.
 
 2. Apache just serves whatever’s in that folder — the index.html, JavaScript, CSS, etc.
-
    - When you go to https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/#/login, Apache returns the same index.html file, because that’s what’s physically there.
 
 3. The React app (client-side router) kicks in after the browser loads the index.html.
@@ -88,14 +99,21 @@ Copy any necessary files to the server:
 # Railway and uploaded images
 
 - On **Railway** (and similar), the app shell is often a React `build/` plus PHP. Browsers must load user uploads via **`/api/media/image.php?url=...`**, not as raw `/images/...` paths on the static host (those requests do not hit the PHP `images/` folder and tend to 404, which shows the gray “No photo” placeholder).
-- The **container filesystem is ephemeral** unless you attach a **volume**: new deploys or restarts can delete files under `dorm-mart/images` and `dorm-mart/media`. The database will still point at old paths. Set **`DATA_IMAGES_DIR`** (and optionally **`DATA_IMAGES_URL_BASE`**) to a persistent volume path that matches where `api/media/image.php` reads from.
+- The **container filesystem is ephemeral** unless you attach a **volume**: new deploys or restarts can delete uploaded files. Set **`DATA_UPLOADS_DIR`** to the persistent upload root; the app stores product/profile files under `DATA_UPLOADS_DIR/images` and chat/review files under `DATA_UPLOADS_DIR/media`.
+- To test any local branch/commit on Railway without merging it into `dev`, install and link Railway CLI 4.30.5 or newer once, then run `build-scripts-win\railway.bat` from the repo root. The script deploys the local `dorm-mart/` directory with `railway up`, waits for the result, and accepts `-Note "your message"`. Use `-Detach` only when you intentionally want to queue the deployment without waiting for its result.
 
 # Development Utilities
 
 - Clear forgot password rate limit: `php api/utility/manage_forgot_password_rate_limiting.php` (run from dorm-mart folder)
 - Clear login lockout timer: `php api/utility/reset_session_lockout.php` (run from dorm-mart folder)
+- More docs are in /extra-files
 
 # Windows Powershell Build Scripts Commands
+
+Run the supported development launcher from the repository root:
+`C:\xampp\htdocs\f25-no-brainers\build-scripts-win\dev.bat`
+
+The repository root intentionally has no `package.json`, so do not run `npm start` there. Manual npm and PHP commands must be run from the `dorm-mart` directory. The launcher resolves its own repository path and will leave services alone when their expected ports are already in use.
 
 **Build Method 1: Local Development:**
 `C:\xampp\htdocs\f25-no-brainers\build-scripts-win\dev.bat`

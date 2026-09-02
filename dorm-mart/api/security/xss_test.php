@@ -1,24 +1,26 @@
 <?php
 /**
- * XSS Protection Test File
- * This file demonstrates that XSS protection is working
+ * XSS Encoding Test File
+ * This file demonstrates safe output encoding for suspicious input
  */
 
 // Include security headers and functions
 require __DIR__ . '/security.php';
 
+require_local_or_cli_access();
+
 // Set security headers
-setSecurityHeaders();
+set_security_headers();
 
 header('Content-Type: text/html; charset=utf-8');
 
-// Test XSS protection
+// Test XSS-safe output encoding
 $testInput = $_GET['test'] ?? 'No input provided';
 
 echo "<!DOCTYPE html>
 <html>
 <head>
-    <title>XSS Protection Test</title>
+    <title>XSS Encoding Test</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; }
         .safe { color: green; }
@@ -27,36 +29,35 @@ echo "<!DOCTYPE html>
     </style>
 </head>
 <body>
-    <h1>XSS Protection Test</h1>
-    
+    <h1>XSS Encoding Test</h1>
+
     <div class='info'>
-        <h3>Test Input (Raw):</h3>
-        <p>Input: " . htmlspecialchars($testInput) . "</p>
+        <h3>Input Rendered Safely:</h3>
+        <p>Input: " . escape_html($testInput) . "</p>
     </div>
-    
+
     <div class='info'>
-        <h3>Test Input (Sanitized):</h3>
+        <h3>Sanitized String Helper:</h3>
         <p>Sanitized: " . sanitize_string($testInput) . "</p>
     </div>
-    
+
     <div class='info'>
-        <h3>Test Input (HTML Escaped):</h3>
-        <p>HTML Escaped: " . escapeHtml($testInput) . "</p>
+        <h3>HTML Escaped:</h3>
+        <p>HTML Escaped: " . escape_html($testInput) . "</p>
     </div>
-    
+
     <div class='info'>
         <h3>Security Headers Applied:</h3>
         <ul>
             <li>Content Security Policy (CSP)</li>
-            <li>X-XSS-Protection</li>
             <li>X-Content-Type-Options</li>
             <li>X-Frame-Options</li>
         </ul>
     </div>
-    
+
     <div class='info'>
         <h3>Test XSS Attempts:</h3>
-        <p>Try these URLs to test XSS protection:</p>
+        <p>Try these URLs to confirm payloads are displayed as text, not executed:</p>
         <ul>
             <li><a href='?test=" . urlencode("<script>alert(\"XSS\")</script>") . "'>Script Tag Test</a></li>
             <li><a href='?test=" . urlencode("<img src=x onerror=alert(\"XSS\")>") . "'>Image XSS Test</a></li>
@@ -64,10 +65,10 @@ echo "<!DOCTYPE html>
             <li><a href='?test=" . urlencode("javascript:alert(\"XSS\")") . "'>JavaScript URL Test</a></li>
         </ul>
     </div>
-    
+
     <div class='safe'>
-        <h3>✅ XSS Protection Status:</h3>
-        <p>All inputs are sanitized and security headers are applied!</p>
+        <h3>OK: XSS Encoding Status</h3>
+        <p>Suspicious input is encoded before HTML output, and security headers are applied.</p>
     </div>
 </body>
 </html>";

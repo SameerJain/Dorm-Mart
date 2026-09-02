@@ -1,5 +1,7 @@
 START TRANSACTION;
--- ^ Begin a transaction so the insert is all-or-nothing.
+-- Seed: seller dashboard test account.
+-- Purpose: creates testusersellerdashboard@buffalo.edu for dashboard QA.
+-- Safe to rerun: removes and recreates only this account.
 SET SESSION foreign_key_checks = 0;
 
 DELETE FROM user_accounts
@@ -47,4 +49,3 @@ INSERT INTO user_accounts (
 
 SET SESSION foreign_key_checks = 1;
 COMMIT;
-

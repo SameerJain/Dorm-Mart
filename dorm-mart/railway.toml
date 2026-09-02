@@ -1,0 +1,2 @@
+[deploy]
+preDeployCommand = ["php api/database/migrate_schema.php"]

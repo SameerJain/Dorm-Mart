@@ -1,0 +1,147 @@
+<?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../payments/helpers.php';
+
+init_json_endpoint('POST');
+
+try {
+    $buyerId = require_login();
+
+    $payload = json_request_body_or_error();
+    require_csrf_token($payload['csrf_token'] ?? null);
+
+    $confirmRequestId = request_int($payload, 'confirm_request_id');
+    $action = isset($payload['action']) && is_string($payload['action'])
+        ? strtolower(trim($payload['action']))
+        : '';
+
+    if ($confirmRequestId <= 0 || ($action !== 'accept' && $action !== 'decline')) {
+        json_response(['success' => false, 'error' => 'Invalid request'], 400);
+    }
+
+    $conn = db();
+    $conn->set_charset('utf8mb4');
+    $conn->begin_transaction();
+
+    $selectStmt = $conn->prepare('
+        SELECT cpr.*, inv.title AS item_title
+        FROM confirm_purchase_requests cpr
+        INNER JOIN INVENTORY inv ON inv.product_id = cpr.inventory_product_id
+        WHERE cpr.confirm_request_id = ?
+        LIMIT 1
+        FOR UPDATE
+    ');
+    if (!$selectStmt) {
+        throw new RuntimeException('Failed to prepare confirm lookup');
+    }
+    $selectStmt->bind_param('i', $confirmRequestId);
+    $selectStmt->execute();
+    $res = $selectStmt->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    $selectStmt->close();
+
+    if (!$row) {
+        json_response(['success' => false, 'error' => 'Confirmation not found'], 404);
+    }
+
+    if ((int)$row['buyer_user_id'] !== $buyerId) {
+        json_response(['success' => false, 'error' => 'You are not allowed to respond to this confirmation'], 403);
+    }
+
+    $schedule = payment_schedule($conn, (int)$row['scheduled_request_id'], true);
+    if (!$schedule) {
+        json_response(['success' => false, 'error' => 'Scheduled purchase not found'], 404);
+    }
+    if (($schedule['payment_option'] ?? 'manual') === 'stripe' && empty($schedule['payment_fallback_at'])) {
+        json_response(['success' => false, 'error' => 'This purchase is waiting for built-in payment'], 409);
+    }
+
+    $row = auto_finalize_confirm_request($conn, $row) ?? $row;
+    if (($row['status'] ?? '') !== 'pending') {
+        json_response(['success' => false, 'error' => 'This confirmation has already been processed'], 409);
+    }
+
+    $nextStatus = $action === 'accept' ? 'buyer_accepted' : 'buyer_declined';
+    $updateStmt = $conn->prepare('UPDATE confirm_purchase_requests SET status = ?, buyer_response_at = NOW() WHERE confirm_request_id = ? AND status = \'pending\' LIMIT 1');
+    if (!$updateStmt) {
+        throw new RuntimeException('Failed to prepare confirm update');
+    }
+    $updateStmt->bind_param('si', $nextStatus, $confirmRequestId);
+    $updateStmt->execute();
+    $affected = $updateStmt->affected_rows;
+    $updateStmt->close();
+
+    if ($affected === 0) {
+        json_response(['success' => false, 'error' => 'Confirmation status already updated'], 409);
+    }
+
+    $selectStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE confirm_request_id = ? LIMIT 1');
+    $selectStmt->bind_param('i', $confirmRequestId);
+    $selectStmt->execute();
+    $res = $selectStmt->get_result();
+    $row = $res ? $res->fetch_assoc() : $row;
+    $selectStmt->close();
+
+    if ($action === 'accept' && (bool)$row['is_successful']) {
+        complete_successful_purchase($conn, $row, [
+            'confirm_request_id' => $confirmRequestId,
+            'is_successful' => (bool)$row['is_successful'],
+            'final_price' => $row['final_price'] !== null ? (float)$row['final_price'] : null,
+            'failure_reason' => $row['failure_reason'],
+            'seller_notes' => $row['seller_notes'],
+            'failure_reason_notes' => $row['failure_reason_notes'],
+            'auto_accepted' => false,
+        ]);
+    } elseif ($action === 'accept') {
+        release_inventory_after_unsuccessful_confirm($conn, $row);
+    }
+
+    $conversationId = (int)$row['conversation_id'];
+    $metadataType = $action === 'accept' ? 'confirm_accepted' : 'confirm_denied';
+    $metadata = build_confirm_response_metadata($row, $metadataType);
+
+    if ($conversationId > 0) {
+        $names = get_user_display_names($conn, [$buyerId]);
+        $buyerName = $names[$buyerId] ?? ('User ' . $buyerId);
+        $actionText = $action === 'accept' ? 'accepted' : 'denied';
+        $messageContent = $buyerName . ' has ' . $actionText . ' the Confirm Purchase form.';
+
+        $receiverId = get_conversation_receiver_id($conn, $conversationId, $buyerId);
+        if ($receiverId !== null) {
+            delete_confirm_request_message($conn, $conversationId, $confirmRequestId);
+            insert_confirm_chat_message($conn, $conversationId, $buyerId, $receiverId, $messageContent, $metadata);
+        }
+    }
+
+    $responseAtIso = null;
+    if (!empty($row['buyer_response_at'])) {
+        $dt = date_create($row['buyer_response_at'], new DateTimeZone('UTC'));
+        if ($dt) {
+            $responseAtIso = $dt->format(DateTime::ATOM);
+        }
+    }
+
+
+    $conn->commit();
+
+    json_response([
+        'success' => true,
+        'data' => [
+            'confirm_request_id' => $confirmRequestId,
+            'status' => $nextStatus,
+            'buyer_response_at' => $responseAtIso,
+            'metadata' => $metadata,
+        ],
+    ]);
+} catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
+    error_log('confirm-purchase respond error: ' . $e->getMessage());
+    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+}

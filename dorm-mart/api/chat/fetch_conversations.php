@@ -1,18 +1,12 @@
 <?php
-// api/list-user-conversations.php
+// api/chat/fetch_conversations.php
 declare(strict_types=1);
-header('Content-Type: application/json; charset=utf-8');
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+require_once __DIR__ . '/../helpers/inventory.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
-setSecurityHeaders();
-// Ensure CORS headers are present for React dev server and local PHP server
-setSecureCORS();
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+init_json_endpoint();
 
 $conn = db();
 
@@ -28,15 +22,7 @@ if ($okPassword) {
   echo json_encode(['success' => true]);
 }
 */
-// reads PHPSESSID from Cookie header and loads that session
-session_start(); 
-$userId = (int)($_SESSION['user_id'] ?? 0);
-
-if ($userId <= 0) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
-}
+$userId = require_login();
 
 $sql = "
   SELECT
@@ -48,10 +34,14 @@ $sql = "
     c.product_id,
     c.item_deleted,
     inv.title AS product_title,
+    inv.item_status AS product_status,
     inv.seller_id AS product_seller_id,
-    inv.photos AS product_photos
+    inv.photos AS product_photos,
+    CASE WHEN inv.seller_id <> ? AND seller.reveal_contact_info = 1 THEN seller.email END AS shared_contact_email,
+    CASE WHEN inv.seller_id <> ? AND seller.reveal_contact_info = 1 THEN seller.phone_number END AS shared_contact_phone
   FROM conversations c
   LEFT JOIN INVENTORY inv ON inv.product_id = c.product_id
+  LEFT JOIN user_accounts seller ON seller.user_id = inv.seller_id
   WHERE (c.user1_id = ? AND c.user1_deleted = 0)
      OR (c.user2_id = ? AND c.user2_deleted = 0)
   ORDER BY c.created_at DESC
@@ -59,13 +49,11 @@ $sql = "
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
-  http_response_code(500);
-  // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
-  echo json_encode(['success' => false, 'error' => 'Prepare failed', 'detail' => $conn->error]);
-  exit;
+  error_log('fetch_conversations: prepare failed: ' . $conn->error);
+  json_response(['success' => false, 'error' => 'Server error'], 500);
 }
 
-$stmt->bind_param('ii', $userId, $userId); // 'ii' = two integers
+$stmt->bind_param('iiii', $userId, $userId, $userId, $userId);
 $stmt->execute();
 
 $res = $stmt->get_result();          // requires mysqlnd (present in XAMPP)
@@ -74,21 +62,11 @@ $rows = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
 // Extract first image from photos JSON for each conversation
 // XSS PROTECTION: Escape user-generated content before returning in JSON
 foreach ($rows as &$row) {
-    $productImageUrl = null;
-    if (!empty($row['product_photos'])) {
-        $photosJson = $row['product_photos'];
-        $decoded = json_decode($photosJson, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && !empty($decoded)) {
-            $productImageUrl = $decoded[0] ?? null;
-        }
-    }
-    $row['product_image_url'] = $productImageUrl;
+    $row['product_image_url'] = inventory_first_photo($row['product_photos'] ?? null);
     unset($row['product_photos']); // Remove raw photos JSON from response
-    
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $row['user1_fname'] = $row['user1_fname'] ?? '';
     $row['user2_fname'] = $row['user2_fname'] ?? '';
     $row['product_title'] = $row['product_title'] ?? '';
 }
 
-echo json_encode(['success' => true, 'conversations' => $rows]);
+json_response(['success' => true, 'conversations' => $rows]);
