@@ -361,21 +361,6 @@ function LoginPage() {
                         setEmail(value.slice(0, 255));
                       }
                     }}
-                    onPaste={(e) => {
-                      // Always handle paste ourselves to ensure full email is captured
-                      e.preventDefault();
-                      const pastedText = (
-                        e.clipboardData || window.clipboardData
-                      ).getData("text");
-                      let cleanedText = pastedText.trim();
-                      // Remove '-- ' prefix if present (SQL comment marker)
-                      if (cleanedText.startsWith("-- ")) {
-                        cleanedText = cleanedText.substring(3).trim();
-                      }
-                      // Limit to exactly 255 characters to match database limit
-                      const trimmedText = cleanedText.slice(0, 255);
-                      setEmail(trimmedText);
-                    }}
                     maxLength={255}
                     required
                     className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
