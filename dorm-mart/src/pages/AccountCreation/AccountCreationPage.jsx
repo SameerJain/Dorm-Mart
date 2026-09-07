@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import PreLoginBranding from "../../components/PreLoginBranding";
 import PreLoginNavLinks from "../../components/PreLoginNavLinks";
-import { integerNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
 import { useEmailPolicy } from "../../hooks/useEmailPolicy";
 import {
   ACCOUNT_REQUEST_RATE_LIMIT_MESSAGE,
@@ -12,6 +11,29 @@ import {
   getAccountRequestRateLimit,
   submitAccountRequest,
 } from "./accountCreationRequest";
+
+const MAX_GRADUATION_YEARS_AHEAD = 6;
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+function isValidGraduationMonth(month, year, currentYear, currentMonth, maxYear) {
+  if (!Number.isInteger(month) || month < 1 || month > 12) return false;
+  if (year === currentYear) return month >= currentMonth;
+  if (year === maxYear) return month <= currentMonth;
+  return year > currentYear && year < maxYear;
+}
 
 function FieldError({ children, className = "" }) {
   if (!children) return null;
@@ -46,6 +68,28 @@ function CreateAccountPage() {
   );
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
   const rateLimited = rateLimitBlockedUntil > Date.now();
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
+  const maxGraduationYear = currentYear + MAX_GRADUATION_YEARS_AHEAD;
+  const graduationYears = Array.from(
+    { length: MAX_GRADUATION_YEARS_AHEAD + 1 },
+    (_, index) => currentYear + index,
+  );
+  const selectedGraduationYear = Number(formData.gradYear);
+  const graduationMonths = MONTH_NAMES.map((name, index) => ({
+    name,
+    value: index + 1,
+  })).filter(({ value }) =>
+    !formData.gradYear ||
+    isValidGraduationMonth(
+      value,
+      selectedGraduationYear,
+      currentYear,
+      currentMonth,
+      maxGraduationYear,
+    ),
+  );
 
   useBodyScrollLock(showNotice);
 
@@ -88,6 +132,17 @@ function CreateAccountPage() {
     setFormData((prev) => ({
       ...prev,
       [name]: nextValue,
+      ...(name === "gradYear" &&
+      prev.gradMonth &&
+      !isValidGraduationMonth(
+        Number(prev.gradMonth),
+        Number(nextValue),
+        currentYear,
+        currentMonth,
+        maxGraduationYear,
+      )
+        ? { gradMonth: "" }
+        : {}),
     }));
   };
 
@@ -126,11 +181,15 @@ function CreateAccountPage() {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
         const gradDate = new Date(year, month - 1, 1);
-        const maxDate = new Date(now.getFullYear() + 8, now.getMonth(), 1);
+        const maxDate = new Date(
+          now.getFullYear() + MAX_GRADUATION_YEARS_AHEAD,
+          now.getMonth(),
+          1,
+        );
         if (gradDate < new Date(now.getFullYear(), now.getMonth(), 1))
           newErrors.gradDate = "Graduation date cannot be in the past";
         if (gradDate > maxDate)
-          newErrors.gradDate = "Graduation date must be within 8 years";
+          newErrors.gradDate = "Graduation date must be within 6 years";
       }
     }
 
@@ -274,30 +333,32 @@ function CreateAccountPage() {
                     Graduation Date (Month / Year)
                   </label>
                   <div className="flex gap-3 sm:gap-4 md:gap-3">
-                    <input
-                      type="text"
-                      inputMode="numeric"
+                    <select
                       name="gradMonth"
                       value={formData.gradMonth}
                       onChange={handleChange}
-                      onKeyDown={integerNumericKeyDownHandler}
-                      placeholder="MM"
-                      maxLength={2}
-                      autoComplete="off"
-                      className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base"
-                    />
-                    <input
-                      type="text"
-                      inputMode="numeric"
+                      className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base cursor-pointer"
+                    >
+                      <option value="">Month</option>
+                      {graduationMonths.map(({ name, value }) => (
+                        <option key={value} value={value}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
                       name="gradYear"
                       value={formData.gradYear}
                       onChange={handleChange}
-                      onKeyDown={integerNumericKeyDownHandler}
-                      placeholder="YYYY"
-                      maxLength={4}
-                      autoComplete="off"
-                      className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base"
-                    />
+                      className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base cursor-pointer"
+                    >
+                      <option value="">Year</option>
+                      {graduationYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <FieldError>{errors.gradDate}</FieldError>
                 </div>
