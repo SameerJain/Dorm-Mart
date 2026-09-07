@@ -68,7 +68,7 @@ export default function SellerListingRow({
             {canModify && (
               <button
                 onClick={() => onEdit(listing.id)}
-                className="font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800"
+                className="font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 hover:underline"
               >
                 Edit
               </button>
@@ -77,7 +77,7 @@ export default function SellerListingRow({
             {canModify && (
               <button
                 onClick={() => onDelete(listing.id)}
-                className="font-medium text-sm sm:text-base text-red-600 hover:text-red-800"
+                className="font-medium text-sm sm:text-base text-red-600 hover:text-red-800 hover:underline"
               >
                 Delete
               </button>
@@ -86,7 +86,7 @@ export default function SellerListingRow({
             {status === "sold" && listing.buyer_user_id && (
               <button
                 onClick={() => onRateBuyer(listing)}
-                className={`font-medium text-sm sm:text-base ${
+                className={`font-medium text-sm sm:text-base hover:underline ${
                   buyerRating
                     ? "text-blue-600 hover:text-blue-800"
                     : "text-green-600 hover:text-green-800"
@@ -99,7 +99,7 @@ export default function SellerListingRow({
             {productReview && (
               <button
                 onClick={() => onViewReview(listing)}
-                className="font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                className="font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
               >
                 View Review
               </button>

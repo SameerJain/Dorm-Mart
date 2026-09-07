@@ -18,14 +18,14 @@ export default function DeleteListingModal({ onClose, onDelete }) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:underline"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700"
+            className="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 hover:underline"
           >
             Delete
           </button>
