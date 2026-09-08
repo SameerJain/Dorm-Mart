@@ -88,15 +88,15 @@ function GalleryArrowButton({ direction, onClick, disabled }) {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`absolute ${isPrevious ? "left-3" : "right-3"} top-1/2 -translate-y-1/2 h-12 w-12 rounded-full flex items-center justify-center bg-gray-900/60 hover:bg-blue-600 text-white border border-white/50 shadow-lg backdrop-blur-sm transition duration-150 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/70 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-gray-900/60`}
+      className={`absolute ${isPrevious ? "left-2" : "right-2"} top-1/2 -translate-y-1/2 h-12 w-12 p-0 rounded-full flex items-center justify-center bg-gray-950/75 hover:bg-blue-600 text-white shadow-lg backdrop-blur-sm transition duration-150 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/70 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-gray-950/75`}
       aria-label={`${isPrevious ? "Previous" : "Next"} media`}
     >
       <svg
-        className="h-8 w-8"
+        className="h-10 w-10"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2.5"
+        strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
         aria-hidden="true"

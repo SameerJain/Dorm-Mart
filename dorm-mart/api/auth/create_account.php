@@ -361,7 +361,7 @@ if ($gradMonth < 1 || $gradMonth > 12 || $gradYear < 1900) {
 // --- Current and limit dates ---
 $currentYear  = (int)date('Y');
 $currentMonth = (int)date('n');
-$maxFutureYear = $currentYear + 8;
+$maxFutureYear = $currentYear + 6;
 
 // --- Check for past date ---
 if ($gradYear < $currentYear || ($gradYear === $currentYear && $gradMonth < $currentMonth)) {
@@ -373,7 +373,7 @@ if ($gradYear < $currentYear || ($gradYear === $currentYear && $gradMonth < $cur
 // --- Check for excessive future date ---
 if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > $currentMonth)) {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Graduation date cannot be more than 8 years in the future']);
+    echo json_encode(['ok' => false, 'error' => 'Graduation date cannot be more than 6 years in the future']);
     exit;
 }
 
