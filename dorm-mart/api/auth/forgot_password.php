@@ -14,13 +14,6 @@ set_secure_cors();
 
 // Include PHPMailer setup (reuse from create_account.php)
 $PROJECT_ROOT = dirname(__DIR__, 2);
-if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
-    require $PROJECT_ROOT . '/vendor/autoload.php';
-} else {
-    require $PROJECT_ROOT . '/vendor/PHPMailer/src/PHPMailer.php';
-    require $PROJECT_ROOT . '/vendor/PHPMailer/src/SMTP.php';
-    require $PROJECT_ROOT . '/vendor/PHPMailer/src/Exception.php';
-}
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -28,6 +21,18 @@ use PHPMailer\PHPMailer\Exception;
 require_once __DIR__ . '/../utility/transactional_email_html.php';
 require_once __DIR__ . '/../config/app_config.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/resend_email.php';
+
+// Resend does not need the legacy mail libraries.
+if (dm_env_string('RESEND_API_KEY') === '') {
+    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
+        require $PROJECT_ROOT . '/vendor/autoload.php';
+    } else {
+        require $PROJECT_ROOT . '/vendor/PHPMailer/src/PHPMailer.php';
+        require $PROJECT_ROOT . '/vendor/PHPMailer/src/SMTP.php';
+        require $PROJECT_ROOT . '/vendor/PHPMailer/src/Exception.php';
+    }
+}
 
 const PASSWORD_RESET_ACCEPTED_MESSAGE = 'If this email is registered, a reset link has been sent.';
 $passwordResetStartedAt = microtime(true);
@@ -129,6 +134,10 @@ function send_password_reset_email_via_sendgrid(array $user, string $resetLink, 
 // Use the EXACT same email sending logic as create_account.php for maximum speed
 function send_password_reset_email(array $user, string $resetLink, string $envLabel = 'Local'): array
 {
+    if (dm_env_string('RESEND_API_KEY') !== '') {
+        $result = dm_send_resend_email($user['email'], dm_transactional_password_reset_package($user['first_name'] ?? '', $resetLink));
+        return ['success' => $result['ok'], 'error' => $result['error']];
+    }
     global $PROJECT_ROOT;
 
     // Check for SendGrid API key first (Railway option)
