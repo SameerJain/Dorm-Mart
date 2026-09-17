@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../utility/transactional_email_html.php';
 require_once __DIR__ . '/../config/app_config.php';
+require_once __DIR__ . '/resend_email.php';
 
 function dm_project_root(): string
 {
@@ -85,6 +86,9 @@ function send_promo_welcome_email_via_sendgrid(array $user, string $apiKey, ?arr
 
 function send_promo_welcome_email(array $user, ?array $package = null): array
 {
+    if (dm_env_string('RESEND_API_KEY') !== '') {
+        return dm_send_resend_email($user['email'], $package ?? dm_transactional_promo_welcome_package($user['firstName'] ?? ''));
+    }
     $sendgridApiKey = dm_sendgrid_api_key();
     if (!empty($sendgridApiKey)) {
         error_log("Promo email using SendGrid; SENDGRID_API_KEY is configured");

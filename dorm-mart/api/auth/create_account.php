@@ -21,13 +21,6 @@ If composer cannot be installed or is giving errors then follow the following st
 
 
 $PROJECT_ROOT = dirname(__DIR__, 2);
-if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
-    require $PROJECT_ROOT . '/vendor/autoload.php';
-} else {
-    require $PROJECT_ROOT . '/vendor/PHPMailer/src/PHPMailer.php';
-    require $PROJECT_ROOT . '/vendor/PHPMailer/src/SMTP.php';
-    require $PROJECT_ROOT . '/vendor/PHPMailer/src/Exception.php';
-}
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -35,6 +28,18 @@ use PHPMailer\PHPMailer\Exception;
 require_once __DIR__ . '/../utility/transactional_email_html.php';
 require_once __DIR__ . '/../config/app_config.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/resend_email.php';
+
+// Resend does not need the legacy mail libraries.
+if (dm_env_string('RESEND_API_KEY') === '') {
+    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
+        require $PROJECT_ROOT . '/vendor/autoload.php';
+    } else {
+        require $PROJECT_ROOT . '/vendor/PHPMailer/src/PHPMailer.php';
+        require $PROJECT_ROOT . '/vendor/PHPMailer/src/SMTP.php';
+        require $PROJECT_ROOT . '/vendor/PHPMailer/src/Exception.php';
+    }
+}
 
 const ACCOUNT_REQUEST_ACCEPTED_MESSAGE = 'If eligible, account instructions will be sent.';
 $accountRequestStartedAt = microtime(true);
@@ -172,6 +177,9 @@ function send_welcome_email_via_sendgrid(array $user, string $tempPassword, stri
 
 function send_welcome_gmail(array $user, string $tempPassword): array
 {
+    if (dm_env_string('RESEND_API_KEY') !== '') {
+        return dm_send_resend_email($user['email'], dm_transactional_welcome_package($user['firstName'] ?? '', $tempPassword));
+    }
     global $PROJECT_ROOT;
 
     // Check for SendGrid API key first (Railway option)
