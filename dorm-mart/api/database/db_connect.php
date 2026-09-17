@@ -1,5 +1,6 @@
 <?php
 
+if (!function_exists('db')) {
 function db(): mysqli
 {
     // Include security utilities for escape_html function
@@ -82,4 +83,5 @@ function db(): mysqli
     $conn->query("SET time_zone = '+00:00'");
 
     return $conn;
+}
 }
