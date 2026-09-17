@@ -32,16 +32,7 @@ try {
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $selectSql = <<<SQL
         SELECT
-            spr.request_id,
-            spr.status,
-            spr.seller_user_id,
-            spr.buyer_user_id,
-            spr.conversation_id,
-            spr.inventory_product_id,
-            spr.payment_option,
-            spr.payment_mode,
-            spr.payment_amount_cents,
-            spr.payment_fallback_at,
+            spr.*,
             inv.title AS item_title,
             inv.photos AS item_photos
         FROM scheduled_purchase_requests spr
@@ -87,6 +78,7 @@ try {
     $intentToCancel = null;
     if (
         $currentStatus === 'accepted'
+        && dm_payments_enabled()
         && ($row['payment_option'] ?? 'manual') === 'stripe'
         && empty($row['payment_fallback_at'])
     ) {

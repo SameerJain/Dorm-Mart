@@ -20,6 +20,9 @@ try {
     if ($conversationId <= 0 || $productId <= 0) {
         json_response(['success' => false, 'error' => 'Missing reference ids'], 400);
     }
+    if (!dm_payments_enabled()) {
+        json_response(['success' => true, 'data' => ['available' => false]]);
+    }
 
     $conn = db();
     $lookup = $conn->prepare(

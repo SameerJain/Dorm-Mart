@@ -12,6 +12,23 @@ init_json_endpoint('GET');
 
 try {
     $userId = require_login();
+    if (!dm_payments_enabled()) {
+        json_response([
+            'success' => true,
+            'data' => [
+                'feature_enabled' => false,
+                'payment_mode' => null,
+                'is_test_mode' => false,
+                'connected' => false,
+                'details_submitted' => false,
+                'charges_enabled' => false,
+                'payouts_enabled' => false,
+                'ready' => false,
+                'dashboard_url' => null,
+            ],
+        ]);
+    }
+
     $conn = db();
     $user = payment_user($conn, $userId);
     if (!$user) json_response(['success' => false, 'error' => 'User not found'], 404);

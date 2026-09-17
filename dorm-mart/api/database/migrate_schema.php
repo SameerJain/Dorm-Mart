@@ -14,6 +14,7 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/db_connect.php';
+require_once __DIR__ . '/../config/app_config.php';
 
 try {
     $conn = db();
@@ -34,10 +35,15 @@ try {
     $files = glob(dirname(__DIR__, 2) . '/migrations/*.sql') ?: [];
     natsort($files);
     $ran = [];
+    $skipped = [];
 
     foreach ($files as $path) {
         $name = basename($path);
         if (isset($applied[$name])) {
+            continue;
+        }
+        if ($name === '025_stripe_connect_payments.sql' && !dm_payments_enabled()) {
+            $skipped[] = $name;
             continue;
         }
 
@@ -76,7 +82,11 @@ try {
     }
 
     $conn->close();
-    echo json_encode(['success' => true, 'applied' => array_map('escape_html', $ran)]);
+    echo json_encode([
+        'success' => true,
+        'applied' => array_map('escape_html', $ran),
+        'skipped' => array_map('escape_html', $skipped),
+    ]);
 } catch (Throwable $e) {
     error_log('schema migration error: ' . $e->getMessage());
     fwrite(STDERR, json_encode(['success' => false, 'message' => $e->getMessage()]) . PHP_EOL);

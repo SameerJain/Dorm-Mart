@@ -93,22 +93,7 @@ try {
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $schedStmt = $conn->prepare('
         SELECT
-            spr.request_id,
-            spr.inventory_product_id,
-            spr.seller_user_id,
-            spr.buyer_user_id,
-            spr.conversation_id,
-            spr.meet_location,
-            spr.meeting_at,
-            spr.description,
-            spr.negotiated_price,
-            spr.trade_item_description,
-            spr.is_trade,
-            spr.status,
-            spr.payment_option,
-            spr.payment_amount_cents,
-            spr.payment_mode,
-            spr.payment_fallback_at,
+            spr.*,
             inv.title AS item_title,
             inv.listing_price,
             buyer.first_name AS buyer_first,
