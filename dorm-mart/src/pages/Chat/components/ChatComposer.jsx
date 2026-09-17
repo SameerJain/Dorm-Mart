@@ -30,7 +30,7 @@ export default function ChatComposer({
 
   return (
     <div
-      className={`sticky bottom-0 z-10 max-w-full overflow-x-hidden border-t border-gray-200 p-4 dark:border-gray-700 relative ${activeConversation?.item_deleted ? "bg-gray-100 dark:bg-gray-700" : "bg-white dark:bg-gray-800"}`}
+      className={`sticky bottom-0 z-10 max-w-full overflow-x-hidden border-t border-gray-200 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-gray-700 relative ${activeConversation?.item_deleted ? "bg-gray-100 dark:bg-gray-700" : "bg-white dark:bg-gray-800"}`}
     >
       {activeConversation?.item_deleted && (
         <div

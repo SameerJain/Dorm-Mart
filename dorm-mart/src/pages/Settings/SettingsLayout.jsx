@@ -137,7 +137,7 @@ function SettingsLayout({ children }) {
               className="h-px w-full"
               style={{ background: "rgba(255,255,255,0.25)" }}
             />
-            <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2">
+            <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
               {links.map((l) => (
                 <NavLink
                   key={l.to}
