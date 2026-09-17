@@ -6,11 +6,11 @@ export default function DeleteConversationModal({
 }) {
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick={onCancel}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4"
+        className="max-h-[90dvh] w-full max-w-md overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">

@@ -13,7 +13,7 @@ export default function RemoveWishlistItemModal({
       aria-modal="true"
       aria-labelledby="remove-confirm-title"
     >
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full min-w-0 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full min-w-0 max-h-[90dvh] overflow-y-auto">
         <h2
           id="remove-confirm-title"
           className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4"
