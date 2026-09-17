@@ -15,6 +15,9 @@ try {
     $userId = require_login();
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
+    if (!dm_payments_enabled()) {
+        json_response(['success' => false, 'error' => 'Electronic payments are not enabled'], 503);
+    }
 
     $conn = db();
     $user = payment_user($conn, $userId);

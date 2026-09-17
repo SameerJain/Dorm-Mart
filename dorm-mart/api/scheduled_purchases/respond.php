@@ -36,25 +36,7 @@ try {
 
     $selectSql = <<<SQL
         SELECT
-            spr.request_id,
-            spr.status,
-            spr.buyer_user_id,
-            spr.seller_user_id,
-            spr.verification_code,
-            spr.inventory_product_id,
-            spr.conversation_id,
-            spr.meet_location,
-            spr.meeting_at,
-            spr.negotiated_price,
-            spr.is_trade,
-            spr.trade_item_description,
-            spr.snapshot_price_nego,
-            spr.snapshot_trades,
-            spr.snapshot_meet_location,
-            spr.payment_option,
-            spr.payment_amount_cents,
-            spr.payment_mode,
-            spr.payment_fallback_at,
+            spr.*,
             inv.title AS item_title,
             inv.photos AS item_photos
         FROM scheduled_purchase_requests spr

@@ -55,6 +55,9 @@ try {
     if (!in_array($paymentOption, ['manual', 'stripe'], true)) {
         json_response(['success' => false, 'error' => 'Invalid payment option'], 400);
     }
+    if ($paymentOption === 'stripe' && !dm_payments_enabled()) {
+        json_response(['success' => false, 'error' => 'Built-in payment is temporarily unavailable'], 409);
+    }
     $paymentAmountCents = $paymentOption === 'stripe'
         ? payment_amount_cents_from_value($payload['payment_amount'] ?? null)
         : null;
@@ -244,7 +247,11 @@ try {
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location, payment_option, payment_amount_cents, payment_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    if (dm_payments_enabled()) {
+        $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location, payment_option, payment_amount_cents, payment_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    } else {
+        $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    }
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare insert');
     }
@@ -271,25 +278,44 @@ try {
     // For nullable integer (conversation_id), we pass null directly
     // For nullable strings, mysqli will handle NULL correctly
     // For nullable decimal, mysqli will handle NULL correctly
-    $stmt->bind_param('iiiissssdisiissis',
-        $inventoryId,
-        $sellerId,
-        $buyerId,
-        $convId,
-        $meetLocation,
-        $meetingAtDb,
-        $verificationCode,
-        $desc,
-        $price,
-        $isTradeInt,
-        $tradeDesc,
-        $snapshotPriceNegoInt,
-        $snapshotTradesInt,
-        $snapLoc,
-        $paymentOption,
-        $paymentAmountCents,
-        $paymentMode
-    );
+    if (dm_payments_enabled()) {
+        $stmt->bind_param('iiiissssdisiissis',
+            $inventoryId,
+            $sellerId,
+            $buyerId,
+            $convId,
+            $meetLocation,
+            $meetingAtDb,
+            $verificationCode,
+            $desc,
+            $price,
+            $isTradeInt,
+            $tradeDesc,
+            $snapshotPriceNegoInt,
+            $snapshotTradesInt,
+            $snapLoc,
+            $paymentOption,
+            $paymentAmountCents,
+            $paymentMode
+        );
+    } else {
+        $stmt->bind_param('iiiissssdisiis',
+            $inventoryId,
+            $sellerId,
+            $buyerId,
+            $convId,
+            $meetLocation,
+            $meetingAtDb,
+            $verificationCode,
+            $desc,
+            $price,
+            $isTradeInt,
+            $tradeDesc,
+            $snapshotPriceNegoInt,
+            $snapshotTradesInt,
+            $snapLoc
+        );
+    }
     
     if (!$stmt->execute()) {
         $error = $stmt->error;

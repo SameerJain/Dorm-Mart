@@ -45,6 +45,8 @@ function payment_user(mysqli $conn, int $userId): ?array
 
 function payment_account(mysqli $conn, int $userId, string $mode, bool $forUpdate = false): ?array
 {
+    if (!dm_payments_enabled()) return null;
+
     $sql = 'SELECT * FROM connected_payment_accounts WHERE user_id = ? AND payment_mode = ? LIMIT 1';
     if ($forUpdate) $sql .= ' FOR UPDATE';
     $stmt = $conn->prepare($sql);
@@ -153,7 +155,8 @@ function payment_schedule_eligibility(mysqli $conn, int $sellerId, int $buyerId)
 
 function payment_schedule(mysqli $conn, int $requestId, bool $forUpdate = false): ?array
 {
-    $sql = '
+    if (dm_payments_enabled()) {
+        $sql = '
         SELECT spr.*, inv.title AS item_title, inv.listing_price, inv.sold,
                seller.is_protected AS seller_is_protected,
                buyer.is_protected AS buyer_is_protected,
@@ -171,6 +174,18 @@ function payment_schedule(mysqli $conn, int $requestId, bool $forUpdate = false)
            AND cpa.payment_mode = spr.payment_mode
          WHERE spr.request_id = ?
          LIMIT 1';
+    } else {
+        $sql = '
+        SELECT spr.*, inv.title AS item_title, inv.listing_price, inv.sold,
+               seller.is_protected AS seller_is_protected,
+               buyer.is_protected AS buyer_is_protected
+          FROM scheduled_purchase_requests spr
+          INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
+          INNER JOIN user_accounts seller ON seller.user_id = spr.seller_user_id
+          INNER JOIN user_accounts buyer ON buyer.user_id = spr.buyer_user_id
+         WHERE spr.request_id = ?
+         LIMIT 1';
+    }
     if ($forUpdate) $sql .= ' FOR UPDATE';
     $stmt = $conn->prepare($sql);
     if (!$stmt) throw new RuntimeException('Failed to prepare payment schedule lookup');

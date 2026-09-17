@@ -38,6 +38,9 @@ function payment_method_configuration(string $mode): string
 
 function payment_stripe_client(string $mode): \Stripe\StripeClient
 {
+    if (!dm_payments_enabled()) {
+        throw new RuntimeException('Electronic payments are disabled');
+    }
     payment_assert_mode($mode);
     $secret = dm_stripe_secret_key($mode);
     if ($secret === '') {
