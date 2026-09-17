@@ -113,7 +113,7 @@ function record_login_device(int $userId): bool
              ON DUPLICATE KEY UPDATE
                 device_type = VALUES(device_type), browser = VALUES(browser),
                 operating_system = VALUES(operating_system), user_agent = VALUES(user_agent),
-                location = IF(ip_address = VALUES(ip_address), COALESCE(VALUES(location), location), VALUES(location)),
+                location = COALESCE(VALUES(location), location),
                 ip_address = VALUES(ip_address),
                 last_seen_at = CURRENT_TIMESTAMP, signed_out_at = NULL'
         );

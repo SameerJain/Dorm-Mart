@@ -12,9 +12,12 @@ function login_ip_scope(string $ip): string
 
 function fetch_login_ip_location(string $ip): ?array
 {
-    if (!function_exists('curl_init')) return null;
+    if (!function_exists('curl_init')) {
+        error_log('login location lookup skipped: curl extension is not available');
+        return null;
+    }
     // Only the public IP is sent, never account or session information.
-    $curl = curl_init('https://ipwho.is/' . rawurlencode($ip) . '?fields=success,city,region,country');
+    $curl = curl_init('https://ipwho.is/' . $ip . '?fields=success,city,region,country');
     curl_setopt_array($curl, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CONNECTTIMEOUT_MS => 1500,
@@ -23,10 +26,22 @@ function fetch_login_ip_location(string $ip): ?array
     ]);
     $body = curl_exec($curl);
     $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $curlError = curl_errno($curl) !== 0 ? curl_error($curl) : null;
     curl_close($curl);
-    if ($status !== 200 || !is_string($body)) return null;
+    if ($curlError !== null) {
+        error_log("login location lookup curl error: $curlError");
+        return null;
+    }
+    if ($status !== 200 || !is_string($body)) {
+        error_log("login location lookup failed: unexpected HTTP status $status");
+        return null;
+    }
     $data = json_decode($body, true);
-    return is_array($data) ? $data : null;
+    if (!is_array($data)) {
+        error_log('login location lookup failed: could not decode provider response');
+        return null;
+    }
+    return $data;
 }
 
 function login_ip_location(string $ip, ?callable $lookup = null): ?string
