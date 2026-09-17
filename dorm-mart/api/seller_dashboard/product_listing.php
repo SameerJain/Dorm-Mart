@@ -319,7 +319,7 @@ try {
     $validatedUploads,
     static fn(array $upload): bool => $upload['is_photo']
   ));
-  if (!$savingDraft && $existingPhotoCount + $newPhotoCount < 1) {
+  if ($existingPhotoCount + $newPhotoCount < 1) {
     $photoError = 'At least one photo is required. Videos are optional and count toward the 6-media limit.';
     json_response([
       'ok' => false,
