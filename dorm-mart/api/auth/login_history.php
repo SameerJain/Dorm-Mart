@@ -31,13 +31,21 @@ try {
     $devices = [];
     while ($row = $result->fetch_assoc()) {
         $isCurrent = hash_equals((string)$row['session_hash'], $currentSessionHash);
+        $location = $row['location'] ?: login_ip_location((string)$row['ip_address']);
+        if ($location && !$row['location']) {
+            $update = $conn->prepare('UPDATE login_history SET location = ? WHERE login_id = ? AND user_id = ? AND ip_address = ? AND location IS NULL');
+            $update->bind_param('siis', $location, $row['login_id'], $userId, $row['ip_address']);
+            $update->execute();
+            $update->close();
+        }
         $devices[] = [
             'id' => (int)$row['login_id'],
             'device_type' => (string)$row['device_type'],
             'browser' => (string)$row['browser'],
             'operating_system' => (string)$row['operating_system'],
             'ip_address' => (string)$row['ip_address'],
-            'location' => $row['location'] ?: null,
+            'location' => $location,
+            'ip_scope' => login_ip_scope((string)$row['ip_address']),
             'logged_in_at' => (string)$row['logged_in_at'],
             'last_seen_at' => (string)$row['last_seen_at'],
             'signed_out_at' => $row['signed_out_at'] ?: null,

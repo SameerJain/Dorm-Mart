@@ -24,6 +24,11 @@ function DeviceIcon({ type }) {
 }
 
 function DeviceCard({ device }) {
+  const location = device.location || {
+    local: "Local device · no public location",
+    private: "Private network · no public location",
+    unknown: "IP address was not recorded",
+  }[device.ip_scope] || "City could not be determined from this IP";
   return (
     <li className="rounded-xl border border-slate-200 p-4 dark:border-gray-700 sm:p-5">
       <div className="flex items-start gap-4">
@@ -47,8 +52,8 @@ function DeviceCard({ device }) {
 
           <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="font-medium text-slate-500 dark:text-gray-400">Location</dt>
-              <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{device.location || "Location unavailable"}</dd>
+              <dt className="font-medium text-slate-500 dark:text-gray-400">Approximate location</dt>
+              <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{location}</dd>
             </div>
             <div>
               <dt className="font-medium text-slate-500 dark:text-gray-400">IP address</dt>
@@ -62,6 +67,12 @@ function DeviceCard({ device }) {
               <dt className="font-medium text-slate-500 dark:text-gray-400">Last active</dt>
               <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{formatLoginTimestamp(device.last_seen_at)}</dd>
             </div>
+            {device.signed_out_at && (
+              <div>
+                <dt className="font-medium text-slate-500 dark:text-gray-400">Signed out</dt>
+                <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{formatLoginTimestamp(device.signed_out_at)}</dd>
+              </div>
+            )}
           </dl>
         </div>
       </div>
@@ -74,12 +85,15 @@ export default function LoggedDevicesPage() {
   const [devices, setDevices] = useState(null);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
 
     (async () => {
       setError("");
+      setLoading(true);
       try {
         const response = await fetch(`${API_BASE}/auth/login_history.php`, {
           credentials: "include",
@@ -95,11 +109,19 @@ export default function LoggedDevicesPage() {
         if (err.name !== "AbortError") {
           setError(err.message || "Unable to load logged devices.");
         }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
       }
     })();
 
     return () => controller.abort();
   }, [reloadKey]);
+
+  const query = search.trim().toLowerCase();
+  const visibleDevices = (devices || []).filter((device) =>
+    [device.browser, device.operating_system, device.device_type, device.location, device.ip_address]
+      .some((value) => value?.toLowerCase().includes(query)),
+  );
 
   return (
     <SettingsLayout>
@@ -107,7 +129,7 @@ export default function LoggedDevicesPage() {
         <header className="border-b border-slate-200 pb-4 dark:border-gray-700">
           <h1 className="font-serif text-2xl font-semibold text-blue-600 dark:text-blue-400">Logged Devices</h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">
-            Review successful logins to your Dorm Mart account.
+            Review your 50 most recent login sessions, with your current device first.
           </p>
         </header>
 
@@ -125,6 +147,28 @@ export default function LoggedDevicesPage() {
           </button>
         </section>
 
+        <div className="mt-6 flex flex-wrap items-end gap-3">
+          <label className="min-w-0 flex-1 text-sm font-medium text-slate-700 dark:text-gray-200">
+            Search login history
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Browser, device, location, or IP address"
+              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-gray-600 dark:bg-gray-900"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => setReloadKey((key) => key + 1)}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? "Refreshing..." : "Refresh history"}
+          </button>
+        </div>
+        {devices && <p className="mt-3 text-sm text-slate-500 dark:text-gray-400" role="status">Showing {visibleDevices.length} of {devices.length} login sessions</p>}
+
         {error ? (
           <div role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             <p>{error}</p>
@@ -139,13 +183,14 @@ export default function LoggedDevicesPage() {
             No login history is available yet.
           </p>
         ) : (
-          <ul className="mt-6 space-y-4">
-            {devices.map((device) => <DeviceCard key={device.id} device={device} />)}
+          <ul className="mt-6 space-y-4" aria-label="Login history">
+            {visibleDevices.map((device) => <DeviceCard key={device.id} device={device} />)}
+            {visibleDevices.length === 0 && <li className="text-slate-600 dark:text-gray-300">No logins match your search.</li>}
           </ul>
         )}
 
         <p className="mt-6 text-xs text-slate-500 dark:text-gray-400">
-          Location is approximate and depends on information supplied by your network provider. Only successful logins are shown.
+          Locations are estimated from IP addresses, not GPS. VPNs, mobile carriers, and campus networks can show a different city. Local and private network addresses cannot be located publicly. Each entry is a login session, so one device may appear more than once. Only successful logins are shown.
         </p>
       </div>
     </SettingsLayout>
