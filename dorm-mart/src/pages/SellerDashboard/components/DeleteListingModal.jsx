@@ -5,7 +5,7 @@ export default function DeleteListingModal({ onClose, onDelete }) {
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+      <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
         <div className="px-6 pt-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             Are you sure you want to delete?

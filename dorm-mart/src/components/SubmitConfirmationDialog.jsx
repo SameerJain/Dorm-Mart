@@ -23,7 +23,7 @@ export default function SubmitConfirmationDialog({
       onClick={(event) => event.target === event.currentTarget && onCancel()}
     >
       <div
-        className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
+        className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="px-6 pt-6">

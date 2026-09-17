@@ -341,7 +341,7 @@ function ReviewModal({
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxHeight: "90vh",
+          maxHeight: "90dvh",
         }}
       >
         {/* Header */}

@@ -150,7 +150,7 @@ export default function ImageModal({
       aria-labelledby={labelledBy}
     >
       <div
-        className="w-full max-w-sm rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden"
+        className="w-full max-w-sm max-h-[90dvh] flex flex-col rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -181,7 +181,7 @@ export default function ImageModal({
         </div>
 
         {/* Body */}
-        <div className="px-4 py-5 space-y-4">
+        <div className="min-h-0 overflow-y-auto px-4 py-5 space-y-4">
           <input
             ref={fileInputRef}
             type="file"
@@ -190,7 +190,7 @@ export default function ImageModal({
             onChange={onFileChange}
           />
 
-          <div className="h-56 sm:h-72 max-h-[65vh] rounded-lg border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-900/30">
+          <div className="h-56 sm:h-72 max-h-[65dvh] rounded-lg border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-900/30">
             {previewUrl && file && isVideoFile(file) ? (
               <video
                 src={previewUrl}
