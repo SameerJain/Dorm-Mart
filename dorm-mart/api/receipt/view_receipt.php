@@ -91,12 +91,15 @@ try {
  */
 function fetch_confirm_row(mysqli $conn, int $userId, int $productId, int $confirmId): array
 {
+    $confirmSelect = dm_payments_enabled()
+        ? 'SELECT cpr.*, ep.status AS payment_status, ep.payment_mode, ep.amount_cents AS payment_amount_cents,
+                  ep.electronic_payment_id, ep.stripe_refund_id, ep.refunded_at, ep.dispute_status
+             FROM confirm_purchase_requests cpr
+             LEFT JOIN electronic_payments ep ON ep.electronic_payment_id = cpr.electronic_payment_id'
+        : 'SELECT cpr.* FROM confirm_purchase_requests cpr';
+
     if ($confirmId > 0) {
-        $sql = 'SELECT cpr.*, ep.status AS payment_status, ep.payment_mode, ep.amount_cents AS payment_amount_cents,
-                       ep.electronic_payment_id, ep.stripe_refund_id, ep.refunded_at, ep.dispute_status
-                  FROM confirm_purchase_requests cpr
-                  LEFT JOIN electronic_payments ep ON ep.electronic_payment_id = cpr.electronic_payment_id
-                 WHERE cpr.confirm_request_id = ?';
+        $sql = $confirmSelect . ' WHERE cpr.confirm_request_id = ?';
         $params = [$confirmId];
         $types = 'i';
         if ($productId > 0) {
@@ -114,10 +117,7 @@ function fetch_confirm_row(mysqli $conn, int $userId, int $productId, int $confi
         if ($productId <= 0) {
             throw new InvalidArgumentException('product_id is required when confirm_request_id is not provided');
         }
-        $stmt = $conn->prepare('SELECT cpr.*, ep.status AS payment_status, ep.payment_mode, ep.amount_cents AS payment_amount_cents,
-                                      ep.electronic_payment_id, ep.stripe_refund_id, ep.refunded_at, ep.dispute_status
-                                 FROM confirm_purchase_requests cpr
-                                 LEFT JOIN electronic_payments ep ON ep.electronic_payment_id = cpr.electronic_payment_id
+        $stmt = $conn->prepare($confirmSelect . '
                                 WHERE cpr.inventory_product_id = ?
                                 ORDER BY cpr.confirm_request_id DESC LIMIT 1');
         if (!$stmt) {

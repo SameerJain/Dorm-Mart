@@ -385,6 +385,9 @@ function handle_payment_webhook(string $mode): void
     payment_assert_mode($mode);
     dm_enforce_https();
     set_security_headers();
+    if (!dm_payments_enabled()) {
+        payment_webhook_json(503, ['success' => false, 'error' => 'Electronic payments are disabled']);
+    }
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         payment_webhook_json(405, ['success' => false, 'error' => 'Method Not Allowed']);
     }
@@ -433,6 +436,9 @@ function handle_payment_account_webhook(string $mode): void
     payment_assert_mode($mode);
     dm_enforce_https();
     set_security_headers();
+    if (!dm_payments_enabled()) {
+        payment_webhook_json(503, ['success' => false, 'error' => 'Electronic payments are disabled']);
+    }
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         payment_webhook_json(405, ['success' => false, 'error' => 'Method Not Allowed']);
     }
