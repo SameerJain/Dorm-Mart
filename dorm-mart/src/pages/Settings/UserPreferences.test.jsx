@@ -44,11 +44,8 @@ beforeEach(() => {
 test("loads and persists the seller contact-sharing toggle", async () => {
   render(<UserPreferences />);
 
-  const phoneInput = screen.getByLabelText("Phone number (optional)");
-  await waitFor(() =>
-    expect(phoneInput).toHaveProperty("value", "(716) 555-0123"),
-  );
-  const toggle = screen.getByRole("checkbox", {
+  expect(screen.queryByLabelText("Phone number (optional)")).toBeNull();
+  const toggle = await screen.findByRole("checkbox", {
     name: /share my UB email and phone number/i,
   });
   expect(toggle.checked).toBe(true);
@@ -66,17 +63,16 @@ test("loads and persists the seller contact-sharing toggle", async () => {
 test("shows backend validation failures instead of silently losing changes", async () => {
   csrfFetch.mockResolvedValue({
     ok: false,
-    json: async () => ({ ok: false, error: "Invalid phone number" }),
+    json: async () => ({ ok: false, error: "Unable to save preferences" }),
   });
   render(<UserPreferences />);
 
-  const phoneInput = screen.getByLabelText("Phone number (optional)");
-  await waitFor(() =>
-    expect(phoneInput).toHaveProperty("value", "(716) 555-0123"),
-  );
-  fireEvent.change(phoneInput, { target: { value: "+" } });
+  const toggle = await screen.findByRole("checkbox", {
+    name: /share my UB email and phone number/i,
+  });
+  fireEvent.click(toggle);
 
   expect(
     (await screen.findByRole("alert", {}, { timeout: 1500 })).textContent,
-  ).toContain("Invalid phone number");
+  ).toContain("Unable to save preferences");
 });

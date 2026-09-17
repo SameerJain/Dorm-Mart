@@ -735,6 +735,10 @@ function ProductListingPage() {
 
     if (savingDraft) {
       const draftErrors = {};
+      if (!hasListingPhoto(images)) {
+        draftErrors.images =
+          "At least one photo is required. Videos are optional and count toward the 6-media limit.";
+      }
       if (!title.trim()) {
         draftErrors.title = "Title is required";
       } else if (title.length > LIMITS.title) {

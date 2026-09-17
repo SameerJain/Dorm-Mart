@@ -431,6 +431,7 @@ function UserPreferences() {
             Seller Privacy
           </h2>
           <div className="max-w-lg space-y-4">
+            {/* Phone number entry is paused until seller phone support is ready.
             <div>
               <label
                 htmlFor="contact-phone"
@@ -452,6 +453,7 @@ function UserPreferences() {
                 className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
               />
             </div>
+            */}
             <div className="flex items-start space-x-3">
               <input
                 type="checkbox"

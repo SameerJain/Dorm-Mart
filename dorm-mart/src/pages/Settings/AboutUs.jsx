@@ -7,6 +7,7 @@ import chrisPhoto from "../../assets/team/chris-kim.png";
 const developers = [
   {
     name: "Sameer Jain",
+    title: "Feature Maker",
     email: "sameerjain501@gmail.com",
     github: "https://github.com/SameerJain",
     linkedin: "https://www.linkedin.com/in/sameer-jain1/",
@@ -16,6 +17,7 @@ const developers = [
   },
   {
     name: "Anish Banerjee",
+    title: "Backend Builder",
     email: "anishbancse312@gmail.com",
     github: "https://github.com/anishcse312",
     linkedin: "https://www.linkedin.com/in/anish-banerjee-71aba9290/",
@@ -25,6 +27,7 @@ const developers = [
   },
   {
     name: "Chris Kim",
+    title: "DevOps King",
     email: "sooseokkim99@gmail.com",
     github: "https://github.com/chris-sooseok",
     linkedin: "https://www.linkedin.com/in/kim-chris-sooseok/",
@@ -91,7 +94,7 @@ function AboutUs() {
                 {developer.name}
               </h2>
               <p className="mt-1 text-sm font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">
-                Full-stack developer
+                {developer.title}
               </p>
               <p className="mt-4 flex-1 leading-6 text-gray-600 dark:text-gray-300">
                 {developer.contribution}

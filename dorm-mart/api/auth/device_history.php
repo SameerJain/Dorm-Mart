@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/login_location.php';
+
 function login_device_details(string $userAgent): array
 {
     $operatingSystem = 'Unknown OS';
@@ -81,7 +83,7 @@ function login_request_location(): ?string
         return substr($clean, 0, 80);
     }, $parts))));
 
-    return $parts ? substr(implode(', ', $parts), 0, 160) : null;
+    return $parts ? substr(implode(', ', $parts), 0, 160) : login_ip_location(login_request_ip());
 }
 
 function record_login_device(int $userId): bool
@@ -111,7 +113,8 @@ function record_login_device(int $userId): bool
              ON DUPLICATE KEY UPDATE
                 device_type = VALUES(device_type), browser = VALUES(browser),
                 operating_system = VALUES(operating_system), user_agent = VALUES(user_agent),
-                ip_address = VALUES(ip_address), location = COALESCE(VALUES(location), location),
+                location = IF(ip_address = VALUES(ip_address), COALESCE(VALUES(location), location), VALUES(location)),
+                ip_address = VALUES(ip_address),
                 last_seen_at = CURRENT_TIMESTAMP, signed_out_at = NULL'
         );
         $stmt->bind_param(
