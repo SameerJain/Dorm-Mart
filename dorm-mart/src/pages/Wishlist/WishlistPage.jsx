@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ItemCardNew from "../../components/ItemCardNew";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
@@ -26,16 +26,7 @@ export default function WishlistPage() {
     [allItems, selectedCategory],
   );
 
-  useBodyScrollLock(showMobileFilters);
-
-  useEffect(() => {
-    document.body.style.overflow = confirmRemove ? "hidden" : "";
-    document.documentElement.style.overflow = confirmRemove ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    };
-  }, [confirmRemove]);
+  useBodyScrollLock(showMobileFilters || Boolean(confirmRemove));
 
   async function confirmRemoveItem() {
     if (!confirmRemove?.id) return;

@@ -88,7 +88,6 @@ export default function LandingPage() {
               <ForYouSection
                 hasPersonalization={hasPersonalization}
                 items={forYouItems}
-                navigate={navigate}
                 wishlistedIds={wishlistedIds}
               />
             )}

@@ -30,7 +30,9 @@ export default function SubmitConfirmationDialog({
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             Ready to Submit?
           </h2>
-          <p className="mt-2 text-gray-600 dark:text-gray-300">{message}</p>
+          <p className="mt-2 text-gray-600 dark:text-gray-300 break-words">
+            {message}
+          </p>
         </div>
         <div className="px-6 py-4 flex justify-end gap-3">
           <button

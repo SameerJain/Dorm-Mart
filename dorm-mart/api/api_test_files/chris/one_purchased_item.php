@@ -2,6 +2,10 @@
 /**
  * Data-dependent check: current calendar year should return exactly one legacy purchased_items row.
  * PASS only when the API reports success and count(data) === 1.
+ *
+ * fetch_transacted_items.php requires a logged-in session, and the row this
+ * checks for belongs to whichever account API_TEST_LOGIN_EMAIL logs in as —
+ * set it to the seeded account that row actually belongs to.
  */
 declare(strict_types=1);
 
@@ -10,7 +14,16 @@ header('Content-Type: application/json; charset=utf-8');
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 $year = (int) date('Y');
-$result = api_test_post_json('purchase_history/fetch_transacted_items.php', ['year' => $year]);
+$session = api_test_login_session();
+if ($session === null) {
+    echo json_encode([
+        'success' => false,
+        'test_result' => 'FAIL — API_TEST_LOGIN_EMAIL / API_TEST_LOGIN_PASSWORD are unset or login failed; this endpoint requires a logged-in session.',
+    ]);
+    exit;
+}
+
+$result = api_test_post_json('purchase_history/fetch_transacted_items.php', ['year' => $year], $session['cookie_jar']);
 
 $json = is_array($result['json']) ? $result['json'] : [];
 $data = isset($json['data']) && is_array($json['data']) ? $json['data'] : [];

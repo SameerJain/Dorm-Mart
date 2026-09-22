@@ -76,3 +76,18 @@ test("shows backend validation failures instead of silently losing changes", asy
     (await screen.findByRole("alert", {}, { timeout: 1500 })).textContent,
   ).toContain("Unable to save preferences");
 });
+
+test.each(["off", "daily", "weekly"])("persists the %s promotional email frequency", async (frequency) => {
+  render(<UserPreferences />);
+
+  await waitFor(() => expect(screen.getByRole("checkbox").checked).toBe(true));
+  fireEvent.change(screen.getByLabelText("Promotional email frequency"), {
+    target: { value: frequency },
+  });
+
+  await waitFor(() => expect(csrfFetch).toHaveBeenCalled(), { timeout: 1500 });
+  expect(JSON.parse(csrfFetch.mock.calls.at(-1)[1].body)).toMatchObject({
+    promoFrequency: frequency,
+    promoEmails: frequency !== "off",
+  });
+});

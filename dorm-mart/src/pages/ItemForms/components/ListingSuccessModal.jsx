@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 
 export default function ListingSuccessModal({
   isEdit,
@@ -7,19 +7,7 @@ export default function ListingSuccessModal({
   setShowSuccess,
   showSuccess,
 }) {
-  useEffect(() => {
-    if (showSuccess && !isEdit) {
-      document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    };
-  }, [showSuccess, isEdit]);
+  useBodyScrollLock(showSuccess && !isEdit);
 
   if (!showSuccess || isEdit) return null;
 

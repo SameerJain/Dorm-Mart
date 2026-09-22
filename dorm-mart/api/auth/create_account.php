@@ -119,77 +119,12 @@ function generate_password(int $length = 8): string
 // Example:
 // echo generate_password(12);
 
-/**
- * Send welcome email via SendGrid REST API (for Railway)
- */
-function send_welcome_email_via_sendgrid(array $user, string $tempPassword, string $apiKey): array
-{
-    global $PROJECT_ROOT;
-    
-    // Load SendGrid SDK
-    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
-        require_once $PROJECT_ROOT . '/vendor/autoload.php';
-    } else {
-        error_log("SendGrid: vendor/autoload.php not found");
-        return ['ok' => false, 'error' => 'SendGrid SDK not available'];
-    }
-
-    try {
-        error_log("SendGrid welcome email attempt started for: " . ($user['email'] ?? 'unknown'));
-        $sendgrid = new \SendGrid($apiKey);
-
-        $pkg = dm_transactional_welcome_package($user['firstName'] ?? '', $tempPassword);
-        $subject = $pkg['subject'];
-        $html = $pkg['html'];
-        $text = $pkg['text'];
-
-        $fromEmail = dm_mail_from_email();
-        if ($fromEmail === '') {
-            error_log("SendGrid welcome email failed: MAIL_FROM_EMAIL or GMAIL_USERNAME is not set");
-            return ['ok' => false, 'error' => 'Email configuration missing'];
-        }
-
-        $email = new \SendGrid\Mail\Mail();
-        $email->setFrom($fromEmail, dm_mail_from_name());
-        $email->setSubject($subject);
-        $email->addTo($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
-        $email->addContent("text/html", $html);
-        $email->addContent("text/plain", $text);
-        
-        $response = $sendgrid->send($email);
-        $statusCode = $response->statusCode();
-        $responseBody = $response->body();
-
-        error_log("SendGrid response: Status " . $statusCode . " - Body: " . $responseBody);
-        
-        if ($statusCode >= 200 && $statusCode < 300) {
-            error_log("SendGrid email sent successfully to: " . $user['email']);
-            return ['ok' => true, 'provider' => 'sendgrid', 'status' => $statusCode, 'error' => null];
-        } else {
-            error_log("SendGrid error: " . $statusCode . " - " . $responseBody);
-            return ['ok' => false, 'provider' => 'sendgrid', 'status' => $statusCode, 'error' => 'Failed to send email via SendGrid'];
-        }
-    } catch (Throwable $e) {
-        error_log("SendGrid exception in send_welcome_email_via_sendgrid: " . $e->getMessage());
-        return ['ok' => false, 'provider' => 'sendgrid', 'error' => $e->getMessage()];
-    }
-}
-
 function send_welcome_gmail(array $user, string $tempPassword): array
 {
     if (dm_env_string('RESEND_API_KEY') !== '') {
         return dm_send_resend_email($user['email'], dm_transactional_welcome_package($user['firstName'] ?? '', $tempPassword));
     }
     global $PROJECT_ROOT;
-
-    // Check for SendGrid API key first (Railway option)
-    $sendgridApiKey = dm_sendgrid_api_key();
-    if (!empty($sendgridApiKey)) {
-        // Use SendGrid REST API for Railway
-        error_log("Welcome email using SendGrid; SENDGRID_API_KEY is configured");
-        return send_welcome_email_via_sendgrid($user, $tempPassword, $sendgridApiKey);
-    }
-    error_log("Welcome email using SMTP fallback; SENDGRID_API_KEY is not configured");
 
     // Ensure PHP is using UTF-8 internally
     if (function_exists('mb_internal_encoding')) {

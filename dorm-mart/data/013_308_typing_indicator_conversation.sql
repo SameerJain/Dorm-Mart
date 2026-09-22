@@ -51,7 +51,13 @@ SELECT
   JSON_ARRAY('Electronics', 'Utility'),
   'North Campus',
   'Like New',
-  'This Anker portable charger provides dependable, high-speed power wherever you go, making it an essential companion for travel, work, and everyday use. Featuring Anker''s advanced PowerIQ technology, it intelligently identifies your device to deliver optimized charging, ensuring fast and efficient performance for smartphones, tablets, earbuds, and other USB-powered gear. Its high-capacity battery offers multiple charges for most phones, giving you peace of mind during long days, commutes, or emergencies. Designed with a compact, lightweight body, it slips easily into pockets, backpacks, or purses without adding bulk, while the durable exterior protects it from daily wear. With user-friendly operation, reliable safety features, and the trusted quality Anker is known for, this portable charger keeps you powered up anytime you need it.',
+  'Anker portable charger with PowerIQ fast charging, the kind of thing that has saved me more than once when every outlet in the library was already taken. It holds a charge well and has gotten my phone through a full day of classes plus a commute without needing a top up.
+
+Charging speed depends on the device and cable you connect, so I am not promising a specific number of full charges since battery sizes vary a lot between phones. This listing is for the charger itself only, no cable included, so bring your own or plan to buy one separately.
+
+It has been tested and works exactly as it should, no slow charging or connection issues that I have noticed. Selling because I upgraded to a higher capacity charger and do not need two.
+
+$35, price is firm. Can meet on campus, and I am happy to demonstrate it charging before you buy if that would help.',
   JSON_ARRAY('/images/anker-charger-product-image.jpg'),
   35.00,
   'Active',
