@@ -44,7 +44,11 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Health', 'Dorm Essentials'),
   'North Campus',
   'Like New',
-  'A high-quality blue water bottle perfect for staying hydrated on campus. Great condition with no leaks or damage.',
+  'Blue water bottle, no leaks, no cracks, and the cap still seals tightly. I used it a handful of times before switching to a different bottle, so it has spent most of its life sitting in a cabinet rather than actually being used daily.
+
+I am not claiming a specific capacity or insulation time, so if either of those matters for your routine, ask before buying and I will measure it for you. I have not run it through a dishwasher, so I can only vouch for hand washing, not how it holds up on a heat cycle. The bottle in the photo is exactly the one being sold, nothing else included.
+
+Price is $15 but I am open to a reasonable offer, especially if you are also grabbing something else from my listings. Easy to meet up on campus since it is small enough to hand off between classes without scheduling anything in advance.',
   JSON_ARRAY('/images/blue-water-bottle.jpg'),
   15.00,
   'Active',
@@ -75,7 +79,11 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('School', 'Dorm Essentials'),
   'North Campus',
   'Good',
-  'A stylish white and blue backpack with multiple compartments. Perfect for carrying books and laptop to class.',
+  'White and blue backpack with several separate compartments, which was genuinely useful for keeping notebooks apart from chargers and pens instead of everything sliding around together at the bottom of one big pocket. It is in good condition, meaning there is some visible wear on the lighter fabric from actually being carried around campus, not just sitting in a closet unused.
+
+Zippers all still work smoothly, no broken pulls or stuck tracks anywhere on the bag. I would compare your laptop against the sleeve dimensions in the photos before buying, since I do not want to promise a fit based on screen size alone without you checking first. This is the bag by itself, nothing packed inside it.
+
+Selling because I switched to a different bag style for this semester. $25, open to offers, and happy to meet somewhere on campus at a time that works for you.',
   JSON_ARRAY('/images/white-blue-backpack.jpg'),
   25.00,
   'Active',

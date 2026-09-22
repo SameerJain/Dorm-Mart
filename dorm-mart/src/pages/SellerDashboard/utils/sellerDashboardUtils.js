@@ -125,7 +125,8 @@ export function listingStatusClass(status) {
   const normalized = String(status || "").toLowerCase();
   if (normalized === "active") return "bg-green-100 text-green-800";
   if (normalized === "pending") return "bg-orange-100 text-orange-800";
-  if (normalized === "draft") return "bg-yellow-100 text-yellow-800";
+  if (normalized === "draft")
+    return "bg-yellow-100 text-orange-800 dark:bg-yellow-900/30 dark:text-orange-300";
   if (normalized === "sold") return "bg-blue-100 text-blue-800";
   return "bg-gray-100 text-gray-800";
 }

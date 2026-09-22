@@ -33,7 +33,11 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Kitchen'),
   'North Campus',
   'Like New',
-  'This Brita filter box provides a convenient, reliable way to keep your home stocked with fresh, great-tasting water. Each box contains long-lasting replacement filters designed to reduce chlorine, odors, and common impurities found in tap water, delivering cleaner, crisper hydration with every pour. The clearly labeled packaging makes it easy to know when it''s time to restock, while the protective, compact design keeps the filters organized and ready for use. Compatible with a wide range of Brita pitchers and dispensers, these filters install quickly with a simple snap-in fit, making maintenance effortless. Ideal for households, offices, dorms, or anyone looking to cut down on plastic waste, this Brita filter box ensures you always have a fresh supply of filtration power on hand. It''s a smart, sustainable way to stay prepared and enjoy better water every day.',
+  'Box of Brita replacement filters, unopened and still sealed in the original packaging. Double check the specific filter type against your pitcher before buying, since Brita makes a few different designs and the brand name alone does not guarantee a fit.
+
+Compatible with a range of Brita pitchers and dispensers, but I would rather you confirm compatibility directly than get home and find out it does not snap in properly. This listing is for the filter box itself, not a pitcher or dispenser, and I have not opened it to check the exact count inside beyond what is printed on the box.
+
+$25 for the box, open to offers if the price feels high for what it is. Can meet on campus for a quick handoff since it is small enough to carry easily in a backpack, no need to plan around a bigger pickup.',
   JSON_ARRAY('/images/britta-filter-product-image.jpg'),
   25.00,
   'Active',
@@ -64,7 +68,11 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Electronics', 'Office'),
   'North Campus',
   'Like New',
-  'This TECKNET red mouse combines bold style with reliable, high-performance functionality, making it a standout addition to any workspace or gaming setup. Featuring TECKNET''s precision optical tracking, it delivers smooth, accurate cursor control on a wide range of surfaces, perfect for work, browsing, or casual gaming. Its ergonomic, contoured shape fits comfortably in your hand, reducing strain during long sessions, while the responsive buttons and easy-scroll wheel ensure a quick, effortless user experience. The vibrant red finish adds a pop of color that sets it apart from standard accessories, and the lightweight, durable build makes it ideal for travel or daily use. With plug-and-play setup and broad device compatibility, this TECKNET mouse offers dependable performance, eye-catching style, and everyday comfort in one sleek package.',
+  'TECKNET wired mouse in red, works fine with no connection issues or lag that I have noticed. Comfortable, contoured grip shape for everyday use, and both the buttons and scroll wheel respond exactly as they should.
+
+Check the exact model and connection type in the photos before buying so you know it will actually work with the ports on your specific computer. I would not assume any special gaming features or an adjustable sensitivity range without confirming the model first, since it is a fairly standard mouse rather than anything marketed for competitive gaming.
+
+This listing is for the mouse only, no keyboard or other desk accessories included beyond what is shown. $15, and I am not really looking to negotiate on something this inexpensive, but ask if you want to see it working in person first. Can meet on campus.',
   JSON_ARRAY('/images/teknet-mouse-product-image.webp'),
   15.00,
   'Active',

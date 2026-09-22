@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
 import { resolveProductPhotoUrl } from "../../../utils/imageFallback";
 import logger from "../../../utils/logger";
+import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 
 const reviewImageUrl = (url) =>
   resolveProductPhotoUrl(url, { apiBase: API_BASE, proxyUnknown: true });
@@ -22,19 +23,7 @@ export default function ReviewImageGallery({ review, viewMode }) {
   const images = getReviewImages(review);
   const [selectedImage, setSelectedImage] = useState(null);
 
-  useEffect(() => {
-    if (selectedImage) {
-      document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    };
-  }, [selectedImage]);
+  useBodyScrollLock(Boolean(selectedImage));
 
   if (images.length === 0) return null;
 

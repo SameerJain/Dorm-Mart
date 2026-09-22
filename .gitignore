@@ -3,6 +3,10 @@ dorm-mart/node_modules
 dorm-mart/.pnp
 dorm-mart/.pnp.js
 
+# Profanity word-list data: excluded so the raw word list isn't committed to
+# this public repo. See "Profanity word list" in PROJECT_HANDOFF.md.
+dorm-mart/vendor/snipe/banbuilder/src/dict/
+
 # Testing
 dorm-mart/coverage
 
@@ -34,6 +38,7 @@ dorm-mart/deploy.bat
 railway.toml
 nixpacks.toml
 !dorm-mart/railway.toml
+!dorm-mart/railway.promotional.toml
 
 # Logs
 npm-debug.log*

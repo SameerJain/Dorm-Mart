@@ -58,7 +58,7 @@ if ($rateLimited) {
 http_response_code(200);
 echo json_encode([
     'success' => false,
-    'test_result' => 'FAIL — expected success from forgot_password (check mail/SendGrid config)',
+    'test_result' => 'FAIL — expected success from forgot_password (check mail config)',
     'api_http_code' => $result['http_code'],
     'api_response' => $response,
     'api_raw' => $result['raw'],

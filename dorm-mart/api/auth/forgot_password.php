@@ -76,61 +76,6 @@ function restore_password_reset_state(mysqli $conn, array $user, string $request
     }
 }
 
-/**
- * Send password reset email via SendGrid REST API (for Railway)
- */
-function send_password_reset_email_via_sendgrid(array $user, string $resetLink, string $apiKey): array
-{
-    global $PROJECT_ROOT;
-    
-    // Load SendGrid SDK
-    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
-        require_once $PROJECT_ROOT . '/vendor/autoload.php';
-    } else {
-        error_log("SendGrid: vendor/autoload.php not found");
-        return ['success' => false, 'error' => 'SendGrid SDK not available'];
-    }
-    
-    try {
-        $sendgrid = new \SendGrid($apiKey);
-        
-        $pkg = dm_transactional_password_reset_package($user['first_name'] ?? '', $resetLink);
-        $subject = $pkg['subject'];
-        $html = $pkg['html'];
-        $text = $pkg['text'];
-
-        $fromEmail = dm_mail_from_email();
-        if ($fromEmail === '') {
-            error_log("SendGrid password reset failed: MAIL_FROM_EMAIL or GMAIL_USERNAME is not set");
-            return ['success' => false, 'error' => 'Email configuration missing'];
-        }
-
-        $email = new \SendGrid\Mail\Mail();
-        $email->setFrom($fromEmail, dm_mail_from_name());
-        $email->setSubject($subject);
-        $email->addTo($user['email'], trim($user['first_name'] . ' ' . $user['last_name']));
-        $email->addContent("text/html", $html);
-        $email->addContent("text/plain", $text);
-        
-        $response = $sendgrid->send($email);
-        $statusCode = $response->statusCode();
-        $responseBody = $response->body();
-        
-        error_log("SendGrid response: Status " . $statusCode . " - Body: " . $responseBody);
-        
-        if ($statusCode >= 200 && $statusCode < 300) {
-            error_log("SendGrid password reset email sent successfully to: " . $user['email']);
-            return ['success' => true, 'message' => 'Email sent successfully'];
-        } else {
-            error_log("SendGrid error in password reset: " . $statusCode . " - " . $responseBody);
-            return ['success' => false, 'error' => 'Failed to send email via SendGrid'];
-        }
-    } catch (Exception $e) {
-        error_log("SendGrid exception in send_password_reset_email_via_sendgrid: " . $e->getMessage());
-        return ['success' => false, 'error' => $e->getMessage()];
-    }
-}
-
 // Use the EXACT same email sending logic as create_account.php for maximum speed
 function send_password_reset_email(array $user, string $resetLink, string $envLabel = 'Local'): array
 {
@@ -139,12 +84,6 @@ function send_password_reset_email(array $user, string $resetLink, string $envLa
         return ['success' => $result['ok'], 'error' => $result['error']];
     }
     global $PROJECT_ROOT;
-
-    // Check for SendGrid API key first (Railway option)
-    $sendgridApiKey = dm_sendgrid_api_key();
-    if (!empty($sendgridApiKey)) {
-        return send_password_reset_email_via_sendgrid($user, $resetLink, $sendgridApiKey);
-    }
 
     // Ensure PHP is using UTF-8 internally (EXACT same as create_account.php)
     if (function_exists('mb_internal_encoding')) {
