@@ -376,9 +376,12 @@ function ReviewModal({
           style={{ minWidth: 0 }}
         >
           <div className="mb-4 min-w-0">
-            <p className="text-sm text-gray-600 dark:text-gray-400 break-words">
-              Product:{" "}
-              <span className="font-medium text-gray-900 dark:text-gray-100 break-words">
+            <p className="flex min-w-0 items-baseline gap-1 text-sm text-gray-600 dark:text-gray-400">
+              <span className="flex-none">Product:</span>
+              <span
+                className="min-w-0 flex-1 truncate font-medium text-gray-900 dark:text-gray-100"
+                title={productTitle}
+              >
                 {productTitle}
               </span>
             </p>

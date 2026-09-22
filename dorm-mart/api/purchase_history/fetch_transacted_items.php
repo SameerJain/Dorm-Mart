@@ -7,7 +7,7 @@ require __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
 
-require_login();
+$userId = require_login();
 
 $conn = db();
 
@@ -27,7 +27,7 @@ $end   = sprintf('%04d-01-01 00:00:00', $year + 1);   // start of next year (exc
 
 $sql = "SELECT item_id, title, sold_by, transacted_at, image_url
         FROM purchased_items
-        WHERE transacted_at >= ? AND transacted_at < ?
+        WHERE buyer_user_id = ? AND transacted_at >= ? AND transacted_at < ?
         ORDER BY transacted_at DESC";
 
 $stmt = $conn->prepare($sql);                         // prepare statement to avoid SQL injection
@@ -35,7 +35,7 @@ if (!$stmt) {
     json_response(['success' => false, 'error' => 'Failed to prepare query'], 500);
 }
 
-$stmt->bind_param('ss', $start, $end);                // bind date range params as strings
+$stmt->bind_param('iss', $userId, $start, $end);      // bind caller's own user id + date range params
 $stmt->execute();                                     // run the query
 $res = $stmt->get_result();                           // fetch mysqli_result
 

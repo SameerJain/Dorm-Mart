@@ -21,7 +21,7 @@ try {
     $conn->set_charset('utf8mb4');
 
     $accountStmt = $conn->prepare(
-        'SELECT hash_pass, is_protected, profile_photo FROM user_accounts WHERE user_id = ? LIMIT 1'
+        'SELECT hash_pass, is_protected, profile_photo, email FROM user_accounts WHERE user_id = ? LIMIT 1'
     );
     if (!$accountStmt) throw new RuntimeException('Failed to prepare account lookup');
     $accountStmt->bind_param('i', $userId);
@@ -34,9 +34,10 @@ try {
         json_response(['success' => false, 'error' => 'This account cannot be deleted'], 403);
     }
 
-    $confirmation = is_string($input['confirmation'] ?? null) ? $input['confirmation'] : '';
+    $confirmation = is_string($input['confirmation'] ?? null) ? trim($input['confirmation']) : '';
     $password = is_string($input['currentPassword'] ?? null) ? $input['currentPassword'] : '';
-    if ($confirmation !== 'DELETE MY ACCOUNT' || $password === '' || strlen($password) > 64) {
+    $accountEmail = trim((string)($account['email'] ?? ''));
+    if ($accountEmail === '' || strcasecmp($confirmation, $accountEmail) !== 0 || $password === '' || strlen($password) > 64) {
         json_response(['success' => false, 'error' => 'Invalid account deletion confirmation'], 400);
     }
     if (!password_verify($password, (string)$account['hash_pass'])) {

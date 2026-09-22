@@ -1,0 +1,6 @@
+# Use this configuration only for the separate promotional digest service.
+[deploy]
+startCommand = "php scripts/send_promotional_digests.php"
+# Railway schedules use UTC. The script selects 5 p.m. Eastern in either season.
+cronSchedule = "0 21,22 * * *"
+restartPolicyType = "NEVER"

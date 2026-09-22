@@ -5,6 +5,7 @@ import NextStepsMessageCard from "./NextStepsMessageCard";
 import ConfirmMessageCard from "./ConfirmMessageCard";
 import ReviewPromptMessageCard from "./ReviewPromptMessageCard";
 import BuyerRatingPromptMessageCard from "./BuyerRatingPromptMessageCard";
+import ReportMessageModal from "./ReportMessageModal";
 import TypingIndicatorMessage from "./TypingIndicatorMessage";
 import PaymentSystemMessageCard from "./PaymentSystemMessageCard";
 import { API_BASE } from "../../../utils/apiConfig";
@@ -16,6 +17,7 @@ function ReportButton({ messageId }) {
   const [reported, setReported] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   async function report() {
     setReporting(true);
@@ -34,19 +36,29 @@ function ReportButton({ messageId }) {
       setFailed(true);
     } finally {
       setReporting(false);
+      setConfirming(false);
     }
   }
 
   return (
-    <button
-      type="button"
-      onClick={report}
-      disabled={reported || reporting}
-      title={failed ? "The report could not be sent. Try again." : undefined}
-      className="mt-1 text-[10px] font-semibold text-red-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-red-400"
-    >
-      {reported ? "Reported" : reporting ? "Reporting..." : failed ? "Retry report" : "Report"}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        disabled={reported || reporting}
+        title={failed ? "The report could not be sent. Try again." : undefined}
+        className="mt-1 text-[10px] font-semibold text-red-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-red-400"
+      >
+        {reported ? "Reported" : reporting ? "Reporting..." : failed ? "Retry report" : "Report"}
+      </button>
+      {confirming && (
+        <ReportMessageModal
+          isReporting={reporting}
+          onCancel={() => setConfirming(false)}
+          onConfirm={report}
+        />
+      )}
+    </>
   );
 }
 

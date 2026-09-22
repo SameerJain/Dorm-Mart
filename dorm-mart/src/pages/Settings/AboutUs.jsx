@@ -13,7 +13,7 @@ const developers = [
     linkedin: "https://www.linkedin.com/in/sameer-jain1/",
     photo: sameerPhoto,
     contribution:
-      "Worked across Dorm Mart's authentication, security, deployment, and marketplace experience.",
+      "Built account creation, login, password reset, and two-factor authentication for the marketplace. Added session security, CSRF protection, and the Railway deployment pipeline.",
   },
   {
     name: "Anish Banerjee",
@@ -23,7 +23,7 @@ const developers = [
     linkedin: "https://www.linkedin.com/in/anish-banerjee-71aba9290/",
     photo: anishPhoto,
     contribution:
-      "Built profile, receipt, purchase history, and landing-page experiences across the app.",
+      "Built the receipt, purchase history, and account profile pages, including negotiated-price details. Added the ranked home feed, recommendation engine, and product image gallery.",
   },
   {
     name: "Chris Kim",
@@ -33,7 +33,7 @@ const developers = [
     linkedin: "https://www.linkedin.com/in/kim-chris-sooseok/",
     photo: chrisPhoto,
     contribution:
-      "Built chat, wishlist notifications, FAQs, and responsive navigation experiences.",
+      "Built the chat system, wishlist notifications, and message reporting, including profanity filtering. Added responsive navigation, mobile layouts, dark mode, and the FAQ pages.",
   },
 ];
 
@@ -73,7 +73,9 @@ function AboutUs() {
           <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-100">
             Behind Dorm Mart
           </p>
-          <h1 className="font-serif text-3xl font-bold sm:text-4xl">Meet our team</h1>
+          <h1 className="font-serif text-3xl font-bold sm:text-4xl">
+            Teamwork Makes The Dream Work
+          </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-blue-50 sm:text-lg">
             We built Dorm Mart to make it easier for students to buy and sell campus
             essentials. Questions, ideas, or feedback? We would love to hear from you.

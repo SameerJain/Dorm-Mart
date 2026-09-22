@@ -36,7 +36,11 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Kitchen', 'Food'),
   'North Campus',
   'Like New',
-  'A taco is a traditional Mexican dish that combines simplicity with bold, layered flavors. It begins with a soft or crispy tortilla, typically made from corn or flour, serving as the perfect vessel for a variety of fillings — from seasoned meats like beef, chicken, or pork, to fresh vegetables, beans, and melted cheese. Topped with salsa, guacamole, cilantro, onions, and a squeeze of lime, each bite delivers a perfect balance of spice, texture, and freshness. Versatile and handheld, tacos are enjoyed everywhere from street vendors to gourmet restaurants, embodying the vibrant, communal spirit of Mexican cuisine in every mouthful.',
+  'Fresh taco, made to order rather than sitting around waiting for a buyer. Ask about the specific fillings and toppings before ordering, since meat, beans, cheese, salsa, and vegetables can all vary and I do not want to assume what you are expecting to get.
+
+Let me know about any allergies or dietary restrictions ahead of time so I can actually accommodate them properly instead of guessing at the last minute. This is food meant to be eaten fresh, so plan on picking it up and eating it right away rather than letting it sit around in a bag between classes.
+
+$14.99, would consider a trade for another quick meal instead of cash. Can meet on campus at a time that works for both of us, ideally somewhere close to wherever it gets made so it does not sit around getting cold.',
   JSON_ARRAY('/images/taco-image.webp'),
   14.99,
   'Active',
@@ -74,7 +78,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Games', 'Gaming', 'Digital'),
   'North Campus',
   'Excellent',
-  '"Black Myth: Wukong" for PlayStation 5 is an action RPG inspired by the legendary Chinese novel Journey to the West. Players step into the role of the Destined One, a warrior with powers reminiscent of the Monkey King, as they battle through a dark and mythic world filled with ancient gods, demons, and mystical creatures. Powered by Unreal Engine 5, the game delivers breathtaking visuals, fluid combat, and cinematic storytelling. With its mix of fast-paced staff combat, magical abilities, and immersive lore, Black Myth: Wukong on PS5 offers a next-generation journey through Chinese mythology that''s both visually stunning and deeply challenging.',
+  'If you like learning a boss''s attack patterns and coming back for another attempt instead of brute forcing every fight, that is a big part of what you are getting here. Black Myth: Wukong for PS5, disc copy, tested and confirmed working with no read errors.
+
+You play as the Destined One in a story drawing heavily on Journey to the West, using staff combat and magical transformations through encounters with creatures pulled from Chinese mythology. The combat genuinely rewards paying attention to what each enemy is doing rather than pressing through every fight the same way.
+
+Confirm your PS5 has a disc drive before buying, since the digital only version obviously will not work with a physical disc. No DLC, bonus content, or extra codes included, just the base game as originally released.
+
+$80, open to offers. Can meet on campus, and I am happy to answer questions about how far I got or what to expect from specific sections.',
   JSON_ARRAY('/images/black-myth-wukong-image.jpg'),
   80,
   'Active',

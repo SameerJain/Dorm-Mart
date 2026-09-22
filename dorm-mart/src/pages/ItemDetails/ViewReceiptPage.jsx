@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { formatCurrency } from "../../utils/formatters";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import ItemDetailHeader from "./components/ItemDetailHeader";
 import ItemFactsPanel from "./components/ItemFactsPanel";
 import ProductImageGallery from "./components/ProductImageGallery";
@@ -30,6 +31,8 @@ export default function ViewReceipt() {
   const [refunding, setRefunding] = useState(false);
   const { loading, error, receiptData, normalized } =
     useReceiptDetail(productId);
+
+  useBodyScrollLock(refundOpen);
 
   const isSellerViewingOwnProduct =
     myId &&

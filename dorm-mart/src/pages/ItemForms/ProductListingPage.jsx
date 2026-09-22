@@ -13,6 +13,7 @@ import {
 } from "../../utils/imageFallback";
 import logger from "../../utils/logger";
 import { containsMemePrice } from "../../utils/priceValidation";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import ListingForm from "./components/ListingForm";
 import ImageCropperModal from "./components/ImageCropperModal";
 import ListingStatusBanners from "./components/ListingStatusBanners";
@@ -93,33 +94,7 @@ function ProductListingPage() {
   }, []);
 
   // Prevent body scroll when cropper modal is open
-  useEffect(() => {
-    if (showCropper) {
-      scrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
-      document.documentElement.style.overflow = "hidden";
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollPositionRef.current}px`;
-      document.body.style.width = "100%";
-    } else {
-      const scrollY = scrollPositionRef.current;
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-      requestAnimationFrame(() => {
-        window.scrollTo(0, scrollY);
-      });
-    }
-    return () => {
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-    };
-  }, [showCropper]);
+  useBodyScrollLock(showCropper);
 
   // Mirror crop geometry in refs so dragging reads the latest values.
   const displayInfoRef = useRef({
@@ -744,6 +719,22 @@ function ProductListingPage() {
       } else if (title.length > LIMITS.title) {
         draftErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
       }
+      // Price is optional while drafting, but the backend still rejects a
+      // non-empty value that isn't a real, in-range price — validate it here
+      // too so an incomplete value like "." doesn't round-trip to the server
+      // just to come back as an error.
+      if (price !== "") {
+        if (containsMemePrice(price)) {
+          draftErrors.price =
+            "The price has a meme input in it. Please try a different price.";
+        } else if (!Number.isFinite(Number(price))) {
+          draftErrors.price = "Please enter a valid price";
+        } else if (Number(price) < LIMITS.priceMin) {
+          draftErrors.price = `Minimum price is $${LIMITS.priceMin.toFixed(2)}`;
+        } else if (Number(price) > LIMITS.price) {
+          draftErrors.price = `Price must be $${LIMITS.price} or less`;
+        }
+      }
       setErrors(draftErrors);
       if (Object.keys(draftErrors).length > 0) {
         formTopRef.current?.scrollIntoView({
@@ -820,6 +811,14 @@ function ProductListingPage() {
 
       if (!data?.ok) {
         setServerMsg(data?.message || data?.error || "Submission failed.");
+        if (data?.errors && typeof data.errors === "object") {
+          setErrors((current) => ({ ...current, ...data.errors }));
+          formTopRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+          setShowTopErrorBanner(true);
+        }
         return;
       }
 

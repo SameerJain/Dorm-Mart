@@ -3,7 +3,6 @@ import ListingGrid from "./ListingGrid";
 export default function ForYouSection({
   hasPersonalization,
   items,
-  navigate,
   wishlistedIds,
 }) {
   return (
@@ -19,12 +18,6 @@ export default function ForYouSection({
               : "Popular and recently listed items while we learn what you like."}
           </p>
         </div>
-        <button
-          onClick={() => navigate("/app/setting/user-preferences")}
-          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          Manage interests
-        </button>
       </header>
 
       {items.length ? (

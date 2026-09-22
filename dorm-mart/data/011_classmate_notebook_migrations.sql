@@ -86,7 +86,11 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Books'),
   'North Campus',
   'Like New',
-  'This is a classmate notebook.',
+  'One Classmate notebook, pages are unused and the cover has no creases, dents, or writing on it. I bought a couple extra at the start of the semester and only ended up needing one, so this is the spare that never got touched.
+
+I have not measured the exact page count or ruling, so if your class requires something specific, like graph paper or a particular line spacing, ask before buying rather than assuming it matches what you need. This listing is for a single notebook, not a multipack, and the cover shown in the photo is exactly what you would get.
+
+$3, and honestly I would rather just hand it off for cheap than let it sit in a drawer for another year. Can meet on campus, or if you are nearby I can leave it somewhere convenient rather than scheduling a specific time.',
   JSON_ARRAY('/images/marble-notebook.jpg'),
   3.00,
   'Sold',

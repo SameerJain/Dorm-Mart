@@ -90,7 +90,11 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('School', 'Stationary'),
   'North Campus',
   'Like New',
-  'Classic marble composition notebook. Perfect for taking notes in class. Barely used, in excellent condition.',
+  'Marble composition notebook, barely used with only a couple of pages filled in near the front. The cover pattern is the standard school notebook look, no tears, water stains, or bent corners anywhere on it.
+
+This is a single notebook, not part of a multipack, and I have not checked the exact paper ruling against any specific class requirement, like graph paper or a particular line spacing, so ask if that matters for what you need it for before buying. I would rather see it get filled with someone''s actual notes than keep sitting half used on my shelf for another semester.
+
+$5, price is firm since it is already priced pretty low for a single notebook. Easy to meet on campus for a quick handoff between classes, or I can leave it somewhere convenient if that works better for you.',
   JSON_ARRAY('/images/marble-notebook.jpg'),
   5.00,
   'Sold',

@@ -15,6 +15,7 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/db_connect.php';
 require_once __DIR__ . '/../config/app_config.php';
+require_once __DIR__ . '/seed_profanity_wordlist.php';
 
 try {
     $conn = db();
@@ -78,6 +79,20 @@ try {
             } catch (Throwable $ignored) {
             }
             throw new RuntimeException('Failed migration ' . $name . ': ' . $e->getMessage(), 0, $e);
+        }
+    }
+
+    $wordlistSeedName = 'seed_profanity_wordlist_banbuilder_v2';
+    if (!isset($applied[$wordlistSeedName])) {
+        $seedResult = seed_profanity_wordlist($conn);
+        if ($seedResult['skipped_reason'] === null) {
+            $stmt = $conn->prepare('INSERT INTO schema_migrations (filename) VALUES (?)');
+            $stmt->bind_param('s', $wordlistSeedName);
+            $stmt->execute();
+            $stmt->close();
+            $ran[] = $wordlistSeedName . ' (' . $seedResult['seeded'] . ' added, ' . $seedResult['removed'] . ' removed)';
+        } else {
+            $skipped[] = $wordlistSeedName . ': ' . $seedResult['skipped_reason'];
         }
     }
 

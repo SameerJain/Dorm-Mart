@@ -61,6 +61,10 @@ php api/database/create_moderator.php moderator@buffalo.edu "use-a-strong-passwo
 
 Moderator accounts use the normal login page and are sent to `/app/moderation` after login.
 
+### Profanity word list
+
+`migrate_schema.php` seeds most of the profanity filter's word list from the `snipe/banbuilder` Composer package (kept out of git — see "Profanity word list" in `PROJECT_HANDOFF.md`). If your local `dorm-mart/vendor/` came from `git pull` rather than a fresh `composer install`, run `composer install` from `dorm-mart/` once so that seeding step has the word-list files to read. If you skip it, migrations still succeed; you'll just start with the smaller base list committed in `migrations/019_moderation_and_profanity.sql` until you run `composer install`.
+
 # Test Server Build: APTITUDE (How to build and upload prod app to aptitude)
 
 1. `npm run build-prod` (add -win or -mac at the end depending on your machine)

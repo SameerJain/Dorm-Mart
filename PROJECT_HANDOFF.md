@@ -42,7 +42,7 @@ Unknown routes use `NotFoundPage`. The December raw-loader behavior for unfinish
 
 ### Authentication, account creation, and password recovery
 
-- Account creation uses a generated temporary password delivered by email. SendGrid is preferred when configured; SMTP/PHPMailer is the fallback.
+- Account creation uses a generated temporary password delivered by email. Resend is preferred when configured; SMTP/PHPMailer is the fallback.
 - Account-creation requests are rate-limited in both the browser and backend. The backend returns the same generic accepted response for eligible submissions, duplicate accounts, email-policy rejections, and delivery/internal failures to reduce account enumeration; malformed form fields can still return validation errors.
 - An account is retained only when the temporary-password email is delivered. If delivery fails, the newly inserted account is removed. This is different from the earlier handoff wording that said account creation would survive email failure.
 - Registration requires acceptance of the Terms of Service and records promotional-email preferences.
@@ -132,7 +132,7 @@ Unknown routes use `NotFoundPage`. The December raw-loader behavior for unfinish
 
 - Users can report messages directly from chat. One reporter/message pair is kept unique; reporting the same message again reopens/updates that report.
 - Moderator accounts have a safety dashboard showing flagged messages, reports, and banned-user statistics.
-- Moderators can resolve/dismiss reports, ban/unban non-moderators, and maintain the profanity word/phrase list.
+- Moderators can resolve/dismiss reports, ban/unban non-moderators, and maintain the profanity word/phrase list (add/remove words live from the Moderator Dashboard — no deploy needed).
 - Banning invalidates the target's sessions and authentication tokens. All protected APIs also reject banned users, so the React route guard is not the security boundary.
 - Moderator accounts must be provisioned from the CLI, for example:
 
@@ -213,6 +213,15 @@ Shared code lives under `api/config`, `api/helpers`, `api/security`, `api/utilit
 - `migrate_data.php` is CLI-only and local-only. Every run truncates local application tables (preserving the schema ledger and profanity words), copies fixture images, reapplies all SQL files in `data`, and marks fixture accounts protected.
 - `api/database/wipe_data.php` is intentionally destructive and requires `--confirm-wipe` or `--confirm-rebuild`.
 - Do not rename an already-applied schema migration. The ledger keys by filename.
+
+### Profanity word list
+
+- The base list still lives in migration `019_moderation_and_profanity.sql` (a small, intentionally short set — this file is public).
+- A much larger English word list is seeded separately by `migrate_schema.php`, which calls `seed_profanity_wordlist()` (`api/database/seed_profanity_wordlist.php`). That function pulls words from the `snipe/banbuilder` Composer package and inserts them into `profanity_words`, tracked once in `schema_migrations` as `seed_profanity_wordlist_banbuilder_v2`.
+- The upstream dictionary is broader than we want (clinical/anatomical terms, generic words like "cornhole"/"fanny"/"screw"/"killer" that collide with normal marketplace chat, and violent/political terms better handled by human moderation). `PROFANITY_WORDLIST_EXCLUDED` in that file filters those out before insert, and also deletes them if an older seed run already added them. Adjust that array (and bump the tracked migration name, e.g. `_v3`, so it re-reconciles) if the list needs further tuning.
+- **`dorm-mart/vendor/snipe/banbuilder/src/dict/` is gitignored on purpose** — the rest of `vendor/` is committed as usual in this repo, but that one folder holds the raw word-list data, and keeping an explicit slur list out of a public repo's git history is the point (it's still fully public code-wise, just not baked into commits forever). If your local `vendor/` doesn't have it, run `composer install` from `dorm-mart/` once — Composer re-downloads the package, dict files included, from the upstream source (the gitignore only stops us from re-committing it, it doesn't stop Composer from fetching it).
+- If those files are missing, `migrate_schema.php` does **not** fail — it logs the seed step under `"skipped"` in its JSON output and leaves the rest of the migration run alone. Railway's build always runs `composer install` automatically, so production is unaffected either way.
+- New words can always be added/removed live from the Moderator Dashboard regardless of any of the above — that path never touches git.
 
 ## Run, test, and deploy
 

@@ -5,20 +5,35 @@ if (php_sapi_name() !== 'cli') { http_response_code(403); exit("Forbidden\n"); }
 
 require_once __DIR__ . '/../api/database/db_connect.php';
 require_once __DIR__ . '/../api/helpers/promo_email.php';
-require_once __DIR__ . '/../api/helpers/image_upload.php';
 require_once __DIR__ . '/../api/helpers/inventory.php';
+require_once __DIR__ . '/../api/helpers/promo_schedule.php';
+
+$dryRun = in_array('--dry-run', $argv ?? [], true);
+$schedule = dm_promo_schedule(new DateTimeImmutable('now'));
+if (!$dryRun && !$schedule['send_window']) {
+    echo json_encode(['skipped' => true, 'reason' => 'Outside the 5 p.m. America/New_York send window']) . PHP_EOL;
+    exit(0);
+}
 
 $conn = db();
-$dryRun = in_array('--dry-run', $argv ?? [], true);
-$users = $conn->query(
+// A database lock also prevents overlapping workers on different hosts.
+if (!$dryRun && (int)$conn->query("SELECT GET_LOCK('dm_promotional_digests', 0)")->fetch_row()[0] !== 1) {
+    echo json_encode(['skipped' => true, 'reason' => 'Another digest job is running']) . PHP_EOL;
+    $conn->close();
+    exit(0);
+}
+$dueUsers = $conn->prepare(
     "SELECT user_id, first_name, last_name, email, promo_frequency, promo_last_sent_at,
             interested_category_1, interested_category_2, interested_category_3
      FROM user_accounts
      WHERE promotional = 1 AND promo_frequency IN ('daily','weekly')
        AND (promo_last_sent_at IS NULL
-         OR (promo_frequency = 'daily' AND promo_last_sent_at <= NOW() - INTERVAL 1 DAY)
-         OR (promo_frequency = 'weekly' AND promo_last_sent_at <= NOW() - INTERVAL 7 DAY))"
+         OR (promo_frequency = 'daily' AND promo_last_sent_at < ?)
+         OR (promo_frequency = 'weekly' AND promo_last_sent_at < ?))"
 );
+$dueUsers->bind_param('ss', $schedule['daily_before'], $schedule['weekly_before']);
+$dueUsers->execute();
+$users = $dueUsers->get_result();
 
 $sent = 0; $skipped = 0; $failed = 0;
 while ($user = $users->fetch_assoc()) {
@@ -40,13 +55,11 @@ while ($user = $users->fetch_assoc()) {
     $items = [];
     while ($item = $result->fetch_assoc()) {
         $photo = inventory_first_photo($item['photos'] ?? null);
-        $path = $photo ? data_images_dir() . DIRECTORY_SEPARATOR . basename((string)$photo) : null;
-        $cid = $path && is_file($path) ? 'promo-item-' . (int)$item['product_id'] : null;
+        $imageUrl = $photo ? dm_api_url('media/image.php') . '?url=' . rawurlencode('/images/' . basename((string)$photo)) : null;
         $items[] = [
             'title' => (string)$item['title'], 'price' => (float)$item['listing_price'],
             'url' => dm_frontend_url('app/viewProduct/' . (int)$item['product_id']),
-            'image_cid' => $cid,
-            'inline_image' => $cid ? ['path' => $path, 'cid' => $cid, 'name' => basename($path)] : null,
+            'image_url' => str_starts_with((string)$imageUrl, 'http') ? $imageUrl : null,
         ];
     }
     $stmt->close();
@@ -67,4 +80,7 @@ while ($user = $users->fetch_assoc()) {
     $sent++;
 }
 
-echo json_encode(['dry_run' => $dryRun, 'sent' => $sent, 'skipped' => $skipped, 'failed' => $failed]) . PHP_EOL;
+$dueUsers->close();
+$conn->close(); // Releases the advisory lock.
+echo json_encode(['dry_run' => $dryRun, 'send_window' => $schedule['send_window'], 'sent' => $dryRun ? 0 : $sent, 'would_send' => $dryRun ? $sent : 0, 'skipped' => $skipped, 'failed' => $failed]) . PHP_EOL;
+exit($failed > 0 ? 1 : 0);
