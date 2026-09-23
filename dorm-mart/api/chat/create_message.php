@@ -145,9 +145,9 @@ try {
 
     $filteredContent = filter_profanity($conn, $content);
 
-    chat_release_lock($conn, $lockKey);
-
+    // Commit before releasing so the next lock holder sees this transaction's rows.
     $conn->commit();
+    chat_release_lock($conn, $lockKey);
 
     if ($createdIso === null) {
         // Very defensive fallback; should rarely trigger since we SELECTed above.

@@ -5,6 +5,7 @@ import PreLoginBranding from "../components/PreLoginBranding";
 import PreLoginNavLinks from "../components/PreLoginNavLinks";
 import { THEME_CACHE_KEY, THEME_PENDING_KEY } from "../utils/loadTheme.js";
 import { API_BASE } from "../utils/apiConfig";
+import { clearCsrfToken } from "../utils/csrfFetch";
 import { useEmailPolicy } from "../hooks/useEmailPolicy";
 import { useSubmitLock } from "../hooks/useSubmitLock";
 
@@ -167,6 +168,8 @@ function LoginPage() {
         }
 
         // Navigate to the main app
+        // Login issued a new session, so any cached CSRF token is stale.
+        clearCsrfToken();
         navigate(data.role === "moderator" ? "/app/moderation" : "/app", {
           state: { loginSuccess: true },
         });
@@ -233,6 +236,8 @@ function LoginPage() {
           if (data.user_id) localStorage.setItem(`userTheme_${data.user_id}`, data.theme);
         } catch (_) {}
       }
+      // Login issued a new session, so any cached CSRF token is stale.
+      clearCsrfToken();
       navigate(data.role === "moderator" ? "/app/moderation" : "/app", {
         state: { loginSuccess: true },
       });

@@ -1,9 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/** Must match product_listing.php */
-const MAX_ACTIVE_LISTINGS_PER_SELLER = 25;
-
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 
@@ -13,6 +10,7 @@ require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
 require_once __DIR__ . '/../scheduled_purchases/helpers.php';
+require_once __DIR__ . '/listing_cap.php';
 
 try {
     $userId = require_login();
@@ -32,7 +30,14 @@ try {
         json_response(['success' => false, 'error' => 'Invalid id or status'], 400);
     }
 
-    $checkStmt = $conn->prepare('SELECT sold, item_status, title, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
+    // Every check below runs under locks so it still holds when the UPDATE lands:
+    // the seller row (taken first, same order as product_listing.php) serializes
+    // the active-listing cap, and the listing row serializes against a buyer
+    // accepting a schedule for it at the same moment.
+    $conn->begin_transaction();
+    $activeCount = listing_cap_locked_active_count($conn, $userId, $id);
+
+    $checkStmt = $conn->prepare('SELECT sold, item_status, title, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1 FOR UPDATE');
     if (!$checkStmt) {
         throw new RuntimeException('Failed to prepare sold-state check');
     }
@@ -57,15 +62,6 @@ try {
 
     // Enforce cap on active listings per seller when activating
     if ($status === 'Active') {
-        $capStmt = $conn->prepare(
-            'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ? AND product_id != ?'
-        );
-        $activeLabel = 'Active';
-        $capStmt->bind_param('isi', $userId, $activeLabel, $id);
-        $capStmt->execute();
-        $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
-        $capStmt->close();
-
         if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
             json_response([
                 'success' => false,
@@ -74,7 +70,6 @@ try {
         }
     }
 
-    $conn->begin_transaction();
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare(
         'UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND seller_id = ?'

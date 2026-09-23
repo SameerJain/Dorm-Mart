@@ -104,27 +104,31 @@ try {
         }
     }
 
-    // Count successful views of published listings by users other than the seller.
-    // View tracking is best-effort and must not prevent the product from loading.
-    $viewStmt = $mysqli->prepare(
-        "UPDATE INVENTORY
-         SET view_count = view_count + 1
-         WHERE product_id = ?
-           AND seller_id <> ?
-           AND item_status IN ('Active', 'Pending', 'Sold')"
-    );
-    if ($viewStmt) {
-        $viewStmt->bind_param('ii', $productId, $userId);
-        if (!$viewStmt->execute()) {
-            error_log('view_product view count update failed: ' . $viewStmt->error);
+    // Views and recommendation signals only count when the app itself loads the
+    // product; a cross-site link carries the session cookie but isn't a real view.
+    if (request_is_same_origin_fetch()) {
+        // Count successful views of published listings by users other than the seller.
+        // View tracking is best-effort and must not prevent the product from loading.
+        $viewStmt = $mysqli->prepare(
+            "UPDATE INVENTORY
+             SET view_count = view_count + 1
+             WHERE product_id = ?
+               AND seller_id <> ?
+               AND item_status IN ('Active', 'Pending', 'Sold')"
+        );
+        if ($viewStmt) {
+            $viewStmt->bind_param('ii', $productId, $userId);
+            if (!$viewStmt->execute()) {
+                error_log('view_product view count update failed: ' . $viewStmt->error);
+            }
+            $viewStmt->close();
+        } else {
+            error_log('view_product view count prepare failed: ' . $mysqli->error);
         }
-        $viewStmt->close();
-    } else {
-        error_log('view_product view count prepare failed: ' . $mysqli->error);
-    }
 
-    if ((int)$row['seller_id'] !== $userId && ($row['item_status'] ?? '') !== 'Draft') {
-        recommendation_record_behavior($mysqli, $userId, $productId, 'view');
+        if ((int)$row['seller_id'] !== $userId && ($row['item_status'] ?? '') !== 'Draft') {
+            recommendation_record_behavior($mysqli, $userId, $productId, 'view');
+        }
     }
 
     json_response(inventory_product_payload($row), 200, JSON_UNESCAPED_SLASHES);

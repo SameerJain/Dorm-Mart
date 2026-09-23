@@ -2,16 +2,8 @@ import { API_BASE } from "../utils/apiConfig";
 import { csrfFetch } from "../utils/csrfFetch";
 import logger from "../utils/logger";
 
-export async function fetchMe(signal) {
-  const r = await fetch(`${API_BASE}/auth/me.php`, {
-    method: "GET",
-    credentials: "include", // send cookies (PHP session) with the request
-    headers: { Accept: "application/json" },
-    signal, // allows aborting the request if the component unmounts
-  });
-  if (!r.ok) throw new Error(`not authenticated`);
-  return r.json();
-}
+// Shared with RootLayout so the two startup auth checks become one request.
+export { fetchMe } from "../utils/handleAuth";
 
 export async function fetchConversations(signal) {
   // returns: { success: true, conversations: [{ conv_id, user_1, user_2, ... }] }

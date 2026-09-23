@@ -32,6 +32,8 @@ function regenerate_session_on_login(): void
 {
   auth_boot_session();
   session_regenerate_id(true);
+  // regenerate_id keeps session data, so drop the pre-login CSRF token too.
+  unset($_SESSION['csrf_token']);
 }
 
 function auth_is_https_request(): bool
@@ -125,17 +127,23 @@ function ensure_session(): void
 
   // success → hydrate session and rotate token
   session_regenerate_id(true);
+  unset($_SESSION['csrf_token']);
   $_SESSION['user_id'] = $uid;
   $_SESSION['auth_version'] = (int)$row['auth_version'];
   claim_or_record_login_device($uid);
 
   $newToken = bin2hex(random_bytes(32));
   $newHash  = password_hash($newToken, PASSWORD_DEFAULT);
-  $upd = $conn->prepare('UPDATE user_accounts SET hash_auth = ? WHERE user_id = ?');
-  $upd->bind_param('si', $newHash, $uid);
+  // Rotate only if nobody else has since the verify above. A concurrent restore
+  // that already rotated keeps its cookie; this request still gets its session
+  // but must not send a token whose hash is about to be overwritten.
+  $upd = $conn->prepare('UPDATE user_accounts SET hash_auth = ? WHERE user_id = ? AND hash_auth = ?');
+  $upd->bind_param('sis', $newHash, $uid, $hash);
   $upd->execute();
+  $rotated = $upd->affected_rows === 1;
   $upd->close();
   $conn->close();
+  if (!$rotated) return;
 
   $secure = auth_is_https_request();
   setcookie(REMEMBER_COOKIE, $uid . ':' . $newToken, [
@@ -270,7 +278,12 @@ function require_csrf_token($token): void {
   if (!is_string($token) || $token === '' || !validate_csrf_token($token)) {
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(403);
-    echo json_encode(['ok' => false, 'success' => false, 'error' => 'CSRF token validation failed']);
+    echo json_encode([
+      'ok' => false,
+      'success' => false,
+      'error' => 'CSRF token validation failed',
+      'code' => 'csrf_invalid',
+    ]);
     exit;
   }
 }

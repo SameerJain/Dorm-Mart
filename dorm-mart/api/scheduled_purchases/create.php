@@ -246,6 +246,24 @@ try {
         }
     }
 
+    // The chat UI hides the schedule button while a request is open, but only
+    // this locked check makes that rule hold: a double-clicked submit or a second
+    // tab would otherwise create duplicate requests and duplicate chat cards.
+    // respond.php takes the same INVENTORY row lock before accepting.
+    $conn->begin_transaction();
+    $inventoryLock = $conn->prepare('SELECT product_id FROM INVENTORY WHERE product_id = ? LIMIT 1 FOR UPDATE');
+    if (!$inventoryLock) {
+        throw new RuntimeException('Failed to prepare inventory lock');
+    }
+    $inventoryLock->bind_param('i', $inventoryId);
+    $inventoryLock->execute();
+    $inventoryLock->store_result();
+    $inventoryLock->close();
+    if (scheduled_purchase_has_open_request($conn, $inventoryId)) {
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'This item already has an active scheduled purchase'], 409);
+    }
+
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     if (dm_payments_enabled()) {
         $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location, payment_option, payment_amount_cents, payment_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
@@ -353,6 +371,8 @@ try {
         ]);
     }
 
+    $conn->commit();
+
     // XSS PROTECTION: Escape user-generated content before returning in JSON
     $response = [
         'success' => true,
@@ -374,6 +394,7 @@ try {
 
     json_response($response);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
     error_log('scheduled-purchase create error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }
