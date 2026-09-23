@@ -37,21 +37,33 @@ function expire_stale_requests(mysqli $conn): void
     }
     $result->free();
 
-    $updateSql = <<<SQL
-        UPDATE scheduled_purchase_requests
-        SET status = 'expired', buyer_response_at = NOW()
-        WHERE status = 'pending'
-          AND (meeting_at < NOW() OR created_at < NOW() - INTERVAL 3 DAY)
-    SQL;
-    $conn->query($updateSql);
+    // Claim each row individually. Several requests (both parties' list polls,
+    // respond.php) run this concurrently; only the one whose UPDATE actually flips
+    // the row may announce it, so the expiry message is posted exactly once and
+    // never for a request that was accepted between the SELECT and the UPDATE.
+    $claimStmt = $conn->prepare(
+        "UPDATE scheduled_purchase_requests
+         SET status = 'expired', buyer_response_at = NOW()
+         WHERE request_id = ? AND status = 'pending'
+           AND (meeting_at < NOW() OR created_at < NOW() - INTERVAL 3 DAY)"
+    );
+    if (!$claimStmt) {
+        return;
+    }
 
     foreach ($rows as $row) {
+        $requestId = (int)$row['request_id'];
+        $claimStmt->bind_param('i', $requestId);
+        $claimStmt->execute();
+        if ($claimStmt->affected_rows !== 1) {
+            continue;
+        }
+
         $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
         if ($conversationId <= 0) {
             continue;
         }
 
-        $requestId = (int)$row['request_id'];
         $sellerId = (int)$row['seller_user_id'];
         $buyerId = (int)$row['buyer_user_id'];
         $itemTitle = $row['item_title'] ?? 'an item';
@@ -112,4 +124,5 @@ function expire_stale_requests(mysqli $conn): void
             }
         }
     }
+    $claimStmt->close();
 }

@@ -33,6 +33,44 @@ function scheduled_purchase_has_active_accepted(mysqli $conn, int $productId, in
     return $row && (int)$row['cnt'] > 0;
 }
 
+/**
+ * Whether the listing has a schedule still in play: one awaiting the buyer's
+ * answer, or an accepted one whose latest confirmation has not ended it.
+ */
+function scheduled_purchase_has_open_request(mysqli $conn, int $productId): bool
+{
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as cnt
+        FROM scheduled_purchase_requests spr
+        WHERE spr.inventory_product_id = ?
+          AND (
+            spr.status = 'pending'
+            OR (
+              spr.status = 'accepted'
+              AND COALESCE((
+                SELECT CASE
+                  WHEN cpr.status IN ('buyer_accepted', 'auto_accepted') AND cpr.is_successful = 0 THEN 0
+                  ELSE 1
+                END
+                FROM confirm_purchase_requests cpr
+                WHERE cpr.scheduled_request_id = spr.request_id
+                ORDER BY cpr.confirm_request_id DESC
+                LIMIT 1
+              ), 1) = 1
+            )
+          )
+    ");
+    if (!$stmt) {
+        throw new RuntimeException('Failed to prepare open request check');
+    }
+    $stmt->bind_param('i', $productId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $row && (int)$row['cnt'] > 0;
+}
+
 function scheduled_purchase_utc_atom($value): ?string
 {
     if ($value === null || $value === '') {

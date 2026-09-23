@@ -1,9 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/** Max simultaneous Active listings per seller (create + activate paths must match). */
-const MAX_ACTIVE_LISTINGS_PER_SELLER = 25;
-
 // Keep diagnostics in server logs; never display PHP errors from this API.
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
@@ -34,6 +31,7 @@ try {
   require $API_ROOT . '/helpers/request.php';
   require_once $API_ROOT . '/helpers/notifications.php';
   require_once $API_ROOT . '/scheduled_purchases/helpers.php';
+  require_once __DIR__ . '/listing_cap.php';
   require_multipart_formdata();
 
   auth_boot_session();
@@ -354,9 +352,36 @@ try {
   $categoriesJson = !empty($catsArr)   ? json_encode($catsArr, JSON_UNESCAPED_SLASHES)   : null;
   $photosJson     = !empty($imageUrls) ? json_encode($imageUrls, JSON_UNESCAPED_SLASHES) : null;
 
+  // The checks above ran before the uploads were saved so a doomed request fails
+  // fast, but a concurrent request can change the answer since. Re-check under
+  // locks now; on failure, discard this request's freshly saved media.
+  $rejectLocked = static function (int $code, string $error) use ($conn, &$newImagePaths): void {
+    $conn->rollback();
+    foreach ($newImagePaths as $path) {
+      if (is_file($path)) @unlink($path);
+    }
+    json_response(['ok' => false, 'error' => $error], $code);
+  };
+  $capError = static function (string $action): string {
+    return 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . " active listings. Please deactivate or remove an existing listing before {$action}.";
+  };
+
   // --- Create / Update ---
   if ($mode === 'update') {
     $conn->begin_transaction();
+    // Seller row first, then the listing row: the same lock order as set_item_status.php.
+    $activeCount = listing_cap_locked_active_count($conn, $userId, $itemId);
+    $lockStmt = $conn->prepare('SELECT item_status FROM INVENTORY WHERE product_id = ? AND seller_id = ? FOR UPDATE');
+    $lockStmt->bind_param('ii', $itemId, $userId);
+    $lockStmt->execute();
+    $lockedStatus = (string)($lockStmt->get_result()->fetch_assoc()['item_status'] ?? '');
+    $lockStmt->close();
+    if ($status === 'Active' && $lockedStatus !== 'Active' && $activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+      $rejectLocked(403, $capError('publishing this draft'));
+    }
+    if ($status === 'Draft' && scheduled_purchase_has_active_accepted($conn, $itemId, 0)) {
+      $rejectLocked(409, 'Cancel or complete the accepted scheduled purchase before saving this listing as a draft.');
+    }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $sql = "UPDATE INVENTORY
@@ -435,6 +460,9 @@ try {
 
   // INSERT
   $conn->begin_transaction();
+  if ($status === 'Active' && listing_cap_locked_active_count($conn, $userId) >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+    $rejectLocked(403, $capError('creating a new one'));
+  }
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
   $sql = "INSERT INTO INVENTORY
             (title, categories, item_location, item_condition, description, photos, listing_price, item_status, trades, price_nego, seller_id)

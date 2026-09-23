@@ -205,10 +205,10 @@ try {
 
     $filteredContent = filter_profanity($conn, $content);
 
-    chat_release_lock($conn, $lockKey);
-
+    // Commit before releasing so the next lock holder sees this transaction's rows.
     $conn->commit();
     $committed = true;
+    chat_release_lock($conn, $lockKey);
 
     if ($createdIso === null) {
         $createdIso = gmdate('Y-m-d\TH:i:s\Z');

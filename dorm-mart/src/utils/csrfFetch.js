@@ -69,6 +69,17 @@ function withCsrfToken(options, method, token) {
   return nextOptions;
 }
 
+// Only a stale token is worth retrying; other 403s are real permission denials.
+async function isCsrfRejection(response) {
+  if (response.status !== 403) return false;
+  try {
+    const data = await response.clone().json();
+    return data?.code === "csrf_invalid";
+  } catch {
+    return false;
+  }
+}
+
 export async function csrfFetch(url, options = {}) {
   const method = String(options.method || "GET").toUpperCase();
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
@@ -77,7 +88,7 @@ export async function csrfFetch(url, options = {}) {
 
   const token = await getCsrfToken();
   const response = await fetch(url, withCsrfToken(options, method, token));
-  if (response.status !== 403) {
+  if (!(await isCsrfRejection(response))) {
     return response;
   }
 

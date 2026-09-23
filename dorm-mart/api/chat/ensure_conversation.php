@@ -128,9 +128,10 @@ try {
             chat_ensure_participants($conn, $convId, $orderedA, $orderedB);
         }
 
-        chat_release_lock($conn, $lockKey);
-
+        // Commit before releasing: a waiter that acquires the lock earlier would
+        // not see the uncommitted row and would insert a duplicate conversation.
         $conn->commit();
+        chat_release_lock($conn, $lockKey);
     } catch (Throwable $inner) {
         $conn->rollback();
         if (isset($lockKey)) chat_release_lock($conn, $lockKey);

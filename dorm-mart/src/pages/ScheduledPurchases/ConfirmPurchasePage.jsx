@@ -4,6 +4,7 @@ import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandler
 import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 import {
   formatCurrency as formatSharedCurrency,
   formatDateTime as formatSharedDateTime,
@@ -122,6 +123,7 @@ export default function ConfirmPurchasePage() {
   }, [prefill]);
 
   const disableForm = loading || !prefill;
+  const runExclusive = useSubmitLock();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -312,7 +314,13 @@ export default function ConfirmPurchasePage() {
               )}
             </section>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                runExclusive(() => handleSubmit(event));
+              }}
+              className="space-y-6"
+            >
               <div className="space-y-3">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   How did the meet-up go?

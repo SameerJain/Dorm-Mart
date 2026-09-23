@@ -85,6 +85,7 @@ try {
         if (password_verify($token, (string)$row['reset_token_hash'])) {
             $isValidToken = true;
             $userId = (int)$row['user_id'];
+            $verifiedTokenHash = (string)$row['reset_token_hash'];
         }
     }
 
@@ -105,15 +106,18 @@ try {
         SET hash_pass = ?, hash_auth = NULL, reset_token_hash = NULL,
             reset_token_expires = NULL, last_reset_request = NULL,
             auth_version = auth_version + 1
-        WHERE user_id = ?
+        WHERE user_id = ? AND reset_token_hash = ?
     ');
-    $stmt->bind_param('si', $hashedPassword, $userId);  // 's' = string, 'i' = integer
+    // Matching on the hash we verified makes the token single-use even under
+    // concurrent submits: only the first UPDATE finds it still in place.
+    $stmt->bind_param('sis', $hashedPassword, $userId, $verifiedTokenHash);
     $stmt->execute();
     
     if ($stmt->affected_rows === 0) {
         $stmt->close();
         $conn->close();
-        echo json_encode(['success' => false, 'error' => 'Failed to update password']);
+        // Another submit consumed the token first.
+        echo json_encode(['success' => false, 'error' => 'Invalid or expired reset token']);
         exit;
     }
 

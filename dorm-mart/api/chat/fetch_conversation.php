@@ -106,17 +106,19 @@ while ($row = $res->fetch_assoc()) {
 }
 $stmt->close();
 
-// --- mark as read for the caller (sets "no unread") ---
-$stmt = $conn->prepare(
-    'UPDATE conversation_participants
-        SET unread_count = 0,
-            first_unread_msg_id = 0
-      WHERE conv_id = ? AND user_id = ?'
-);
+// --- mark as read for the caller (sets "no unread"); skipped for cross-site links ---
+if (request_is_same_origin_fetch()) {
+    $stmt = $conn->prepare(
+        'UPDATE conversation_participants
+            SET unread_count = 0,
+                first_unread_msg_id = 0
+          WHERE conv_id = ? AND user_id = ?'
+    );
 
-$stmt->bind_param('ii', $convId, $userId);
-$stmt->execute();
-$stmt->close();
+    $stmt->bind_param('ii', $convId, $userId);
+    $stmt->execute();
+    $stmt->close();
+}
 
 // --- fetch item_deleted status from conversations table ---
 $itemDeleted = false;

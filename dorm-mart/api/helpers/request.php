@@ -5,6 +5,22 @@ require_once __DIR__ . '/response.php';
 
 const MAX_JSON_REQUEST_BYTES = 1024 * 1024;
 
+if (!function_exists('request_is_same_origin_fetch')) {
+    /**
+     * Whether a GET came from the app itself rather than a cross-site link.
+     *
+     * Lax session cookies ride along on top-level cross-site navigations, so a
+     * GET that writes (mark-as-read, view counts) can be triggered from another
+     * site. Browsers label those requests via Sec-Fetch-Site; non-browser
+     * clients and old browsers omit it and are let through.
+     */
+    function request_is_same_origin_fetch(): bool
+    {
+        $site = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? null;
+        return $site === null || $site === 'same-origin';
+    }
+}
+
 if (!function_exists('decode_json_object')) {
     function decode_json_object(string $raw): ?array
     {

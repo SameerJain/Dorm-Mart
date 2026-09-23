@@ -14,6 +14,7 @@ import {
 import logger from "../../utils/logger";
 import { containsMemePrice } from "../../utils/priceValidation";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 import ListingForm from "./components/ListingForm";
 import ImageCropperModal from "./components/ImageCropperModal";
 import ListingStatusBanners from "./components/ListingStatusBanners";
@@ -63,6 +64,7 @@ function ProductListingPage() {
   const scrollPositionRef = useRef(0);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const runExclusive = useSubmitLock();
   const [serverMsg, setServerMsg] = useState(null);
   const [loadingExisting, setLoadingExisting] = useState(false);
   const [showTopErrorBanner, setShowTopErrorBanner] = useState(false);
@@ -895,13 +897,19 @@ function ProductListingPage() {
             onFileChange={onFileChange}
             price={price}
             priceNegotiable={priceNegotiable}
-            publishListing={(e) => submitListing(e, "Active")}
+            publishListing={(e) => {
+              e?.preventDefault?.();
+              runExclusive(() => submitListing(e, "Active"));
+            }}
             removeCategory={removeCategory}
             removeImage={removeImage}
             scrollPositionRef={scrollPositionRef}
             selectableOptions={selectableOptions}
             selectedCategory={selectedCategory}
-            saveDraft={(e) => submitListing(e, "Draft")}
+            saveDraft={(e) => {
+              e?.preventDefault?.();
+              runExclusive(() => submitListing(e, "Draft"));
+            }}
             setAcceptTrades={setAcceptTrades}
             setCategories={setCategories}
             setCondition={setCondition}

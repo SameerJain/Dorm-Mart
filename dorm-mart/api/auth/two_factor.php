@@ -53,10 +53,17 @@ try {
             json_response(['ok' => false, 'error' => 'Two-Factor Authentication is already enabled for this account.'], 409);
         }
 
-        $update = $conn->prepare('UPDATE user_accounts SET two_factor_enabled = 1 WHERE user_id = ?');
+        // Conditional flip: of two concurrent enables only one changes the row, so
+        // only one sends the confirmation email.
+        $update = $conn->prepare('UPDATE user_accounts SET two_factor_enabled = 1 WHERE user_id = ? AND two_factor_enabled = 0');
         $update->bind_param('i', $userId);
         $update->execute();
+        $flipped = $update->affected_rows === 1;
         $update->close();
+        if (!$flipped) {
+            $conn->close();
+            json_response(['ok' => false, 'error' => 'Two-Factor Authentication is already enabled for this account.'], 409);
+        }
 
         $mailResult = send_two_factor_email(
             $user,

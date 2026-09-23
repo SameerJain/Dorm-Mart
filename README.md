@@ -46,6 +46,12 @@ Use Dorm Mart to browse student listings, search and filter items, post goods fo
 
 ## What you can do
 
+### Get started
+
+- Create an account with your name and email. Dorm Mart emails you a temporary password, which you can change after you sign in.
+- Installations can limit sign-ups to `@buffalo.edu` addresses by setting `ALLOW_ALL_EMAILS=false`.
+- Repeated failed sign-ins pause the form: four failures within 10 minutes lock sign-in for three minutes. Sign-ups, password-reset emails, and password re-entry in settings are throttled too.
+
 ### Find something for your dorm
 
 - Browse **For You**, a feed that uses your interests and the items you view, save, and buy. New accounts start with popular and recent listings.
@@ -59,7 +65,7 @@ Use Dorm Mart to browse student listings, search and filter items, post goods fo
 - Create listings with photos, videos, a condition, a pickup location, and a price. Mark whether you are open to offers or trades.
 - Save an unfinished listing as a private draft and publish it when it is ready.
 - Use the seller dashboard to manage listings and see views, wishlist counts, and sales information.
-- Keep track of draft, active, pending, and sold listings.
+- Keep track of draft, active, pending, and sold listings. Once you accept a purchase, the listing is pending and only you and that buyer can open it.
 
 ### Talk and arrange a pickup
 
@@ -67,6 +73,7 @@ Use Dorm Mart to browse student listings, search and filter items, post goods fo
 - Edit your latest eligible text message or remove a conversation from your own chat list.
 - Choose whether buyers can see your seller email and optional phone number in chat.
 - Propose a purchase date and time, respond to requests, and track ongoing purchases. Accepted schedules include pickup reminders.
+- Cancel a purchase request you no longer need. Requests with no response expire after three days, or sooner if the proposed meeting time passes, and the chat records the expiry for both people.
 - Handle purchase confirmations and review prompts through cards in the conversation.
 
 ### Pay, keep receipts, and leave reviews
@@ -76,6 +83,7 @@ Use Dorm Mart to browse student listings, search and filter items, post goods fo
 - Find completed purchases in purchase history, with receipts that distinguish the listing price, final price, and trades.
 - Sellers can issue a full refund for a successful Stripe payment from the receipt and choose whether to relist the item.
 - Leave product reviews with photos, rate buyers, and edit review stars.
+- See the ratings sellers have given you on the Buyer Reviews page.
 
 Built-in payments depend on the installation's Stripe configuration and seller eligibility. See the [Stripe activation checklist](dorm-mart/docs/stripe-activation-checklist.md) for setup details.
 
@@ -84,7 +92,8 @@ Built-in payments depend on the installation's Stripe configuration and seller e
 - Choose up to three interests to help shape your recommendations, and switch between light and dark mode.
 - Manage notifications for saved items, purchase requests, cancellations, and review reminders. Open, mark read, or delete notifications from one page.
 - Set promotional listing emails to daily, weekly, or off. Sending those digests requires a scheduled job on the server.
-- View your account information, update your profile, and visit other users' public profiles.
+- Add a profile photo, a bio, and an Instagram link. Your public profile shows them with your listings, the reviews on your items, and your average rating. You can open anyone else's profile the same way.
+- View your account information.
 - Enable email-based two-factor authentication, reset a forgotten password, or change your current password.
 - Review login history with device, browser, time, and approximate location details. Changing your password signs out other sessions.
 - Delete your account through a password-protected confirmation flow.
@@ -108,7 +117,7 @@ Built-in payments depend on the installation's Stripe configuration and seller e
 | Local development | XAMPP and the React development server |
 | Deployment | Railway, plus build scripts for Apache and UB servers |
 
-The backend uses prepared SQL statements, CSRF checks, request validation, and output escaping. Uploads are checked for file type and size, and private chat images require conversation access. Password changes and account bans invalidate existing sessions.
+The backend uses prepared SQL statements, CSRF checks, request validation, and output escaping. The API only answers browser requests from trusted origins, and requests that change data must carry a CSRF token from the user's session. Sign-in, sign-up, and password flows are rate-limited per client. Uploads are checked for file type and size, and private chat images require conversation access. Password changes and account bans invalidate existing sessions.
 
 ## Key folders
 
