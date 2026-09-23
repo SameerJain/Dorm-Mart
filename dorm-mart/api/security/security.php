@@ -252,16 +252,29 @@ const ACCOUNT_CREATION_MAX_ATTEMPTS = 4;
 const ACCOUNT_CREATION_ATTEMPT_WINDOW_MINUTES = 10;
 const ACCOUNT_CREATION_LOCKOUT_MINUTES = 3;
 
-/** Build an opaque account-creation key without using the submitted email. */
-function account_creation_rate_limit_key(): string
+/**
+ * Resolve the client IP that rate-limit keys are bucketed by.
+ *
+ * REMOTE_ADDR is useless behind Railway's edge: each request is proxied by a
+ * different node (100.64.0.1-19 in production), so a key built from it lands in
+ * a fresh bucket every time and no counter ever accumulates. X-Forwarded-For
+ * carries the actual client, so prefer it, keeping REMOTE_ADDR as the fallback
+ * for local runs with no proxy in front.
+ */
+function rate_limit_client_ip(): string
 {
     $forwarded = trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))[0]);
     $remote = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
-    $ip = filter_var($forwarded, FILTER_VALIDATE_IP)
+
+    return filter_var($forwarded, FILTER_VALIDATE_IP)
         ? $forwarded
         : (filter_var($remote, FILTER_VALIDATE_IP) ? $remote : 'unknown');
+}
 
-    return hash('sha256', "account_creation\0" . $ip);
+/** Build an opaque account-creation key without using the submitted email. */
+function account_creation_rate_limit_key(): string
+{
+    return hash('sha256', "account_creation\0" . rate_limit_client_ip());
 }
 
 /** Atomically consume one account-creation attempt. */
@@ -348,12 +361,7 @@ function consume_account_creation_attempt(): array
 /** Build a stable, non-reversible key without storing an email address or raw IP. */
 function login_rate_limit_key(string $normalizedEmail): string
 {
-    $ip = trim((string)($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
-    if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-        $ip = 'unknown';
-    }
-
-    return hash('sha256', strtolower(trim($normalizedEmail)) . "\0" . $ip);
+    return hash('sha256', strtolower(trim($normalizedEmail)) . "\0" . rate_limit_client_ip());
 }
 
 const LOGIN_MAX_ATTEMPTS = 4;
