@@ -26,7 +26,7 @@ function formatDateTime(iso) {
 }
 
 function formatCurrency(value) {
-  return formatSharedCurrency(value) ?? "—";
+  return formatSharedCurrency(value) ?? "N/A";
 }
 
 export default function ConfirmPurchasePage() {
@@ -271,7 +271,7 @@ export default function ConfirmPurchasePage() {
               <div className="min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Item</p>
                 <p className="text-base font-semibold text-gray-900 dark:text-gray-100 break-words overflow-hidden">
-                  {prefill?.item_title || "—"}
+                  {prefill?.item_title || "N/A"}
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -280,7 +280,7 @@ export default function ConfirmPurchasePage() {
                     Buyer
                   </p>
                   <p className="font-medium text-gray-900 dark:text-gray-100 break-words overflow-hidden">
-                    {prefill?.buyer_name || "—"}
+                    {prefill?.buyer_name || "N/A"}
                   </p>
                 </div>
                 <div className="min-w-0">
@@ -297,7 +297,7 @@ export default function ConfirmPurchasePage() {
                   Pickup Location
                 </p>
                 <p className="font-medium text-gray-900 dark:text-gray-100 break-words break-all overflow-hidden">
-                  {prefill?.meet_location || "—"}
+                  {prefill?.meet_location || "N/A"}
                 </p>
               </div>
               {prefill?.description && (

@@ -12,6 +12,7 @@ import {
   hasUpper,
   MAX_PASSWORD_LEN,
 } from "../../utils/passwordPolicy";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 
 const MAX_LEN = MAX_PASSWORD_LEN;
 
@@ -62,6 +63,7 @@ function Field({
 function ResetPasswordForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const runExclusive = useSubmitLock();
   const token = searchParams.get("token");
   const uid = searchParams.get("uid");
 
@@ -203,13 +205,15 @@ function ResetPasswordForm() {
     }
   }, [token, uid, navigate, newPassword, confirmPassword]);
 
+  // Key auto-repeat fires this for as long as Enter is held, so it has to go
+  // through the same lock as the button.
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Enter") handleSubmit();
+      if (e.key === "Enter") runExclusive(handleSubmit);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleSubmit]);
+  }, [handleSubmit, runExclusive]);
 
   return (
     <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
@@ -381,7 +385,7 @@ function ResetPasswordForm() {
 
                   <button
                     type="button"
-                    onClick={handleSubmit}
+                    onClick={() => runExclusive(handleSubmit)}
                     disabled={isLoading || !isTokenValid || isVerifyingToken}
                     className="mt-6 min-h-[44px] w-full xl:w-48 bg-sky-500 hover:bg-sky-600 disabled:bg-sky-300 disabled:cursor-not-allowed text-white rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium disabled:hover:scale-100 text-base sm:text-lg active:scale-95"
                   >

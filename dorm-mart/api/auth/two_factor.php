@@ -92,10 +92,18 @@ try {
             $conn->close();
             json_response(['ok' => false, 'error' => 'Enter your current account password.'], 400);
         }
+
+        $passwordLimit = consume_password_confirm_attempt($userId);
+        if ($passwordLimit['blocked']) {
+            $conn->close();
+            json_response(password_confirm_retry_error($passwordLimit), 429);
+        }
+
         if (!password_verify($password, (string)$user['hash_pass'])) {
             $conn->close();
             json_response(['ok' => false, 'error' => 'Invalid current password.'], 401);
         }
+        clear_password_confirm_attempts($userId);
 
         $update = $conn->prepare('UPDATE user_accounts SET two_factor_enabled = 0 WHERE user_id = ?');
         $update->bind_param('i', $userId);

@@ -364,7 +364,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
           <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-100">
             <p className="font-bold">Built-in payment · {formatPrice(paymentAmount)} USD</p>
             <p className="mt-1 text-xs leading-5">Accepting locks this amount. Payment opens at the scheduled time for 30 minutes and a successful Stripe payment completes the purchase automatically.</p>
-            {metadata.payment_mode === "test" && <p className="mt-1 text-xs font-bold uppercase tracking-wide">Test Mode — no real money</p>}
+            {metadata.payment_mode === "test" && <p className="mt-1 text-xs font-bold uppercase tracking-wide">Test Mode: no real money</p>}
           </div>
         )}
 

@@ -5,7 +5,7 @@ export default function ReportMessageModal({ isReporting, onCancel, onConfirm })
       onClick={onCancel}
     >
       <div
-        className="max-h-[90dvh] w-full max-w-md overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl"
+        className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
 import { csrfFetch } from "../../../utils/csrfFetch";
 import logger from "../../../utils/logger";
+import { useSubmitLock } from "../../../hooks/useSubmitLock";
 
 export default function useWishlistStatus({
   productId,
@@ -11,6 +12,7 @@ export default function useWishlistStatus({
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistError, setWishlistError] = useState(null);
+  const runExclusive = useSubmitLock();
 
   useEffect(() => {
     if (!productId || !myId) {
@@ -44,7 +46,7 @@ export default function useWishlistStatus({
     return () => controller.abort();
   }, [productId, myId]);
 
-  const handleWishlistToggle = async () => {
+  const toggleWishlist = async () => {
     if (wishlistLoading || !productId || !myId || disabled) return;
 
     setWishlistError(null);
@@ -90,6 +92,6 @@ export default function useWishlistStatus({
     isInWishlist,
     wishlistLoading,
     wishlistError,
-    handleWishlistToggle,
+    handleWishlistToggle: () => runExclusive(toggleWishlist),
   };
 }

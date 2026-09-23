@@ -44,7 +44,7 @@ export default function ElectronicPaymentModal({ onClose, onStatusChange, schedu
           <button type="button" onClick={onClose} aria-label="Close payment" className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:hover:bg-gray-700">✕</button>
         </div>
         <div className="p-5">
-          {setup?.is_test_mode && <p className="mb-4 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">Test Mode — no real money will move.</p>}
+          {setup?.is_test_mode && <p className="mb-4 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">Test Mode: no real money will move.</p>}
           {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{error}</p>}
           {!setup && !error && <p className="text-sm text-gray-500">Preparing secure payment…</p>}
           {setup && stripePromise && (

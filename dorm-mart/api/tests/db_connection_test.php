@@ -8,7 +8,7 @@ if (php_sapi_name() !== 'cli') {
     exit;
 }
 
-require __DIR__ . '/db_connect.php';
+require __DIR__ . '/../database/db_connect.php';
 
 try {
     $conn = db();

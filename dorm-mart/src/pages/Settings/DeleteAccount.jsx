@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageBackButton from "../../components/PageBackButton";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 import { API_BASE } from "../../utils/apiConfig";
 import { clearCsrfToken, csrfFetch } from "../../utils/csrfFetch";
 import { fetchMe } from "../../utils/handleAuth";
@@ -22,6 +23,7 @@ function DeleteAccountPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [continueCountdown, setContinueCountdown] = useState(CONFIRM_DELAY_SECONDS);
   const [deleteCountdown, setDeleteCountdown] = useState(CONFIRM_DELAY_SECONDS);
+  const runExclusive = useSubmitLock();
 
   useBodyScrollLock(isOpen);
 
@@ -223,7 +225,7 @@ function DeleteAccountPage() {
                   <button
                     type="button"
                     disabled={!canDelete || isSubmitting}
-                    onClick={deleteAccount}
+                    onClick={() => runExclusive(deleteAccount)}
                     className={`rounded-xl px-4 py-2 font-semibold text-white transition-colors disabled:cursor-not-allowed ${
                       deleteCountdown > 0 || !canDelete
                         ? "bg-gray-400 dark:bg-gray-600"

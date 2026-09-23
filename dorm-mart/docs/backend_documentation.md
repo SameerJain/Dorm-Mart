@@ -55,13 +55,20 @@ Shared backend support code.
 - `redirects/` - Password reset redirect and expired-link page.
 - `utility/` - CLI/admin helpers for hashing, lockouts, rate-limit inspection, environment loading, and transactional email HTML.
 
-## api_test_files/
+## tests/
 
-Manual and integration-style scripts that call real endpoints. Use `API_TEST_BASE_URL` when the default local API base is not correct.
+All backend tests, blocked from HTTP access. See `api/tests/README.md` for the
+full breakdown.
 
-- `bootstrap.php` - Shared API test helpers.
-- `chris/` - Purchase history and reset-password scenario scripts.
-- `sameer/` - Forgot-password, SQL injection, XSS, and rate-limit scripts.
+- `adversarial_validation_test.php`, `login_location_test.php`,
+  `promotional_digest_test.php` - automated, offline; run together via
+  `npm run test:backend`.
+- `db_connection_test.php`, `xss_encoding_test.php` - manual diagnostic checks.
+- `bootstrap.php` - shared helpers for the `integration/` scripts.
+- `integration/` - manual, credential-gated scripts that call real endpoints
+  (forgot-password, purchase history, reset-password, SQL injection, XSS, login
+  rate-limiting). Use `API_TEST_BASE_URL` when the default local API base is not
+  correct.
 
 ## Security Notes
 

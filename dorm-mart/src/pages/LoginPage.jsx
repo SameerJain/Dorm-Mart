@@ -6,6 +6,7 @@ import PreLoginNavLinks from "../components/PreLoginNavLinks";
 import { THEME_CACHE_KEY, THEME_PENDING_KEY } from "../utils/loadTheme.js";
 import { API_BASE } from "../utils/apiConfig";
 import { useEmailPolicy } from "../hooks/useEmailPolicy";
+import { useSubmitLock } from "../hooks/useSubmitLock";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ function LoginPage() {
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationEmail, setVerificationEmail] = useState("");
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
+  const runExclusive = useSubmitLock();
 
   // Handle URL parameters
   useEffect(() => {
@@ -40,8 +42,7 @@ function LoginPage() {
     }
   }, [searchParams]);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setError(""); // Clear previous errors
     setLoading(true);
 
@@ -195,8 +196,7 @@ function LoginPage() {
     }
   };
 
-  const handleTwoFactorVerification = async (e) => {
-    e.preventDefault();
+  const handleTwoFactorVerification = async () => {
     setError("");
     if (!/^\d{6}$/.test(verificationCode)) {
       setError("Enter the 6-digit verification code.");
@@ -214,6 +214,15 @@ function LoginPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) {
         setError(data.error || "Unable to verify the code. Please try again.");
+        // Anything other than a plain wrong-code answer means the server has
+        // already invalidated the pending challenge (too many attempts, expired,
+        // 2FA disabled mid-flow, etc.) — bounce back to the login form instead of
+        // leaving a dead code box up that just keeps returning "session expired".
+        if (!data.retryable) {
+          setRequiresTwoFactor(false);
+          setVerificationCode("");
+          setVerificationEmail("");
+        }
         return;
       }
 
@@ -317,7 +326,12 @@ function LoginPage() {
               {/* Login form - Improved spacing for mobile */}
               {/* scheme-light: keep native inputs light when html gets color-scheme:dark right before navigate */}
               <form
-                onSubmit={requiresTwoFactor ? handleTwoFactorVerification : handleLogin}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  runExclusive(
+                    requiresTwoFactor ? handleTwoFactorVerification : handleLogin,
+                  );
+                }}
                 noValidate
                 className="space-y-3 sm:space-y-4 md:space-y-6"
               >
@@ -339,7 +353,8 @@ function LoginPage() {
                       maxLength={6}
                       autoFocus
                       required
-                      className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-center tracking-[0.35em] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm text-xl md:text-2xl"
+                      disabled={loading}
+                      className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-center tracking-[0.35em] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm text-xl md:text-2xl disabled:opacity-60 disabled:cursor-not-allowed"
                     />
                   </div>
                 ) : (
@@ -363,7 +378,8 @@ function LoginPage() {
                     }}
                     maxLength={255}
                     required
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
+                    disabled={loading}
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -378,7 +394,8 @@ function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     maxLength={64}
                     required
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
+                    disabled={loading}
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
                   </>

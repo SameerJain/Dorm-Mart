@@ -4,6 +4,7 @@ import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import PreLoginBranding from "../../components/PreLoginBranding";
 import PreLoginNavLinks from "../../components/PreLoginNavLinks";
 import { useEmailPolicy } from "../../hooks/useEmailPolicy";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 import {
   ACCOUNT_REQUEST_RATE_LIMIT_MESSAGE,
   applyAccountRequestLockout,
@@ -67,6 +68,7 @@ function CreateAccountPage() {
     () => getAccountRequestRateLimit().blockedUntil,
   );
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
+  const runExclusive = useSubmitLock();
   const rateLimited = rateLimitBlockedUntil > Date.now();
   const today = new Date();
   const currentYear = today.getFullYear();
@@ -216,8 +218,7 @@ function CreateAccountPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!validate()) return;
 
     const clientRateLimit = consumeAccountRequestAttempt();
@@ -288,7 +289,10 @@ function CreateAccountPage() {
 
               {/* Form - Improved spacing and touch targets */}
               <form
-                onSubmit={handleSubmit}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  runExclusive(handleSubmit);
+                }}
                 className={
                   Object.keys(errors).length > 0
                     ? "space-y-1.5 sm:space-y-2 md:space-y-2 lg:space-y-1 xl:space-y-1.5"

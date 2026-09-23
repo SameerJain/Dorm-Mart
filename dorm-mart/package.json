@@ -36,7 +36,7 @@
     "build-cattle-mac": "env-cmd -f .env.cattle bash -c 'echo Building prod && GENERATE_SOURCEMAP=false react-scripts build'",
     "build-cattle-win": "env-cmd -f .env.cattle cross-env GENERATE_SOURCEMAP=false react-scripts build",
     "test": "react-scripts test --runInBand",
-    "test:backend": "php api/api_test_files/adversarial_validation_test.php",
+    "test:backend": "php api/tests/adversarial_validation_test.php && php api/tests/login_location_test.php && php api/tests/promotional_digest_test.php",
     "eject": "react-scripts eject",
     "build-deploy": "npm run build-local-win && deploy.bat"
   },

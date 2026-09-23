@@ -73,7 +73,7 @@ if (strpos($requestPath, '/api/') === 0) {
     $relPath = str_replace('\\', '/', ltrim(substr($resolved, strlen($apiRoot)), DIRECTORY_SEPARATOR));
 
     $blockedDirs = [
-        'api_test_files/', // integration test scripts
+        'tests/',          // automated + integration test scripts
         'database/',       // DB libraries and CLI-only migration tools
         'helpers/',        // shared helper libraries
         'security/',       // security library and debug tools

@@ -1,123 +1,158 @@
-# CSE442 Fall 2025 "No Brainers" Group Project
+# Dorm Mart
 
-This repository contains the "Dorm Mart" web application, built with a React frontend and a PHP backend with XAMPP.
+A campus marketplace for buying, selling, and trading the things students need. Dorm Mart uses a React frontend and a PHP/MySQL backend.
 
-_Created for CSE-442: Software Engineering Concepts, The University at Buffalo._
+_Started by the No Brainers team for CSE 442: Software Engineering Concepts at the University at Buffalo._
 
-## Production Release:
+## Try it
 
-**https://dormmart.me/**
+Open [Dorm Mart](https://dormmart.me/). If you don't have a UB account, use the demo login:
 
-## For users without a UB account wanting to demo the site:
+- **Email:** `testuser@buffalo.edu`
+- **Password:** `1234!`
 
-**Username:** `testuser@buffalo.edu`
-
-**Password:** `1234!`
-
-## Motivation
+## Why we built it
 
 At the end of the semester, students throw out furniture, textbooks, electronics, dorm supplies, and other items that incoming students still need. We built Dorm Mart to cut down on that waste and give students a better place to buy and sell campus goods.
 
-## Quick Start
+## Run it locally
 
-To demo Dorm Mart, go to **https://dormmart.me/** and log in with the test user:
-
-- **Username:** `testuser@buffalo.edu`
-- **Password:** `1234!`
-
-To run the project locally:
+You need Node.js and npm, PHP 8 or newer, Composer, and MySQL. We use XAMPP for the local PHP and MySQL environment.
 
 1. Clone the repository.
 2. Go to the app directory with `cd dorm-mart`.
-3. Install dependencies with `npm install`.
-4. Follow `README.project_setup.md` for database and environment setup.
-5. Start the frontend with `npm run start-local-win`.
-6. Start the API with `npm run start:api`.
+3. Install dependencies with `npm install` and `composer install`.
+4. Follow the [project setup guide](README.project_setup.md) for database and environment setup.
+5. Start the frontend with `npm run start-local-win` on Windows or `npm run start-local-mac` on macOS.
+6. In a second terminal, start the API with `npm run start:api` from `dorm-mart`.
 
 ## Usage
 
 Use Dorm Mart to browse student listings, search and filter items, post goods for sale, chat with buyers or sellers, save items to a wishlist, schedule purchases, and leave reviews. The in-app FAQ has short guides for the main features.
 
-# Dorm Mart: The Complete Student Marketplace
-
-Dorm Mart is a student-to-student marketplace
-that makes it effortless to buy and sell campus
-essentials—textbooks, dorm gear, electronics, and
-more. Create listings in minutes, track interest
-and views, and manage sales from a clean,
-mobile-friendly dashboard. Built for safety and
-simplicity, Dorm Mart helps students save money,
-reduce waste, and find what they need
-within a familiar, school-centered community
-experience.
-
-With instant messaging and a review system, students can communicate
-safely and build trust within their campus network. The platform
-supports everything from wishlists to scheduled purchases,
-making it easy to coordinate pickups and manage your entire selling
-workflow in one place!
-
 ## Gallery
 
-### Welcome Page
+### Welcome page
 
 <img src="dorm-mart/src/assets/readme-images/welcome-page-screenshot.png" alt="Welcome Page" width="600" />
 
-### Product Listings
+### Item details
 
 <img src="dorm-mart/src/assets/readme-images/individual-item-age-screenshot.png" alt="Individual Product Page" width="600" />
 
-### Chat Interface
+### Chat
 
 <img src="dorm-mart/src/assets/readme-images/chat-page-screenshot.png" alt="Chat Page" width="600" />
 
-## Features
+## What you can do
 
-- **Product Listings** - Create and manage product listings with images
-- **Search & Filters** - Advanced search with category, condition, location, and price filters
-- **Real-time Chat** - Instant messaging with typing indicators
-- **Seller Dashboard** - Manage listings, sales, and ongoing purchases
-- **Scheduled Purchases** - Coordinate future pickups with buyers
-- **Reviews & Ratings** - Rate products and buyers
-- **Wishlist** - Save favorite items and get notifications
-- **Purchase History** - Track all transactions with receipts
-- **Robust Security** - Protections against XSS and SQL injections, encryptions, and much more
+### Find something for your dorm
 
-## Tech Stack
+- Browse **For You**, a feed that uses your interests and the items you view, save, and buy. New accounts start with popular and recent listings.
+- Switch to **Explore More** for a randomized mix of items.
+- Search by title, optionally include descriptions, and filter by category, condition, location, and price. Narrow results to negotiable prices or sellers open to trades.
+- Save items to your wishlist and get notifications when their price, photos, or availability changes.
+- View listing photos and videos. On phones and tablets, swipe between them or tap the position dots; the current dot is blue. Desktop users get thumbnails and arrows that disappear at the ends of the gallery.
 
-**Frontend:** React 19, React Router, Tailwind CSS  
-**Backend:** PHP 8+, MySQL  
-**Auth:** PHP sessions, bcrypt password hashing  
-**Security:** Prepared statements (SQL injection), XSS filtering + encoding, CORS, CSRF tokens  
-**Real-time:** HTTP polling (250ms) for chat and typing indicators  
-**Email:** PHPMailer  
-**Dev Server:** XAMPP (Apache + MySQL)
+### Sell on your own schedule
 
-## Key Folders
+- Create listings with photos, videos, a condition, a pickup location, and a price. Mark whether you are open to offers or trades.
+- Save an unfinished listing as a private draft and publish it when it is ready.
+- Use the seller dashboard to manage listings and see views, wishlist counts, and sales information.
+- Keep track of draft, active, pending, and sold listings.
 
-- `dorm-mart/src/` — React frontend (pages, components, context)
-- `dorm-mart/api/` — PHP backend endpoints (auth, chat, seller-dashboard, reviews, etc.)
-- `dorm-mart/api/security/` — Security utilities (XSS protection, SQL injection prevention)
-- `dorm-mart/public/` — Static assets
-- `dorm-mart/migrations/` — Database construction files
+### Talk and arrange a pickup
 
-For detailed setup instructions, deployment guides, and production build steps, see `README.project_setup.md`.
+- Message buyers and sellers from an item's page. Chat supports text, images, typing indicators, and unread counts.
+- Edit your latest eligible text message or remove a conversation from your own chat list.
+- Choose whether buyers can see your seller email and optional phone number in chat.
+- Propose a purchase date and time, respond to requests, and track ongoing purchases. Accepted schedules include pickup reminders.
+- Handle purchase confirmations and review prompts through cards in the conversation.
+
+### Pay, keep receipts, and leave reviews
+
+- Where built-in payments are enabled, sellers can connect Stripe and offer payment on eligible scheduled purchases. Buyers pay from chat during the payment window, and a successful payment completes the purchase automatically.
+- Use manual purchase confirmation for exchanges arranged directly between buyer and seller, including trades.
+- Find completed purchases in purchase history, with receipts that distinguish the listing price, final price, and trades.
+- Sellers can issue a full refund for a successful Stripe payment from the receipt and choose whether to relist the item.
+- Leave product reviews with photos, rate buyers, and edit review stars.
+
+Built-in payments depend on the installation's Stripe configuration and seller eligibility. See the [Stripe activation checklist](dorm-mart/docs/stripe-activation-checklist.md) for setup details.
+
+### Make the account yours
+
+- Choose up to three interests to help shape your recommendations, and switch between light and dark mode.
+- Manage notifications for saved items, purchase requests, cancellations, and review reminders. Open, mark read, or delete notifications from one page.
+- Set promotional listing emails to daily, weekly, or off. Sending those digests requires a scheduled job on the server.
+- View your account information, update your profile, and visit other users' public profiles.
+- Enable email-based two-factor authentication, reset a forgotten password, or change your current password.
+- Review login history with device, browser, time, and approximate location details. Changing your password signs out other sessions.
+- Delete your account through a password-protected confirmation flow.
+
+### Report problems
+
+- Report a message from chat. Profanity filtering also flags messages for moderator review.
+- Moderators have a separate dashboard for reports and flagged messages, with controls to resolve reports, ban or unban users, and maintain the word filter.
+- Read the Privacy Policy, Terms of Service, and safety guidance inside the app.
+
+## Under the hood
+
+| Part | What we use |
+| --- | --- |
+| Frontend | React 19, React Router, Tailwind CSS |
+| Backend | PHP 8+, MySQL |
+| Authentication | PHP sessions, hashed passwords, remember-me tokens, email-based two-factor authentication |
+| Chat updates | HTTP polling for messages, typing indicators, and conversation changes |
+| Email | Resend, with SMTP through PHPMailer as a fallback |
+| Optional payments | Stripe Connect |
+| Local development | XAMPP and the React development server |
+| Deployment | Railway, plus build scripts for Apache and UB servers |
+
+The backend uses prepared SQL statements, CSRF checks, request validation, and output escaping. Uploads are checked for file type and size, and private chat images require conversation access. Password changes and account bans invalidate existing sessions.
+
+## Key folders
+
+| Folder | Contents |
+| --- | --- |
+| `dorm-mart/src/` | React pages, shared components, hooks, and context |
+| `dorm-mart/api/` | PHP endpoints grouped by feature, plus shared helpers |
+| `dorm-mart/api/security/` | Authentication, CSRF, and request validation helpers |
+| `dorm-mart/api/tests/` | Backend checks and integration scripts |
+| `dorm-mart/public/` | Static assets |
+| `dorm-mart/migrations/` | Database schema migrations |
+| `dorm-mart/data/` | Local demo data |
+| `dorm-mart/docs/` | Setup references and architecture notes |
+| `build-scripts-win/` | Windows development, build, and deployment scripts |
+
+For setup, deployment, and production build steps, see the [project setup guide](README.project_setup.md).
+
+## Checks
+
+Run these from `dorm-mart`:
+
+```sh
+npm test -- --watchAll=false
+npm run test:backend
+npm run build
+```
+
+Frontend tests use Jest and React Testing Library. The backend command runs the PHP validation, login-location, and promotional-digest checks. See the [backend test guide](dorm-mart/api/tests/README.md) for separate integration scripts.
+
+## More documentation
+
+- [Environment configuration](dorm-mart/docs/environment_configuration.md)
+- [Documentation index](dorm-mart/docs/README.md)
+- [Project handoff and architecture notes](dorm-mart/docs/PROJECT_HANDOFF.md)
+- [Transactional email setup](dorm-mart/docs/RESEND_SETUP.md)
 
 ## Contributing
 
 Pick an open issue or describe the change you want to make before you start. Put your work on a branch, keep the change focused, and open a pull request when it is ready for review. Include testing notes, screenshots, or both when they help reviewers understand the change.
 
-# Development Team
+## The team
 
-**- Sooseok Kim**
+- Sooseok Kim
+- Sameer Jain
+- Anish Banerjee
 
-**- Sameer Jain**
-
-**- Anish Banerjee**
-
-### Special Thanks:
-
-- Professor Matt Hertz
-- Our Usability Testers
-- Former Team Developers
-- The Wonderful CSE442 Teaching Assistants
+Thanks to Professor Matt Hertz, the CSE 442 teaching assistants, our usability testers, and former team developers who helped build and improve Dorm Mart.

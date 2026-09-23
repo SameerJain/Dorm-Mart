@@ -42,7 +42,7 @@ export default function ListingActions({
           type="button"
           onClick={saveDraft}
           disabled={submitting || loadingExisting}
-          className="flex-1 py-3 border border-yellow-500 dark:border-yellow-500 text-orange-600 dark:text-orange-400 rounded-lg font-medium hover:bg-yellow-50 dark:hover:bg-orange-950/20 transition-colors disabled:opacity-60"
+          className="flex-1 py-3 bg-yellow-500 hover:bg-yellow-600 text-gray-900 rounded-lg font-medium transition-colors disabled:opacity-60"
         >
           {submitting ? "Saving..." : "Save as Draft"}
         </button>

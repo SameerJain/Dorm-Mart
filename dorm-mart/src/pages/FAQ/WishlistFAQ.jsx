@@ -19,7 +19,7 @@ const WISHLIST_FAQ_ITEMS = [
     answer: "No. Your wishlist is private and only visible to you.",
   },
   {
-    question: "I'm a seller — what does the wishlist count on my listing mean?",
+    question: "I'm a seller: what does the wishlist count on my listing mean?",
     answer:
       "It shows how many users have saved your item to their wishlist. The count is hidden once the item is sold.",
   },

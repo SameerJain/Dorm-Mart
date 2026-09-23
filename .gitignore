@@ -4,7 +4,7 @@ dorm-mart/.pnp
 dorm-mart/.pnp.js
 
 # Profanity word-list data: excluded so the raw word list isn't committed to
-# this public repo. See "Profanity word list" in PROJECT_HANDOFF.md.
+# this public repo. See "Profanity word list" in dorm-mart/docs/PROJECT_HANDOFF.md.
 dorm-mart/vendor/snipe/banbuilder/src/dict/
 
 # Testing
@@ -45,10 +45,17 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# AI Agents
+# AI Agents (CLI tool config/state — local only, each tool discovers these at repo root)
 .claude/
 .codex/
-.agents 
+.agents
+
+# AI assistant working files (glossaries, refactor notes, skill defs) — notes a
+# session produced for itself, not something maintained by hand or shipped with
+# the app. Kept on disk locally; not tracked in git.
+/CONTEXT.md
+/artifacts/
+dorm-mart/code-review-refactor-report.md
 
 # VS Code
 .vscode/
@@ -75,13 +82,6 @@ body.json
 cookies.txt
 cookies_buyer.txt
 cookies_seller.txt
-
-# React test files
-react-test-files/chris/aptitude.cse.buffalo.edu/
-react-test-files/chris/localhost-3000/
-react-test-files/chris/localhost:3000/
-react-test-files/chris/undefined/
-!react-test-files/chris/
 
 #Personal helpful code
 /code-snippets

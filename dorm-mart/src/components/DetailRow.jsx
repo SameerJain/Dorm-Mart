@@ -8,7 +8,7 @@ export default function DetailRow({
 }) {
   const alignClass = align === "start" ? "items-start" : "items-center";
   const labelPadding = align === "start" ? "pt-0.5" : "";
-  const displayValue = value ?? "—";
+  const displayValue = value ?? "N/A";
   const inner = (
     <div className={`flex ${alignClass} gap-2`}>
       <span

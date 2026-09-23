@@ -25,7 +25,7 @@ const SELLER_DASHBOARD_SECTIONS = [
     items: [
       {
         question: "What do the stats at the top show?",
-        answer: `Active Listings — items currently published. Pending Sales — sales in progress. Items Sold — your total completed sales.`,
+        answer: `Active Listings: items currently published. Pending Sales: sales in progress. Items Sold: your total completed sales.`,
       },
     ],
   },
@@ -34,7 +34,7 @@ const SELLER_DASHBOARD_SECTIONS = [
     items: [
       {
         question: "What do the different statuses mean?",
-        answer: `Active — visible to buyers. Pending — a scheduled purchase is in progress. Sold — item has been sold. Removed — taken off the marketplace.`,
+        answer: `Active: visible to buyers. Pending: a scheduled purchase is in progress. Sold: item has been sold. Removed: taken off the marketplace.`,
       },
       {
         question: "How does the status change?",

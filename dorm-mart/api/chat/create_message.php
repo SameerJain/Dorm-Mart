@@ -50,6 +50,25 @@ $senderId   = (int)$sender;
 if ($senderId === $receiverId) {
     json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
 }
+
+// Flood cap only — set far above any realistic typing speed so ordinary
+// conversation never reaches it.
+$messageLimit = consume_rate_limit(
+    scoped_rate_limit_key('chat_message', $senderId),
+    CHAT_MESSAGE_MAX_PER_WINDOW,
+    CHAT_MESSAGE_WINDOW_MINUTES,
+    CHAT_MESSAGE_LOCKOUT_MINUTES
+);
+if ($messageLimit['blocked']) {
+    $retryAfterSeconds = max(1, (int)$messageLimit['retry_after_seconds']);
+    if (!headers_sent()) {
+        header('Retry-After: ' . $retryAfterSeconds);
+    }
+    json_response([
+        'success' => false,
+        'error' => 'You are sending messages too quickly. Please wait a moment and try again.',
+    ], 429);
+}
 $u1 = min($senderId, $receiverId);
 $u2 = max($senderId, $receiverId);
 $lockKey = "conv:$u1:$u2"; // used for advisory lock

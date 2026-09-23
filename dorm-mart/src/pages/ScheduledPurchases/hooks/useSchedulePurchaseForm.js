@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE } from "../../../utils/apiConfig";
 import { csrfPostJson } from "../../../utils/apiClient";
@@ -29,9 +29,6 @@ export function useSchedulePurchaseForm() {
   const [meetingMonth, setMeetingMonth] = useState("");
   const [meetingDay, setMeetingDay] = useState("");
   const [meetingYear, setMeetingYear] = useState("");
-  const monthInputRef = useRef(null);
-  const dayInputRef = useRef(null);
-  const yearInputRef = useRef(null);
   const [meetingHour, setMeetingHour] = useState("");
   const [meetingMinute, setMeetingMinute] = useState("");
   const [meetingAmPm, setMeetingAmPm] = useState("");
@@ -273,7 +270,6 @@ export function useSchedulePurchaseForm() {
     closeConfirmOpen,
     customMeetLocation,
     dateTimeError,
-    dayInputRef,
     description,
     error,
     formError,
@@ -287,7 +283,6 @@ export function useSchedulePurchaseForm() {
     meetingMinute,
     meetingMonth,
     meetingYear,
-    monthInputRef,
     negotiatedPrice,
     paymentAmount,
     paymentEligibility,
@@ -312,6 +307,5 @@ export function useSchedulePurchaseForm() {
     setUseBuiltInPayment,
     tradeItemDescription,
     useBuiltInPayment,
-    yearInputRef,
   };
 }

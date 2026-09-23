@@ -7,6 +7,12 @@ require_once __DIR__ . '/promo_email.php';
 const TWO_FACTOR_CODE_TTL_SECONDS = 600;
 const TWO_FACTOR_MAX_ATTEMPTS = 5;
 
+// How often a login may mint and email a fresh verification code. Set high enough
+// that a genuine user retrying a mistyped code or a slow inbox never notices.
+const TWO_FACTOR_MAX_CHALLENGES = 5;
+const TWO_FACTOR_CHALLENGE_WINDOW_MINUTES = 15;
+const TWO_FACTOR_CHALLENGE_LOCKOUT_MINUTES = 15;
+
 function create_two_factor_challenge(int $userId, string $theme): string
 {
     $code = (string)random_int(100000, 999999);

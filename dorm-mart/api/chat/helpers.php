@@ -1,5 +1,12 @@
 <?php
+
 declare(strict_types=1);
+
+// Chat flood cap. Generous by design: this exists to stop scripted spam, not to
+// pace a fast typist.
+const CHAT_MESSAGE_MAX_PER_WINDOW = 40;
+const CHAT_MESSAGE_WINDOW_MINUTES = 1;
+const CHAT_MESSAGE_LOCKOUT_MINUTES = 1;
 
 function chat_release_lock(mysqli $conn, string $lockKey): void
 {
