@@ -129,3 +129,54 @@ if (!function_exists('real_upload_path')) {
         return $real !== false ? $real : null;
     }
 }
+
+if (!function_exists('listing_media_urls')) {
+    /** Decode an INVENTORY.photos value into a flat list of media URLs. */
+    function listing_media_urls($stored): array
+    {
+        if (!is_string($stored) || $stored === '') {
+            return [];
+        }
+        $decoded = json_decode($stored, true);
+        if (is_array($decoded)) {
+            return array_values(array_filter($decoded, 'is_string'));
+        }
+        return array_values(array_filter(array_map('trim', explode(',', $stored)), fn($v) => $v !== ''));
+    }
+}
+
+if (!function_exists('delete_owned_listing_media')) {
+    /**
+     * Delete listing media files that this seller uploaded themselves.
+     *
+     * Mirrors account_delete_owned_images(): only files under /images/ whose
+     * name carries this user's img_u<id>_ upload prefix are touched, so the
+     * stock images that seeded listings share are never removed. Call it after
+     * the database change commits -- a rolled-back write must not lose files.
+     */
+    function delete_owned_listing_media(array $urls, int $userId): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+        $imagesDir = rtrim(data_images_dir(), '/\\');
+        $prefix = 'img_u' . $userId . '_';
+        foreach (array_unique($urls) as $value) {
+            if (!is_string($value)) {
+                continue;
+            }
+            $path = parse_url($value, PHP_URL_PATH);
+            if (!is_string($path) || !str_starts_with($path, '/images/')) {
+                continue;
+            }
+            $filename = basename(rawurldecode($path));
+            if (!str_starts_with($filename, $prefix)) {
+                continue;
+            }
+            $file = $imagesDir . DIRECTORY_SEPARATOR . $filename;
+            if (is_file($file) && !@unlink($file)) {
+                error_log('Failed to delete listing media: ' . $filename);
+            }
+        }
+    }
+}

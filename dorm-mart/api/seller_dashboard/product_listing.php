@@ -417,6 +417,13 @@ try {
     }
     $conn->commit();
 
+    // Media the seller dropped from the listing is no longer referenced by any
+    // row, so remove their uploads instead of orphaning the files on disk.
+    delete_owned_listing_media(
+      array_diff($storedExistingPhotos ?? [], $existingPhotos),
+      $userId
+    );
+
     echo json_encode([
       'ok'         => true,
       'prod_id' => $itemId,

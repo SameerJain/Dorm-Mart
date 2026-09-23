@@ -9,6 +9,7 @@ init_json_endpoint('POST');
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../helpers/image_upload.php';
 
 try {
     $userId = require_login();
@@ -106,6 +107,11 @@ try {
     }
 
     $conn->commit();
+
+    // The row is gone, so the files it referenced are unreachable: drop the
+    // ones this seller uploaded. Deleting after the commit means a rolled-back
+    // delete never leaves a live listing pointing at missing media.
+    delete_owned_listing_media(listing_media_urls($item['photos'] ?? null), $userId);
 
     json_response(['success' => true, 'id' => $id]);
 } catch (Throwable $e) {
