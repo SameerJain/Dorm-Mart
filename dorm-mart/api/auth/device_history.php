@@ -86,6 +86,20 @@ function login_request_location(): ?string
     return $parts ? substr(implode(', ', $parts), 0, 160) : login_ip_location(login_request_ip());
 }
 
+function login_device_fingerprint(): array
+{
+    $userAgent = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'), 0, 512);
+    $details = login_device_details($userAgent);
+    return [
+        'user_agent' => $userAgent,
+        'device_type' => $details['device_type'],
+        'browser' => $details['browser'],
+        'operating_system' => $details['operating_system'],
+        'ip_address' => login_request_ip(),
+        'location' => login_request_location(),
+    ];
+}
+
 function record_login_device(int $userId): bool
 {
     $sessionId = session_id();
@@ -97,14 +111,8 @@ function record_login_device(int $userId): bool
     try {
         require_once __DIR__ . '/../database/db_connect.php';
         $conn = db();
-        $userAgent = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'), 0, 512);
-        $details = login_device_details($userAgent);
+        $fp = login_device_fingerprint();
         $sessionHash = hash('sha256', $sessionId);
-        $ipAddress = login_request_ip();
-        $location = login_request_location();
-        $deviceType = $details['device_type'];
-        $browser = $details['browser'];
-        $operatingSystem = $details['operating_system'];
 
         $stmt = $conn->prepare(
             'INSERT INTO login_history
@@ -121,12 +129,12 @@ function record_login_device(int $userId): bool
             'isssssss',
             $userId,
             $sessionHash,
-            $deviceType,
-            $browser,
-            $operatingSystem,
-            $userAgent,
-            $ipAddress,
-            $location
+            $fp['device_type'],
+            $fp['browser'],
+            $fp['operating_system'],
+            $fp['user_agent'],
+            $fp['ip_address'],
+            $fp['location']
         );
         $stmt->execute();
         $stmt->close();
@@ -139,6 +147,93 @@ function record_login_device(int $userId): bool
             $conn->close();
         }
         error_log('device history record error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Re-attach the current request to this user's existing open row for the
+ * same device (browser + OS + device type) instead of inserting a new one.
+ *
+ * Used only for silent remember-me re-auth (ensure_session()), where PHP's
+ * server-side session data was garbage collected mid-visit and a fresh
+ * session id gets issued even though it is the same physical device
+ * continuing, not a new login. Matching on session_hash alone would create
+ * a brand new "box" here, which is what made Logged Devices show far more
+ * entries than real logins and left last_seen_at identical to logged_in_at.
+ */
+function claim_or_record_login_device(int $userId): bool
+{
+    $sessionId = session_id();
+    if ($userId <= 0 || $sessionId === '') {
+        return false;
+    }
+
+    $conn = null;
+    try {
+        require_once __DIR__ . '/../database/db_connect.php';
+        $conn = db();
+        $fp = login_device_fingerprint();
+        $sessionHash = hash('sha256', $sessionId);
+
+        $find = $conn->prepare(
+            'SELECT login_id FROM login_history
+             WHERE user_id = ? AND device_type = ? AND browser = ? AND operating_system = ?
+                   AND signed_out_at IS NULL
+             ORDER BY last_seen_at DESC LIMIT 1'
+        );
+        $find->bind_param('isss', $userId, $fp['device_type'], $fp['browser'], $fp['operating_system']);
+        $find->execute();
+        $existing = $find->get_result()->fetch_assoc();
+        $find->close();
+
+        if ($existing) {
+            $update = $conn->prepare(
+                'UPDATE login_history
+                 SET session_hash = ?, ip_address = ?, location = COALESCE(?, location),
+                     user_agent = ?, last_seen_at = CURRENT_TIMESTAMP
+                 WHERE login_id = ?'
+            );
+            $existingId = (int)$existing['login_id'];
+            $update->bind_param(
+                'ssssi',
+                $sessionHash,
+                $fp['ip_address'],
+                $fp['location'],
+                $fp['user_agent'],
+                $existingId
+            );
+            $update->execute();
+            $update->close();
+        } else {
+            $insert = $conn->prepare(
+                'INSERT INTO login_history
+                    (user_id, session_hash, device_type, browser, operating_system, user_agent, ip_address, location)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $insert->bind_param(
+                'isssssss',
+                $userId,
+                $sessionHash,
+                $fp['device_type'],
+                $fp['browser'],
+                $fp['operating_system'],
+                $fp['user_agent'],
+                $fp['ip_address'],
+                $fp['location']
+            );
+            $insert->execute();
+            $insert->close();
+        }
+
+        $conn->close();
+        $_SESSION['device_history_touched_at'] = time();
+        return true;
+    } catch (Throwable $e) {
+        if ($conn instanceof mysqli) {
+            $conn->close();
+        }
+        error_log('device history claim error: ' . $e->getMessage());
         return false;
     }
 }

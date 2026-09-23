@@ -30,6 +30,6 @@ Run `php scripts/send_promotional_digests.php --dry-run` in the scheduled servic
 
 Product images link to the web service's public `/media/image.php` endpoint rather than being embedded as attachments, so the digest job itself does not need access to `DATA_UPLOADS_DIR`. Images are omitted only when `API_BASE_URL` is not set or an item has no photo.
 
-Run `php api/api_test_files/promotional_digest_test.php` to check the send window, daily/weekly eligibility, daylight saving transitions, and email wording.
+Run `php api/tests/promotional_digest_test.php` to check the send window, daily/weekly eligibility, daylight saving transitions, and email wording.
 
 API reference: https://resend.com/docs/api-reference/emails/send-email

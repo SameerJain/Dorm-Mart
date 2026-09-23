@@ -10,6 +10,7 @@ import {
   MAX_PASSWORD_LEN,
 } from "../../utils/passwordPolicy";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 
 const MAX_LEN = MAX_PASSWORD_LEN;
 
@@ -53,14 +54,17 @@ function ChangePasswordPage() {
   const [showNotice, setShowNotice] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const timerRef = useRef(null);
+  const runExclusive = useSubmitLock();
 
   useBodyScrollLock(showNotice);
 
   const policy = useMemo(() => buildPasswordPolicy(nextPw), [nextPw]);
 
+  // Key auto-repeat fires this for as long as Enter is held, so it has to go
+  // through the same lock as the button.
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Enter") handleSubmit();
+      if (e.key === "Enter") runExclusive(handleSubmit);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -167,7 +171,7 @@ function ChangePasswordPage() {
 
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => runExclusive(handleSubmit)}
             className="mt-2 h-11 w-44 rounded-xl bg-blue-600 text-white shadow hover:bg-blue-700 dark:hover:bg-blue-900"
           >
             Confirm

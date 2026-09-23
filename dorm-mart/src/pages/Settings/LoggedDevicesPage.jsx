@@ -63,10 +63,6 @@ function DeviceCard({ device }) {
               <dt className="font-medium text-slate-500 dark:text-gray-400">Logged in</dt>
               <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{formatLoginTimestamp(device.logged_in_at)}</dd>
             </div>
-            <div>
-              <dt className="font-medium text-slate-500 dark:text-gray-400">Last active</dt>
-              <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{formatLoginTimestamp(device.last_seen_at)}</dd>
-            </div>
             {device.signed_out_at && (
               <div>
                 <dt className="font-medium text-slate-500 dark:text-gray-400">Signed out</dt>

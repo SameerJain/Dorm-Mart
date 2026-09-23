@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import StarRating from "./StarRating";
 import EditableStarRating from "./EditableStarRating";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 import ReviewImageGallery from "./components/ReviewImageGallery";
 import { onProductImageError } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
@@ -48,6 +49,7 @@ function ReviewModal({
   const [productRating, setProductRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const runExclusive = useSubmitLock();
   const [error, setError] = useState(null);
   const [charCount, setCharCount] = useState(0);
   const [uploadedImages, setUploadedImages] = useState([]); // Array of {file, url, uploadedUrl}
@@ -552,7 +554,7 @@ function ReviewModal({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleSubmit(e);
+                    runExclusive(() => handleSubmit());
                   }}
                   disabled={!isFormValid || isSubmitting}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"

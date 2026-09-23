@@ -37,14 +37,12 @@ function SchedulePurchasePage() {
             />
 
             <ScheduleDateTimeFields
-              dayInputRef={form.dayInputRef}
               meetingAmPm={form.meetingAmPm}
               meetingDay={form.meetingDay}
               meetingHour={form.meetingHour}
               meetingMinute={form.meetingMinute}
               meetingMonth={form.meetingMonth}
               meetingYear={form.meetingYear}
-              monthInputRef={form.monthInputRef}
               setDateTimeError={form.setDateTimeError}
               setMeetingAmPm={form.setMeetingAmPm}
               setMeetingDay={form.setMeetingDay}
@@ -52,7 +50,6 @@ function SchedulePurchasePage() {
               setMeetingMinute={form.setMeetingMinute}
               setMeetingMonth={form.setMeetingMonth}
               setMeetingYear={form.setMeetingYear}
-              yearInputRef={form.yearInputRef}
             />
 
             <NegotiationFields

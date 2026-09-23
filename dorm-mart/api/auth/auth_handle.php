@@ -127,7 +127,7 @@ function ensure_session(): void
   session_regenerate_id(true);
   $_SESSION['user_id'] = $uid;
   $_SESSION['auth_version'] = (int)$row['auth_version'];
-  record_login_device($uid);
+  claim_or_record_login_device($uid);
 
   $newToken = bin2hex(random_bytes(32));
   $newHash  = password_hash($newToken, PASSWORD_DEFAULT);

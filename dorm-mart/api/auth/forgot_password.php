@@ -224,23 +224,6 @@ try {
     $user = $result->fetch_assoc();
     $stmt->close();
 
-    // Check rate limiting (optimized inline check)
-    if ($user['last_reset_request']) {
-        $stmt = $conn->prepare('SELECT TIMESTAMPDIFF(MINUTE, ?, NOW()) as minutes_passed');
-        $stmt->bind_param('s', $user['last_reset_request']);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        $minutesPassed = (int)$row['minutes_passed'];
-        $stmt->close();
-
-        if ($minutesPassed < 10) {
-            $conn->close();
-            dm_log_auth_event('forgot_password', $requestId, 'rate_limited', ['user_id' => (int)$user['user_id']]);
-            accept_password_reset_request();
-        }
-    }
-
     // Generate reset token (same as login system)
     $resetToken = bin2hex(random_bytes(32));
     $hashedToken = password_hash($resetToken, PASSWORD_BCRYPT);
@@ -248,12 +231,29 @@ try {
     // Set expiration to 1 hour from now using UTC timezone
     $expiresAt = (new DateTime('+1 hour', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 
-    // Save the prior state so a rejected email can be compensated without
-    // holding a database transaction open during the provider request.
-    $stmt = $conn->prepare('UPDATE user_accounts SET reset_token_hash = ?, reset_token_expires = ?, last_reset_request = NOW() WHERE user_id = ?');
+    // Claim the ten-minute window and store the token in a single conditional write.
+    // Reading last_reset_request and then updating it would let concurrent requests
+    // all observe the same stale timestamp, all pass the check, and all send an
+    // email; letting the database decide who wins makes that impossible.
+    // The prior state is kept in $user so a rejected email can be compensated
+    // without holding a transaction open during the provider request.
+    $stmt = $conn->prepare(
+        'UPDATE user_accounts
+         SET reset_token_hash = ?, reset_token_expires = ?, last_reset_request = NOW()
+         WHERE user_id = ?
+           AND (last_reset_request IS NULL
+                OR last_reset_request < DATE_SUB(NOW(), INTERVAL 10 MINUTE))'
+    );
     $stmt->bind_param('ssi', $hashedToken, $expiresAt, $user['user_id']);
     $stmt->execute();
+    $claimed = $stmt->affected_rows === 1;
     $stmt->close();
+
+    if (!$claimed) {
+        $conn->close();
+        dm_log_auth_event('forgot_password', $requestId, 'rate_limited', ['user_id' => (int)$user['user_id']]);
+        accept_password_reset_request();
+    }
     $resetTokenStored = true;
 
     $resetLink = dm_api_url('redirects/handle_password_reset_token_redirect.php') . '?token=' . urlencode($resetToken) . '&uid=' . (int)$user['user_id'];

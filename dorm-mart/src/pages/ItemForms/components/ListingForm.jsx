@@ -305,7 +305,7 @@ export default function ListingForm({
                 }
                 rows={6}
                 className={inputClass(errors.description, "resize-none")}
-                placeholder="Describe the item — condition, usage, and history."
+                placeholder="Describe the item: condition, usage, and history."
                 maxLength={LIMITS.description}
               />
               <div className="flex justify-end items-center mt-2">

@@ -13,12 +13,12 @@ The current app is still a React frontend with a PHP/MySQL backend. The largest 
 
 ## Start here when returning
 
-- Read this file first, then `README.project_setup.md` for commands and `dorm-mart/extra-files/environment_configuration.md` for environment variables.
+- Read this file first, then `README.project_setup.md` for commands and `environment_configuration.md` (next to this file) for environment variables.
 - Run npm/PHP commands from `dorm-mart`; the repository root intentionally has no `package.json`.
 - Apply schema migrations before testing newer features: `php api/database/migrate_schema.php`.
 - Do **not** run `php api/database/migrate_data.php` against shared or production data. It refuses non-local database hosts and resets local application data before rebuilding fixtures.
 - Do not assume a December path still exists. Most PHP endpoints and several React page folders were renamed or moved.
-- Production chat uses HTTP polling. `dorm-mart/extra-files/README.websocket.md` is explicitly archived documentation for a retired Ratchet experiment.
+- Production chat uses HTTP polling. `README.websocket.md` (next to this file) is explicitly archived documentation for a retired Ratchet experiment.
 
 ## Current application structure
 
@@ -255,7 +255,7 @@ npm run test:backend
 npm run build
 ```
 
-`test:backend` runs the CLI adversarial validation checks in `api/api_test_files/adversarial_validation_test.php`. Older ad hoc PHP tests remain under `api/api_test_files`; they are not all part of that command and are blocked from HTTP access.
+`test:backend` runs the CLI adversarial validation, login-location, and promotional-digest checks under `api/tests/`. Credential-gated integration scripts live in `api/tests/integration/`; they are not part of that command and are blocked from HTTP access.
 
 ### Apache, Aptitude, and Cattle packages
 
@@ -272,7 +272,7 @@ npm run build
 - The deployment script reports the branch, commit, and dirty files; use `-RequireClean` to reject a dirty worktree and `-Detach` only when intentionally queueing without waiting.
 - Railway filesystems are ephemeral. Set `DATA_UPLOADS_DIR` to a mounted persistent volume or uploaded product/profile/chat/review files will disappear after redeploy/restart while database references remain.
 
-Key environment variables are documented in `dorm-mart/extra-files/environment_configuration.md`. They include database credentials, frontend/API/public URLs, allowed CORS origins, mail credentials, `ALLOW_ALL_EMAILS`, `DATA_UPLOADS_DIR`, and the legacy WebSocket token secret.
+Key environment variables are documented in `environment_configuration.md` (next to this file). They include database credentials, frontend/API/public URLs, allowed CORS origins, mail credentials, `ALLOW_ALL_EMAILS`, `DATA_UPLOADS_DIR`, and the legacy WebSocket token secret.
 
 ## Removed, renamed, or retired since December
 
@@ -284,7 +284,7 @@ Key environment variables are documented in `dorm-mart/extra-files/environment_c
 - `input_sanitizer.php` and the old blacklist XSS behavior were removed in favor of typed validation plus output escaping.
 - `ReportIssuePage.jsx` and its scheduled-purchase route were removed.
 - Old duplicate migrations, fixture files, copied product images, unused icons, and default Create React App assets were removed or replaced.
-- Root `README.websocket.md` was removed; the remaining WebSocket guide is archived under `dorm-mart/extra-files` and is not the production architecture.
+- Root `README.websocket.md` was removed; the remaining WebSocket guide is archived under `dorm-mart/docs` and is not the production architecture.
 
 ## Developer-support artifacts
 

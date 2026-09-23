@@ -27,14 +27,22 @@ if ((int)($challenge['expires_at'] ?? 0) < time()) {
     json_response(['ok' => false, 'error' => 'Verification code expired. Please log in again.'], 401);
 }
 
-$attempts = (int)($challenge['attempts'] ?? 0) + 1;
+// Re-read the session-stored attempt count on every request (rather than trusting
+// anything from the client) so concurrent/rapid submissions can't out-race the cap.
+$attempts = (int)($challenge['attempts'] ?? 0);
+if ($attempts >= TWO_FACTOR_MAX_ATTEMPTS) {
+    clear_two_factor_challenge();
+    json_response(['ok' => false, 'error' => 'Too many invalid attempts. Please log in again.'], 429);
+}
+
+$attempts++;
 $_SESSION['two_factor_pending']['attempts'] = $attempts;
 if (!password_verify($code, (string)$challenge['code_hash'])) {
     if ($attempts >= TWO_FACTOR_MAX_ATTEMPTS) {
         clear_two_factor_challenge();
         json_response(['ok' => false, 'error' => 'Too many invalid attempts. Please log in again.'], 429);
     }
-    json_response(['ok' => false, 'error' => 'Invalid verification code.'], 401);
+    json_response(['ok' => false, 'error' => 'Invalid verification code.', 'retryable' => true], 401);
 }
 
 $userId = (int)$challenge['user_id'];
@@ -56,6 +64,10 @@ try {
         clear_two_factor_challenge();
         json_response(['ok' => false, 'error' => 'Account suspended'], 403);
     }
+
+    // Proving possession of the code releases the issuance throttle, so a user who
+    // needed a few codes to get in is not left locked out of requesting more.
+    clear_rate_limit(scoped_rate_limit_key('two_factor_issue', $userId));
 
     regenerate_session_on_login();
     clear_two_factor_challenge();

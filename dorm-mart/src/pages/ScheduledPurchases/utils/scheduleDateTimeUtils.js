@@ -137,38 +137,52 @@ export function getDateRangeMessage(meetingMonth, meetingDay, meetingYear) {
   return "";
 }
 
-export function getTodayDate() {
-  const easternNow = getEasternTime();
-  const year = easternNow.getFullYear();
-  const month = String(easternNow.getMonth() + 1).padStart(2, "0");
-  const day = String(easternNow.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+export function getScheduleWindowBounds(referenceDate = getEasternTime()) {
+  const currentYear = referenceDate.getFullYear();
+  const currentMonth = referenceDate.getMonth() + 1;
+  const currentDay = referenceDate.getDate();
+  const maxDate = new Date(referenceDate);
+  maxDate.setMonth(maxDate.getMonth() + 3);
+  return {
+    currentYear,
+    currentMonth,
+    currentDay,
+    maxYear: maxDate.getFullYear(),
+    maxMonth: maxDate.getMonth() + 1,
+    maxDay: maxDate.getDate(),
+  };
 }
 
-export function getMaxDate() {
-  const easternNow = getEasternTime();
-  const threeMonthsFromNow = new Date(easternNow);
-  threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
-  const year = threeMonthsFromNow.getFullYear();
-  const month = String(threeMonthsFromNow.getMonth() + 1).padStart(2, "0");
-  const day = String(threeMonthsFromNow.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+export function getScheduleYearOptions(bounds) {
+  const years = [bounds.currentYear];
+  if (bounds.maxYear > bounds.currentYear) years.push(bounds.maxYear);
+  return years;
 }
 
-export function getDerivedYear(month, day) {
-  const easternNow = getEasternTime();
-  const currentYear = easternNow.getFullYear();
-  const today = new Date(
-    currentYear,
-    easternNow.getMonth(),
-    easternNow.getDate(),
+export function getScheduleMonthOptions(year, bounds) {
+  const lower = year === bounds.currentYear ? bounds.currentMonth : 1;
+  const upper = year === bounds.maxYear ? bounds.maxMonth : 12;
+  const months = [];
+  for (let month = lower; month <= upper; month += 1) months.push(month);
+  return months;
+}
+
+export function getScheduleDayOptions(year, month, bounds) {
+  const daysInMonth = getMaxDayForMeetingMonth(
+    String(month),
+    new Date(year, 0, 1),
   );
-  const thisYearDate = new Date(
-    currentYear,
-    parseInt(month) - 1,
-    parseInt(day),
-  );
-  return thisYearDate >= today ? currentYear : currentYear + 1;
+  let lower = 1;
+  let upper = daysInMonth;
+  if (year === bounds.currentYear && month === bounds.currentMonth) {
+    lower = bounds.currentDay;
+  }
+  if (year === bounds.maxYear && month === bounds.maxMonth) {
+    upper = Math.min(upper, bounds.maxDay);
+  }
+  const days = [];
+  for (let day = lower; day <= upper; day += 1) days.push(day);
+  return days;
 }
 
 export function validateScheduleDateTime({

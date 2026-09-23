@@ -1,14 +1,33 @@
-import { getMaxDayForMeetingMonth } from "../utils/scheduleDateTimeUtils";
+import { useEffect, useMemo } from "react";
+import {
+  getScheduleDayOptions,
+  getScheduleMonthOptions,
+  getScheduleWindowBounds,
+  getScheduleYearOptions,
+} from "../utils/scheduleDateTimeUtils";
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 export default function ScheduleDateTimeFields({
-  dayInputRef,
   meetingAmPm,
   meetingDay,
   meetingHour,
   meetingMinute,
   meetingMonth,
   meetingYear,
-  monthInputRef,
   setDateTimeError,
   setMeetingAmPm,
   setMeetingDay,
@@ -16,116 +35,116 @@ export default function ScheduleDateTimeFields({
   setMeetingMinute,
   setMeetingMonth,
   setMeetingYear,
-  yearInputRef,
 }) {
+  const bounds = useMemo(() => getScheduleWindowBounds(), []);
+  const yearOptions = useMemo(() => getScheduleYearOptions(bounds), [bounds]);
+  const showYearDropdown = yearOptions.length > 1;
+
+  useEffect(() => {
+    if (!showYearDropdown && meetingYear !== String(bounds.currentYear)) {
+      setMeetingYear(String(bounds.currentYear));
+    }
+  }, [bounds.currentYear, meetingYear, setMeetingYear, showYearDropdown]);
+
+  const effectiveYear = meetingYear
+    ? parseInt(meetingYear, 10)
+    : bounds.currentYear;
+  const monthOptions = useMemo(
+    () => getScheduleMonthOptions(effectiveYear, bounds),
+    [effectiveYear, bounds],
+  );
+
+  const effectiveMonth = meetingMonth ? parseInt(meetingMonth, 10) : null;
+  const dayOptions = useMemo(
+    () =>
+      effectiveMonth
+        ? getScheduleDayOptions(effectiveYear, effectiveMonth, bounds)
+        : [],
+    [effectiveYear, effectiveMonth, bounds],
+  );
+
+  const handleYearChange = (value) => {
+    setMeetingYear(value);
+    setDateTimeError("");
+    if (!value || !meetingMonth) return;
+
+    const year = parseInt(value, 10);
+    const validMonths = getScheduleMonthOptions(year, bounds);
+    if (!validMonths.includes(parseInt(meetingMonth, 10))) {
+      setMeetingMonth("");
+      setMeetingDay("");
+      return;
+    }
+    if (meetingDay) {
+      const validDays = getScheduleDayOptions(
+        year,
+        parseInt(meetingMonth, 10),
+        bounds,
+      );
+      if (!validDays.includes(parseInt(meetingDay, 10))) {
+        setMeetingDay("");
+      }
+    }
+  };
+
+  const handleMonthChange = (value) => {
+    setMeetingMonth(value);
+    setDateTimeError("");
+    if (!value || !meetingDay) return;
+
+    const validDays = getScheduleDayOptions(
+      effectiveYear,
+      parseInt(value, 10),
+      bounds,
+    );
+    if (!validDays.includes(parseInt(meetingDay, 10))) {
+      setMeetingDay("");
+    }
+  };
+
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
         Meeting Date &amp; Time <span className="text-red-500">*</span>
       </label>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div>
-          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
-            Date
-          </label>
-          <div className="flex items-center w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-            <input
-              ref={monthInputRef}
-              type="text"
-              inputMode="numeric"
-              placeholder="MM"
-              value={meetingMonth}
-              maxLength={2}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
-                if (raw === "") {
-                  setMeetingMonth("");
-                  setDateTimeError("");
-                  return;
-                }
-                const first = parseInt(raw[0]);
-                if (raw.length === 1) {
-                  if (first > 1) {
-                    setMeetingMonth(`0${raw}`);
-                    setDateTimeError("");
-                    dayInputRef.current?.focus();
-                    dayInputRef.current?.select();
-                  } else {
-                    setMeetingMonth(raw);
-                    setDateTimeError("");
-                  }
-                } else {
-                  const val = parseInt(raw);
-                  if (val >= 1 && val <= 12) {
-                    setMeetingMonth(raw);
-                    setDateTimeError("");
-                    dayInputRef.current?.focus();
-                    dayInputRef.current?.select();
-                  }
-                }
-              }}
-              className="w-7 bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-600"
-            />
-            <span className="text-gray-400 dark:text-gray-500 select-none">/</span>
-            <input
-              ref={dayInputRef}
-              type="text"
-              inputMode="numeric"
-              placeholder="DD"
-              value={meetingDay}
-              maxLength={2}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
-                if (raw === "") {
-                  setMeetingDay("");
-                  setDateTimeError("");
-                  return;
-                }
-                const maxDay = meetingMonth
-                  ? getMaxDayForMeetingMonth(meetingMonth)
-                  : 31;
-                const first = parseInt(raw[0]);
-                if (raw.length === 1) {
-                  if (first > 3) {
-                    const padded = `0${raw}`;
-                    if (parseInt(padded) <= maxDay) {
-                      setMeetingDay(padded);
-                      setDateTimeError("");
-                      yearInputRef.current?.focus();
-                      yearInputRef.current?.select();
-                    }
-                  } else {
-                    setMeetingDay(raw);
-                    setDateTimeError("");
-                  }
-                } else {
-                  const val = parseInt(raw);
-                  if (val >= 1 && val <= maxDay) {
-                    setMeetingDay(raw);
-                    setDateTimeError("");
-                    yearInputRef.current?.focus();
-                    yearInputRef.current?.select();
-                  }
-                }
-              }}
-              className="w-7 bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-600"
-            />
-            <span className="text-gray-400 dark:text-gray-500 select-none">/</span>
-            <input
-              ref={yearInputRef}
-              type="text"
-              inputMode="numeric"
-              placeholder="YYYY"
-              value={meetingYear}
-              maxLength={4}
-              onChange={(e) => {
-                setMeetingYear(e.target.value.replace(/\D/g, "").slice(0, 4));
-                setDateTimeError("");
-              }}
-              className="w-10 bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-600"
-            />
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <SelectField label="Month" value={meetingMonth} onChange={handleMonthChange}>
+          <option value="">Month</option>
+          {monthOptions.map((month) => (
+            <option key={month} value={String(month).padStart(2, "0")}>
+              {MONTH_NAMES[month - 1]}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField
+          label="Day"
+          value={meetingDay}
+          onChange={(value) => {
+            setMeetingDay(value);
+            setDateTimeError("");
+          }}
+        >
+          <option value="">Day</option>
+          {dayOptions.map((day) => (
+            <option key={day} value={String(day).padStart(2, "0")}>
+              {day}
+            </option>
+          ))}
+        </SelectField>
+        {showYearDropdown ? (
+          <SelectField label="Year" value={meetingYear} onChange={handleYearChange}>
+            <option value="">Year</option>
+            {yearOptions.map((year) => (
+              <option key={year} value={String(year)}>
+                {year}
+              </option>
+            ))}
+          </SelectField>
+        ) : (
+          <StaticField label="Year" value={bounds.currentYear} />
+        )}
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <SelectField
           label="Hour"
           value={meetingHour}
@@ -191,6 +210,19 @@ function SelectField({ children, label, onChange, value }) {
       >
         {children}
       </select>
+    </div>
+  );
+}
+
+function StaticField({ label, value }) {
+  return (
+    <div>
+      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+        {label}
+      </label>
+      <div className="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+        {value}
+      </div>
     </div>
   );
 }
