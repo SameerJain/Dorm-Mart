@@ -11,3 +11,11 @@ export function formatAccountDate(value) {
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   return Number.isNaN(date.getTime()) ? "Not available" : new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(date);
 }
+
+const PHONE_PATTERN = /^[0-9+().\-\s]{1,25}$/;
+
+export function isValidPhoneNumber(value) {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  return trimmed !== "" && PHONE_PATTERN.test(trimmed) && /\d/.test(trimmed);
+}

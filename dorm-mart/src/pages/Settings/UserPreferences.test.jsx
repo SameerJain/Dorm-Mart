@@ -44,9 +44,10 @@ beforeEach(() => {
 test("loads and persists the seller contact-sharing toggle", async () => {
   render(<UserPreferences />);
 
-  expect(screen.queryByLabelText("Phone number (optional)")).toBeNull();
+  const phoneInput = await screen.findByLabelText("Phone number (optional)");
+  await waitFor(() => expect(phoneInput.value).toBe("(716) 555-0123"));
   const toggle = await screen.findByRole("checkbox", {
-    name: /share my UB email and phone number/i,
+    name: /share my email and phone number/i,
   });
   expect(toggle.checked).toBe(true);
 
@@ -60,6 +61,17 @@ test("loads and persists the seller contact-sharing toggle", async () => {
   });
 });
 
+test("edits and persists the phone number field", async () => {
+  render(<UserPreferences />);
+
+  const phoneInput = await screen.findByLabelText("Phone number (optional)");
+  fireEvent.change(phoneInput, { target: { value: "716-555-9999" } });
+
+  await waitFor(() => expect(csrfFetch).toHaveBeenCalled(), { timeout: 1500 });
+  const savedBody = JSON.parse(csrfFetch.mock.calls.at(-1)[1].body);
+  expect(savedBody).toMatchObject({ contactPhone: "716-555-9999" });
+});
+
 test("shows backend validation failures instead of silently losing changes", async () => {
   csrfFetch.mockResolvedValue({
     ok: false,
@@ -68,7 +80,7 @@ test("shows backend validation failures instead of silently losing changes", asy
   render(<UserPreferences />);
 
   const toggle = await screen.findByRole("checkbox", {
-    name: /share my UB email and phone number/i,
+    name: /share my email and phone number/i,
   });
   fireEvent.click(toggle);
 

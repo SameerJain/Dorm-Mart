@@ -82,6 +82,14 @@ try {
   
   $isProtected = (int)($row['is_protected'] ?? 0) === 1;
 
+  $passwordLimit = consume_password_confirm_attempt($userId);
+  if ($passwordLimit['blocked']) {
+    $conn->close();
+    http_response_code(429);
+    echo json_encode(password_confirm_retry_error($passwordLimit));
+    exit;
+  }
+
   // SECURITY NOTE: password_verify() safely checks the submitted password.
   if (!password_verify($current, (string)$row['hash_pass'])) {
     $conn->close();
@@ -89,6 +97,7 @@ try {
     echo json_encode(['ok' => false, 'error' => 'Invalid current password']);
     exit;
   }
+  clear_password_confirm_attempts($userId);
 
   /* Optional: reject reuse of the same password */
   if (password_verify($next, (string)$row['hash_pass'])) {

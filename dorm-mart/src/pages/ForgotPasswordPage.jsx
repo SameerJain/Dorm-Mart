@@ -5,6 +5,7 @@ import PreLoginBranding from "../components/PreLoginBranding";
 import PreLoginNavLinks from "../components/PreLoginNavLinks";
 import { API_BASE } from "../utils/apiConfig";
 import { useEmailPolicy } from "../hooks/useEmailPolicy";
+import { useSubmitLock } from "../hooks/useSubmitLock";
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
+  const runExclusive = useSubmitLock();
   async function sendForgotPasswordRequest(email, signal) {
     const r = await fetch(`${API_BASE}/auth/forgot_password.php`, {
       method: "POST",
@@ -23,9 +25,7 @@ function ForgotPasswordPage() {
     return r.json();
   }
 
-  const handleForgotPasswordRequest = async (e) => {
-    e.preventDefault();
-
+  const handleForgotPasswordRequest = async () => {
     // Clear any previous errors immediately
     setError("");
 
@@ -125,7 +125,10 @@ function ForgotPasswordPage() {
 
               {/* forgot password form - Improved spacing and touch targets */}
               <form
-                onSubmit={handleForgotPasswordRequest}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  runExclusive(handleForgotPasswordRequest);
+                }}
                 noValidate
                 className="space-y-4 sm:space-y-5 md:space-y-6"
               >

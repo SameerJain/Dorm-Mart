@@ -226,6 +226,42 @@ function NextStepsInfo({ req }) {
   );
 }
 
+function SellerContactInfo({ req, isBuyer }) {
+  const isActive =
+    req.status === "accepted" &&
+    req.has_completed_confirm !== true &&
+    req.has_unsuccessful_confirm !== true;
+  const phone = req.seller?.phone;
+
+  if (!isBuyer || !isActive || !phone) return null;
+
+  return (
+    <div className="bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-400 dark:border-blue-600 rounded-lg p-2 mb-1.5">
+      <div className="flex items-center gap-1.5">
+        <svg
+          className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+          />
+        </svg>
+        <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+          Seller's Phone:
+        </span>
+        <span className="text-sm font-mono text-blue-700 dark:text-blue-300">
+          {phone}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function PurchaseCard({
   req,
   perspective,
@@ -282,6 +318,7 @@ export default function PurchaseCard({
 
         <RequestStateInfo req={req} />
         <NextStepsInfo req={req} />
+        <SellerContactInfo req={req} isBuyer={isBuyer} />
 
         <div className="min-w-0">
           <p className={`text-sm truncate min-w-0 ${bodyText}`} title={otherPartyName}>

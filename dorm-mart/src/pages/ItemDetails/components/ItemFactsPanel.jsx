@@ -33,8 +33,19 @@ function ProductFactsPanel({ normalized }) {
         />
         <DetailRow
           label="Seller email"
-          value={normalized.sellerEmail || EMPTY_VALUE}
-          suppressContactDetection
+          value={
+            normalized.sellerEmail ? (
+              <a
+                href={`mailto:${normalized.sellerEmail}`}
+                title={normalized.sellerEmail}
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {normalized.sellerEmail}
+              </a>
+            ) : (
+              EMPTY_VALUE
+            )
+          }
         />
       </div>
       <div className="space-y-2">

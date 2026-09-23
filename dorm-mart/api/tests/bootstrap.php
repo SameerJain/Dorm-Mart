@@ -1,6 +1,6 @@
 <?php
 /**
- * Shared helpers for api_test_files integration scripts.
+ * Shared helpers for the api/tests integration scripts.
  *
  * Set API_TEST_BASE_URL (e.g. http://localhost/f25-no-brainers/dorm-mart/api) when
  * running from CLI or when auto-detection from SCRIPT_NAME is wrong.
@@ -36,8 +36,8 @@ function api_test_api_base_url(): string
         $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
         $scheme = $https ? 'https' : 'http';
         $script = str_replace('\\', '/', (string) $_SERVER['SCRIPT_NAME']);
-        // .../api/api_test_files/.../script.php -> .../api
-        if (preg_match('#^(.*)/api/api_test_files/#', $script, $m)) {
+        // .../api/tests/.../script.php -> .../api
+        if (preg_match('#^(.*)/api/tests/#', $script, $m)) {
             return $scheme . '://' . $_SERVER['HTTP_HOST'] . $m[1] . '/api';
         }
         if (preg_match('#^(.*)/api/#', $script, $m)) {

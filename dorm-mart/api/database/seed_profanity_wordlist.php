@@ -24,7 +24,7 @@ const PROFANITY_WORDLIST_EXCLUDED = [
 
 /**
  * Expands profanity_words using the snipe/banbuilder English dictionaries.
- * The dictionary data files are gitignored (see PROJECT_HANDOFF.md), so this
+ * The dictionary data files are gitignored (see docs/PROJECT_HANDOFF.md), so this
  * is a best-effort step: if a developer hasn't run `composer install` since
  * the dependency was added, we skip quietly instead of failing the whole
  * migration run.

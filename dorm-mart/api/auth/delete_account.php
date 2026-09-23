@@ -40,9 +40,14 @@ try {
     if ($accountEmail === '' || strcasecmp($confirmation, $accountEmail) !== 0 || $password === '' || strlen($password) > 64) {
         json_response(['success' => false, 'error' => 'Invalid account deletion confirmation'], 400);
     }
+    $passwordLimit = consume_password_confirm_attempt($userId);
+    if ($passwordLimit['blocked']) {
+        json_response(password_confirm_retry_error($passwordLimit), 429);
+    }
     if (!password_verify($password, (string)$account['hash_pass'])) {
         json_response(['success' => false, 'error' => 'Current password is incorrect'], 401);
     }
+    clear_password_confirm_attempts($userId);
 
     $ownedImages = [];
     if (!empty($account['profile_photo'])) $ownedImages[] = (string)$account['profile_photo'];
@@ -277,6 +282,15 @@ try {
          WHERE lh.user_id = ?',
         'i',
         $userId
+    );
+    // Per-user throttle buckets are keyed by a hash of the user id, so they have no
+    // row to join against and have to be named directly.
+    account_delete_run(
+        $conn,
+        'DELETE FROM login_rate_limits WHERE session_id IN (?, ?)',
+        'ss',
+        scoped_rate_limit_key('password_confirm', $userId),
+        scoped_rate_limit_key('two_factor_issue', $userId)
     );
     account_delete_run($conn, 'DELETE FROM login_history WHERE user_id = ?', 'i', $userId);
 

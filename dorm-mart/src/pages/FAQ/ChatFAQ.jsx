@@ -32,7 +32,7 @@ const CHAT_SECTIONS = [
         question:
           "I'm a seller: what does it mean when a buyer accepted a scheduled purchase?",
         answer:
-          "Your proposed meetup was accepted. The sale is in progress—you can't edit or delete that listing until it completes or is cancelled. Use Ongoing Purchases and chat to coordinate or cancel.",
+          "Your proposed meetup was accepted. The sale is in progress, so you can't edit or delete that listing until it completes or is cancelled. Use Ongoing Purchases and chat to coordinate or cancel.",
       },
     ],
   },

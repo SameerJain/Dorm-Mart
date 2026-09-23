@@ -84,15 +84,18 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 
 try {
-    // CRITICAL: Check rate limiting FIRST, before any password verification
-    // This ensures lockout error is shown regardless of whether credentials are valid or invalid
+    // CRITICAL: claim the attempt FIRST, before any password verification, so the
+    // lockout applies whether or not the submitted credentials happen to be valid.
+    // Claiming (rather than checking, then recording a failure later) is what makes
+    // this safe under concurrency: parallel submissions cannot all read the same
+    // pre-lockout count and slip through together. A correct password clears the
+    // bucket below, so this never penalizes a legitimate login.
     $rateLimitKey = login_rate_limit_key($email);
-    $rateLimitCheck = check_rate_limit($rateLimitKey);
-    if ($rateLimitCheck['blocked']) {
-        // Session is locked out - show lockout error regardless of credential validity
-        $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
-        // Ensure at least 1 minute is shown if lockout is still active
-        $displayMinutes = max(1, $remainingMinutes);
+    $rateLimit = consume_login_attempt($rateLimitKey);
+    if ($rateLimit['blocked']) {
+        $retryAfterSeconds = max(1, (int)$rateLimit['retry_after_seconds']);
+        $displayMinutes = rate_limit_retry_minutes($retryAfterSeconds);
+        header('Retry-After: ' . $retryAfterSeconds);
         http_response_code(429);
         echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$displayMinutes} minute" . ($displayMinutes > 1 ? 's' : '') . "."]);
         exit;
@@ -112,10 +115,7 @@ try {
     if ($res->num_rows === 0) {
         $stmt->close();
         $conn->close();
-        
-        // Record failed attempt for non-existent user (but don't reveal this)
-        record_failed_attempt($rateLimitKey);
-        
+
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
         exit;
@@ -126,10 +126,7 @@ try {
     // SECURITY NOTE: password_verify() safely checks the submitted password.
     if (!password_verify($password, (string)$row['hash_pass'])) {
         $conn->close();
-        
-        // Record failed attempt
-        record_failed_attempt($rateLimitKey);
-        
+
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
         exit;
@@ -149,14 +146,34 @@ try {
     // Clear rate limiting data on successful login BEFORE regenerating session ID
     // This prevents the new session from inheriting any lockout state
     require_once __DIR__ . '/../security/security.php';
-    reset_failed_attempts($rateLimitKey);
-    
+    clear_rate_limit($rateLimitKey);
+
     $theme = 'light'; // default
     if (isset($row['theme'])) {
         $theme = $row['theme'] ? 'dark' : 'light';
     }
 
     if (!empty($row['two_factor_enabled'])) {
+        // Each login mints a fresh code and emails it, and a fresh code resets the
+        // per-challenge guess counter. Without a cap on issuance, someone holding
+        // the password gets unlimited rounds of guesses at the code and can flood
+        // the account owner's inbox, so throttle how often a challenge can be sent.
+        $challengeKey = scoped_rate_limit_key('two_factor_issue', $userId);
+        $challengeLimit = consume_rate_limit(
+            $challengeKey,
+            TWO_FACTOR_MAX_CHALLENGES,
+            TWO_FACTOR_CHALLENGE_WINDOW_MINUTES,
+            TWO_FACTOR_CHALLENGE_LOCKOUT_MINUTES
+        );
+        if ($challengeLimit['blocked']) {
+            $retryAfterSeconds = max(1, (int)$challengeLimit['retry_after_seconds']);
+            $displayMinutes = rate_limit_retry_minutes($retryAfterSeconds);
+            header('Retry-After: ' . $retryAfterSeconds);
+            http_response_code(429);
+            echo json_encode(['ok' => false, 'error' => "Too many verification codes requested. Please try again in {$displayMinutes} minute" . ($displayMinutes > 1 ? 's' : '') . "."]);
+            exit;
+        }
+
         regenerate_session_on_login();
         unset($_SESSION['user_id']);
         clear_remember_cookie($userId);
