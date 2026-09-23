@@ -1,12 +1,19 @@
 <?php
 /**
- * Read-only diagnostic for the production login lockout.
+ * Read-only diagnostic for the login and account-creation rate limiters.
  *
- * Why this exists: on dormmart.me the account-creation limiter throttles
- * correctly but the login limiter never does, with no errors in the logs and
- * byte-identical code to local (where it works). The two differ only in which
- * table they use, so this prints the state of both plus the MySQL session
- * settings that affect how their timestamp columns round-trip.
+ * Both limiters fail open by design: consume_rate_limit() and
+ * consume_account_creation_attempt() swallow their exceptions and report "not
+ * blocked", so a limiter that has stopped throttling looks identical from
+ * outside to one that is simply not being tripped. This prints what the
+ * black-box view cannot: each table's schema, its live rows, and the MySQL
+ * session settings that decide how the timestamp columns round-trip.
+ *
+ * Read the rows first. Buckets stuck at an attempt count of 1 mean each request
+ * is hashing to a fresh key rather than accumulating -- that is what a bad
+ * rate_limit_client_ip() looks like, and how the Railway proxy-node bug was
+ * found (every request arrived from a different 100.64.0.x node, so keying on
+ * REMOTE_ADDR opened a new bucket every time).
  *
  * Run it against production with:
  *
@@ -79,8 +86,10 @@ foreach (['login_rate_limits', 'account_creation_rate_limits'] as $table) {
 heading('round-trip check: does UTC_TIMESTAMP() survive a TIMESTAMP column?');
 // login_rate_limits.last_failed_attempt is TIMESTAMP (timezone-converted on
 // read and write); account_creation_rate_limits.last_attempt_at is DATETIME
-// (stored verbatim). If the TIMESTAMP column reads back shifted, the limiter's
-// 10-minute window test is always true and attempts reset to 1 every request.
+// (stored verbatim). Were the TIMESTAMP column ever to read back shifted, the
+// limiter's 10-minute window test would always be true and attempts would reset
+// to 1 every request. MySQL 9 and MariaDB 10.4 both round-trip it correctly, so
+// this is a guard against a future engine or timezone change, not a known fault.
 $conn->query('CREATE TEMPORARY TABLE _tz_probe (ts TIMESTAMP NULL DEFAULT NULL, dt DATETIME NULL DEFAULT NULL)');
 $conn->query('INSERT INTO _tz_probe (ts, dt) VALUES (UTC_TIMESTAMP(), UTC_TIMESTAMP())');
 $probe = $conn->query(
@@ -95,4 +104,5 @@ foreach ($probe as $key => $value) {
     printf("  %-20s %s\n", $key, $value === null ? 'NULL' : $value);
 }
 echo "\n  Both *_age_seconds should be ~0 and both *_looks_expired should be 0.\n";
-echo "  A large ts_age_seconds, or ts_looks_expired=1, is the bug.\n";
+echo "  A large ts_age_seconds, or ts_looks_expired=1, means the window test is\n";
+echo "  broken and no login lockout can ever fire.\n";
