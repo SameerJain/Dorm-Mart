@@ -201,7 +201,7 @@ export default function WishlistPage() {
             className="fixed inset-0 bg-black/40 z-40 lg:hidden"
             onClick={() => setShowMobileFilters(false)}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl border-t border-gray-200 dark:border-gray-700 max-h-[80dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+          <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl border-t border-gray-200 dark:border-gray-700 max-h-[80dvh] overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
             <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Quick filters

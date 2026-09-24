@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import chatIcon from "../../assets/icons/icons8-chat-96.png";
 import notificationIcon from "../../assets/icons/icons8-notification-96.png";
@@ -21,12 +21,30 @@ function MainNav() {
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
+  const navRef = useRef(null);
   const location = useLocation();
   const currentUser = useAuth();
   const isModerator = currentUser?.role === "moderator";
 
   const ctx = useContext(ChatContext);
   const { unreadMsgTotal, unreadNotificationTotal } = ctx;
+
+  // Publish the rendered nav height as --nav-h so full-height pages (chat,
+  // settings) can size themselves to the space below it at every breakpoint.
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return undefined;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty("--nav-h", `${nav.offsetHeight}px`);
+    publish();
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publish);
+    observer?.observe(nav);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty("--nav-h");
+    };
+  }, []);
 
   // helper: close mobile menu + market submenu together
   const closeMobileMenuAndMarket = () => {
@@ -98,8 +116,11 @@ function MainNav() {
   };
 
   return (
-    <nav className="bg-blue-600 text-slate-100 dark:bg-slate-900 dark:text-gray-100 dark:shadow-sm dark:shadow-black/20 pt-[env(safe-area-inset-top,0px)]">
-      <div className="mx-auto flex min-w-0 max-w-[100vw] items-center gap-1 sm:gap-2 md:gap-4 px-1.5 py-2 sm:px-2 md:p-3 box-border">
+    <nav
+      ref={navRef}
+      className="bg-blue-600 text-slate-100 dark:bg-slate-900 dark:text-gray-100 dark:shadow-sm dark:shadow-black/20 pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
+    >
+      <div className="mx-auto flex min-w-0 max-w-[100vw] items-center gap-1 sm:gap-2 md:gap-4 px-1.5 py-2 sm:px-2 md:p-3 short:!py-1.5 box-border">
         {/* Dorm Mart logo - visible on desktop only */}
         <button
           onClick={() => navigate("/app")}
@@ -196,14 +217,14 @@ function MainNav() {
               </svg>
             </button>
             {showDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
+              <div className="absolute right-0 mt-2 w-48 max-h-[calc(100dvh-var(--nav-h,64px)-1rem)] overflow-y-auto overscroll-contain bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
                 {isModerator && (
                   <button
                     onClick={() => {
                       navigate("/app/moderation");
                       setShowDropdown(false);
                     }}
-                    className="w-full px-4 py-2 text-left font-semibold text-red-700 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-gray-600"
+                    className="w-full px-4 py-2 coarse:py-3 text-left font-semibold text-red-700 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-gray-600"
                   >
                     Moderation
                   </button>
@@ -213,7 +234,7 @@ function MainNav() {
                     handleSellerDashboard();
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   Seller Dashboard
                 </button>
@@ -222,7 +243,7 @@ function MainNav() {
                     handleWishlist();
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   My Wishlist
                 </button>
@@ -231,7 +252,7 @@ function MainNav() {
                     handleOngoingPurchases();
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   Ongoing Purchases
                 </button>
@@ -240,7 +261,7 @@ function MainNav() {
                     handlePurchaseHistory();
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   Purchase History
                 </button>
@@ -250,9 +271,20 @@ function MainNav() {
                     navigate("/app/setting");
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   Settings
+                </button>
+                <button
+                  onClick={() => {
+                    navigate("/app/faq", {
+                      state: { defaultTab: getTabForPath(location.pathname) },
+                    });
+                    setShowDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                >
+                  FAQ
                 </button>
               </div>
             )}
@@ -272,7 +304,7 @@ function MainNav() {
                 return next;
               });
             }}
-            className="flex flex-col justify-center items-center w-8 h-8 gap-1.5"
+            className="flex flex-col justify-center items-center w-10 h-10 gap-1.5"
             aria-label="Menu"
           >
             <span className="w-6 h-0.5 bg-white dark:bg-gray-200"></span>
@@ -281,7 +313,7 @@ function MainNav() {
           </button>
 
           {showMobileMenu && (
-            <div className="absolute right-0 mt-2 w-56 rounded-lg border-2 border-blue-400 bg-blue-600 py-2 shadow-lg z-50 dark:border-blue-700 dark:bg-blue-800 dark:shadow-black/40">
+            <div className="absolute right-0 mt-2 w-56 max-h-[calc(100dvh-var(--nav-h,64px)-1rem)] overflow-y-auto overscroll-contain rounded-lg border-2 border-blue-400 bg-blue-600 py-2 shadow-lg z-50 dark:border-blue-700 dark:bg-blue-800 dark:shadow-black/40">
               {isModerator && (
                 <button
                   onClick={() => {
@@ -372,7 +404,7 @@ function MainNav() {
                         handleSellerDashboard();
                         closeMobileMenuAndMarket();
                       }}
-                      className="w-full rounded-t-md px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
+                      className="w-full rounded-t-md px-4 py-2.5 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                     >
                       Seller Dashboard
                     </button>
@@ -381,7 +413,7 @@ function MainNav() {
                         handleWishlist();
                         closeMobileMenuAndMarket();
                       }}
-                      className="w-full px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
+                      className="w-full px-4 py-2.5 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                     >
                       My Wishlist
                     </button>
@@ -390,7 +422,7 @@ function MainNav() {
                         handleOngoingPurchases();
                         closeMobileMenuAndMarket();
                       }}
-                      className="w-full px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
+                      className="w-full px-4 py-2.5 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                     >
                       Ongoing Purchases
                     </button>
@@ -399,7 +431,7 @@ function MainNav() {
                         handlePurchaseHistory();
                         closeMobileMenuAndMarket();
                       }}
-                      className="w-full rounded-b-md px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
+                      className="w-full rounded-b-md px-4 py-2.5 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                     >
                       Purchase History
                     </button>

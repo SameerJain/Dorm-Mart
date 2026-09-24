@@ -73,6 +73,7 @@ try {
     clear_two_factor_challenge();
     $_SESSION['user_id'] = $userId;
     $_SESSION['auth_version'] = (int)$user['auth_version'];
+    notify_new_login_device($userId);
     record_login_device($userId);
     issue_remember_cookie($userId);
 

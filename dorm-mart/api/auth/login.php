@@ -204,6 +204,7 @@ try {
     regenerate_session_on_login();
     $_SESSION['user_id'] = $userId;
     $_SESSION['auth_version'] = (int)$row['auth_version'];
+    notify_new_login_device($userId);
     record_login_device($userId);
 
     // Persist across restarts

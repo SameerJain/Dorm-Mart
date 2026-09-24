@@ -91,6 +91,8 @@ Built-in payments depend on the installation's Stripe configuration and seller e
 
 - Choose up to three interests to help shape your recommendations, and switch between light and dark mode.
 - Manage notifications for saved items, purchase requests, cancellations, and review reminders. Open, mark read, or delete notifications from one page.
+- Sellers also hear when a buyer confirms or declines the Confirm Purchase form, get a reminder to rate their buyer after a sale, and get a nudge when a listing has had no saves, messages, or purchase requests for two weeks.
+- Get notified when someone reviews your item or rates you as a buyer, and when someone signs in to your account from a device you haven't used before.
 - Set promotional listing emails to daily, weekly, or off. Sending those digests requires a scheduled job on the server.
 - Add a profile photo, a bio, and an Instagram link. Your public profile shows them with your listings, the reviews on your items, and your average rating. You can open anyone else's profile the same way.
 - View your account information.
@@ -101,7 +103,9 @@ Built-in payments depend on the installation's Stripe configuration and seller e
 ### Report problems
 
 - Report a message from chat. Profanity filtering also flags messages for moderator review.
-- Moderators have a separate dashboard for reports and flagged messages, with controls to resolve reports, ban or unban users, and maintain the word filter.
+- Report a listing with the red flag on its page. Pick a reason, such as a prohibited item, a scam, or a misleading description, and add details if you like.
+- Moderators have a separate dashboard for message reports, listing reports, and flagged messages. They can remove a reported listing, choose the reason the seller sees and add a note, dismiss reports, ban or unban users, and maintain the word filter.
+- Sellers are notified when a moderator removes their listing, and people who file reports hear the outcome.
 - Read the Privacy Policy, Terms of Service, and safety guidance inside the app.
 
 ## Under the hood

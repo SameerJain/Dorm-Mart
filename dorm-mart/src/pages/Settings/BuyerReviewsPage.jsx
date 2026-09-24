@@ -126,9 +126,9 @@ function BuyerReviewsPage() {
                       }}
                     >
                       <p
-                        className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all overflow-wrap-anywhere"
+                        className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words overflow-wrap-anywhere"
                         style={{
-                          wordBreak: "break-all",
+                          wordBreak: "break-word",
                           overflowWrap: "anywhere",
                         }}
                       >

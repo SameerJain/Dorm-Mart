@@ -7,12 +7,22 @@ init_json_endpoint('GET');
 
 require __DIR__ . '/../auth/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../helpers/request.php';
 
 try {
     $userId = require_login();
 
     $conn = db();
     $conn->set_charset('utf8mb4');
+
+    // Stale-listing nudges have no scheduler, so they are generated here. The
+    // page polls every few seconds; checking once an hour per session is plenty.
+    if (request_is_same_origin_fetch()
+        && time() - (int)($_SESSION['stale_listings_checked_at'] ?? 0) >= 3600) {
+        $_SESSION['stale_listings_checked_at'] = time();
+        notification_stale_listings($conn, $userId);
+    }
 
     $stmt = $conn->prepare(
         'SELECT notification_id, type, title, message, image_url, severity, destination, is_read, created_at

@@ -19,6 +19,21 @@ jest.mock("../../utils/csrfFetch", () => ({ csrfFetch: jest.fn() }));
 
 const response = (body) => ({ ok: true, json: async () => body });
 
+// Saves are debounced 400ms; leave headroom for a loaded CI runner (the full
+// suite runs in band and this file timed out at 1.5s under that load).
+const SAVE_WAIT_MS = 4000;
+jest.setTimeout(15000);
+
+// The page auto-saves (debounced) whenever values change, including once right
+// after the initial load, so wait for the save that carries the expected fields
+// rather than whichever call happens to be last.
+const savedBodies = () => csrfFetch.mock.calls.map((call) => JSON.parse(call[1].body));
+const waitForSave = (expected) =>
+  waitFor(
+    () => expect(savedBodies()).toContainEqual(expect.objectContaining(expected)),
+    { timeout: SAVE_WAIT_MS },
+  );
+
 beforeEach(() => {
   jest.clearAllMocks();
   global.fetch = jest.fn((url) =>
@@ -53,12 +68,7 @@ test("loads and persists the seller contact-sharing toggle", async () => {
 
   fireEvent.click(toggle);
 
-  await waitFor(() => expect(csrfFetch).toHaveBeenCalled(), { timeout: 1500 });
-  const savedBody = JSON.parse(csrfFetch.mock.calls.at(-1)[1].body);
-  expect(savedBody).toMatchObject({
-    revealContact: false,
-    contactPhone: "(716) 555-0123",
-  });
+  await waitForSave({ revealContact: false, contactPhone: "(716) 555-0123" });
 });
 
 test("edits and persists the phone number field", async () => {
@@ -67,9 +77,7 @@ test("edits and persists the phone number field", async () => {
   const phoneInput = await screen.findByLabelText("Phone number (optional)");
   fireEvent.change(phoneInput, { target: { value: "716-555-9999" } });
 
-  await waitFor(() => expect(csrfFetch).toHaveBeenCalled(), { timeout: 1500 });
-  const savedBody = JSON.parse(csrfFetch.mock.calls.at(-1)[1].body);
-  expect(savedBody).toMatchObject({ contactPhone: "716-555-9999" });
+  await waitForSave({ contactPhone: "716-555-9999" });
 });
 
 test("shows backend validation failures instead of silently losing changes", async () => {
@@ -85,7 +93,7 @@ test("shows backend validation failures instead of silently losing changes", asy
   fireEvent.click(toggle);
 
   expect(
-    (await screen.findByRole("alert", {}, { timeout: 1500 })).textContent,
+    (await screen.findByRole("alert", {}, { timeout: SAVE_WAIT_MS })).textContent,
   ).toContain("Unable to save preferences");
 });
 
@@ -97,9 +105,5 @@ test.each(["off", "daily", "weekly"])("persists the %s promotional email frequen
     target: { value: frequency },
   });
 
-  await waitFor(() => expect(csrfFetch).toHaveBeenCalled(), { timeout: 1500 });
-  expect(JSON.parse(csrfFetch.mock.calls.at(-1)[1].body)).toMatchObject({
-    promoFrequency: frequency,
-    promoEmails: frequency !== "off",
-  });
+  await waitForSave({ promoFrequency: frequency, promoEmails: frequency !== "off" });
 });

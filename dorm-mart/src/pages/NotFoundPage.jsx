@@ -32,7 +32,7 @@ export default function NotFoundPage() {
   return (
     <>
       {!isInsideRootLayout && <MainNav />}
-      <main className="min-h-[calc(100vh-64px)] bg-gray-50 px-4 py-16 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+      <main className="min-h-[calc(100dvh-var(--nav-h,64px))] bg-gray-50 px-4 py-16 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
         <section className="mx-auto flex max-w-2xl flex-col items-center text-center">
           <div
             className="flex items-center justify-center font-black leading-none tracking-tighter"

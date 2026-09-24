@@ -141,6 +141,25 @@ try {
         }
     }
     
+    // Tell whoever did not cancel, so nobody travels to a meetup that is off.
+    notification_clear_prompt($conn, $requestId, 'schedule_request');
+    if (in_array($currentStatus, ['pending', 'accepted'], true)) {
+        $cancelledConvId = (int)($row['conversation_id'] ?? 0);
+        notification_insert($conn, [
+            'recipient_user_id' => $userId === $sellerId ? $buyerId : $sellerId,
+            'type' => 'schedule_cancelled',
+            'product_id' => $inventoryProductId > 0 ? $inventoryProductId : null,
+            'scheduled_request_id' => $requestId,
+            'title' => (string)($row['item_title'] ?? 'Scheduled purchase'),
+            'message' => scheduled_purchase_user_display_name($conn, $userId)
+                . ' cancelled the scheduled meetup at ' . $row['meet_location'] . '.',
+            'image_url' => notification_first_image($row['item_photos'] ?? null),
+            'severity' => 'urgent',
+            'destination' => $cancelledConvId > 0 ? '/app/chat?conv=' . $cancelledConvId : '/app/seller-dashboard/ongoing-purchases',
+            'idempotency_key' => 'schedule-cancelled-' . $requestId,
+        ]);
+    }
+
     // Create special message in chat
     $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
     if ($conversationId > 0) {

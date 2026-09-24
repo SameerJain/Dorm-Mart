@@ -4,6 +4,7 @@ import ItemDetailHeader from "./components/ItemDetailHeader";
 import ItemFactsPanel from "./components/ItemFactsPanel";
 import ProductActionsPanel from "./components/ProductActionsPanel";
 import ProductImageGallery from "./components/ProductImageGallery";
+import ReportListingButton from "./components/ReportListingButton";
 import SellerMetaRow from "./components/SellerMetaRow";
 import useCurrentUserId from "./hooks/useCurrentUserId";
 import useItemProductId from "./hooks/useItemProductId";
@@ -33,6 +34,12 @@ export default function ViewProduct() {
     myId &&
     normalized?.sellerId &&
     Number(myId) === Number(normalized.sellerId);
+
+  // Only live postings can be reported, and never by their own seller.
+  const canReportListing =
+    Boolean(normalized && myId) &&
+    !isSellerViewingOwnProduct &&
+    ["Active", "Pending"].includes(normalized.itemStatus);
 
   const { isInWishlist, wishlistLoading, wishlistError, handleWishlistToggle } =
     useWishlistStatus({
@@ -112,9 +119,17 @@ export default function ViewProduct() {
               />
 
               <section className="flex flex-col gap-4 min-w-0">
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words break-all overflow-hidden">
-                  {normalized.title}
-                </h2>
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="min-w-0 text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words overflow-wrap-anywhere overflow-hidden">
+                    {normalized.title}
+                  </h2>
+                  {canReportListing ? (
+                    <ReportListingButton
+                      productId={normalized.productId}
+                      title={normalized.title}
+                    />
+                  ) : null}
+                </div>
 
                 <SellerMetaRow normalized={normalized} />
 

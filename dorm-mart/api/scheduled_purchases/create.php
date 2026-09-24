@@ -8,6 +8,7 @@ require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/../payments/helpers.php';
+require_once __DIR__ . '/../helpers/notifications.php';
 
 init_json_endpoint('POST');
 
@@ -135,7 +136,7 @@ try {
     $conn->set_charset('utf8mb4');
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $itemStmt = $conn->prepare('SELECT product_id, title, seller_id, price_nego, trades, item_location, listing_price FROM INVENTORY WHERE product_id = ? LIMIT 1');
+    $itemStmt = $conn->prepare('SELECT product_id, title, seller_id, price_nego, trades, item_location, listing_price, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
     if (!$itemStmt) {
         throw new RuntimeException('Failed to prepare inventory query');
     }
@@ -370,6 +371,19 @@ try {
             'payment_mode' => $paymentMode,
         ]);
     }
+
+    // The request quietly expires if the buyer never answers, and the chat card
+    // alone is easy to miss, so prompt them in notifications too.
+    notification_insert($conn, [
+        'recipient_user_id' => $buyerId, 'type' => 'schedule_request',
+        'product_id' => $inventoryId, 'scheduled_request_id' => $requestId,
+        'title' => (string)($itemRow['title'] ?? 'Scheduled purchase'),
+        'message' => scheduled_purchase_user_display_name($conn, $sellerId)
+            . ' scheduled a meetup at ' . $meetLocation . '. Accept or decline it in chat before it expires.',
+        'image_url' => notification_first_image($itemRow['photos'] ?? null), 'severity' => 'warning',
+        'destination' => '/app/chat?conv=' . $conversationId,
+        'idempotency_key' => 'schedule-request-' . $requestId,
+    ]);
 
     $conn->commit();
 

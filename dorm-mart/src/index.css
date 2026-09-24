@@ -25,9 +25,16 @@
   }
 }
 
-@media (min-width: 3200px) and (min-height: 1800px) {
+@media (min-width: 2560px) and (min-height: 1440px) {
   html {
     font-size: 125%;
+  }
+}
+
+/* 4K monitors run at 100% scaling */
+@media (min-width: 3200px) and (min-height: 1800px) {
+  html {
+    font-size: 150%;
   }
 }
 
@@ -103,12 +110,25 @@
   }
 }
 
+/*
+ * Clip stray horizontal overflow without turning body/#root into scroll
+ * containers: overflow-y:auto on them silently broke every position:sticky
+ * element on the page. `clip` keeps the viewport as the scroller; browsers
+ * without it fall back to the html rule.
+ */
+html {
+  overflow-x: hidden;
+}
+
+body,
+#root {
+  overflow-x: clip;
+}
+
 html,
 body,
 #root {
   min-height: 100vh;
-  overflow-x: hidden;
-  overflow-y: auto; /* allow vertical scrolling */
   transition:
     background-color 0.3s ease,
     color 0.3s ease;
@@ -139,6 +159,13 @@ html.dark select {
   border-color: #d1d5db !important; /* gray-300 */
 }
 
+/* iOS Safari zooms the page into any focused field under 16px. */
+@media (pointer: coarse) {
+  :is(input, select, textarea):is([class*="text-xs"], [class*="text-sm"]) {
+    font-size: 16px !important;
+  }
+}
+
 /*
  * Dark mode: map primary brand blue (Tailwind blue-600 ≈ #2563EB) to blue-800 (#1e40af),
  * matching settings sidebar / app preference. Catches any missed per-component dark: tokens.
@@ -149,16 +176,18 @@ html.dark .bg-blue-600 {
 html.dark .bg-blue-500 {
   background-color: rgb(30 64 175) !important;
 }
-html.dark .hover\:bg-blue-700:hover {
-  background-color: rgb(30 58 138) !important; /* blue-900 */
-}
-html.dark .hover\:bg-blue-600:hover {
-  background-color: rgb(30 58 138) !important;
+@media (hover: hover) and (pointer: fine) {
+  html.dark .hover\:bg-blue-700:hover {
+    background-color: rgb(30 58 138) !important; /* blue-900 */
+  }
+  html.dark .hover\:bg-blue-600:hover {
+    background-color: rgb(30 58 138) !important;
+  }
+  html.dark .hover\:bg-blue-500:hover {
+    background-color: rgb(30 58 138) !important;
+  }
 }
 html.dark .active\:bg-blue-700:active {
-  background-color: rgb(30 58 138) !important;
-}
-html.dark .hover\:bg-blue-500:hover {
   background-color: rgb(30 58 138) !important;
 }
 html.dark .border-blue-600 {
@@ -240,6 +269,26 @@ html.dark .focus-visible\:ring-blue-600:focus-visible {
   }
 }
 
+/* Chat message action sheet (mobile long-press) */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.animate-sheet-up {
+  animation: sheet-up 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet-up {
+    animation: none;
+  }
+}
+
 @keyframes fade-up {
   0% {
     opacity: 0;
@@ -295,6 +344,8 @@ html.dark .focus-visible\:ring-blue-600:focus-visible {
 }
 
 /* Apply the animation only while the element is hovered */
-.qna-bounce-z:hover {
-  animation: qna-bounce-z 220ms ease-out; /* short pop animation */
+@media (hover: hover) and (pointer: fine) {
+  .qna-bounce-z:hover {
+    animation: qna-bounce-z 220ms ease-out; /* short pop animation */
+  }
 }

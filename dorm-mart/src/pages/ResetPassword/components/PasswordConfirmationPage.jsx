@@ -24,12 +24,12 @@ export default function PasswordConfirmationPage({
   );
 
   return (
-    <div className="h-dvh flex flex-col md:flex-row pre-login-bg overflow-hidden">
+    <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
       <div
-        className={`w-full md:w-1/2 flex flex-col items-center justify-center ${columnPadding} pb-[max(1rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-hidden`}
+        className={`w-full lg:w-1/2 flex flex-col items-center justify-center [justify-content:safe_center] ${columnPadding} pb-[max(1rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-y-auto overscroll-contain`}
       >
-        <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
+        <div className="lg:hidden mb-6 sm:mb-8 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
           </h1>

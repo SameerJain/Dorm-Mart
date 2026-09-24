@@ -12,7 +12,7 @@ export default function PageBackButton({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 justify-center rounded-lg border border-slate-300 px-2 py-0.5 text-sm font-medium text-blue-600 hover:bg-slate-50 dark:border-gray-600 dark:text-blue-400 dark:hover:bg-gray-700 ${className}`.trim()}
+      className={`inline-flex items-center gap-1.5 justify-center rounded-lg border border-slate-300 px-2 py-0.5 coarse:min-h-9 coarse:px-3 text-sm font-medium text-blue-600 hover:bg-slate-50 dark:border-gray-600 dark:text-blue-400 dark:hover:bg-gray-700 ${className}`.trim()}
       aria-label="Go back"
       {...rest}
     >

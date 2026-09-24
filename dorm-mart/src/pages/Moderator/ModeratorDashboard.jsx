@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { API_BASE } from "../../utils/apiConfig.js";
 import { csrfFetch } from "../../utils/csrfFetch.js";
+import { LISTING_REPORT_REASONS, listingReportReasonLabel } from "../../utils/listingReportReasons.js";
 
 async function readJson(response) {
   const data = await response.json().catch(() => ({}));
@@ -21,6 +22,67 @@ function ActionButton({ children, onClick, disabled = false, type = "button" }) 
     >
       {children}
     </button>
+  );
+}
+
+function ListingReportRow({ report, working, onResolve, onChangeBan }) {
+  const [removalReason, setRemovalReason] = useState(report.reason);
+  const [note, setNote] = useState("");
+  const isOpen = report.status === "open";
+  const listingLive = Boolean(report.product_id && report.item_status);
+  const otherOpen = Math.max(0, Number(report.open_reports_for_listing || 0) - 1);
+
+  function remove() {
+    const others = otherOpen > 0 ? ` It will also resolve ${otherOpen} other open report${otherOpen === 1 ? "" : "s"} on this listing.` : "";
+    if (!window.confirm(`Remove "${report.listing_title}"? This deletes the listing and notifies the seller.${others}`)) return;
+    onResolve({ report_id: report.report_id, action: "remove", removal_reason: removalReason, note: note.trim() });
+  }
+
+  return (
+    <tr className="border-b align-top dark:border-gray-700">
+      <td className="p-3 capitalize">{report.status}</td>
+      <td className="max-w-xs p-3">
+        {listingLive ? (
+          <Link className="font-semibold text-blue-600 hover:underline dark:text-blue-400" to={`/app/viewProduct/${report.product_id}`}>{report.listing_title}</Link>
+        ) : (
+          <span className="font-semibold">{report.listing_title}</span>
+        )}
+        <p className="mt-1 text-xs text-gray-500">{listingLive ? `${report.item_status}${report.listing_price != null ? ` · $${Number(report.listing_price).toFixed(2)}` : ""}` : "Listing no longer exists"}</p>
+        {isOpen && otherOpen > 0 && <p className="mt-1 text-xs font-semibold text-red-600 dark:text-red-400">+{otherOpen} other open report{otherOpen === 1 ? "" : "s"}</p>}
+      </td>
+      <td className="max-w-sm p-3">
+        <p className="font-medium">{listingReportReasonLabel(report.reason)}</p>
+        {report.details && <p className="mt-1 whitespace-pre-wrap text-xs text-gray-600 dark:text-gray-400">{report.details}</p>}
+        <p className="mt-1 text-xs text-gray-500">{new Date(report.created_at).toLocaleString()}</p>
+      </td>
+      <td className="p-3 text-xs text-gray-600 dark:text-gray-400">Seller: {report.seller_name || "Deleted User"}<br />Reporter: {report.reporter_name || "Deleted User"}</td>
+      <td className="p-3">
+        <div className="flex min-w-[14rem] flex-col gap-2">
+          {isOpen && (
+            <>
+              {listingLive && (
+                <>
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                    Reason shown to seller
+                    <select value={removalReason} onChange={(event) => setRemovalReason(event.target.value)} disabled={working} className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                      {LISTING_REPORT_REASONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
+                  <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} disabled={working} placeholder="Optional note to the seller" className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
+                </>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <ActionButton disabled={working} onClick={remove}>{listingLive ? "Remove listing" : "Resolve"}</ActionButton>
+                <button type="button" disabled={working} onClick={() => onResolve({ report_id: report.report_id, action: "dismiss" })} className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold disabled:opacity-50 dark:border-gray-600">Dismiss</button>
+              </div>
+            </>
+          )}
+          {report.seller_id && report.seller_role !== "moderator" && (
+            <div><ActionButton disabled={working} onClick={() => onChangeBan(report.seller_id, Boolean(Number(report.seller_is_banned)), "Reported listing")}>{Number(report.seller_is_banned) ? "Unban seller" : "Ban seller"}</ActionButton></div>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }
 
@@ -67,14 +129,14 @@ export default function ModeratorDashboard() {
     }
   }
 
-  async function changeBan(userId, isBanned) {
+  async function changeBan(userId, isBanned, reason = "Unsafe chat activity") {
     if (!userId) return;
     const action = isBanned ? "unban" : "ban";
     if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
     await post("ban_user.php", {
       user_id: userId,
       banned: !isBanned,
-      reason: "Unsafe chat activity",
+      reason,
     });
   }
 
@@ -96,10 +158,11 @@ export default function ModeratorDashboard() {
     ["Open reports", stats.open_reports || 0],
     ["Total reports", stats.total_reports || 0],
     ["Banned users", stats.banned_users || 0],
+    ["Open listing reports", stats.open_listing_reports || 0],
   ];
 
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-gray-50 px-4 py-8 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <main className="min-h-[calc(100dvh-var(--nav-h,64px))] bg-gray-50 px-4 py-8 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
       <div className="mx-auto max-w-7xl space-y-8">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -115,13 +178,35 @@ export default function ModeratorDashboard() {
 
         {error && <p role="alert" className="rounded-lg bg-red-100 p-4 text-red-800 dark:bg-red-950 dark:text-red-200">{error}</p>}
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Moderation statistics">
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" aria-label="Moderation statistics">
           {cards.map(([label, value]) => (
             <article key={label} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
               <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
               <p className="mt-1 text-3xl font-bold">{value}</p>
             </article>
           ))}
+        </section>
+
+        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <h2 className="text-xl font-bold">Listing reports</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Removing a listing deletes it, closes its chats, resolves every open report on it, and notifies the seller with the reason below.</p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead><tr className="border-b dark:border-gray-700"><th className="p-3">Status</th><th className="p-3">Listing</th><th className="p-3">Report</th><th className="p-3">People</th><th className="p-3">Actions</th></tr></thead>
+              <tbody>
+                {(dashboard?.listing_reports || []).map((report) => (
+                  <ListingReportRow
+                    key={report.report_id}
+                    report={report}
+                    working={working}
+                    onResolve={(body) => post("resolve_listing_report.php", body)}
+                    onChangeBan={changeBan}
+                  />
+                ))}
+                {(dashboard?.listing_reports || []).length === 0 && <tr><td colSpan="5" className="p-6 text-center text-gray-500">No listing reports yet.</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">

@@ -8,6 +8,7 @@ require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../helpers/notifications.php';
 
 init_json_endpoint('POST');
 
@@ -207,6 +208,8 @@ try {
     } catch (Throwable $updateError) {
         // Silently ignore seller_rating update failures to not break review submission
     }
+
+    notification_review_received($conn, 'product', $sellerId, $userId, $productId, $rating, (int)$reviewId);
 
     $conn->close();
 

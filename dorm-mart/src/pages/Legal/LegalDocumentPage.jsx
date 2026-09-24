@@ -16,7 +16,7 @@ export default function LegalDocumentPage({ documentKey }) {
   };
 
   return (
-    <main className="min-h-dvh pre-login-bg px-4 py-6 text-gray-800 sm:px-6 sm:py-10">
+    <main className="min-h-dvh pre-login-bg px-4 py-6 pt-[max(1.5rem,env(safe-area-inset-top))] text-gray-800 sm:px-6 sm:py-10">
       <article className="mx-auto max-w-3xl rounded-2xl bg-white p-5 shadow-xl sm:p-8 md:p-10">
         <button
           type="button"

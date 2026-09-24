@@ -343,6 +343,20 @@ function mark_inventory_as_sold(mysqli $conn, array $row): void
         'idempotency_key' => 'review-reminder-' . (int)($row['confirm_request_id'] ?? 0),
         'available_at' => gmdate('Y-m-d H:i:s', time() + 86400),
     ]);
+    $sellerId = (int)($row['seller_user_id'] ?? 0);
+    if ($sellerId > 0) {
+        $saleConvId = (int)($row['conversation_id'] ?? 0);
+        notification_insert($conn, [
+            'recipient_user_id' => $sellerId, 'type' => 'rate_buyer_reminder', 'product_id' => $productId,
+            'scheduled_request_id' => !empty($row['scheduled_request_id']) ? (int)$row['scheduled_request_id'] : null,
+            'title' => $title,
+            'message' => 'How did the sale go? Rate your buyer so other sellers know what to expect.',
+            'image_url' => $image, 'severity' => 'info',
+            'destination' => $saleConvId > 0 ? '/app/chat?conv=' . $saleConvId : '/app/seller-dashboard',
+            'idempotency_key' => 'rate-buyer-reminder-' . (int)($row['confirm_request_id'] ?? 0),
+            'available_at' => gmdate('Y-m-d H:i:s', time() + 86400),
+        ]);
+    }
     $wishlistDelete = $conn->prepare('DELETE FROM wishlist WHERE product_id = ?');
     if (!$wishlistDelete) throw new RuntimeException('Failed to remove sold item from wishlists');
     $wishlistDelete->bind_param('i', $productId);
@@ -463,6 +477,7 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
     if (!$wasUpdated) {
         return $row;
     }
+    notification_clear_prompt($conn, (int)($row['scheduled_request_id'] ?? 0), 'confirm_request');
 
     $selectStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE confirm_request_id = ? LIMIT 1');
     if (!$selectStmt) {
@@ -507,6 +522,8 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
         } else {
             release_inventory_after_unsuccessful_confirm($conn, $updatedRow);
         }
+
+        notify_seller_confirm_outcome($conn, $updatedRow, 'auto_accepted');
     }
 
     return $updatedRow;
@@ -559,4 +576,70 @@ function build_confirm_response_metadata(array $row, string $type): array
         'responded_at' => (new DateTime('now', new DateTimeZone('UTC')))->format(DateTime::ATOM),
         'confirm_purchase_status' => $confirmPurchaseStatus,
     ];
+}
+
+/**
+ * Tell the seller how the buyer answered the Confirm Purchase form (or that it
+ * was accepted automatically once it expired), so they are not left checking
+ * the chat to find out whether the sale is closed. Best-effort: the response
+ * has already been recorded when this runs.
+ */
+function notify_seller_confirm_outcome(mysqli $conn, array $row, string $outcome): void
+{
+    $sellerId = (int)($row['seller_user_id'] ?? 0);
+    $buyerId = (int)($row['buyer_user_id'] ?? 0);
+    $productId = (int)($row['inventory_product_id'] ?? 0);
+    $confirmId = (int)($row['confirm_request_id'] ?? 0);
+    if ($sellerId <= 0 || $confirmId <= 0) {
+        return;
+    }
+
+    try {
+        $item = [];
+        if ($productId > 0) {
+            $stmt = $conn->prepare('SELECT title, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
+            if (!$stmt) throw new RuntimeException('Failed to prepare confirm outcome item lookup');
+            $stmt->bind_param('i', $productId);
+            $stmt->execute();
+            $item = $stmt->get_result()->fetch_assoc() ?: [];
+            $stmt->close();
+        }
+
+        $buyer = get_user_display_names($conn, [$buyerId])[$buyerId] ?? 'Your buyer';
+        $successful = (bool)($row['is_successful'] ?? false);
+
+        if ($outcome === 'buyer_declined') {
+            $type = 'confirm_declined';
+            $severity = 'warning';
+            $message = "{$buyer} declined the Confirm Purchase form. Check the chat to sort out what happened, then send an updated form.";
+        } elseif ($outcome === 'auto_accepted') {
+            $type = 'confirm_auto_accepted';
+            $severity = $successful ? 'success' : 'info';
+            $message = $successful
+                ? "{$buyer} didn't respond within 24 hours, so the sale was confirmed automatically and the item is marked as sold."
+                : "{$buyer} didn't respond within 24 hours, so your report that the sale didn't happen was accepted and the listing is back on sale.";
+        } else {
+            $type = 'confirm_accepted';
+            $severity = $successful ? 'success' : 'info';
+            $message = $successful
+                ? "{$buyer} confirmed the sale. The item is now marked as sold."
+                : "{$buyer} agreed the sale didn't go through. The listing is back on sale.";
+        }
+
+        $conversationId = (int)($row['conversation_id'] ?? 0);
+        notification_insert($conn, [
+            'recipient_user_id' => $sellerId,
+            'type' => $type,
+            'product_id' => $productId > 0 ? $productId : null,
+            'scheduled_request_id' => !empty($row['scheduled_request_id']) ? (int)$row['scheduled_request_id'] : null,
+            'title' => (string)($item['title'] ?? 'Your sale'),
+            'message' => $message,
+            'image_url' => notification_first_image($item['photos'] ?? null),
+            'severity' => $severity,
+            'destination' => $conversationId > 0 ? '/app/chat?conv=' . $conversationId : '/app/seller-dashboard',
+            'idempotency_key' => 'confirm-outcome-' . $confirmId,
+        ]);
+    } catch (Throwable $e) {
+        error_log('confirm outcome notification failed: ' . $e->getMessage());
+    }
 }

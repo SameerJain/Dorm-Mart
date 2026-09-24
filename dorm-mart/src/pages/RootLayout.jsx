@@ -103,16 +103,23 @@ function RootLayout() {
             <MainNav />
           </div>
         )}
-        <Outlet />
+        {/* Keep content clear of the notch / camera cutout in landscape. */}
+        <div className="pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
+          <Outlet />
+        </div>
 
-      {/* FAQ button + modal only on md and larger, hidden on the FAQ page itself */}
+      {/* FAQ button + modal on md and larger, hidden on the FAQ page itself.
+          Phones in landscape reach FAQ from the menu instead, since a floating
+          button covers too much of a ~400px-tall screen. */}
         {location.pathname !== "/app/faq" && (
-          <div className="hidden md:block">
+          <div className="hidden md:block short:!hidden">
           <button
             type="button"
             onClick={handleFAQClick}
             className="
-              fixed bottom-7 right-7 z-50
+              fixed z-50
+              bottom-[max(1.75rem,env(safe-area-inset-bottom))]
+              right-[max(1.75rem,env(safe-area-inset-right))]
               h-12 w-12 flex items-center justify-center
               rounded-full shadow-lg
               bg-blue-600 text-white

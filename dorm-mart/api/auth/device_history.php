@@ -100,6 +100,70 @@ function login_device_fingerprint(): array
     ];
 }
 
+/**
+ * Warn the user when a password or 2FA sign-in comes from a device they have
+ * never used before. Call it before record_login_device(), which adds this
+ * device to the history.
+ *
+ * A device is its browser + OS + device type, matching how Logged Devices
+ * groups sessions; IP address is left out because it changes with networks.
+ * First-ever sign-ins have nothing to compare against and stay quiet.
+ */
+function notify_new_login_device(int $userId): void
+{
+    if ($userId <= 0) {
+        return;
+    }
+
+    $conn = null;
+    try {
+        require_once __DIR__ . '/../database/db_connect.php';
+        require_once __DIR__ . '/../helpers/notifications.php';
+        $conn = db();
+        $fp = login_device_fingerprint();
+
+        $stmt = $conn->prepare(
+            'SELECT COUNT(*) AS total,
+                    COALESCE(SUM(device_type = ? AND browser = ? AND operating_system = ?), 0) AS matches
+               FROM login_history
+              WHERE user_id = ?'
+        );
+        $stmt->bind_param('sssi', $fp['device_type'], $fp['browser'], $fp['operating_system'], $userId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if ((int)($row['total'] ?? 0) === 0 || (int)($row['matches'] ?? 0) > 0) {
+            $conn->close();
+            return;
+        }
+
+        $device = sprintf('%s on %s', $fp['browser'], $fp['operating_system']);
+        $where = $fp['location'] ? " near {$fp['location']}" : '';
+        notification_insert($conn, [
+            'recipient_user_id' => $userId,
+            'type' => 'new_login_device',
+            'title' => 'New sign-in to your account',
+            'message' => "Someone signed in with {$device}{$where}. If this wasn't you, change your password now.",
+            'severity' => 'warning',
+            'destination' => '/app/setting/security-options',
+            'metadata' => [
+                'device_type' => $fp['device_type'],
+                'browser' => $fp['browser'],
+                'operating_system' => $fp['operating_system'],
+                'location' => $fp['location'],
+            ],
+            'idempotency_key' => 'new-login-device-' . hash('sha256', session_id() . "\0" . $userId),
+        ]);
+        $conn->close();
+    } catch (Throwable $e) {
+        if ($conn instanceof mysqli) {
+            $conn->close();
+        }
+        error_log('new login device notification error: ' . $e->getMessage());
+    }
+}
+
 function record_login_device(int $userId): bool
 {
     $sessionId = session_id();

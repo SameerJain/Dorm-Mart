@@ -1,7 +1,7 @@
 import DetailRow from "../../../components/DetailRow";
 import { formatCurrency, formatDate } from "../../../utils/formatters";
 
-const EMPTY_VALUE = "\u2014";
+const EMPTY_VALUE = "N/A";
 
 export default function ItemFactsPanel({ normalized, variant = "product" }) {
   if (variant === "receipt") {

@@ -55,7 +55,7 @@ WHERE email IN (
   'testuserscheduleyellow@buffalo.edu'
 );
 
--- Seller account (Luke Skywalker) – able to create listings
+-- Seller account (Luke Skywalker) - able to create listings
 INSERT INTO user_accounts (
   first_name,
   last_name,
@@ -96,7 +96,7 @@ INSERT INTO user_accounts (
   NULL
 );
 
--- Buyer account (Han Solo) – standard user
+-- Buyer account (Han Solo) - standard user
 INSERT INTO user_accounts (
   first_name,
   last_name,

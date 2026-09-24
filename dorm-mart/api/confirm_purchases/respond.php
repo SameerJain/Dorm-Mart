@@ -103,6 +103,8 @@ try {
         release_inventory_after_unsuccessful_confirm($conn, $row);
     }
 
+    notify_seller_confirm_outcome($conn, $row, $nextStatus);
+
     $conversationId = (int)$row['conversation_id'];
     $metadataType = $action === 'accept' ? 'confirm_accepted' : 'confirm_denied';
     $metadata = build_confirm_response_metadata($row, $metadataType);
@@ -114,6 +116,7 @@ try {
         $messageContent = $buyerName . ' has ' . $actionText . ' the Confirm Purchase form.';
 
         $receiverId = get_conversation_receiver_id($conn, $conversationId, $buyerId);
+        notification_clear_prompt($conn, (int)$row['scheduled_request_id'], 'confirm_request');
         if ($receiverId !== null) {
             delete_confirm_request_message($conn, $conversationId, $confirmRequestId);
             insert_confirm_chat_message($conn, $conversationId, $buyerId, $receiverId, $messageContent, $metadata);

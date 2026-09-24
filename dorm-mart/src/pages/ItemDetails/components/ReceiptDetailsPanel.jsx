@@ -49,7 +49,7 @@ export default function ReceiptDetailsPanel({ purchaseDetails, purchaseRows }) {
               {row.label}
             </span>
             <span className="text-gray-800 dark:text-gray-200 font-medium truncate">
-              {row.value ?? "\u2014"}
+              {row.value ?? "N/A"}
             </span>
           </div>
         ))}

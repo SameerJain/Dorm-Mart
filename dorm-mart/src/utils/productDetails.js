@@ -52,6 +52,7 @@ export function normalizeProductDetail(data, { apiBase, publicBase } = {}) {
     trades: coerceProductBoolean(data.trades),
     priceNego: coerceProductBoolean(data.price_nego),
     sold: coerceProductBoolean(data.sold),
+    itemStatus: data.item_status || null,
     sellerId,
     sellerName:
       data.seller ||

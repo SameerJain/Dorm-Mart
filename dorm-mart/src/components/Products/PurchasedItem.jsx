@@ -121,11 +121,11 @@ function PurchasedItem({
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           {/* Top: title + seller */}
           <div className="mt-2 sm:mt-0 overflow-hidden">
-            <h3 className="text-base sm:text-lg font-semibold line-clamp-2 break-words break-all overflow-hidden text-gray-900 dark:text-gray-100">
+            <h3 className="text-base sm:text-lg font-semibold line-clamp-2 break-words overflow-wrap-anywhere overflow-hidden text-gray-900 dark:text-gray-100">
               <Link
                 to={detailPath}
                 state={detailState}
-                className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-sm break-words break-all"
+                className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-sm break-words overflow-wrap-anywhere"
               >
                 {title}
               </Link>

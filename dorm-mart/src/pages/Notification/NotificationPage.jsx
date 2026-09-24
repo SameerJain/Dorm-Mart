@@ -150,7 +150,7 @@ export default function NotificationPage() {
                   <button
                     type="button"
                     onClick={() => remove(notification.notification_id)}
-                    className="self-start rounded-full border px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200"
+                    className="self-start rounded-full border px-3 py-1.5 coarse:py-2 text-xs text-gray-700 dark:text-gray-200"
                   >
                     Delete
                   </button>
