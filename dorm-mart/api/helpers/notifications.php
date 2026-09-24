@@ -63,6 +63,132 @@ function notification_for_wishlist(mysqli $conn, int $productId, array $base, ?i
     }
 }
 
+/**
+ * Remove a "please respond" prompt once the request it asks about is settled
+ * (answered, cancelled, expired or auto-accepted), so it cannot linger and
+ * send someone to act on something that is already over.
+ */
+function notification_clear_prompt(mysqli $conn, int $requestId, string $type): void
+{
+    $stmt = $conn->prepare('DELETE FROM notifications WHERE scheduled_request_id = ? AND type = ?');
+    if (!$stmt) throw new RuntimeException('Failed to clear notification prompt');
+    $stmt->bind_param('is', $requestId, $type);
+    $stmt->execute();
+    $stmt->close();
+}
+
+/**
+ * Tell someone they were just reviewed: a seller when a buyer reviews their
+ * item, or a buyer when a seller rates them. Best-effort, because the review
+ * itself is already saved and must not fail over a notification.
+ *
+ * @param string $kind 'product' (buyer reviewed the seller's item) or 'buyer'
+ */
+function notification_review_received(
+    mysqli $conn,
+    string $kind,
+    int $recipientId,
+    int $reviewerId,
+    int $productId,
+    float $rating,
+    int $reviewId
+): void {
+    try {
+        $stmt = $conn->prepare(
+            'SELECT i.title, i.photos, u.first_name
+               FROM INVENTORY i
+               LEFT JOIN user_accounts u ON u.user_id = ?
+              WHERE i.product_id = ? LIMIT 1'
+        );
+        if (!$stmt) throw new RuntimeException('Failed to prepare review notification lookup');
+        $stmt->bind_param('ii', $reviewerId, $productId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?: [];
+        $stmt->close();
+
+        $title = (string)($row['title'] ?? 'Your item');
+        $reviewer = trim((string)($row['first_name'] ?? '')) ?: 'Someone';
+        $stars = rtrim(rtrim(number_format($rating, 1), '0'), '.');
+        $isProduct = $kind === 'product';
+
+        notification_insert($conn, [
+            'recipient_user_id' => $recipientId,
+            'type' => $isProduct ? 'review_received' : 'buyer_rating_received',
+            'product_id' => $productId,
+            'title' => $title,
+            'message' => $isProduct
+                ? "{$reviewer} left a {$stars}-star review of your item."
+                : "{$reviewer} rated you {$stars} stars as a buyer.",
+            'image_url' => notification_first_image($row['photos'] ?? null),
+            'severity' => 'success',
+            'destination' => $isProduct ? '/app/seller-dashboard' : '/app/setting/buyer-reviews',
+            'metadata' => ['rating' => $rating, 'reviewer_user_id' => $reviewerId],
+            'idempotency_key' => ($isProduct ? 'review-received-' : 'buyer-rating-received-') . $reviewId,
+        ]);
+    } catch (Throwable $e) {
+        error_log('review notification failed: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Nudge a seller once about an active listing that has had no activity for
+ * 14 days since it was listed: nobody has saved it, messaged about it, or
+ * sent a purchase request. Views alone don't count as activity.
+ *
+ * There is no scheduler for this; it runs lazily when the seller's
+ * notifications load. The idempotency key per listing means the nudge is
+ * sent at most once no matter how often it runs.
+ */
+function notification_stale_listings(mysqli $conn, int $sellerId): void
+{
+    try {
+        $stmt = $conn->prepare(
+            "SELECT i.product_id, i.title, i.photos, i.view_count
+               FROM INVENTORY i
+              WHERE i.seller_id = ?
+                AND i.item_status = 'Active'
+                AND (i.sold = 0 OR i.sold IS NULL)
+                AND i.date_listed <= CURDATE() - INTERVAL 14 DAY
+                AND NOT EXISTS (SELECT 1 FROM wishlist w WHERE w.product_id = i.product_id)
+                AND NOT EXISTS (SELECT 1 FROM conversations c WHERE c.product_id = i.product_id)
+                AND NOT EXISTS (
+                    SELECT 1 FROM scheduled_purchase_requests s
+                     WHERE s.inventory_product_id = i.product_id
+                )"
+        );
+        if (!$stmt) throw new RuntimeException('Failed to prepare stale listing lookup');
+        $stmt->bind_param('i', $sellerId);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        foreach ($rows as $row) {
+            $productId = (int)$row['product_id'];
+            $views = (int)$row['view_count'];
+
+            notification_insert($conn, [
+                'recipient_user_id' => $sellerId,
+                'type' => 'listing_stale',
+                'product_id' => $productId,
+                'title' => (string)($row['title'] ?? 'Your listing'),
+                'message' => sprintf(
+                    'No saves, messages, or purchase requests in the 14 days since you listed this (%d %s). '
+                        . 'A lower price or clearer photos can help it sell.',
+                    $views,
+                    $views === 1 ? 'view' : 'views'
+                ),
+                'image_url' => notification_first_image($row['photos'] ?? null),
+                'severity' => 'info',
+                'destination' => '/app/product-listing/edit/' . $productId,
+                'metadata' => ['views' => $views],
+                'idempotency_key' => "stale-listing-{$productId}",
+            ]);
+        }
+    } catch (Throwable $e) {
+        error_log('stale listing notification failed: ' . $e->getMessage());
+    }
+}
+
 function notification_cancel_schedule(mysqli $conn, int $requestId): void
 {
     $stmt = $conn->prepare("DELETE FROM notifications WHERE scheduled_request_id = ? AND available_at > NOW()");

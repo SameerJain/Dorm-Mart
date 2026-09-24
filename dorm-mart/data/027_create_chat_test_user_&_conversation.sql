@@ -96,7 +96,7 @@ INSERT INTO messages
   (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, created_at)
 VALUES
   (@conv_1_2, @uid1, @uid2, @name1, @name2, 'Hey, you free later?', DATE_SUB(NOW(), INTERVAL 6 DAY)),
-  (@conv_1_2, @uid2, @uid1, @name2, @name1, 'Yeah—what''s up?',     DATE_SUB(NOW(), INTERVAL 6 DAY) + INTERVAL 15 MINUTE),
+  (@conv_1_2, @uid2, @uid1, @name2, @name1, 'Yeah, what''s up?',     DATE_SUB(NOW(), INTERVAL 6 DAY) + INTERVAL 15 MINUTE),
   (@conv_1_2, @uid1, @uid2, @name1, @name2, 'Need a quick review.',  DATE_SUB(NOW(), INTERVAL 6 DAY) + INTERVAL 30 MINUTE),
 
   (@conv_1_3, @uid1, @uid3, @name1, @name3, 'Anish, pushed the fix.', DATE_SUB(NOW(), INTERVAL 2 DAY)),

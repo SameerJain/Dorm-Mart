@@ -85,8 +85,8 @@ function CostTradeInfo({ req, tone }) {
           </span>
         </div>
         <p
-          className={`text-sm font-semibold min-w-0 break-words break-all overflow-wrap-anywhere ${isRedCost ? "text-red-800 dark:text-red-100" : isCompleted ? "text-gray-700 dark:text-gray-300" : "text-amber-800 dark:text-amber-100"}`}
-          style={{ wordBreak: "break-all", overflowWrap: "anywhere" }}
+          className={`text-sm font-semibold min-w-0 break-words overflow-wrap-anywhere ${isRedCost ? "text-red-800 dark:text-red-100" : isCompleted ? "text-gray-700 dark:text-gray-300" : "text-amber-800 dark:text-amber-100"}`}
+          style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
         >
           {req.trade_item_description}
         </p>

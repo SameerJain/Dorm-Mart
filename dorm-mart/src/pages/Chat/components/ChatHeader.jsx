@@ -32,7 +32,7 @@ export default function ChatHeader({
             <button
               type="button"
               onClick={handleProfileHeaderClick}
-              className="text-left text-sm leading-snug font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 min-w-0 w-full flex flex-col md:text-lg md:leading-tight"
+              className="coarse:-my-2 coarse:py-2 text-left text-sm leading-snug font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 min-w-0 w-full flex flex-col md:text-lg md:leading-tight"
             >
               <span
                 className="md:hidden block w-full truncate"

@@ -60,7 +60,7 @@ export default function ViewReceipt() {
     displayedPrice != null
       ? (formatCurrency(displayedPrice) ??
         `$${Number(displayedPrice).toFixed(2)}`)
-      : "\u2014";
+      : "N/A";
 
   const isSuccessful = !purchaseDetails?.failureReason;
   const transactionStatus = isSuccessful ? "Successful" : "Failed";

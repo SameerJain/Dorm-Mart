@@ -97,7 +97,7 @@ function WishlistButton({ isInWishlist, loading, disabled, onClick }) {
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`absolute top-3 right-3 rounded-full font-medium px-3 py-1.5 flex items-center gap-1.5 text-sm whitespace-nowrap ${
+      className={`absolute top-3 right-3 rounded-full font-medium px-3 py-1.5 coarse:px-3.5 coarse:py-2.5 flex items-center gap-1.5 text-sm whitespace-nowrap ${
         isInWishlist
           ? "bg-purple-600 dark:bg-purple-700 hover:bg-purple-700 dark:hover:bg-purple-600 text-white"
           : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../helpers/notifications.php';
+
 /**
  * Lazy expiry: marks pending scheduled purchase requests as 'expired'
  * if the meeting time has passed or 3 days have elapsed since creation.
@@ -58,6 +60,7 @@ function expire_stale_requests(mysqli $conn): void
         if ($claimStmt->affected_rows !== 1) {
             continue;
         }
+        notification_clear_prompt($conn, $requestId, 'schedule_request');
 
         $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
         if ($conversationId <= 0) {

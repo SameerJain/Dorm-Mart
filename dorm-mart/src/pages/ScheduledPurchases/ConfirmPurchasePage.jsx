@@ -298,7 +298,7 @@ export default function ConfirmPurchasePage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Pickup Location
                 </p>
-                <p className="font-medium text-gray-900 dark:text-gray-100 break-words break-all overflow-hidden">
+                <p className="font-medium text-gray-900 dark:text-gray-100 break-words overflow-wrap-anywhere overflow-hidden">
                   {prefill?.meet_location || "N/A"}
                 </p>
               </div>

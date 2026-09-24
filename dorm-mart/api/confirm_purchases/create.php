@@ -96,6 +96,7 @@ try {
             spr.*,
             inv.title AS item_title,
             inv.listing_price,
+            inv.photos AS item_photos,
             buyer.first_name AS buyer_first,
             buyer.last_name AS buyer_last,
             seller.first_name AS seller_first,
@@ -267,6 +268,19 @@ try {
 
     $messageContent = $sellerDisplayName . ' submitted a Confirm Purchase form for ' . $itemTitle . '.';
     insert_confirm_chat_message($conn, $conversationId, $sellerId, $buyerId, $messageContent, $metadata);
+
+    // The seller's own "complete the form" reminder is now moot, and the buyer
+    // has 24 hours before this is accepted on their behalf, so prompt them.
+    notification_clear_prompt($conn, $scheduledRequestId, 'confirm_purchase_reminder');
+    notification_insert($conn, [
+        'recipient_user_id' => $buyerId, 'type' => 'confirm_request',
+        'product_id' => $productId, 'scheduled_request_id' => $scheduledRequestId,
+        'title' => $itemTitle,
+        'message' => $sellerDisplayName . ' sent the Confirm Purchase form. Review it within 24 hours or it will be accepted automatically.',
+        'image_url' => notification_first_image($schedRow['item_photos'] ?? null), 'severity' => 'urgent',
+        'destination' => '/app/chat?conv=' . $conversationId,
+        'idempotency_key' => 'confirm-request-' . $confirmRequestId,
+    ]);
 
     $conn->commit();
 

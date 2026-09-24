@@ -52,7 +52,7 @@ WHERE email IN (
   'testuserchatfeaturesgreen@buffalo.edu'
 );
 
--- Buyer account (Po Dameron) – standard user
+-- Buyer account (Po Dameron) - standard user
 INSERT INTO user_accounts (
   first_name,
   last_name,
@@ -93,7 +93,7 @@ INSERT INTO user_accounts (
   NULL
 );
 
--- Seller account (Kylo Ren) – able to create listings
+-- Seller account (Kylo Ren) - able to create listings
 INSERT INTO user_accounts (
   first_name,
   last_name,

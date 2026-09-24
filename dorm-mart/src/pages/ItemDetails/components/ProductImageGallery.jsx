@@ -3,6 +3,7 @@ import {
   isVideoMediaUrl,
   onProductImageError,
 } from "../../../utils/imageFallback";
+import GalleryVideoPlayer from "./GalleryVideoPlayer";
 
 export default function ProductImageGallery({ photoUrls = [], title }) {
   const [activeIdx, setActiveIdx] = useState(0);
@@ -166,15 +167,28 @@ function GalleryThumb({ url, idx, activeIdx, onSelect, small = false }) {
 
 function GalleryMedia({ url, alt, controls = false }) {
   if (isVideoMediaUrl(url)) {
+    if (controls) {
+      // Keyed by url so switching slides resets playback state.
+      return <GalleryVideoPlayer key={url} src={url} label={alt} />;
+    }
+
     return (
-      <video
-        src={url}
-        aria-label={alt}
-        controls={controls}
-        muted={!controls}
-        preload="metadata"
-        className="h-full w-full object-contain"
-      />
+      <span className="relative block h-full w-full bg-gray-100 dark:bg-gray-900">
+        <video
+          src={url}
+          aria-label={alt}
+          muted
+          preload="metadata"
+          className="h-full w-full object-cover"
+        />
+        <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+          <span className="h-6 w-6 rounded-full bg-blue-600/90 text-white shadow flex items-center justify-center">
+            <svg className="h-3 w-3 translate-x-px" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5.5v13a1 1 0 0 0 1.52.85l10.5-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5Z" />
+            </svg>
+          </span>
+        </span>
+      </span>
     );
   }
 

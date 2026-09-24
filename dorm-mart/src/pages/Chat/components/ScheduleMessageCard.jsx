@@ -348,11 +348,11 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
             )}
             {isTrade && metadata.trade_item_description && (
               <p
-                className={`text-sm font-semibold ${config.textColor} mt-1 min-w-0 break-words break-all overflow-wrap-anywhere`}
-                style={{ wordBreak: "break-all", overflowWrap: "anywhere" }}
+                className={`text-sm font-semibold ${config.textColor} mt-1 min-w-0 break-words overflow-wrap-anywhere`}
+                style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
               >
                 <span className="font-bold">Trade:</span>{" "}
-                <span className="break-all">
+                <span className="overflow-wrap-anywhere">
                   {metadata.trade_item_description}
                 </span>
               </p>
@@ -401,9 +401,9 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
                     className={`text-sm ${hasLocationChange ? "text-orange-600 dark:text-orange-300" : config.textColor} min-w-0 flex-1 break-words`}
                   >
                     <span className="font-semibold">Location:</span>{" "}
-                    <span className="break-all">{meetLocation}</span>
+                    <span className="overflow-wrap-anywhere">{meetLocation}</span>
                     {hasLocationChange && originalMeetLocation && (
-                      <span className="text-xs ml-1 opacity-75 break-all">
+                      <span className="text-xs ml-1 opacity-75 overflow-wrap-anywhere">
                         (was {originalMeetLocation})
                       </span>
                     )}
@@ -416,7 +416,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
                 className={`text-sm ${config.textColor} break-words overflow-hidden`}
               >
                 <span className="font-semibold">Description:</span>{" "}
-                <span className="break-all">{description}</span>
+                <span className="overflow-wrap-anywhere">{description}</span>
               </p>
             )}
             {verificationCode && (

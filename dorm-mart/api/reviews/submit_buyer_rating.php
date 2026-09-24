@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../helpers/notifications.php';
 
 init_json_endpoint('POST');
 
@@ -103,6 +104,15 @@ try {
 
     if (!$success) {
         throw new RuntimeException('Failed to insert buyer rating');
+    }
+
+    notification_review_received($conn, 'buyer', $buyerId, $userId, $productId, $rating, (int)$ratingId);
+
+    $reminderStmt = $conn->prepare("DELETE FROM notifications WHERE recipient_user_id = ? AND product_id = ? AND type = 'rate_buyer_reminder'");
+    if ($reminderStmt) {
+        $reminderStmt->bind_param('ii', $userId, $productId);
+        $reminderStmt->execute();
+        $reminderStmt->close();
     }
 
     // Update buyer's average buyer_rating in user_accounts

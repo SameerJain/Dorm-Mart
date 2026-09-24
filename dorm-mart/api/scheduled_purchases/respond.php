@@ -257,6 +257,27 @@ try {
         }
     }
     
+    // The buyer has answered: drop their prompt, and tell the seller, who is
+    // otherwise left checking the chat to learn whether the meetup is on.
+    notification_clear_prompt($conn, $requestId, 'schedule_request');
+    $accepted = $action === 'accept';
+    $respondedConvId = (int)($row['conversation_id'] ?? 0);
+    notification_insert($conn, [
+        'recipient_user_id' => (int)$row['seller_user_id'],
+        'type' => $accepted ? 'schedule_accepted' : 'schedule_declined',
+        'product_id' => $inventoryProductId > 0 ? $inventoryProductId : null,
+        'scheduled_request_id' => $requestId,
+        'title' => (string)($row['item_title'] ?? 'Scheduled purchase'),
+        'message' => scheduled_purchase_user_display_name($conn, $buyerId)
+            . ($accepted
+                ? ' accepted your scheduled meetup at ' . $row['meet_location'] . '.'
+                : ' declined your scheduled meetup. You can propose a new time in chat.'),
+        'image_url' => notification_first_image($row['item_photos'] ?? null),
+        'severity' => $accepted ? 'success' : 'warning',
+        'destination' => $respondedConvId > 0 ? '/app/chat?conv=' . $respondedConvId : '/app/seller-dashboard/ongoing-purchases',
+        'idempotency_key' => 'schedule-response-' . $requestId,
+    ]);
+
     // Create special message in chat
     $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
     if ($conversationId > 0) {

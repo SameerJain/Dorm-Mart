@@ -58,6 +58,20 @@ export async function editLastMessageApi(messageId, content) {
   return data.message;
 }
 
+// Soft delete: the row (and its content) stays in the database for moderation;
+// both participants just see "This message was deleted".
+export async function deleteMessageApi(messageId) {
+  const response = await csrfFetch(`${API_BASE}/chat/delete_message.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ message_id: messageId }),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.success) throw new Error(data?.error || "Unable to delete message");
+  return data;
+}
+
 export async function tickFetchNewMessages(
   activeConvId,
   myId,
@@ -116,6 +130,7 @@ export async function tickFetchNewMessages(
       content: m.content ?? "",
       ts: Date.parse(m.created_at),
       editedAt: m.edited_at ? Date.parse(m.edited_at) : null,
+      deletedAt: m.deleted_at ? Date.parse(m.deleted_at) : null,
       activityTs: Date.parse(m.activity_at || m.edited_at || m.created_at),
       metadata,
     };

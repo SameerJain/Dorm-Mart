@@ -378,7 +378,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
                 className={`text-sm ${visual.textColor} break-words overflow-hidden min-w-0`}
               >
                 <span className="font-semibold">Location:</span>{" "}
-                <span className="break-all">{meetLocation}</span>
+                <span className="overflow-wrap-anywhere">{meetLocation}</span>
               </p>
             )}
             {sellerNotes && (
@@ -389,7 +389,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
                   Notes
                 </p>
                 <p
-                  className={`text-sm whitespace-pre-wrap break-words break-all overflow-hidden ${visual.textColor} opacity-90`}
+                  className={`text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere overflow-hidden ${visual.textColor} opacity-90`}
                 >
                   {sellerNotes}
                 </p>
@@ -407,7 +407,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
                 </p>
                 {failureReasonNotes && (
                   <p
-                    className={`text-sm whitespace-pre-wrap break-words break-all overflow-hidden ${visual.textColor} opacity-90 mt-0.5`}
+                    className={`text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere overflow-hidden ${visual.textColor} opacity-90 mt-0.5`}
                   >
                     {failureReasonNotes}
                   </p>

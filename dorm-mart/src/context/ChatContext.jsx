@@ -11,6 +11,7 @@ import logger from "../utils/logger";
 import {
   createImageMessageApi,
   createMessageApi,
+  deleteMessageApi,
   editLastMessageApi,
   envBool,
   fetchConversationApi,
@@ -286,7 +287,8 @@ export function ChatProvider({ children }) {
               image_url: m.image_url,
               ts: Date.parse(m.created_at),
               editedAt: m.edited_at ? Date.parse(m.edited_at) : null,
-              activityTs: Date.parse(m.edited_at || m.created_at),
+              deletedAt: m.deleted_at ? Date.parse(m.deleted_at) : null,
+              activityTs: Date.parse(m.deleted_at || m.edited_at || m.created_at),
               metadata,
             };
           }
@@ -297,7 +299,8 @@ export function ChatProvider({ children }) {
             image_url: m.image_url,
             ts: Date.parse(m.created_at),
             editedAt: m.edited_at ? Date.parse(m.edited_at) : null,
-            activityTs: Date.parse(m.edited_at || m.created_at),
+            deletedAt: m.deleted_at ? Date.parse(m.deleted_at) : null,
+            activityTs: Date.parse(m.deleted_at || m.edited_at || m.created_at),
             metadata,
           };
         });
@@ -469,6 +472,31 @@ export function ChatProvider({ children }) {
       editedAt || 0,
     );
     return saved;
+  }
+
+  async function deleteMessage(messageId) {
+    const saved = await deleteMessageApi(messageId);
+    const deletedAt = Date.parse(saved.deleted_at) || Date.now();
+    // Mirror what fetch_conversation.php returns for a deleted row.
+    setMessagesByConv((prev) => ({
+      ...prev,
+      [activeConvId]: (prev[activeConvId] || []).map((message) =>
+        Number(message.message_id) === Number(messageId)
+          ? {
+              ...message,
+              content: "This message was deleted",
+              image_url: undefined,
+              metadata: null,
+              deletedAt,
+              activityTs: deletedAt,
+            }
+          : message,
+      ),
+    }));
+    lastTsRefByConv.current[activeConvId] = Math.max(
+      lastTsRefByConv.current[activeConvId] || 0,
+      deletedAt,
+    );
   }
 
   async function createImageMessage(draft, file) {
@@ -714,6 +742,7 @@ export function ChatProvider({ children }) {
     fetchConversation,
     createMessage,
     editMessage,
+    deleteMessage,
     createImageMessage,
     clearActiveConversation,
     registerConversation: upsertConversationRow,

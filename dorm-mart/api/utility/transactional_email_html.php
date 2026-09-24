@@ -63,7 +63,7 @@ function dm_transactional_welcome_package(string $firstName, string $tempPasswor
     $preheader = 'Your temporary password and next steps for Dorm Mart.';
 
     $inner = '<p style="margin:0 0 16px;color:#f1f5f9;font-size:17px;">Dear ' . $f . ',</p>'
-        . '<p style="margin:0 0 16px;color:#cbd5e1;">Welcome to <strong style="color:#ffffff;">Dorm Mart</strong> &mdash; the student marketplace for UB.</p>'
+        . '<p style="margin:0 0 16px;color:#cbd5e1;">Welcome to <strong style="color:#ffffff;">Dorm Mart</strong>, the student marketplace for UB.</p>'
         . '<p style="margin:0 0 18px;color:#cbd5e1;">Below is your temporary password. <strong style="color:#fca5a5;">Do not share it</strong> with anyone.</p>'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 26px;border-collapse:collapse;border:1px solid #334155;border-radius:8px;overflow:hidden;">'
         . '<tr><td style="padding:22px 20px;background-color:#0f172a;text-align:center;">'
@@ -108,7 +108,7 @@ function dm_transactional_password_reset_package(string $firstName, string $rese
         . '<p style="margin:0 0 22px;color:#93c5fd;font-size:13px;line-height:1.5;word-break:break-all;overflow-wrap:anywhere;">'
         . '<a href="' . $href . '" target="_blank" style="color:#38bdf8;text-decoration:underline;word-break:break-all;overflow-wrap:anywhere;">' . $href . '</a></p>'
         . '<p style="margin:0 0 12px;color:#94a3b8;font-size:14px;">This link expires in <strong style="color:#e2e8f0;">1 hour</strong> for your security.</p>'
-        . '<p style="margin:0 0 22px;color:#64748b;font-size:13px;line-height:1.5;">If you did not ask for a reset, you can ignore this email &mdash; your password will stay the same.</p>'
+        . '<p style="margin:0 0 22px;color:#64748b;font-size:13px;line-height:1.5;">If you did not ask for a reset, you can ignore this email. Your password will stay the same.</p>'
         . '<p style="margin:0;color:#e2e8f0;">Best regards,<br><span style="color:#38bdf8;font-weight:600;">The Dorm Mart Team</span></p>';
 
     $html = dm_transactional_shell($subject, $preheader, $inner);
@@ -184,7 +184,7 @@ function dm_transactional_promo_welcome_package(string $firstName): array
         . '<p style="margin:0 0 8px;color:#cbd5e1;font-size:15px;">&#8226;&nbsp; Your notifications tab and important alerts</p>'
         . '<p style="margin:0;color:#cbd5e1;font-size:15px;">&#8226;&nbsp; New site features and marketplace news</p>'
         . '</td></tr></table>'
-        . '<p style="margin:0 0 22px;color:#94a3b8;font-size:14px;line-height:1.55;">We will keep messages relevant and easy to turn off &mdash; you can change this anytime in your account settings.</p>'
+        . '<p style="margin:0 0 22px;color:#94a3b8;font-size:14px;line-height:1.55;">We will keep messages relevant and easy to turn off. You can change this anytime in your account settings.</p>'
         . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;border-collapse:collapse;"><tr><td style="padding:12px 20px;background-color:#172554;border:1px solid #3b82f6;border-radius:8px;">'
         . '<span style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#93c5fd;">Subscribed successfully</span>'
         . '</td></tr></table>'

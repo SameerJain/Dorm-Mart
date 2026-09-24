@@ -51,3 +51,15 @@ test("single image has no navigation", () => {
   render(<ProductImageGallery photoUrls={[photoUrls[0]]} title="Desk" />);
   expect(screen.queryByRole("button")).not.toBeInTheDocument();
 });
+
+test("videos use the site-styled player instead of native controls", () => {
+  device("Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+  const play = jest.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+  render(<ProductImageGallery photoUrls={["/clip.mp4", "/first.jpg"]} title="Desk" />);
+  const video = screen.getByLabelText("Desk");
+  expect(video.tagName).toBe("VIDEO");
+  expect(video).not.toHaveAttribute("controls");
+  expect(screen.getByRole("slider", { name: "Seek video" })).toBeInTheDocument();
+  fireEvent.click(screen.getAllByRole("button", { name: "Play video" })[0]);
+  expect(play).toHaveBeenCalled();
+});

@@ -151,7 +151,7 @@ export default function LoggedDevicesPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Browser, device, location, or IP address"
-              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-gray-600 dark:bg-gray-900"
+              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
             />
           </label>
           <button

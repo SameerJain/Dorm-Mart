@@ -507,7 +507,7 @@ function ReviewModal({
                         <button
                           type="button"
                           onClick={() => handleRemoveImage(index)}
-                          className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 coarse:p-1.5 mouse:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
                           aria-label="Remove image"
                         >
                           <svg
@@ -604,7 +604,7 @@ function ReviewModal({
                 <div
                   className="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden"
                 >
-                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all">
+                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words overflow-wrap-anywhere">
                     {reviewText}
                   </p>
                 </div>

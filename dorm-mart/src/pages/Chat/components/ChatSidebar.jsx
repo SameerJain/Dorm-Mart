@@ -59,7 +59,7 @@ function ConversationItem({
           setIsMobileList(false);
         }}
         className={
-          "flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition " +
+          "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-3 lg:px-4 text-left transition " +
           (buttonColorClass ||
             (isHighlighted ? "bg-indigo-50 text-indigo-700" : hoverColor))
         }
@@ -98,7 +98,7 @@ function ConversationItem({
           )}
           <div
             onClick={(e) => handleDeleteClick(c.conv_id, e)}
-            className="opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 cursor-pointer"
+            className="opacity-60 hover:opacity-100 transition-opacity p-1.5 coarse:p-2.5 coarse:-mr-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 cursor-pointer"
             aria-label="Delete conversation"
             title="Delete conversation"
             role="button"
@@ -157,18 +157,18 @@ export default function ChatSidebar({
   return (
     <aside
       className={
-        `col-span-12 md:col-span-3 rounded-2xl border-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm ` +
-        (isMobileList ? "block" : "hidden") +
-        " md:block"
+        `col-span-12 md:col-span-4 min-h-0 flex-col overflow-hidden rounded-2xl border-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm ` +
+        (isMobileList ? "flex" : "hidden") +
+        " md:flex"
       }
     >
-      <div className="border-b-4 border-gray-200 dark:border-gray-700 p-4">
+      <div className="shrink-0 border-b-4 border-gray-200 dark:border-gray-700 p-4 short:py-2">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Chats
         </h2>
       </div>
       <ul
-        className="max-h-[70vh] overflow-y-auto p-2"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2"
         aria-label="Conversation list"
       >
         {convError ? (

@@ -9,6 +9,7 @@ import SellerDashboardStats from "./components/SellerDashboardStats";
 import SellerListingRow from "./components/SellerListingRow";
 import { useSellerDashboardReviews } from "./hooks/useSellerDashboardReviews";
 import { useSellerListings } from "./hooks/useSellerListings";
+import { useSellerStats } from "./hooks/useSellerStats";
 import {
   filterListings,
   sortListings,
@@ -33,6 +34,8 @@ function SellerDashboardPage() {
 
   const { listings, loading, summaryMetrics, deleteListing } =
     useSellerListings();
+  // Refetch insights once listings load and after any delete.
+  const sellerStats = useSellerStats(loading ? null : listings);
   const { productReviews, buyerRatings, updateBuyerRating } =
     useSellerDashboardReviews(listings);
 
@@ -157,7 +160,9 @@ function SellerDashboardPage() {
 
       <SellerDashboardStats
         metrics={summaryMetrics}
+        stats={sellerStats}
         onCreateNewListing={handleCreateNewListing}
+        onOpenOngoingPurchases={() => navigate("/app/seller-dashboard/ongoing-purchases")}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">

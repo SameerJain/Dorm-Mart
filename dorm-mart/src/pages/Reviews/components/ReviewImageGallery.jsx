@@ -73,7 +73,7 @@ export default function ReviewImageGallery({ review, viewMode }) {
                     `review-image-${index + 1}.jpg`,
                   );
                 }}
-                className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 coarse:py-1.5 rounded-lg text-sm font-medium mouse:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
               >
                 Download
               </button>

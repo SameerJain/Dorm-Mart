@@ -29,13 +29,14 @@ function SettingsLayout({ children }) {
   return (
     // Back to normal: no `relative`, still using the height minus nav
     <div
-      className="h-[calc(100dvh-64px)] w-full flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden"
+      className="h-[calc(100dvh-var(--nav-h,64px))] w-full flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden"
     >
       {/* Mobile hamburger menu button - only visible on mobile */}
-      <div className="lg:hidden p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+      <div className="lg:hidden px-4 py-2 short:py-0.5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <button
           onClick={() => setShowMobileMenu(!showMobileMenu)}
-          className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+          aria-expanded={showMobileMenu}
+          className="flex min-h-11 items-center space-x-2 pr-3 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
         >
           <svg
             className="w-6 h-6"
@@ -108,7 +109,7 @@ function SettingsLayout({ children }) {
 
           {/* Sliding sidebar */}
           <aside
-            className={`relative h-full w-64 transform rounded-r-xl bg-blue-600 p-0 text-white shadow-lg transition-transform duration-300 dark:bg-blue-800 dark:shadow-black/40 dark:ring-1 dark:ring-white/10 ${
+            className={`relative flex h-full w-[calc(16rem+env(safe-area-inset-left,0px))] flex-col transform rounded-r-xl bg-blue-600 p-0 pl-[env(safe-area-inset-left,0px)] pt-[env(safe-area-inset-top,0px)] text-white shadow-lg transition-transform duration-300 dark:bg-blue-800 dark:shadow-black/40 dark:ring-1 dark:ring-white/10 ${
               showMobileMenu ? "translate-x-0" : "-translate-x-full"
             }`}
           >
@@ -116,7 +117,8 @@ function SettingsLayout({ children }) {
               <h2 className="text-xl font-serif font-semibold">Settings</h2>
               <button
                 onClick={() => setShowMobileMenu(false)}
-                className="text-white hover:text-gray-300"
+                aria-label="Close settings menu"
+                className="-m-2 p-2 text-white hover:text-gray-300"
               >
                 <svg
                   className="w-6 h-6"
@@ -137,7 +139,7 @@ function SettingsLayout({ children }) {
               className="h-px w-full"
               style={{ background: "rgba(255,255,255,0.25)" }}
             />
-            <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto overscroll-contain p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
               {links.map((l) => (
                 <NavLink
                   key={l.to}

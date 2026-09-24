@@ -77,7 +77,7 @@ export default function SearchResults() {
           <button
             type="button"
             onClick={() => setShowFiltersPanel(true)}
-            className="md:hidden text-xs px-2 py-1 rounded-full border border-blue-500 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:border-blue-400 dark:text-blue-300 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors"
+            className="md:hidden text-xs px-3 py-1 coarse:py-2 coarse:text-sm rounded-full border border-blue-500 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:border-blue-400 dark:text-blue-300 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors"
           >
             Filters
           </button>
@@ -109,7 +109,7 @@ export default function SearchResults() {
             showFiltersPanel ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <div className="h-full bg-white dark:bg-gray-800 shadow-xl border-r border-gray-200 dark:border-gray-700 flex flex-col">
+          <div className="h-full bg-white dark:bg-gray-800 shadow-xl border-r border-gray-200 dark:border-gray-700 flex flex-col pl-[env(safe-area-inset-left,0px)] pt-[env(safe-area-inset-top,0px)]">
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700">
               <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                 Search Filters
@@ -117,7 +117,7 @@ export default function SearchResults() {
               <button
                 type="button"
                 onClick={() => setShowFiltersPanel(false)}
-                className="text-sm text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white"
+                className="-mr-2 px-2 py-1 coarse:py-2 text-sm text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white"
               >
                 Close
               </button>

@@ -6,22 +6,28 @@ import ConfirmMessageCard from "./ConfirmMessageCard";
 import ReviewPromptMessageCard from "./ReviewPromptMessageCard";
 import BuyerRatingPromptMessageCard from "./BuyerRatingPromptMessageCard";
 import ReportMessageModal from "./ReportMessageModal";
+import MessageActions from "./MessageActions";
 import TypingIndicatorMessage from "./TypingIndicatorMessage";
 import PaymentSystemMessageCard from "./PaymentSystemMessageCard";
 import { API_BASE } from "../../../utils/apiConfig";
 import { csrfFetch } from "../../../utils/csrfFetch";
 import { isVideoMediaUrl } from "../../../utils/imageFallback";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-function ReportButton({ messageId }) {
-  const [reported, setReported] = useState(false);
-  const [reporting, setReporting] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+/**
+ * Report + copy state for one message. Actions live in the message's ⋯ menu;
+ * this only surfaces a short status line after the user does something.
+ */
+function useMessageActionState(messageId, onDelete) {
+  const [reportState, setReportState] = useState("idle"); // idle | confirming | reporting | reported | failed
+  const [deleteState, setDeleteState] = useState("idle"); // idle | confirming | deleting | failed
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
 
   async function report() {
-    setReporting(true);
-    setFailed(false);
+    setReportState("reporting");
     try {
       const response = await csrfFetch(`${API_BASE}/moderation/report_message.php`, {
         method: "POST",
@@ -31,43 +37,138 @@ function ReportButton({ messageId }) {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) throw new Error(data.error || "Unable to report message");
-      setReported(true);
+      setReportState("reported");
     } catch (_) {
-      setFailed(true);
-    } finally {
-      setReporting(false);
-      setConfirming(false);
+      setReportState("failed");
     }
   }
 
+  async function remove() {
+    setDeleteState("deleting");
+    try {
+      await onDelete(messageId);
+      // The message re-renders as a "deleted" placeholder, unmounting this state.
+    } catch (_) {
+      setDeleteState("failed");
+    }
+  }
+
+  async function copy(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopied(false), 1500);
+    } catch (_) {
+      // Clipboard can be blocked (insecure context / permissions); nothing to undo.
+    }
+  }
+
+  const reported = reportState === "reported";
+  const reportAction = {
+    key: "report",
+    label: reported ? "Reported" : reportState === "failed" ? "Retry report" : "Report message",
+    icon: "report",
+    danger: true,
+    disabled: reported || reportState === "reporting",
+    onSelect: () => setReportState("confirming"),
+  };
+
+  const deleteAction = onDelete && {
+    key: "delete",
+    label: deleteState === "failed" ? "Retry delete" : "Delete message",
+    icon: "trash",
+    danger: true,
+    disabled: deleteState === "deleting",
+    onSelect: () => setDeleteState("confirming"),
+  };
+
+  const status = copied
+    ? "Copied"
+    : deleteState === "failed"
+      ? "Couldn't delete the message. Try again from the message menu."
+      : reported
+      ? "Reported · a moderator will review it"
+      : reportState === "failed"
+        ? "Couldn't send the report. Try again from the message menu."
+        : "";
+
+  const modal =
+    reportState === "confirming" || reportState === "reporting" ? (
+      <ReportMessageModal
+        isReporting={reportState === "reporting"}
+        onCancel={() => setReportState("idle")}
+        onConfirm={report}
+      />
+    ) : deleteState === "confirming" || deleteState === "deleting" ? (
+      <ReportMessageModal
+        title="Delete message?"
+        body="This message will be removed for both of you and replaced with a note that it was deleted."
+        confirmLabel="Delete"
+        busyLabel="Deleting..."
+        isReporting={deleteState === "deleting"}
+        onCancel={() => setDeleteState("idle")}
+        onConfirm={remove}
+      />
+    ) : null;
+
+  const statusIsError = !copied && (reportState === "failed" || deleteState === "failed");
+  return { copy, reportAction, deleteAction, status, statusIsError, modal };
+}
+
+function DeletedMessage({ mine }) {
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setConfirming(true)}
-        disabled={reported || reporting}
-        title={failed ? "The report could not be sent. Try again." : undefined}
-        className="mt-1 text-[10px] font-semibold text-red-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-red-400"
-      >
-        {reported ? "Reported" : reporting ? "Reporting..." : failed ? "Retry report" : "Report"}
-      </button>
-      {confirming && (
-        <ReportMessageModal
-          isReporting={reporting}
-          onCancel={() => setConfirming(false)}
-          onConfirm={report}
-        />
-      )}
-    </>
+    <div
+      className={
+        "flex max-w-[80%] items-center gap-1.5 rounded-2xl border border-dashed px-4 py-2 text-sm italic " +
+        (mine
+          ? "border-indigo-300 text-indigo-500 dark:border-indigo-700 dark:text-indigo-300"
+          : "border-gray-300 text-gray-500 dark:border-gray-600 dark:text-gray-400")
+      }
+    >
+      <svg className="h-3.5 w-3.5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 7h16M10 11v6m4-6v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+      </svg>
+      {mine ? "You deleted this message" : "This message was deleted"}
+    </div>
   );
 }
 
-function TextMessage({ message, canEdit, onEdit }) {
+function MessageStatus({ status, isError, align }) {
+  return (
+    <p
+      aria-live="polite"
+      className={
+        "min-h-0 text-[10px] " +
+        (status ? "mt-1 " : "") +
+        (align === "end" ? "text-right " : "") +
+        (isError ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400")
+      }
+    >
+      {status}
+    </p>
+  );
+}
+
+function triggerDownload(url) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const mine = message.sender === "me";
+  const { copy, reportAction, deleteAction, status, statusIsError, modal } = useMessageActionState(
+    message.message_id,
+    canDelete ? onDelete : null,
+  );
 
   async function save() {
     const content = draft.trim();
@@ -88,84 +189,141 @@ function TextMessage({ message, canEdit, onEdit }) {
     }
   }
 
+  const actions = editing
+    ? []
+    : [
+        { key: "copy", label: "Copy text", icon: "copy", quick: true, onSelect: () => copy(message.content) },
+        canEdit && {
+          key: "edit",
+          label: "Edit message",
+          icon: "edit",
+          quick: true,
+          onSelect: () => { setDraft(message.content); setEditing(true); },
+        },
+        mine ? deleteAction : reportAction,
+      ];
+
   return (
-    <div className={"group max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " + (mine ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100")}>
-      {editing ? (
-        <div className="w-72 max-w-full animate-[fade-in_0.12s_ease-out] space-y-2">
-          <div className="rounded-xl border border-white/40 bg-white/95 p-2.5 shadow-inner focus-within:border-white focus-within:ring-2 focus-within:ring-white/50">
-            <textarea
-              autoFocus
-              value={draft}
-              maxLength={500}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") { setDraft(message.content); setEditing(false); setError(""); }
-                else if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); }
-              }}
-              className="min-h-16 w-full resize-none rounded-md border-0 bg-transparent p-0 text-sm text-gray-900 outline-none placeholder:text-gray-400"
-              placeholder="Edit your message..."
-            />
-            <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
-              <span>Enter to save · Esc to cancel</span>
-              <span className={draft.length >= 500 ? "font-semibold text-red-500" : ""}>{draft.length}/500</span>
+    <MessageActions actions={actions} align={mine ? "end" : "start"} preview={message.content}>
+      <div className={"rounded-2xl px-4 py-2 text-sm shadow " + (mine ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100")}>
+        {editing ? (
+          <div className="w-72 max-w-full animate-[fade-in_0.12s_ease-out] space-y-2">
+            <div className="rounded-xl border border-white/40 bg-white/95 p-2.5 shadow-inner focus-within:border-white focus-within:ring-2 focus-within:ring-white/50">
+              <textarea
+                autoFocus
+                value={draft}
+                maxLength={500}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") { setDraft(message.content); setEditing(false); setError(""); }
+                  else if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); }
+                }}
+                className="min-h-16 w-full resize-none rounded-md border-0 bg-transparent p-0 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+                placeholder="Edit your message..."
+              />
+              <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
+                <span>Enter to save · Esc to cancel</span>
+                <span className={draft.length >= 500 ? "font-semibold text-red-500" : ""}>{draft.length}/500</span>
+              </div>
             </div>
-          </div>
-          {error && (
-            <p className="rounded-md bg-red-500/20 px-2 py-1 text-xs text-red-50" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => { setDraft(message.content); setEditing(false); setError(""); }}
-              className="rounded-lg px-3 py-1.5 text-xs font-medium text-indigo-100 transition-colors hover:bg-white/15 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={saving || !draft.trim() || draft.trim() === message.content}
-              onClick={save}
-              className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition-colors hover:bg-indigo-50 disabled:opacity-50 disabled:hover:bg-white"
-            >
-              {saving && (
-                <svg className="h-3 w-3 animate-spin text-indigo-700" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z" />
-                </svg>
-              )}
-              {saving ? "Saving..." : "Save"}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-start gap-2">
-            <p className="min-w-0 flex-1 whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.content}</p>
-            {canEdit && (
+            {error && (
+              <p className="rounded-md bg-red-500/20 px-2 py-1 text-xs text-red-50" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
-                aria-label="Edit last message"
-                title="Edit message"
-                onClick={() => { setDraft(message.content); setEditing(true); }}
-                className="rounded p-1 text-indigo-100 opacity-100 transition-colors hover:bg-white/15 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+                disabled={saving}
+                onClick={() => { setDraft(message.content); setEditing(false); setError(""); }}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-indigo-100 transition-colors hover:bg-white/15 disabled:opacity-50"
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z" />
-                </svg>
+                Cancel
               </button>
-            )}
+              <button
+                type="button"
+                disabled={saving || !draft.trim() || draft.trim() === message.content}
+                onClick={save}
+                className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition-colors hover:bg-indigo-50 disabled:opacity-50 disabled:hover:bg-white"
+              >
+                {saving && (
+                  <svg className="h-3 w-3 animate-spin text-indigo-700" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z" />
+                  </svg>
+                )}
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
           </div>
-          <div className={"mt-1 text-[10px] " + (mine ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
-            {fmtTime(message.ts)}{message.editedAt ? " · Edited" : ""}
-          </div>
-          {!mine && <ReportButton messageId={message.message_id} />}
-        </>
-      )}
-    </div>
+        ) : (
+          <>
+            <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.content}</p>
+            <div className={"mt-1 text-[10px] " + (mine ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
+              {fmtTime(message.ts)}{message.editedAt ? " · Edited" : ""}
+            </div>
+          </>
+        )}
+      </div>
+      <MessageStatus status={status} isError={statusIsError} align={mine ? "end" : "start"} />
+      {modal}
+    </MessageActions>
+  );
+}
+
+function MediaMessage({ message, canDelete, onDelete }) {
+  const mine = message.sender === "me";
+  const { copy, reportAction, deleteAction, status, statusIsError, modal } = useMessageActionState(
+    message.message_id,
+    canDelete ? onDelete : null,
+  );
+  const mediaSrc = `${API_BASE}/chat/serve_chat_image.php?message_id=${message.message_id}`;
+  const dlSrc = `${mediaSrc}&download=1`;
+  const isVideo = isVideoMediaUrl(message.image_url);
+
+  const actions = [
+    { key: "download", label: isVideo ? "Download video" : "Download image", icon: "download", quick: true, onSelect: () => triggerDownload(dlSrc) },
+    message.content && { key: "copy", label: "Copy caption", icon: "copy", onSelect: () => copy(message.content) },
+    mine ? deleteAction : reportAction,
+  ];
+
+  return (
+    <MessageActions actions={actions} align={mine ? "end" : "start"} preview={message.content || (isVideo ? "Video" : "Photo")}>
+      <div
+        className={
+          "rounded-2xl px-3 py-2 text-sm shadow " +
+          (mine ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100")
+        }
+      >
+        {isVideo ? (
+          <video
+            src={mediaSrc}
+            controls
+            preload="metadata"
+            aria-label="Chat video attachment"
+            className={"max-h-72 w-full rounded-lg object-contain " + (mine ? "bg-white/10" : "bg-black/5")}
+          />
+        ) : (
+          <a href={mediaSrc} target="_blank" rel="noopener noreferrer" className="block" title="Chat Image - Click to view full size">
+            <img
+              src={mediaSrc}
+              alt="Chat attachment"
+              className={"max-h-72 w-full object-contain rounded-lg " + (mine ? "bg-white/10" : "bg-black/5")}
+              loading="lazy"
+            />
+          </a>
+        )}
+        {message.content && (
+          <p className="mt-2 whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.content}</p>
+        )}
+        <div className={"mt-1 text-[10px] " + (mine ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
+          {fmtTime(message.ts)}
+        </div>
+      </div>
+      <MessageStatus status={status} isError={statusIsError} align={mine ? "end" : "start"} />
+      {modal}
+    </MessageActions>
   );
 }
 
@@ -184,14 +342,22 @@ export default function MessageList({
   messages,
   messagesByConv,
   editMessage,
+  deleteMessage,
   scrollRef,
   typingUserName,
 }) {
-  const lastEditableId = useMemo(() => {
-    const latest = [...filteredMessages].reverse().find((message) =>
-      message.sender === "me" && !message.image_url && !message.metadata && Number(message.message_id) > 0,
-    );
-    return latest ? Number(latest.message_id) : null;
+  const { lastEditableId, lastDeletableId } = useMemo(() => {
+    const live = [...filteredMessages]
+      .reverse()
+      .filter((message) => message.sender === "me" && !message.deletedAt && Number(message.message_id) > 0);
+    const editable = live.find((message) => !message.image_url && !message.metadata);
+    // delete_message.php only accepts your newest message of any kind, so offer
+    // Delete only when that newest message is a plain text/media bubble.
+    const newest = live[0];
+    return {
+      lastEditableId: editable ? Number(editable.message_id) : null,
+      lastDeletableId: newest && !newest.metadata ? Number(newest.message_id) : null,
+    };
   }, [filteredMessages]);
   return (
     <div
@@ -368,90 +534,22 @@ export default function MessageList({
                         }
                       }}
                     />
+                  ) : m.deletedAt ? (
+                    <DeletedMessage mine={m.sender === "me"} />
                   ) : messageWithMetadata.image_url ? (
-                    <div
-                      className={
-                        "max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow " +
-                        (m.sender === "me"
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-100 text-gray-900")
-                      }
-                    >
-                      {(() => {
-                        const mediaSrc = `${API_BASE}/chat/serve_chat_image.php?message_id=${m.message_id}`;
-                        const dlSrc = `${mediaSrc}&download=1`;
-                        const isVideo = isVideoMediaUrl(
-                          messageWithMetadata.image_url,
-                        );
-                        return (
-                          <>
-                            {isVideo ? (
-                              <video
-                                src={mediaSrc}
-                                controls
-                                preload="metadata"
-                                aria-label="Chat video attachment"
-                                className={
-                                  "max-h-72 w-full rounded-lg object-contain " +
-                                  (m.sender === "me"
-                                    ? "bg-white/10"
-                                    : "bg-black/5")
-                                }
-                              />
-                            ) : (
-                              <a
-                                href={mediaSrc}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block"
-                                title="Chat Image - Click to view full size"
-                              >
-                                <img
-                                  src={mediaSrc}
-                                  alt="Chat attachment"
-                                  className={
-                                    "max-h-72 w-full object-contain rounded-lg " +
-                                    (m.sender === "me"
-                                      ? "bg-white/10"
-                                      : "bg-black/5")
-                                  }
-                                  loading="lazy"
-                                />
-                              </a>
-                            )}
-                            {m.content && (
-                              <p className="mt-2 whitespace-pre-wrap break-words overflow-wrap-anywhere">
-                                {m.content}
-                              </p>
-                            )}
-                            <div
-                              className={
-                                "mt-1 flex items-center justify-between text-[10px] " +
-                                (m.sender === "me"
-                                  ? "text-indigo-100"
-                                  : "text-gray-500 dark:text-gray-400")
-                              }
-                            >
-                              <span>{fmtTime(m.ts)}</span>
-                              <a
-                                href={dlSrc}
-                                className={
-                                  "ml-3 underline hover:no-underline " +
-                                  (m.sender === "me"
-                                    ? "text-indigo-100"
-                                    : "text-gray-600 dark:text-gray-400")
-                                }
-                              >
-                                Download
-                              </a>
-                            </div>
-                            {m.sender !== "me" && <ReportButton messageId={m.message_id} />}
-                          </>
-                        );
-                      })()}
-                    </div>
+                    <MediaMessage
+                      message={messageWithMetadata}
+                      canDelete={Number(m.message_id) === lastDeletableId}
+                      onDelete={deleteMessage}
+                    />
                   ) : (
-                    <TextMessage message={m} canEdit={Number(m.message_id) === lastEditableId} onEdit={editMessage} />
+                    <TextMessage
+                      message={m}
+                      canEdit={Number(m.message_id) === lastEditableId}
+                      onEdit={editMessage}
+                      canDelete={Number(m.message_id) === lastDeletableId}
+                      onDelete={deleteMessage}
+                    />
                   )}
                 </div>
               )}

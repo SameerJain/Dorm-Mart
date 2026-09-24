@@ -257,7 +257,7 @@ function EditableLinkRow({
             e.stopPropagation();
             onClear();
           }}
-          className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2"
+          className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2 coarse:py-2"
         >
           Clear
         </button>
@@ -695,7 +695,7 @@ function MyProfilePage() {
                             buttonClickRef.current = false;
                           }, 300);
                         }}
-                        className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2"
+                        className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2 coarse:py-2"
                       >
                         Clear
                       </button>
