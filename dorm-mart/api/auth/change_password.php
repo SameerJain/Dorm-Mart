@@ -107,16 +107,18 @@ try {
     exit;
   }
 
-  // Preserve seeded accounts without exposing which protection rule matched.
+  // Seeded demo/test accounts are shared, so their password stays fixed. Say so
+  // plainly: the old fake success told users their password had changed and
+  // sent them to the login page while nothing had happened.
   if ($isProtected) {
     $conn->close();
-    // Return success without actually changing the password or destroying session
-    echo json_encode(['ok' => true]);
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => "This shared demo account's password can't be changed."]);
     exit;
   }
 
   // SECURITY NOTE: password_hash() stores only the salted bcrypt hash.
-  $newHash = password_hash($next, PASSWORD_BCRYPT);
+  $newHash = password_hash($next, PASSWORD_BCRYPT, ['cost' => 12]);
   
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
   $upd = $conn->prepare(

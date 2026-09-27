@@ -58,9 +58,9 @@ export default function SellerListingRow({
           </div>
         </div>
         <div className="flex flex-col items-end space-y-1">
-          <div className="flex items-center justify-between sm:justify-end space-x-3">
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-x-3 gap-y-1">
             <span
-              className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${listingStatusClass(listing.status)}`}
+              className={`whitespace-nowrap px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${listingStatusClass(listing.status)}`}
             >
               {String(listing.status)}
             </span>
@@ -68,7 +68,7 @@ export default function SellerListingRow({
             {canModify && (
               <button
                 onClick={() => onEdit(listing.id)}
-                className="coarse:-my-1 coarse:px-1.5 coarse:py-2 font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 hover:underline"
+                className="whitespace-nowrap coarse:-my-1 coarse:px-1.5 coarse:py-2 font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 hover:underline"
               >
                 Edit
               </button>
@@ -77,7 +77,7 @@ export default function SellerListingRow({
             {canModify && (
               <button
                 onClick={() => onDelete(listing.id)}
-                className="coarse:-my-1 coarse:px-1.5 coarse:py-2 font-medium text-sm sm:text-base text-red-600 hover:text-red-800 hover:underline"
+                className="whitespace-nowrap coarse:-my-1 coarse:px-1.5 coarse:py-2 font-medium text-sm sm:text-base text-red-600 hover:text-red-800 hover:underline"
               >
                 Delete
               </button>
@@ -86,7 +86,7 @@ export default function SellerListingRow({
             {status === "sold" && listing.buyer_user_id && (
               <button
                 onClick={() => onRateBuyer(listing)}
-                className={`coarse:-my-1 coarse:px-1.5 coarse:py-2 font-medium text-sm sm:text-base hover:underline ${
+                className={`whitespace-nowrap coarse:-my-1 coarse:px-1.5 coarse:py-2 font-medium text-sm sm:text-base hover:underline ${
                   buyerRating
                     ? "text-blue-600 hover:text-blue-800"
                     : "text-green-600 hover:text-green-800"
@@ -99,7 +99,7 @@ export default function SellerListingRow({
             {productReview && (
               <button
                 onClick={() => onViewReview(listing)}
-                className="coarse:-my-1 coarse:px-1.5 coarse:py-2 font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+                className="whitespace-nowrap coarse:-my-1 coarse:px-1.5 coarse:py-2 font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
               >
                 View Review
               </button>

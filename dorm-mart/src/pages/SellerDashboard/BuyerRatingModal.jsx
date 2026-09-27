@@ -269,11 +269,7 @@ function BuyerRatingModal({
                     className="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 min-w-0 overflow-hidden"
                   >
                     <p
-                      className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words overflow-wrap-anywhere"
-                      style={{
-                        wordBreak: "break-word",
-                        overflowWrap: "anywhere",
-                      }}
+                      className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words"
                     >
                       {existingRating.review_text}
                     </p>
@@ -321,15 +317,13 @@ function BuyerRatingModal({
                     placeholder="Share your experience with this buyer..."
                     rows={6}
                     maxLength={maxChars}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none break-words overflow-wrap-anywhere"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none break-words"
                     style={{
                       border: "none",
                       borderRadius: "0",
                       overflow: "auto",
                       scrollbarWidth: "thin",
                       scrollbarColor: "rgba(156, 163, 175, 0.5) transparent",
-                      wordBreak: "break-word",
-                      overflowWrap: "anywhere",
                     }}
                   />
                 </div>

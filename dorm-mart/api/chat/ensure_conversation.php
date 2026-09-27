@@ -95,6 +95,9 @@ try {
             // Ensure conversation participants exist even for existing conversations
             $convId = (int) $conversationRow['conv_id'];
             chat_ensure_participants($conn, $convId, $orderedA, $orderedB);
+            // "Message seller" on a conversation the buyer had hidden brings it
+            // back to their list; otherwise the next list refresh drops it again.
+            chat_unhide_for_user($conn, $convId, $buyerId);
         }
 
         if (!$conversationRow) {

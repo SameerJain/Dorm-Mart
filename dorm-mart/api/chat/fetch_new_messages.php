@@ -10,9 +10,12 @@ init_json_endpoint();
 
 auth_boot_session();
 $userId = require_login();
+// This endpoint is polled continuously and never writes the session. Releasing
+// the lock now stops each poll from queueing the user's other requests.
+session_write_close();
 
 $conn = db();
-$conn->query("SET time_zone = '+00:00'");
+$conn->set_charset('utf8mb4');
 
 $convId = request_int($_GET, 'conv_id');
 $tsSec  = array_key_exists('ts', $_GET) ? strict_integer_value($_GET['ts']) : 0;
@@ -103,7 +106,11 @@ while ($row = $res->fetch_assoc()) {
             $confirmStatusStmt->close();
         }
     }
-    $row['content'] = filter_profanity($conn, (string)$row['content']);
+    $rawContent = (string)$row['content'];
+    $row['content'] = filter_profanity($conn, $rawContent);
+    if ((int)$row['sender_id'] === $userId && $row['deleted_at'] === null && $row['metadata'] === null) {
+        $row['raw_content'] = $rawContent;
+    }
     $row['is_flagged'] = (bool)$row['is_flagged'];
     $row['is_deleted'] = $row['deleted_at'] !== null;
     $messages[] = $row;
@@ -111,12 +118,13 @@ while ($row = $res->fetch_assoc()) {
 $stmt->close();
 
 // --- mark as read for the caller (sets "no unread"); skipped for cross-site links ---
+// The unread_count guard keeps idle polls from rewriting the row every tick.
 if (request_is_same_origin_fetch()) {
     $stmt = $conn->prepare(
         'UPDATE conversation_participants
             SET unread_count = 0,
                 first_unread_msg_id = 0
-          WHERE conv_id = ? AND user_id = ?'
+          WHERE conv_id = ? AND user_id = ? AND (unread_count > 0 OR first_unread_msg_id <> 0)'
     );
     $stmt->bind_param('ii', $convId, $userId);
     $stmt->execute();

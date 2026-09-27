@@ -262,8 +262,6 @@ function build_receipt_payload(array $confirmRow, array $scheduledRow, array $sn
         'seller_user_id' => (int)$confirmRow['seller_user_id'],
         'buyer_name' => $buyerName,
         'seller_name' => $sellerName,
-        'buyer_email' => $scheduledRow['buyer_email'] ?? '',
-        'seller_email' => $scheduledRow['seller_email'] ?? '',
         'snapshot' => $snapshot,
     ];
 }

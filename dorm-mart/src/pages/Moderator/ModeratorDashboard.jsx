@@ -12,6 +12,32 @@ async function readJson(response) {
   return data;
 }
 
+/**
+ * Message text as a moderator needs it: current text, the text before any edit,
+ * and whether the sender later edited or deleted it.
+ */
+export function ModeratedMessageText({ message }) {
+  const edited = Boolean(message.edited_at);
+  const deleted = Boolean(message.deleted_at);
+  const original = message.original_content;
+  return (
+    <div className="space-y-1">
+      <p className="whitespace-pre-wrap">{message.content}</p>
+      {edited && original != null && original !== message.content && (
+        <p className="whitespace-pre-wrap rounded bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          <span className="font-semibold">Before edit: </span>
+          {original}
+        </p>
+      )}
+      {(edited || deleted) && (
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          {[edited && "Edited by sender", deleted && "Deleted by sender"].filter(Boolean).join(" · ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ActionButton({ children, onClick, disabled = false, type = "button" }) {
   return (
     <button
@@ -218,7 +244,7 @@ export default function ModeratorDashboard() {
                 {(dashboard?.reports || []).map((report) => (
                   <tr key={report.report_id} className="border-b align-top dark:border-gray-700">
                     <td className="p-3 capitalize">{report.status}</td>
-                    <td className="max-w-md whitespace-pre-wrap p-3">{report.content}</td>
+                    <td className="max-w-md p-3"><ModeratedMessageText message={report} /></td>
                     <td className="p-3">{report.reason}</td>
                     <td className="p-3 text-xs text-gray-600 dark:text-gray-400">Sender: {report.sender_name}<br />Conversation #{report.conv_id}<br />Reporter: {report.reporter_name || "Deleted User"}</td>
                     <td className="p-3"><div className="flex flex-wrap gap-2">
@@ -244,7 +270,7 @@ export default function ModeratorDashboard() {
               <tbody>
                 {(dashboard?.flagged_messages || []).map((message) => (
                   <tr key={message.message_id} className="border-b align-top dark:border-gray-700">
-                    <td className="max-w-xl whitespace-pre-wrap p-3">{message.content}</td>
+                    <td className="max-w-xl p-3"><ModeratedMessageText message={message} /></td>
                     <td className="p-3">{message.sender_fname}<br /><span className="text-xs text-gray-500">{message.sender_email || "Deleted account"}</span></td>
                     <td className="p-3 text-xs">Conversation #{message.conv_id}<br />{new Date(message.created_at).toLocaleString()}</td>
                     <td className="p-3">{message.sender_id && message.sender_role !== "moderator" && <ActionButton disabled={working} onClick={() => changeBan(message.sender_id, Boolean(Number(message.sender_is_banned)))}>{Number(message.sender_is_banned) ? "Unban user" : "Ban user"}</ActionButton>}</td>

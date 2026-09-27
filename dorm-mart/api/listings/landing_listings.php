@@ -109,6 +109,7 @@ try {
             'created_at' => $createdAt,
             'seller'     => $seller,
             'sold_by'    => $seller,
+            'seller_username' => inventory_username_from_email($row['email'] ?? null),
             'status'     => $status,
             'trades'     => (bool)$row['trades'],
             'price_nego' => (bool)$row['price_nego'],

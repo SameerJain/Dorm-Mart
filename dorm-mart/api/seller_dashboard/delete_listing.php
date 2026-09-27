@@ -26,14 +26,19 @@ try {
         json_response(['success' => false, 'error' => 'Invalid id'], 400);
     }
 
-    $itemStmt = $conn->prepare('SELECT title, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
+    $conn->begin_transaction();
+    // Locked so a sale completing right now cannot slip between check and delete.
+    $itemStmt = $conn->prepare('SELECT title, photos, sold, item_status FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1 FOR UPDATE');
     if (!$itemStmt) throw new RuntimeException('Failed to prepare listing snapshot');
     $itemStmt->bind_param('ii', $id, $userId);
     $itemStmt->execute();
     $item = $itemStmt->get_result()->fetch_assoc();
     $itemStmt->close();
     if (!$item) json_response(['success' => false, 'error' => 'Not found'], 404);
-    $conn->begin_transaction();
+    // The buyer's receipt and review are keyed to this row.
+    if ((int)$item['sold'] === 1 || $item['item_status'] === 'Sold') {
+        json_response(['success' => false, 'error' => 'Sold listings cannot be deleted.'], 409);
+    }
     if (!listing_delete($conn, $id, $userId, $item, 'The item has been removed. This chat has been closed.')) {
         // Not found or not owned by user
         json_response(['success' => false, 'error' => 'Not found'], 404);

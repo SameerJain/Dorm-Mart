@@ -53,10 +53,15 @@ try {
     if ($soldFlag === 1 || $statusStr === 'Sold') {
         json_response(['success' => false, 'error' => 'Sold listings cannot be edited.'], 403);
     }
-    if ($status === 'Draft' && scheduled_purchase_has_active_accepted($conn, $id, 0)) {
+    // While a buyer holds an accepted schedule, the schedule owns the listing's
+    // state: Confirm Purchase or payment marks it sold, cancelling relists it.
+    // Relisting or selling it by hand here would let a second sale or a Stripe
+    // payment land on an item that is already spoken for.
+    if ($status !== 'Pending' && scheduled_purchase_has_active_accepted($conn, $id, 0)) {
+        $action = ['Draft' => 'saving this listing as a draft', 'Active' => 'relisting this item', 'Sold' => 'marking this item as sold'][$status];
         json_response([
             'success' => false,
-            'error' => 'Cancel or complete the accepted scheduled purchase before saving this listing as a draft.'
+            'error' => "Cancel or complete the accepted scheduled purchase before {$action}."
         ], 409);
     }
 

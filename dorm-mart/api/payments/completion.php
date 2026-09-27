@@ -58,6 +58,11 @@ function payment_complete_purchase_transaction(
             'confirm_request_id' => (int)$existing['confirm_request_id'],
         ];
     }
+    // Sold some other way (the seller marked it sold by hand): this payment must
+    // not re-sell it to the buyer. Reporting a conflict refunds the payment.
+    if ((int)$inventoryRow['sold'] === 1) {
+        return ['completed' => false, 'conflict' => true, 'confirm_request_id' => 0];
+    }
 
     $amountCents = (int)$row['amount_cents'];
     $finalPrice = $amountCents / 100;

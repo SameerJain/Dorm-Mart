@@ -149,6 +149,9 @@ try {
     // Check for any pending confirm purchase requests (block creation if pending)
     // Note: buyer_declined status allows new confirm purchases to be created
     $pendingStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE scheduled_request_id = ? AND status = \'pending\' ORDER BY confirm_request_id DESC LIMIT 1');
+    if (!$pendingStmt) {
+        throw new RuntimeException('Failed to prepare pending confirm lookup');
+    }
     $pendingStmt->bind_param('i', $scheduledRequestId);
     $pendingStmt->execute();
     $pendingRes = $pendingStmt->get_result();
@@ -165,16 +168,27 @@ try {
     // Also check for already accepted/confirmed status (block creation if already confirmed)
     // This prevents creating new confirm purchases after a successful confirmation
     $latestStmt = $conn->prepare('SELECT status, is_successful FROM confirm_purchase_requests WHERE scheduled_request_id = ? ORDER BY confirm_request_id DESC LIMIT 1');
+    if (!$latestStmt) {
+        throw new RuntimeException('Failed to prepare latest confirm lookup');
+    }
     $latestStmt->bind_param('i', $scheduledRequestId);
     $latestStmt->execute();
     $latestRes = $latestStmt->get_result();
     $latestRow = $latestRes ? $latestRes->fetch_assoc() : null;
     $latestStmt->close();
     
+    // An accepted form closes the schedule either way. After an unsuccessful one
+    // the listing is relisted and may already be reserved by another buyer, so
+    // the seller must schedule again rather than reuse this one.
     if ($latestRow && in_array($latestRow['status'], ['buyer_accepted', 'auto_accepted', 'payment_completed'], true)) {
-        if ((bool)$latestRow['is_successful']) {
-            json_response(['success' => false, 'error' => 'This transaction has already been confirmed'], 409);
-        }
+        // The auto-accept above may have just closed the schedule; keep it.
+        $conn->commit();
+        json_response([
+            'success' => false,
+            'error' => (bool)$latestRow['is_successful']
+                ? 'This transaction has already been confirmed'
+                : 'This exchange was already closed as unsuccessful. Schedule a new purchase to try again.',
+        ], 409);
     }
 
     $buyerId = (int)$schedRow['buyer_user_id'];

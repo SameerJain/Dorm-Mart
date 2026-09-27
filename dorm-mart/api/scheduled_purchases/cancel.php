@@ -70,9 +70,18 @@ try {
         json_response(['success' => false, 'error' => 'Request is already cancelled'], 409);
     }
 
-    // Cannot cancel a declined request (buyer already rejected it)
-    if ($currentStatus === 'declined') {
-        json_response(['success' => false, 'error' => 'Cannot cancel a declined request'], 409);
+    // Declined and expired requests are already closed.
+    if ($currentStatus !== 'pending' && $currentStatus !== 'accepted') {
+        json_response(['success' => false, 'error' => 'This request can no longer be cancelled'], 409);
+    }
+
+    // A purchase the buyer confirmed (or that auto-accepted or was paid) is closed.
+    if ($currentStatus === 'accepted') {
+        $confirmStatus = scheduled_purchase_latest_confirm_status($conn, $requestId);
+        if (in_array($confirmStatus, ['buyer_accepted', 'auto_accepted', 'payment_completed'], true)) {
+            $conn->rollback();
+            json_response(['success' => false, 'error' => 'This purchase has already been completed'], 409);
+        }
     }
 
     $intentToCancel = null;
@@ -111,6 +120,21 @@ try {
     $updateStmt->execute();
     $updateStmt->close();
     notification_cancel_schedule($conn, $requestId);
+
+    // Void a Confirm Purchase form still waiting on the buyer, as account
+    // deletion does. Left pending, the buyer could accept it (or it would
+    // auto-accept) and mark the relisted item sold.
+    $voidConfirm = $conn->prepare(
+        "UPDATE confirm_purchase_requests SET status = 'seller_cancelled'
+          WHERE scheduled_request_id = ? AND status = 'pending'"
+    );
+    if (!$voidConfirm) {
+        throw new RuntimeException('Failed to prepare confirm void');
+    }
+    $voidConfirm->bind_param('i', $requestId);
+    $voidConfirm->execute();
+    $voidConfirm->close();
+    notification_clear_prompt($conn, $requestId, 'confirm_request');
     
     // Revert item status to "Active" when cancelled, but only if no other accepted purchases exist
     // This ensures item becomes available again only when truly free of all accepted scheduled purchases

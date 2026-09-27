@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
+import { withFirstFrame } from "../../../utils/videoSrc";
 
 export default function ImageModal({
   open,
@@ -193,8 +194,9 @@ export default function ImageModal({
           <div className="h-56 sm:h-72 max-h-[65dvh] rounded-lg border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-900/30">
             {previewUrl && file && isVideoFile(file) ? (
               <video
-                src={previewUrl}
+                src={withFirstFrame(previewUrl)}
                 controls
+                playsInline
                 preload="metadata"
                 aria-label="Selected video preview"
                 className="h-full w-full object-contain"

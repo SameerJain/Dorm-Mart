@@ -76,12 +76,28 @@ function dm_request_origin(): string
     return $host !== '' ? dm_request_scheme() . '://' . $host : '';
 }
 
+/**
+ * Off localhost the public URLs must come from configuration. Deriving them from
+ * Host/Origin would let a forged header choose the domain in password-reset
+ * emails and redirects.
+ */
+function dm_require_configured_public_url(string $key): void
+{
+    $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+    if (php_sapi_name() === 'cli' || $host === '' || dm_is_local_host($host)) {
+        return;
+    }
+    error_log("app_config: {$key} is not set; refusing to derive it from request headers");
+    throw new RuntimeException("{$key} must be configured");
+}
+
 function dm_frontend_base_url(): string
 {
     $configured = dm_base_url(dm_env_string('FRONTEND_BASE_URL'));
     if ($configured !== '') {
         return $configured;
     }
+    dm_require_configured_public_url('FRONTEND_BASE_URL');
 
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
     if ($origin !== '' && filter_var($origin, FILTER_VALIDATE_URL)) {
@@ -103,6 +119,7 @@ function dm_api_base_url(): string
     if ($configured !== '') {
         return $configured;
     }
+    dm_require_configured_public_url('API_BASE_URL');
 
     $requestOrigin = dm_request_origin();
     $publicUrl = dm_env_string('PUBLIC_URL');

@@ -176,7 +176,10 @@ try {
 
         regenerate_session_on_login();
         unset($_SESSION['user_id']);
-        clear_remember_cookie($userId);
+        // Drop only this browser's cookie. Clearing the stored token here let a
+        // correct password alone sign the owner's remembered device out before
+        // the code was ever checked; verify_two_factor.php issues a new one.
+        clear_remember_cookie();
 
         $code = create_two_factor_challenge($userId, $theme);
         $emailResult = send_two_factor_email(

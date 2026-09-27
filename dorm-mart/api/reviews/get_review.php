@@ -67,7 +67,7 @@ try {
         'created_at' => $review['created_at'],
         'updated_at' => $review['updated_at'],
         'buyer_name' => $buyerName,
-        'buyer_email' => $review['email'] ?? ''
+        'buyer_username' => strstr((string)($review['email'] ?? ''), '@', true) ?: ''
     ];
 
     json_response([

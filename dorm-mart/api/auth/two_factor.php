@@ -16,7 +16,7 @@ $method = $_SERVER['REQUEST_METHOD'] ?? '';
 try {
     $conn = db();
     $stmt = $conn->prepare(
-        'SELECT first_name, last_name, email, hash_pass, two_factor_enabled
+        'SELECT first_name, last_name, email, hash_pass, two_factor_enabled, is_protected
          FROM user_accounts WHERE user_id = ? LIMIT 1'
     );
     $stmt->bind_param('i', $userId);
@@ -48,6 +48,12 @@ try {
     $action = is_string($data['action'] ?? null) ? $data['action'] : '';
 
     if ($action === 'enable') {
+        // Seeded demo accounts are shared and their inboxes are not real; turning
+        // 2FA on would lock every other tester out of the account.
+        if ((int)($user['is_protected'] ?? 0) === 1) {
+            $conn->close();
+            json_response(['ok' => false, 'error' => "Two-Factor Authentication can't be turned on for this shared demo account."], 403);
+        }
         if ((bool)$user['two_factor_enabled']) {
             $conn->close();
             json_response(['ok' => false, 'error' => 'Two-Factor Authentication is already enabled for this account.'], 409);

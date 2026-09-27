@@ -4,6 +4,7 @@ import {
   onProductImageError,
 } from "../../../utils/imageFallback";
 import GalleryVideoPlayer from "./GalleryVideoPlayer";
+import { withFirstFrame } from "../../../utils/videoSrc";
 
 export default function ProductImageGallery({ photoUrls = [], title }) {
   const [activeIdx, setActiveIdx] = useState(0);
@@ -175,9 +176,10 @@ function GalleryMedia({ url, alt, controls = false }) {
     return (
       <span className="relative block h-full w-full bg-gray-100 dark:bg-gray-900">
         <video
-          src={url}
+          src={withFirstFrame(url)}
           aria-label={alt}
           muted
+          playsInline
           preload="metadata"
           className="h-full w-full object-cover"
         />

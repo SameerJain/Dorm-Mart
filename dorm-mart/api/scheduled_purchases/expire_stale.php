@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../chat/helpers.php';
 
 /**
  * Lazy expiry: marks pending scheduled purchase requests as 'expired'
@@ -111,6 +112,8 @@ function expire_stale_requests(mysqli $conn): void
         $msgStmt->close();
 
         if ($msgId > 0) {
+            chat_unhide_for_user($conn, $conversationId, $sellerId);
+            chat_unhide_for_user($conn, $conversationId, $buyerId);
             $updateUnread = $conn->prepare(
                 'UPDATE conversation_participants
                    SET unread_count = unread_count + 1,

@@ -604,7 +604,7 @@ function ReviewModal({
                 <div
                   className="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden"
                 >
-                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words overflow-wrap-anywhere">
+                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
                     {reviewText}
                   </p>
                 </div>

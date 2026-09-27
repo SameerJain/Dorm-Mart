@@ -146,7 +146,7 @@ function AboutUs() {
               </p>
               <a
                 href={`mailto:${developer.email}`}
-                className="mt-5 break-all text-sm font-medium text-gray-700 underline decoration-gray-300 underline-offset-4 hover:text-blue-700 dark:text-gray-200 dark:hover:text-blue-300"
+                className="mt-5 break-words text-sm font-medium text-gray-700 underline decoration-gray-300 underline-offset-4 hover:text-blue-700 dark:text-gray-200 dark:hover:text-blue-300"
               >
                 {developer.email}
               </a>

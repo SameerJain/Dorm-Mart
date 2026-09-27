@@ -211,7 +211,7 @@ function ReviewRow({ review }) {
         <p className="text-xs sm:text-sm font-semibold text-blue-700 dark:text-blue-400 break-words">
           {review.product_title}
         </p>
-        <p className="text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words overflow-wrap-anywhere whitespace-pre-wrap">
+        <p className="text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words whitespace-pre-wrap">
           {review.review}
         </p>
       </div>
@@ -597,7 +597,7 @@ function MyProfilePage() {
                     <p className="text-xl sm:text-2xl font-serif font-semibold truncate block">
                       {profile?.name}
                     </p>
-                    <p className="text-xs sm:text-sm break-all dark:text-gray-300">
+                    <p className="text-xs sm:text-sm break-words dark:text-gray-300">
                       @{profile?.username}
                     </p>
                     <p

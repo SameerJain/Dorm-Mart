@@ -25,7 +25,11 @@ check_location(login_ip_location('8.8.8.8', $lookup) === 'Buffalo, New York, Uni
 $_SERVER = ['REMOTE_ADDR' => '8.8.8.8'];
 check_location(login_request_location() === 'Buffalo, New York, United States', 'missing proxy headers use IP fallback');
 $_SERVER['HTTP_X_VERCEL_IP_CITY'] = 'New%20York';
-check_location(login_request_location() === 'New York', 'proxy location preserved');
+putenv('TRUST_PROXY_GEO_HEADERS');
+check_location(login_request_location() === 'Buffalo, New York, United States', 'client-sent geo headers ignored by default');
+putenv('TRUST_PROXY_GEO_HEADERS=true');
+check_location(login_request_location() === 'New York', 'trusted proxy location preserved');
+putenv('TRUST_PROXY_GEO_HEADERS');
 
 $failure = static function () use (&$calls): array { $calls++; return ['success' => false]; };
 check_location(login_ip_location('1.1.1.1', $failure) === null, 'provider failure handled');

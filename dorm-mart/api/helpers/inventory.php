@@ -77,10 +77,21 @@ if (!function_exists('inventory_display_name')) {
         }
 
         if ($emailKey !== null && !empty($row[$emailKey])) {
-            return (string)$row[$emailKey];
+            // Show the username, never the full address.
+            return inventory_username_from_email((string)$row[$emailKey]) ?: $fallback;
         }
 
         return $fallback;
+    }
+}
+
+if (!function_exists('inventory_username_from_email')) {
+    /** The part before the @, which is what profile URLs are keyed by. */
+    function inventory_username_from_email(?string $email): string
+    {
+        $email = trim((string)$email);
+        $at = strpos($email, '@');
+        return $at === false ? $email : substr($email, 0, $at);
     }
 }
 
@@ -109,7 +120,8 @@ if (!function_exists('inventory_product_payload')) {
             'date_sold'      => $row['date_sold'] ?? null,
             'sold_to'        => isset($row['sold_to']) ? (int)$row['sold_to'] : null,
             'seller'         => inventory_display_name($row, $sellerFallback, 'first_name', 'last_name', $emailKey),
-            'email'          => $row['email'] ?? '',
+            // Clients link to profiles by username; the address itself is not theirs to see.
+            'seller_username' => inventory_username_from_email($row['email'] ?? null),
             'created_at'     => !empty($row['date_listed']) ? ($row['date_listed'] . ' 00:00:00') : null,
         ];
     }

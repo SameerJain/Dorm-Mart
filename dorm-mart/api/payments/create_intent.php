@@ -29,6 +29,9 @@ try {
     if (($schedule['status'] ?? '') !== 'accepted') {
         json_response(['success' => false, 'error' => 'Scheduled purchase is not accepted'], 409);
     }
+    if ((int)($schedule['sold'] ?? 0) === 1) {
+        json_response(['success' => false, 'error' => 'This item has already been sold'], 409);
+    }
     if (($schedule['payment_option'] ?? '') !== 'stripe' || !empty($schedule['payment_fallback_at'])) {
         json_response(['success' => false, 'error' => 'Built-in payment is unavailable for this purchase'], 409);
     }
@@ -58,6 +61,7 @@ try {
     $stripe = payment_stripe_client($mode);
 
     $existingStmt = $conn->prepare('SELECT * FROM electronic_payments WHERE scheduled_request_id = ? LIMIT 1');
+    if (!$existingStmt) throw new RuntimeException('Failed to prepare electronic payment lookup');
     $existingStmt->bind_param('i', $requestId);
     $existingStmt->execute();
     $payment = $existingStmt->get_result()->fetch_assoc();

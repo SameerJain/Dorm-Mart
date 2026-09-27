@@ -38,7 +38,7 @@ if ($argc > 1) {
         $password = $argv[$i];
         // Hash + salt using bcrypt (salt generated and embedded automatically)
         // Uses PHP's secure password hashing with bcrypt algorithm
-        $hash = password_hash($password, PASSWORD_BCRYPT);
+        $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 
         echo "Password #{$i}: {$password}\n";
         echo "Hash:        {$hash}\n\n";
@@ -63,7 +63,7 @@ if ($argc > 1) {
         }
 
         // Hash + salt using bcrypt (salt generated and embedded automatically)
-        $hash = password_hash($password, PASSWORD_BCRYPT);
+        $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
         echo "Hash: {$hash}\n\n";
 
         $count++;

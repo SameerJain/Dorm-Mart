@@ -85,8 +85,7 @@ function CostTradeInfo({ req, tone }) {
           </span>
         </div>
         <p
-          className={`text-sm font-semibold min-w-0 break-words overflow-wrap-anywhere ${isRedCost ? "text-red-800 dark:text-red-100" : isCompleted ? "text-gray-700 dark:text-gray-300" : "text-amber-800 dark:text-amber-100"}`}
-          style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+          className={`text-sm font-semibold min-w-0 break-words ${isRedCost ? "text-red-800 dark:text-red-100" : isCompleted ? "text-gray-700 dark:text-gray-300" : "text-amber-800 dark:text-amber-100"}`}
         >
           {req.trade_item_description}
         </p>
@@ -357,7 +356,7 @@ export default function PurchaseCard({
         </div>
 
         {req.description && (
-          <div className={`text-sm break-words overflow-wrap-anywhere ${tone.bodyText}`}>
+          <div className={`text-sm break-words ${tone.bodyText}`}>
             <span className="font-semibold">Description:</span> {req.description}
           </div>
         )}

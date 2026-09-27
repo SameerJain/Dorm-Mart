@@ -113,7 +113,7 @@ function SellerDashboardPage() {
       closeDeleteConfirm();
     } catch (error) {
       logger.error("Delete error:", error);
-      alert("Failed to delete listing.");
+      alert(error?.message || "Failed to delete listing.");
     }
   };
 

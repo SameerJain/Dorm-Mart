@@ -46,12 +46,7 @@ if ($senderId === $receiverId) {
     json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
 }
 
-$receiverStmt = $conn->prepare('SELECT user_id FROM user_accounts WHERE user_id = ? LIMIT 1');
-$receiverStmt->bind_param('i', $receiverId);
-$receiverStmt->execute();
-$receiverExists = $receiverStmt->get_result()->num_rows === 1;
-$receiverStmt->close();
-if (!$receiverExists) {
+if (!chat_user_exists($conn, $receiverId)) {
     json_response(['success' => false, 'error' => 'Receiver not found'], 404);
 }
 

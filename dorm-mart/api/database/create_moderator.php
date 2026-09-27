@@ -30,7 +30,7 @@ require_once __DIR__ . '/db_connect.php';
 
 try {
     $conn = db();
-    $hash = password_hash($password, PASSWORD_BCRYPT);
+    $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
     $gradMonth = (int)date('n');
     $gradYear = (int)date('Y') + 4;
 

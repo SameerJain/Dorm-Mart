@@ -284,6 +284,10 @@ function payment_apply_fallback(mysqli $conn, array $schedule, string $reason): 
     $stmt->close();
     if (!$changed) return false;
 
+    // A cancelled schedule posts its own chat message; a "returned to manual
+    // confirmation" card there would describe a purchase that no longer exists.
+    if ($reason === 'schedule_cancelled') return true;
+
     payment_insert_fallback_message($conn, $schedule, $reason);
     $notified = $conn->prepare(
         'UPDATE scheduled_purchase_requests SET payment_fallback_notified_at = NOW() WHERE request_id = ?'

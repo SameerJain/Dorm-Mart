@@ -38,6 +38,7 @@ export default function ChatPage() {
     typingStatusByConv,
     convError,
     chatByConvError,
+    sendMsgError,
     unreadMsgByConv,
     myId,
     fetchConversation,
@@ -218,24 +219,20 @@ export default function ChatPage() {
     }
   }, [isOtherPersonTyping]);
 
-  /** Wrapper to prevent message creation when item is deleted */
+  /** Wrapper to prevent message creation when item is deleted. Resolves true on success. */
   const handleCreateMessage = useCallback(
-    (content) => {
-      if (activeConversation?.item_deleted) {
-        return;
-      }
-      createMessage(content);
+    async (content) => {
+      if (activeConversation?.item_deleted) return false;
+      return createMessage(content);
     },
     [activeConversation?.item_deleted, createMessage],
   );
 
-  /** Wrapper to prevent image message creation when item is deleted */
+  /** Wrapper to prevent image message creation when item is deleted. Resolves true on success. */
   const handleCreateImageMessage = useCallback(
-    (content, file) => {
-      if (activeConversation?.item_deleted) {
-        return;
-      }
-      createImageMessage(content, file);
+    async (content, file) => {
+      if (activeConversation?.item_deleted) return false;
+      return createImageMessage(content, file);
     },
     [activeConversation?.item_deleted, createImageMessage],
   );
@@ -247,21 +244,40 @@ export default function ChatPage() {
     taRef,
   });
 
-  /** Send text and/or attached image (Enter key or Send button) */
-  const submitComposer = useCallback(() => {
+  const [isSending, setIsSending] = useState(false);
+  const sendingRef = useRef(false);
+
+  /**
+   * Send text and/or attached media (Enter key or Send button). The composer
+   * clears immediately so sending feels instant; if the send fails, the text
+   * and attachment are put back (unless the user already started typing
+   * something new) and the context's sendMsgError explains why.
+   */
+  const submitComposer = useCallback(async (fileOverride) => {
     if (activeConversation?.item_deleted || !activeConvId) return;
-    if (attachedImage) {
-      handleCreateImageMessage(draft, attachedImage);
-      setDraft("");
-      setAttachedImage(null);
-      flushTypingOnSend();
-      return;
-    }
-    if (!draft.trim()) return;
-    handleCreateMessage(draft);
+    if (sendingRef.current) return;
+    const sentDraft = draft;
+    // Phones send a picked file straight away; the Send button passes a click event.
+    const sentImage = fileOverride instanceof Blob ? fileOverride : attachedImage;
+    if (!sentImage && !sentDraft.trim()) return;
+
+    sendingRef.current = true;
+    setIsSending(true);
     setDraft("");
     setAttachedImage(null);
     flushTypingOnSend();
+    try {
+      const ok = sentImage
+        ? await handleCreateImageMessage(sentDraft, sentImage)
+        : await handleCreateMessage(sentDraft);
+      if (!ok) {
+        setDraft((current) => (current === "" ? sentDraft : current));
+        if (sentImage) setAttachedImage((current) => current ?? sentImage);
+      }
+    } finally {
+      sendingRef.current = false;
+      setIsSending(false);
+    }
   }, [
     activeConvId,
     activeConversation?.item_deleted,
@@ -300,18 +316,11 @@ export default function ChatPage() {
     setDeleteError("");
   }
 
-  /** Confirm deletion: call API, clear active if needed, then reload page */
+  /** Confirm hiding: call the API, then remove the row once the server agrees. */
   async function handleDeleteConfirm() {
     if (!pendingDeleteConvId || isDeleting) return;
 
     const convId = pendingDeleteConvId; // keep a local copy
-    const wasActive = convId === activeConvId; // was this the open chat?
-
-    // Immediately update local UI and stop polling for this conversation
-    removeConversationLocal(convId);
-    if (wasActive) {
-      clearActiveConversation();
-    }
 
     setIsDeleting(true);
     setDeleteError("");
@@ -337,16 +346,17 @@ export default function ChatPage() {
         throw new Error(result.error || "Failed to delete conversation");
       }
 
+      // Only now drop the row and stop polling it; on failure it stays listed.
+      removeConversationLocal(convId);
+      if (convId === activeConvId) {
+        clearActiveConversation();
+      }
       setDeleteConfirmOpen(false);
       setPendingDeleteConvId(null);
-
-      // Optional: you probably don't need this anymore, but you can keep it as a safety net.
-      // window.location.reload();
     } catch (error) {
       setDeleteError(
-        error.message || "Failed to delete conversation. Please try again.",
+        error.message || "Couldn't remove this conversation. Please try again.",
       );
-      // If you want to "undo" the local removal on error, you could reload or refetch here.
     } finally {
       setIsDeleting(false);
     }
@@ -558,15 +568,15 @@ export default function ChatPage() {
               confirmState={confirmState}
               draft={draft}
               handleConfirmPurchase={handleConfirmPurchase}
-              handleCreateImageMessage={handleCreateImageMessage}
               handleDraftChange={handleDraftChange}
+              isSending={isSending}
+              sendError={sendMsgError}
               handleKeyDown={handleKeyDown}
               handleSchedulePurchase={handleSchedulePurchase}
               hasActiveScheduledPurchase={hasActiveScheduledPurchase}
               isSellerPerspective={isSellerPerspective}
               setAttachOpen={setAttachOpen}
               setAttachedImage={setAttachedImage}
-              setDraft={setDraft}
               submitComposer={submitComposer}
               taRef={taRef}
             />

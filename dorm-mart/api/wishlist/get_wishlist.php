@@ -68,6 +68,7 @@ try {
             'tags' => $categories, // For compatibility with ItemCardNew
             'seller' => wishlist_seller_name($row),
             'seller_id' => (int)$row['seller_id'],
+            'seller_username' => inventory_username_from_email($row['email'] ?? null),
             'item_location' => $row['item_location'] ?? '',
             'item_condition' => $row['item_condition'] ?? '',
             'status' => $row['item_status'] ?? 'Active',

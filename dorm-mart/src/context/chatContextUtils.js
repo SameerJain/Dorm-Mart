@@ -137,6 +137,8 @@ export async function tickFetchNewMessages(
 
     // only add the flag/field if present
     if (imageUrl) base.image_url = imageUrl;
+    // Uncensored text, sent only for the viewer's own messages (used to edit).
+    if (typeof m.raw_content === "string") base.rawContent = m.raw_content;
 
     return base;
   });
@@ -192,6 +194,54 @@ export async function tickFetchUnreadNotifications(signal) {
   };
 }
 
+const SEND_ERROR_MESSAGES = {
+  missing_fields: "Type a message before sending.",
+  missing_image: "Choose a photo or video to send.",
+  content_too_long: "Messages can be at most 500 characters.",
+};
+
+/**
+ * Turn a failed send response into a sentence the chat can show. The server's
+ * own message is kept when it is already readable (rate limits, closed chats);
+ * machine codes are mapped; anything else gets a generic retry hint.
+ */
+export function chatSendErrorMessage(status, data) {
+  const code = data && typeof data.error === "string" ? data.error.trim() : "";
+  if (SEND_ERROR_MESSAGES[code]) return SEND_ERROR_MESSAGES[code];
+  if (status === 413) return "That file is too large to send.";
+  if (status === 429) {
+    return code.includes(" ")
+      ? code
+      : "You're sending messages too quickly. Wait a moment and try again.";
+  }
+  if (code && code.includes(" ") && code !== "Server error") return code;
+  if (status === 0) return "You appear to be offline. Your message was not sent.";
+  return "Your message couldn't be sent. Please try again.";
+}
+
+async function throwSendError(response) {
+  const data = await response.json().catch(() => null);
+  const error = new Error(chatSendErrorMessage(response.status, data));
+  error.status = response.status;
+  throw error;
+}
+
+/**
+ * Insert a message into a conversation list, or replace the copy that is
+ * already there. Polling often delivers a just-sent message before the POST
+ * resolves; appending blindly left a duplicate bubble with a duplicate key.
+ */
+export function upsertMessage(list, message) {
+  const existing = Array.isArray(list) ? list : [];
+  const id = Number(message?.message_id);
+  if (!Number.isFinite(id)) return [...existing, message];
+  const index = existing.findIndex((item) => Number(item.message_id) === id);
+  if (index === -1) return [...existing, message];
+  const next = existing.slice();
+  next[index] = { ...existing[index], ...message };
+  return next;
+}
+
 export async function createMessageApi({
   receiverId,
   convId,
@@ -215,7 +265,7 @@ export async function createMessageApi({
     body: JSON.stringify(body),
     signal, // lets you cancel if needed
   });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  if (!r.ok) await throwSendError(r);
   return r.json(); // expect JSON back from PHP
 }
 
@@ -239,7 +289,7 @@ export async function createImageMessageApi({
     credentials: "include",
     signal,
   });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  if (!r.ok) await throwSendError(r);
   return r.json(); // expects { success, message: { ... , image_url } }
 }
 

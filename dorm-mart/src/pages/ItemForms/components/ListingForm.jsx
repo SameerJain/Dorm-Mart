@@ -7,6 +7,7 @@ import {
 } from "../utils/listingFormConfig";
 import ListingActions from "./ListingActions";
 import SafetyTips from "./SafetyTips";
+import { withFirstFrame } from "../../../utils/videoSrc";
 
 const errorBorder = (error) =>
   error
@@ -412,9 +413,10 @@ export default function ListingForm({
                     <div key={i} className="relative group">
                       {img.type === "video" ? (
                         <video
-                          src={img.url}
+                          src={withFirstFrame(img.url)}
                           aria-label={`video preview-${i}`}
                           controls
+                          playsInline
                           preload="metadata"
                           className="w-full h-24 object-contain rounded-lg bg-black"
                         />

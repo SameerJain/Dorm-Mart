@@ -98,7 +98,7 @@ try {
     }
 
     // Hash the new password
-    $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+    $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare('

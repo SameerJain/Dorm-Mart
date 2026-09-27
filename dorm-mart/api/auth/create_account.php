@@ -339,7 +339,7 @@ try {
     // 2) Generate & hash password
     // SECURITY NOTE: Store only the salted password hash.
     $tempPassword = generate_password(8);
-    $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
+    $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT, ['cost' => 12]);
 
     // 3) Insert user
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding

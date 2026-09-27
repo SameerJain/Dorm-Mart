@@ -51,13 +51,14 @@ function login_device_details(string $userAgent): array
 
 function login_request_ip(): string
 {
+    // Same trust rule as rate_limit_client_ip(): Railway appends the real client
+    // to X-Forwarded-For, so only the last entry is ours. CF-Connecting-IP and
+    // X-Real-IP are not set by Railway and would arrive client-controlled.
+    $forwarded = array_map('trim', explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '')));
     $candidates = [
-        $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
-        $_SERVER['HTTP_X_REAL_IP'] ?? '',
+        (string)end($forwarded),
+        $_SERVER['REMOTE_ADDR'] ?? '',
     ];
-    $forwarded = explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''));
-    $candidates[] = trim($forwarded[0] ?? '');
-    $candidates[] = $_SERVER['REMOTE_ADDR'] ?? '';
 
     foreach ($candidates as $candidate) {
         $ip = trim((string)$candidate);
@@ -69,8 +70,28 @@ function login_request_ip(): string
     return 'Unknown';
 }
 
+/**
+ * Geo headers (Vercel/Cloudflare) are only trustworthy when that edge sits in
+ * front of the app and overwrites them. Railway passes client-sent headers
+ * through unchanged, so by default they are ignored and the location comes
+ * from the IP lookup instead. Set TRUST_PROXY_GEO_HEADERS=true behind a proxy
+ * that sets them.
+ */
+function login_trust_proxy_geo_headers(): bool
+{
+    $value = getenv('TRUST_PROXY_GEO_HEADERS');
+    if ($value === false) {
+        $value = $_ENV['TRUST_PROXY_GEO_HEADERS'] ?? '';
+    }
+    return in_array(strtolower(trim((string)$value)), ['1', 'true', 'yes'], true);
+}
+
 function login_request_location(): ?string
 {
+    if (!login_trust_proxy_geo_headers()) {
+        return login_ip_location(login_request_ip());
+    }
+
     $parts = [
         $_SERVER['HTTP_X_VERCEL_IP_CITY'] ?? $_SERVER['HTTP_CF_IPCITY'] ?? '',
         $_SERVER['HTTP_X_VERCEL_IP_COUNTRY_REGION'] ?? $_SERVER['HTTP_CF_REGION'] ?? '',

@@ -152,17 +152,17 @@ try {
             $canConfirm = false;
             $reasonCode = 'pending_request';
             $message = 'There is already a Confirm Purchase waiting for buyer response.';
-        } elseif (
-            in_array($confirmRow['status'], ['buyer_accepted', 'auto_accepted', 'payment_completed'], true)
-            && (bool)$confirmRow['is_successful']
-        ) {
+        } elseif (in_array($confirmRow['status'], ['buyer_accepted', 'auto_accepted', 'payment_completed'], true)) {
             $canConfirm = false;
-            $reasonCode = 'already_confirmed';
-            $message = 'This transaction has already been confirmed.';
-        } elseif ($confirmRow['status'] === 'seller_cancelled') {
-            $canConfirm = true;
+            if ((bool)$confirmRow['is_successful']) {
+                $reasonCode = 'already_confirmed';
+                $message = 'This transaction has already been confirmed.';
+            } else {
+                $reasonCode = 'closed_unsuccessful';
+                $message = 'This exchange was closed as unsuccessful. Schedule a new purchase to try again.';
+            }
         } else {
-            // buyer_declined or other terminal state – seller may resend
+            // buyer_declined or seller_cancelled: the seller may resend
             $canConfirm = true;
         }
     }

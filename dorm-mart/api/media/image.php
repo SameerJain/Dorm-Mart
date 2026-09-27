@@ -6,6 +6,7 @@ declare(strict_types=1);
 // Include security utilities
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
+require_once __DIR__ . '/../helpers/file_stream.php';
 set_security_headers();
 set_secure_cors();
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
@@ -36,10 +37,11 @@ function stream_media(string $path): void
         exit('Media not found');
     }
 
-    header('Content-Type: ' . $mime);
-    header('Content-Length: ' . filesize($path));
-    readfile($path);
-    exit;
+    // Uploaded files get a random name and are never rewritten in place, so a
+    // browser can keep them for a long time instead of re-downloading videos.
+    header('Cache-Control: public, max-age=2592000, immutable');
+    header('X-Content-Type-Options: nosniff');
+    stream_file_with_ranges($path, (string)$mime);
 }
 
 function media_path_in_root(string $root, string $filename): ?string

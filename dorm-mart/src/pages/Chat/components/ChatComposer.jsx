@@ -12,17 +12,17 @@ export default function ChatComposer({
   confirmState,
   draft,
   handleConfirmPurchase,
-  handleCreateImageMessage,
   handleDraftChange,
   handleKeyDown,
   handleSchedulePurchase,
   hasActiveScheduledPurchase,
   isSellerPerspective,
+  isSending = false,
+  sendError = "",
   onElectronicPayment,
   paymentStatus,
   setAttachOpen,
   setAttachedImage,
-  setDraft,
   submitComposer,
   taRef,
 }) {
@@ -107,6 +107,23 @@ export default function ChatComposer({
               </p>
             )}
         </div>
+      )}
+
+      {sendError && !activeConversation?.item_deleted && (
+        <p
+          role="alert"
+          className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
+        >
+          {sendError}
+        </p>
+      )}
+      {isSending && (
+        <p
+          aria-live="polite"
+          className="mb-1 text-xs text-gray-500 dark:text-gray-400"
+        >
+          Sending…
+        </p>
       )}
 
       {attachedImage && (
@@ -228,14 +245,13 @@ export default function ChatComposer({
                 return;
               }
               const isMobile = window.innerWidth < 768;
+              setAttachOpen(false);
               if (isMobile) {
-                handleCreateImageMessage(draft, file);
-                setDraft("");
-                setAttachedImage(null);
+                // Same path as the Send button, so a failed upload keeps the file.
+                submitComposer(file);
               } else {
                 setAttachedImage(file);
               }
-              setAttachOpen(false);
             }}
           />
         </div>
@@ -243,7 +259,7 @@ export default function ChatComposer({
         <button
           type="button"
           onClick={submitComposer}
-          disabled={!canSendMessage}
+          disabled={!canSendMessage || isSending}
           aria-label="Send message"
           className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 md:h-11 md:w-11 dark:bg-blue-800 dark:hover:bg-blue-900 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800"
           title="Send"

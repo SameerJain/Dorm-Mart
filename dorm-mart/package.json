@@ -7,10 +7,6 @@
   "dependencies": {
     "@stripe/react-stripe-js": "^6.12.0",
     "@stripe/stripe-js": "^9.17.0",
-    "@testing-library/dom": "^10.4.2",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.7",
     "cross-env": "^10.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -60,6 +56,10 @@
     ]
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
     "autoprefixer": "^10.6.1",
     "env-cmd": "^11.0.0",
     "postcss": "^8.5.28"

@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../chat/helpers.php';
+
 function scheduled_purchase_has_active_accepted(mysqli $conn, int $productId, int $excludeRequestId): bool
 {
     $stmt = $conn->prepare('
@@ -69,6 +71,26 @@ function scheduled_purchase_has_open_request(mysqli $conn, int $productId): bool
     $stmt->close();
 
     return $row && (int)$row['cnt'] > 0;
+}
+
+/** Status of the newest Confirm Purchase form sent for a schedule, or null if none. */
+function scheduled_purchase_latest_confirm_status(mysqli $conn, int $requestId): ?string
+{
+    $stmt = $conn->prepare(
+        'SELECT status FROM confirm_purchase_requests
+          WHERE scheduled_request_id = ?
+          ORDER BY confirm_request_id DESC
+          LIMIT 1'
+    );
+    if (!$stmt) {
+        throw new RuntimeException('Failed to prepare confirm status lookup');
+    }
+    $stmt->bind_param('i', $requestId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $row ? (string)$row['status'] : null;
 }
 
 function scheduled_purchase_utc_atom($value): ?string
@@ -164,6 +186,7 @@ function scheduled_purchase_insert_chat_message(
     $msgStmt->close();
 
     if ($incrementUnread) {
+        chat_unhide_for_user($conn, $conversationId, $receiverId);
         $updateStmt = $conn->prepare('UPDATE conversation_participants SET unread_count = unread_count + 1, first_unread_msg_id = CASE WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ? ELSE first_unread_msg_id END WHERE conv_id = ? AND user_id = ?');
         if (!$updateStmt) {
             throw new RuntimeException('Failed to prepare unread update');

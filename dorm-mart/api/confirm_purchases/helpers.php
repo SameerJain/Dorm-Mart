@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../chat/helpers.php';
 
 function confirm_purchase_conversation(mysqli $conn, int $conversationId, int $productId): ?array
 {
@@ -126,6 +127,7 @@ function insert_confirm_chat_message(
     $msgId = (int)$msgStmt->insert_id;
     $msgStmt->close();
 
+    chat_unhide_for_user($conn, $conversationId, $receiverId);
     $updateStmt = $conn->prepare('UPDATE conversation_participants SET unread_count = unread_count + 1, first_unread_msg_id = CASE WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ? ELSE first_unread_msg_id END WHERE conv_id = ? AND user_id = ?');
     if ($updateStmt) {
         $updateStmt->bind_param('iii', $msgId, $conversationId, $receiverId);
@@ -465,6 +467,30 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
     }
 
     $confirmId = (int)$row['confirm_request_id'];
+
+    // A form left pending under a schedule that was since cancelled must not
+    // complete the sale; void it instead.
+    $scheduleStmt = $conn->prepare('SELECT status FROM scheduled_purchase_requests WHERE request_id = ? LIMIT 1');
+    if (!$scheduleStmt) {
+        throw new RuntimeException('Failed to prepare schedule status lookup');
+    }
+    $scheduledRequestId = (int)($row['scheduled_request_id'] ?? 0);
+    $scheduleStmt->bind_param('i', $scheduledRequestId);
+    $scheduleStmt->execute();
+    $schedule = $scheduleStmt->get_result()->fetch_assoc();
+    $scheduleStmt->close();
+    if (!$schedule || $schedule['status'] !== 'accepted') {
+        $voidStmt = $conn->prepare("UPDATE confirm_purchase_requests SET status = 'seller_cancelled' WHERE confirm_request_id = ? AND status = 'pending'");
+        if (!$voidStmt) {
+            throw new RuntimeException('Failed to prepare confirm void');
+        }
+        $voidStmt->bind_param('i', $confirmId);
+        $voidStmt->execute();
+        $voidStmt->close();
+        $row['status'] = 'seller_cancelled';
+        return $row;
+    }
+
     $updateStmt = $conn->prepare("UPDATE confirm_purchase_requests SET status = 'auto_accepted', auto_processed_at = NOW(), buyer_response_at = NOW() WHERE confirm_request_id = ? AND status = 'pending' LIMIT 1");
     if (!$updateStmt) {
         throw new RuntimeException('Failed to prepare auto-finalize update');

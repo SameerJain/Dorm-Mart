@@ -59,12 +59,17 @@ try {
     if (!$schedule) {
         json_response(['success' => false, 'error' => 'Scheduled purchase not found'], 404);
     }
+    if (($schedule['status'] ?? '') !== 'accepted') {
+        json_response(['success' => false, 'error' => 'This scheduled purchase is no longer active'], 409);
+    }
     if (($schedule['payment_option'] ?? 'manual') === 'stripe' && empty($schedule['payment_fallback_at'])) {
         json_response(['success' => false, 'error' => 'This purchase is waiting for built-in payment'], 409);
     }
 
     $row = auto_finalize_confirm_request($conn, $row) ?? $row;
     if (($row['status'] ?? '') !== 'pending') {
+        // Keep an auto-accept that just ran; exiting would roll it back.
+        $conn->commit();
         json_response(['success' => false, 'error' => 'This confirmation has already been processed'], 409);
     }
 
@@ -104,6 +109,7 @@ try {
     }
 
     notify_seller_confirm_outcome($conn, $row, $nextStatus);
+    notification_clear_prompt($conn, (int)$row['scheduled_request_id'], 'confirm_request');
 
     $conversationId = (int)$row['conversation_id'];
     $metadataType = $action === 'accept' ? 'confirm_accepted' : 'confirm_denied';
@@ -116,7 +122,6 @@ try {
         $messageContent = $buyerName . ' has ' . $actionText . ' the Confirm Purchase form.';
 
         $receiverId = get_conversation_receiver_id($conn, $conversationId, $buyerId);
-        notification_clear_prompt($conn, (int)$row['scheduled_request_id'], 'confirm_request');
         if ($receiverId !== null) {
             delete_confirm_request_message($conn, $conversationId, $confirmRequestId);
             insert_confirm_chat_message($conn, $conversationId, $buyerId, $receiverId, $messageContent, $metadata);

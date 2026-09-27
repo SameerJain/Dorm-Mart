@@ -163,7 +163,7 @@ export default function ChatHeader({
           {activeConversation.sharedContactEmail && (
             <a
               href={`mailto:${activeConversation.sharedContactEmail}`}
-              className="break-all text-blue-700 hover:underline dark:text-blue-300"
+              className="max-w-full break-words text-blue-700 hover:underline dark:text-blue-300"
             >
               {activeConversation.sharedContactEmail}
             </a>

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/file_stream.php';
 require __DIR__ . '/../database/db_connect.php';
 
 set_security_headers();    // your existing security headers
@@ -24,6 +25,9 @@ $conn->set_charset('utf8mb4');
 
 auth_boot_session();
 $userId = require_login();                 // must be logged in
+// Streaming a large video must not hold the session lock, or every other
+// request from this user (including chat polls) waits for it to finish.
+session_write_close();
 
 // --- inputs ---
 $messageId = request_int($_GET, 'message_id');
@@ -106,16 +110,13 @@ if (!in_array($mime, $allowedMimes, true)) {
   exit;
 }
 
-// Set headers for inline view or download
-$basename = basename($absPath);
-$extension = strtolower((string)pathinfo($basename, PATHINFO_EXTENSION));
+// Set headers for inline view or download. The stored filename embeds the
+// uploader's id, so both views use a neutral name.
+$extension = strtolower((string)pathinfo($absPath, PATHINFO_EXTENSION));
 $mediaType = strpos($mime, 'video/') === 0 ? 'video' : 'image';
 $downloadName = sprintf('dorm-mart-chat-%s-%d.%s', $mediaType, $messageId, $extension);
-header('Content-Type: ' . $mime);                    // tells the browser the exact type
-header('Content-Length: ' . (string)filesize($absPath));
 header('Cache-Control: private, max-age=604800');    // cache 7 days for the same user/session
-header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="' . ($forceDownload ? $downloadName : $basename) . '"');
+header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="' . $downloadName . '"');
 
-// Stream the file; no echoing JSON afterward.
-readfile($absPath);
-exit;
+// Stream the file (with Range support for video seeking); no JSON afterward.
+stream_file_with_ranges($absPath, $mime);

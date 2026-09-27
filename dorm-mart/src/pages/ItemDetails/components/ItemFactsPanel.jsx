@@ -31,10 +31,12 @@ function ProductFactsPanel({ normalized }) {
           label="Accepts trades"
           value={normalized.trades ? "Yes" : "No"}
         />
-        <DetailRow
-          label="Seller email"
-          value={
-            normalized.sellerEmail ? (
+        {/* Listing APIs no longer expose seller email; sellers share contact
+            details in chat when they opt in. Render only if one is supplied. */}
+        {normalized.sellerEmail ? (
+          <DetailRow
+            label="Seller email"
+            value={
               <a
                 href={`mailto:${normalized.sellerEmail}`}
                 title={normalized.sellerEmail}
@@ -42,11 +44,9 @@ function ProductFactsPanel({ normalized }) {
               >
                 {normalized.sellerEmail}
               </a>
-            ) : (
-              EMPTY_VALUE
-            )
-          }
-        />
+            }
+          />
+        ) : null}
       </div>
       <div className="space-y-2">
         <DetailRow

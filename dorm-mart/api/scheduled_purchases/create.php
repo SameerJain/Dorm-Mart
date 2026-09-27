@@ -158,7 +158,7 @@ try {
     $snapshotMeetLocation = isset($itemRow['item_location']) ? trim((string)$itemRow['item_location']) : null;
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $convStmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
+    $convStmt = $conn->prepare('SELECT conv_id, product_id, user1_id, user2_id, user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
     if (!$convStmt) {
         throw new RuntimeException('Failed to prepare conversation query');
     }
@@ -170,6 +170,11 @@ try {
 
     if (!$convRow) {
         json_response(['success' => false, 'error' => 'Conversation not found'], 404);
+    }
+    // Confirm Purchase looks the schedule up through the chat's own listing, so a
+    // schedule filed under another listing's chat could never be completed.
+    if ((int)($convRow['product_id'] ?? 0) !== $inventoryId) {
+        json_response(['success' => false, 'error' => 'This conversation is about a different listing'], 400);
     }
 
     $buyerId = 0;
@@ -239,7 +244,9 @@ try {
         if ($negotiatedPrice > 9999.99) {
             json_response(['success' => false, 'error' => 'Negotiated price must be $9999.99 or less'], 400);
         }
-        $priceDigitsOnly = preg_replace('/[^0-9]/', '', (string)$negotiatedPrice);
+        // Check the string as entered, like the listing form and the frontend do;
+        // a float cast drops trailing zeros and lets "4.20" through as "4.2".
+        $priceDigitsOnly = preg_replace('/[^0-9]/', '', $negotiatedPriceString);
         foreach (['80085','8008','5318008','42069','66666','6969','42042','1488','420','666','69','67'] as $_m) {
             if (strpos($priceDigitsOnly, $_m) !== false) {
                 json_response(['success' => false, 'error' => 'Invalid price value'], 400);
@@ -252,14 +259,22 @@ try {
     // tab would otherwise create duplicate requests and duplicate chat cards.
     // respond.php takes the same INVENTORY row lock before accepting.
     $conn->begin_transaction();
-    $inventoryLock = $conn->prepare('SELECT product_id FROM INVENTORY WHERE product_id = ? LIMIT 1 FOR UPDATE');
+    $inventoryLock = $conn->prepare('SELECT item_status, sold FROM INVENTORY WHERE product_id = ? LIMIT 1 FOR UPDATE');
     if (!$inventoryLock) {
         throw new RuntimeException('Failed to prepare inventory lock');
     }
     $inventoryLock->bind_param('i', $inventoryId);
     $inventoryLock->execute();
-    $inventoryLock->store_result();
+    $lockedItem = $inventoryLock->get_result()->fetch_assoc();
     $inventoryLock->close();
+    if (!$lockedItem || (int)$lockedItem['sold'] === 1 || $lockedItem['item_status'] === 'Sold') {
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'This item has already been sold'], 409);
+    }
+    if ($lockedItem['item_status'] === 'Draft') {
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'Publish this listing before scheduling a purchase'], 409);
+    }
     if (scheduled_purchase_has_open_request($conn, $inventoryId)) {
         $conn->rollback();
         json_response(['success' => false, 'error' => 'This item already has an active scheduled purchase'], 409);

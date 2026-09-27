@@ -21,6 +21,17 @@ function chat_release_lock(mysqli $conn, string $lockKey): void
     }
 }
 
+function chat_user_exists(mysqli $conn, int $userId): bool
+{
+    $stmt = $conn->prepare('SELECT 1 FROM user_accounts WHERE user_id = ? LIMIT 1');
+    if (!$stmt) throw new RuntimeException('Failed to prepare user lookup');
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $exists = $stmt->get_result()->num_rows === 1;
+    $stmt->close();
+    return $exists;
+}
+
 function chat_user_display_names(mysqli $conn, int $user1Id, int $user2Id): array
 {
     $names = [$user1Id => 'User ' . $user1Id, $user2Id => 'User ' . $user2Id];
@@ -109,8 +120,30 @@ function chat_reopen_conversation(mysqli $conn, int $conversationId): void
     $stmt->close();
 }
 
+/**
+ * Show a conversation in one participant's list again. Anything that adds to a
+ * user's unread count must call this, otherwise the badge counts messages in a
+ * conversation the user cannot open. The other participant's flag is untouched.
+ */
+function chat_unhide_for_user(mysqli $conn, int $conversationId, int $userId): void
+{
+    $stmt = $conn->prepare(
+        'UPDATE conversations
+            SET user1_deleted = CASE WHEN user1_id = ? THEN 0 ELSE user1_deleted END,
+                user2_deleted = CASE WHEN user2_id = ? THEN 0 ELSE user2_deleted END
+          WHERE conv_id = ?'
+    );
+    if (!$stmt) {
+        throw new RuntimeException('Failed to prepare conversation unhide');
+    }
+    $stmt->bind_param('iii', $userId, $userId, $conversationId);
+    $stmt->execute();
+    $stmt->close();
+}
+
 function chat_increment_unread(mysqli $conn, int $messageId, int $conversationId, int $receiverId): void
 {
+    chat_unhide_for_user($conn, $conversationId, $receiverId);
     $stmt = $conn->prepare(
         'UPDATE conversation_participants
             SET unread_count = unread_count + 1,

@@ -13,6 +13,7 @@ import { API_BASE } from "../../../utils/apiConfig";
 import { csrfFetch } from "../../../utils/csrfFetch";
 import { isVideoMediaUrl } from "../../../utils/imageFallback";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { withFirstFrame } from "../../../utils/videoSrc";
 
 /**
  * Report + copy state for one message. Actions live in the message's ⋯ menu;
@@ -21,6 +22,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 function useMessageActionState(messageId, onDelete) {
   const [reportState, setReportState] = useState("idle"); // idle | confirming | reporting | reported | failed
   const [deleteState, setDeleteState] = useState("idle"); // idle | confirming | deleting | failed
+  const [deleteError, setDeleteError] = useState("");
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef(null);
 
@@ -45,10 +47,12 @@ function useMessageActionState(messageId, onDelete) {
 
   async function remove() {
     setDeleteState("deleting");
+    setDeleteError("");
     try {
       await onDelete(messageId);
       // The message re-renders as a "deleted" placeholder, unmounting this state.
-    } catch (_) {
+    } catch (err) {
+      setDeleteError(err?.message || "");
       setDeleteState("failed");
     }
   }
@@ -86,7 +90,9 @@ function useMessageActionState(messageId, onDelete) {
   const status = copied
     ? "Copied"
     : deleteState === "failed"
-      ? "Couldn't delete the message. Try again from the message menu."
+      ? deleteError && deleteError !== "Internal server error"
+        ? `Couldn't delete the message: ${deleteError}`
+        : "Couldn't delete the message. Try again from the message menu."
       : reported
       ? "Reported · a moderator will review it"
       : reportState === "failed"
@@ -159,9 +165,16 @@ function triggerDownload(url) {
   link.remove();
 }
 
+// Server limits count Unicode code points (mb_strlen), not UTF-16 units.
+const MAX_MESSAGE_CHARS = 500;
+const charCount = (text) => Array.from(text || "").length;
+
 function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
+  // The sender edits what they actually typed; message.content may have
+  // profanity replaced with asterisks, and saving that would store the stars.
+  const editableText = message.rawContent ?? message.content;
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(message.content);
+  const [draft, setDraft] = useState(editableText);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const mine = message.sender === "me";
@@ -172,8 +185,8 @@ function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
 
   async function save() {
     const content = draft.trim();
-    if (!content || content.length > 500 || content === message.content) {
-      if (content === message.content) setEditing(false);
+    if (!content || charCount(content) > MAX_MESSAGE_CHARS || content === editableText) {
+      if (content === editableText) setEditing(false);
       else setError(!content ? "Message cannot be empty." : "Message cannot exceed 500 characters.");
       return;
     }
@@ -198,7 +211,7 @@ function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
           label: "Edit message",
           icon: "edit",
           quick: true,
-          onSelect: () => { setDraft(message.content); setEditing(true); },
+          onSelect: () => { setDraft(editableText); setEditing(true); },
         },
         mine ? deleteAction : reportAction,
       ];
@@ -212,11 +225,11 @@ function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
               <textarea
                 autoFocus
                 value={draft}
-                maxLength={500}
+                aria-label="Edit message"
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Escape") { setDraft(message.content); setEditing(false); setError(""); }
+                  if (e.key === "Escape") { setDraft(editableText); setEditing(false); setError(""); }
                   else if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); }
                 }}
                 className="min-h-16 w-full resize-none rounded-md border-0 bg-transparent p-0 text-sm text-gray-900 outline-none placeholder:text-gray-400"
@@ -224,7 +237,7 @@ function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
               />
               <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
                 <span>Enter to save · Esc to cancel</span>
-                <span className={draft.length >= 500 ? "font-semibold text-red-500" : ""}>{draft.length}/500</span>
+                <span className={charCount(draft) > MAX_MESSAGE_CHARS ? "font-semibold text-red-500" : ""}>{charCount(draft)}/{MAX_MESSAGE_CHARS}</span>
               </div>
             </div>
             {error && (
@@ -236,14 +249,14 @@ function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
               <button
                 type="button"
                 disabled={saving}
-                onClick={() => { setDraft(message.content); setEditing(false); setError(""); }}
+                onClick={() => { setDraft(editableText); setEditing(false); setError(""); }}
                 className="rounded-lg px-3 py-1.5 text-xs font-medium text-indigo-100 transition-colors hover:bg-white/15 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={saving || !draft.trim() || draft.trim() === message.content}
+                disabled={saving || !draft.trim() || draft.trim() === editableText}
                 onClick={save}
                 className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition-colors hover:bg-indigo-50 disabled:opacity-50 disabled:hover:bg-white"
               >
@@ -259,9 +272,12 @@ function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
           </div>
         ) : (
           <>
-            <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.content}</p>
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
             <div className={"mt-1 text-[10px] " + (mine ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
-              {fmtTime(message.ts)}{message.editedAt ? " · Edited" : ""}
+              {fmtTime(message.ts)}
+              {message.editedAt ? (
+                <span title={`Edited ${new Date(message.editedAt).toLocaleString()}`}> · Edited</span>
+              ) : null}
             </div>
           </>
         )}
@@ -298,8 +314,9 @@ function MediaMessage({ message, canDelete, onDelete }) {
       >
         {isVideo ? (
           <video
-            src={mediaSrc}
+            src={withFirstFrame(mediaSrc)}
             controls
+            playsInline
             preload="metadata"
             aria-label="Chat video attachment"
             className={"max-h-72 w-full rounded-lg object-contain " + (mine ? "bg-white/10" : "bg-black/5")}
@@ -315,7 +332,7 @@ function MediaMessage({ message, canDelete, onDelete }) {
           </a>
         )}
         {message.content && (
-          <p className="mt-2 whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.content}</p>
+          <p className="mt-2 whitespace-pre-wrap break-words">{message.content}</p>
         )}
         <div className={"mt-1 text-[10px] " + (mine ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
           {fmtTime(message.ts)}
@@ -351,14 +368,22 @@ export default function MessageList({
       .reverse()
       .filter((message) => message.sender === "me" && !message.deletedAt && Number(message.message_id) > 0);
     const editable = live.find((message) => !message.image_url && !message.metadata);
-    // delete_message.php only accepts your newest message of any kind, so offer
-    // Delete only when that newest message is a plain text/media bubble.
-    const newest = live[0];
+    // delete_message.php accepts your newest non-card message (system cards are
+    // ignored). Match it against the full list so hidden cards can't shift it.
+    const deletable = [...(messages || [])]
+      .reverse()
+      .find(
+        (message) =>
+          message.sender === "me" &&
+          !message.deletedAt &&
+          !message.metadata &&
+          Number(message.message_id) > 0,
+      );
     return {
       lastEditableId: editable ? Number(editable.message_id) : null,
-      lastDeletableId: newest && !newest.metadata ? Number(newest.message_id) : null,
+      lastDeletableId: deletable ? Number(deletable.message_id) : null,
     };
-  }, [filteredMessages]);
+  }, [filteredMessages, messages]);
   return (
     <div
       ref={scrollRef}

@@ -252,6 +252,9 @@ const ACCOUNT_CREATION_MAX_ATTEMPTS = 4;
 const ACCOUNT_CREATION_ATTEMPT_WINDOW_MINUTES = 10;
 const ACCOUNT_CREATION_LOCKOUT_MINUTES = 3;
 
+/** Retry-After quoted when the limiter itself is unavailable and refuses the attempt. */
+const RATE_LIMIT_FAILURE_RETRY_SECONDS = 60;
+
 /**
  * Resolve the client IP that rate-limit keys are bucketed by.
  *
@@ -260,10 +263,16 @@ const ACCOUNT_CREATION_LOCKOUT_MINUTES = 3;
  * a fresh bucket every time and no counter ever accumulates. X-Forwarded-For
  * carries the actual client, so prefer it, keeping REMOTE_ADDR as the fallback
  * for local runs with no proxy in front.
+ *
+ * Railway's edge APPENDS the connecting address to X-Forwarded-For, so only the
+ * LAST entry was written by our proxy. Anything before it arrived in the
+ * client's own request and is forgeable; trusting the first entry let a client
+ * pick a fresh bucket per request and defeat the limiter entirely.
  */
 function rate_limit_client_ip(): string
 {
-    $forwarded = trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))[0]);
+    $chain = array_map('trim', explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '')));
+    $forwarded = (string)end($chain);
     $remote = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
 
     return filter_var($forwarded, FILTER_VALIDATE_IP)
@@ -354,7 +363,9 @@ function consume_account_creation_attempt(): array
             $conn->close();
         }
         error_log('account-creation rate-limit update failed: ' . $e->getMessage());
-        return ['blocked' => false, 'retry_after_seconds' => 0];
+        // Fail closed: a limiter that cannot record attempts must not wave them
+        // through, or a storage fault silently removes brute-force protection.
+        return ['blocked' => true, 'retry_after_seconds' => RATE_LIMIT_FAILURE_RETRY_SECONDS];
     }
 }
 
@@ -469,7 +480,8 @@ function consume_rate_limit(
             $conn->close();
         }
         error_log('rate-limit consume failed: ' . $e->getMessage());
-        return ['blocked' => false, 'retry_after_seconds' => 0];
+        // Fail closed (see consume_account_creation_attempt).
+        return ['blocked' => true, 'retry_after_seconds' => RATE_LIMIT_FAILURE_RETRY_SECONDS];
     }
 }
 
@@ -634,9 +646,11 @@ function get_remaining_lockout_minutes($lockoutUntil) {
  * @param string $password Plain text password
  * @return string Hashed password
  */
+/** bcrypt work factor for account passwords. 12 is roughly 250 ms per hash in 2026. */
+const PASSWORD_BCRYPT_COST = 12;
+
 function hash_password($password) {
-    require_once __DIR__ . '/../utility/hash_password.php';
-    return password_hash($password, PASSWORD_BCRYPT);
+    return password_hash($password, PASSWORD_BCRYPT, ['cost' => PASSWORD_BCRYPT_COST]);
 }
 
 // INITIALIZATION
@@ -649,5 +663,3 @@ function init_security() {
     set_security_headers();
     set_secure_cors();
 }
-
-?>

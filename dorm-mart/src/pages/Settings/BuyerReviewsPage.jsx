@@ -126,11 +126,7 @@ function BuyerReviewsPage() {
                       }}
                     >
                       <p
-                        className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words overflow-wrap-anywhere"
-                        style={{
-                          wordBreak: "break-word",
-                          overflowWrap: "anywhere",
-                        }}
+                        className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words"
                       >
                         {review.review_text}
                       </p>

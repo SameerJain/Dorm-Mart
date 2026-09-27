@@ -38,7 +38,9 @@ try {
         SELECT
             spr.*,
             inv.title AS item_title,
-            inv.photos AS item_photos
+            inv.photos AS item_photos,
+            inv.item_status AS item_status,
+            inv.sold AS item_sold
         FROM scheduled_purchase_requests spr
         INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
         WHERE spr.request_id = ?
@@ -80,6 +82,12 @@ try {
 
     // Prevent double-booking against active accepted schedules only.
     // Accepted schedules whose latest confirmation was unsuccessful are done.
+    if ($action === 'accept' && ((int)$row['item_sold'] === 1 || $row['item_status'] === 'Sold')) {
+        json_response(['success' => false, 'error' => 'This item has already been sold'], 409);
+    }
+    if ($action === 'accept' && $row['item_status'] === 'Draft') {
+        json_response(['success' => false, 'error' => 'This listing is no longer available'], 409);
+    }
     if ($action === 'accept' && $inventoryProductId > 0) {
         if (scheduled_purchase_has_active_accepted($conn, $inventoryProductId, $requestId)) {
             json_response(['success' => false, 'error' => 'This item has already been accepted by another buyer'], 409);

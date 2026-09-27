@@ -74,7 +74,8 @@ try {
             'created_at' => $row['created_at'],
             'updated_at' => $row['updated_at'],
             'buyer_name' => $buyerName,
-            'buyer_email' => $row['email'] ?? ''
+            // Reviews are public: expose the username, never the reviewer's address.
+            'buyer_username' => strstr((string)($row['email'] ?? ''), '@', true) ?: ''
         ];
     }
     

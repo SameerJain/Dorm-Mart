@@ -120,7 +120,7 @@ export default function ViewProduct() {
 
               <section className="flex flex-col gap-4 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <h2 className="min-w-0 text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words overflow-wrap-anywhere overflow-hidden">
+                  <h2 className="min-w-0 text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words overflow-hidden">
                     {normalized.title}
                   </h2>
                   {canReportListing ? (

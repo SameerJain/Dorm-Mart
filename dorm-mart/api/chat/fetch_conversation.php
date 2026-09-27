@@ -10,6 +10,7 @@ require __DIR__ . '/../database/db_connect.php';
 init_json_endpoint();
 
 $conn = db();
+$conn->set_charset('utf8mb4');
 
 $userId = require_login();
 
@@ -99,7 +100,13 @@ while ($row = $res->fetch_assoc()) {
             $confirmStatusStmt->close();
         }
     }
-    $row['content'] = filter_profanity($conn, (string)$row['content']);
+    $rawContent = (string)$row['content'];
+    $row['content'] = filter_profanity($conn, $rawContent);
+    // The sender may see their own words uncensored, so editing a message
+    // starts from what they typed instead of saving literal asterisks.
+    if ((int)$row['sender_id'] === $userId && $row['deleted_at'] === null && $row['metadata'] === null) {
+        $row['raw_content'] = $rawContent;
+    }
     $row['is_flagged'] = (bool)$row['is_flagged'];
     $row['is_deleted'] = $row['deleted_at'] !== null;
     $messages[] = $row;
@@ -116,6 +123,19 @@ if (request_is_same_origin_fetch()) {
     );
 
     $stmt->bind_param('ii', $convId, $userId);
+    $stmt->execute();
+    $stmt->close();
+
+    // Opening a conversation you hid (for example from a notification link)
+    // restores it to your own list, so replies have somewhere to show up.
+    // The other participant's flag is untouched.
+    $stmt = $conn->prepare(
+        'UPDATE conversations
+            SET user1_deleted = CASE WHEN user1_id = ? THEN 0 ELSE user1_deleted END,
+                user2_deleted = CASE WHEN user2_id = ? THEN 0 ELSE user2_deleted END
+          WHERE conv_id = ?'
+    );
+    $stmt->bind_param('iii', $userId, $userId, $convId);
     $stmt->execute();
     $stmt->close();
 }

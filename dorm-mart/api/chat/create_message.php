@@ -9,7 +9,7 @@ require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../helpers/profanity.php';
 require_once __DIR__ . '/helpers.php';
 
-init_json_endpoint();
+init_json_endpoint('POST');
 
 $conn = db();
 $conn->set_charset('utf8mb4');
@@ -49,6 +49,9 @@ if ($len > 500) {
 $senderId   = (int)$sender;
 if ($senderId === $receiverId) {
     json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
+}
+if (!chat_user_exists($conn, $receiverId)) {
+    json_response(['success' => false, 'error' => 'Receiver not found'], 404);
 }
 
 // Flood cap only — set far above any realistic typing speed so ordinary
