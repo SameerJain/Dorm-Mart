@@ -37,7 +37,11 @@ INSERT INTO INVENTORY (
   'North Campus',
   'Like New',
   'fresh taco made to order, not sitting around waiting for a buyer. ask me about fillings and toppings before ordering since meat, beans, cheese, salsa and veggies can all vary and i don''t want to guess what you''re expecting. tell me about allergies or dietary stuff ahead of time too. it''s meant to be eaten right away so plan on picking it up and eating it, not letting it sit in a bag between classes. $14.99, would trade for another quick meal. we can meet on campus somewhere close to where it gets made so it doesn''t go cold',
-  JSON_ARRAY('/images/taco-image.webp'),
+  JSON_ARRAY(
+    '/images/taco-image.webp',
+    '/images/taco-image-2.jpg',
+    '/images/taco-image-3.jpg'
+  ),
   14.99,
   'Active',
   1,

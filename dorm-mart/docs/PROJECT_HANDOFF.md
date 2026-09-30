@@ -268,8 +268,10 @@ npm run build
 
 ### Railway
 
-- Railway builds the React app through `dorm-mart/scripts/build.sh` and starts PHP with `dorm-mart/Procfile` against `router.php`.
-- `dorm-mart/railway.toml` applies schema migrations in the pre-deploy phase. It does not load fixture data.
+- Railway builds `dorm-mart/Dockerfile` (selected in `dorm-mart/railway.toml`): a Node stage builds the React app without source maps, a Composer stage installs PHP dependencies, and the runtime is PHP 8.3 under Apache with every request rewritten to `router.php`. Apache and PHP hardening lives in `dorm-mart/docker/`. The Procfile's `php -S` is PHP's development server and is no longer used in production.
+- The container hands `DATA_UPLOADS_DIR` to `www-data` at start-up; the code itself stays root-owned and read-only to the web server. `REACT_APP_*` service variables reach the build because the Dockerfile declares them as `ARG`s; declare any new one there too.
+- `dorm-mart/railway.toml` applies schema migrations in the pre-deploy phase and health-checks `/` before switching traffic. It does not load fixture data.
+- Set `FRONTEND_BASE_URL` and `API_BASE_URL` on the service. Without them, links in emails fall back to Railway's own domain (`RAILWAY_PUBLIC_DOMAIN`), never to request headers.
 - To deploy the current local snapshot without merging it first, install/link Railway CLI 4.30.5 or newer and run `build-scripts-win\railway.bat`.
 - The deployment script reports the branch, commit, and dirty files; use `-RequireClean` to reject a dirty worktree and `-Detach` only when intentionally queueing without waiting.
 - Railway filesystems are ephemeral. Set `DATA_UPLOADS_DIR` to a mounted persistent volume or uploaded product/profile/chat/review files will disappear after redeploy/restart while database references remain.

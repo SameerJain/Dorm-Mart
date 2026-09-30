@@ -77,9 +77,21 @@ function dm_request_origin(): string
 }
 
 /**
- * Off localhost the public URLs must come from configuration. Deriving them from
- * Host/Origin would let a forged header choose the domain in password-reset
- * emails and redirects.
+ * The public origin Railway assigned this service, e.g.
+ * https://dorm-mart-production.up.railway.app. Railway injects
+ * RAILWAY_PUBLIC_DOMAIN itself, so unlike Host/Origin it cannot be chosen by
+ * whoever sends the request. '' when not running on Railway.
+ */
+function dm_platform_public_origin(): string
+{
+    $domain = strtolower(dm_env_string('RAILWAY_PUBLIC_DOMAIN'));
+    return preg_match('/^[a-z0-9.-]+$/D', $domain) ? 'https://' . $domain : '';
+}
+
+/**
+ * Off localhost the public URLs must come from configuration or the platform.
+ * Deriving them from Host/Origin would let a forged header choose the domain in
+ * password-reset emails and redirects.
  */
 function dm_require_configured_public_url(string $key): void
 {
@@ -96,6 +108,10 @@ function dm_frontend_base_url(): string
     $configured = dm_base_url(dm_env_string('FRONTEND_BASE_URL'));
     if ($configured !== '') {
         return $configured;
+    }
+    $platform = dm_platform_public_origin();
+    if ($platform !== '') {
+        return $platform;
     }
     dm_require_configured_public_url('FRONTEND_BASE_URL');
 
@@ -118,6 +134,10 @@ function dm_api_base_url(): string
     $configured = dm_base_url(dm_env_string('API_BASE_URL'));
     if ($configured !== '') {
         return $configured;
+    }
+    $platform = dm_platform_public_origin();
+    if ($platform !== '') {
+        return $platform . '/api';
     }
     dm_require_configured_public_url('API_BASE_URL');
 
@@ -155,9 +175,12 @@ function dm_cors_allowed_origins(): array
         $origins[] = $requestOrigin;
     }
 
-    $apiOrigin = dm_url_origin(dm_api_base_url());
-    if ($apiOrigin !== '') {
-        $origins[] = $apiOrigin;
+    // Only a configured API URL is added here. dm_api_base_url() may refuse
+    // (throw) when nothing is configured, and the request's own origin above
+    // already covers same-origin calls, so CORS never depends on it.
+    $apiConfigured = dm_base_url(dm_env_string('API_BASE_URL'));
+    if ($apiConfigured !== '') {
+        $origins[] = dm_url_origin($apiConfigured);
     }
 
     return array_values(array_unique(array_filter(array_map('dm_base_url', $origins))));

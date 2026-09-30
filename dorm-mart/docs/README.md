@@ -4,6 +4,8 @@ Supplementary Dorm Mart documents; none of these are required to run the applica
 
 | File | Purpose |
 | --- | --- |
+| [AGENT_WORKFLOWS.md](AGENT_WORKFLOWS.md) | Dorm Mart guidance used by existing review, debugging, TDD, and verification skills |
+| [TEST_CATALOG.md](TEST_CATALOG.md) | Complete first-party test sources in collapsed sections; regenerate with `node scripts/generate-test-catalog.js` |
 | [PROJECT_HANDOFF.md](PROJECT_HANDOFF.md) | Start here when returning to the project: architecture snapshot and what changed recently |
 | [backend_documentation.md](backend_documentation.md) | High-level overview of the PHP `api/` directory |
 | [environment_configuration.md](environment_configuration.md) | Environment variables, local environment-file selection, build base paths, and Railway notes |

@@ -40,7 +40,11 @@ Gaming chair with a tall back, adjustable armrests, a reclining backrest, and se
 Try sitting in it before you decide, since a chair that feels great to me might not fit someone with a different build.
 
 Selling because I switched desks and don''t have space for it anymore. It''s full sized, so bring a car or a friend to help carry it, and we''d need a pickup spot on campus with room to load it.',
-  JSON_ARRAY('/images/gaming-chair-product-image.jpeg'),
+  JSON_ARRAY(
+    '/images/gaming-chair-product-image.jpeg',
+    '/images/gaming-chair-product-image-2.jpg',
+    '/images/gaming-chair-product-image-3.jpg'
+  ),
   180.00,
   'Active',
   0,
@@ -73,7 +77,9 @@ INSERT INTO INVENTORY (
   'Single Christmas ornament, no chips, cracks, or faded spots. Bought it during a holiday sale and never put up a tree that year, so it''s been wrapped in a box ever since. One ornament, not a set, and the photo shows the exact design you''d get. $12, and I''m not against a reasonable offer. Easy to meet on campus.',
   JSON_ARRAY(
     '/images/christmas-ornament-test-image.jpg',
-    '/images/christmas-ornament-test-image-2.jpg'
+    '/images/christmas-ornament-test-image-2.jpg',
+    '/images/christmas-ornament-test-image-3.jpg',
+    '/images/christmas-ornament-test-image-4.jpg'
   ),
   12.00,
   'Active',

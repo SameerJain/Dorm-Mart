@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 import { API_BASE } from "../../../utils/apiConfig";
 import { csrfPostJson } from "../../../utils/apiClient";
 import {
@@ -35,6 +36,8 @@ export default function ReportListingButton({ productId, title }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -84,7 +87,7 @@ export default function ReportListingButton({ productId, title }) {
         onClick={() => setOpen(true)}
         aria-label="Report this listing"
         title="Report this listing"
-        className="flex-shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 coarse:py-2 coarse:text-sm text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+        className="flex-shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 coarse:py-2 coarse:text-sm text-xs font-medium text-red-600 hover:bg-red-50 dark:text-[#b88989] dark:hover:text-[#c99b9b] dark:hover:bg-red-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
       >
         <FlagIcon className="h-4 w-4" />
         <span>Report</span>
@@ -98,7 +101,7 @@ export default function ReportListingButton({ productId, title }) {
           aria-labelledby="report-listing-title"
           onClick={(event) => event.target === event.currentTarget && close()}
         >
-          <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
+          <div className="min-w-0 w-full max-w-md max-h-[90dvh] overflow-x-hidden overflow-y-auto overscroll-contain bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
             {submitted ? (
               <div className="px-6 py-6">
                 <h2 id="report-listing-title" className="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -164,7 +167,9 @@ export default function ReportListingButton({ productId, title }) {
                     onChange={(event) => setDetails(event.target.value)}
                     maxLength={LISTING_REPORT_DETAILS_MAX}
                     rows={3}
-                    className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal text-gray-900 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-200 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-red-900"
+                    wrap="soft"
+                    style={{ overflowWrap: "anywhere" }}
+                    className="mt-1 w-full min-w-0 max-w-full resize-y whitespace-pre-wrap break-words overflow-x-hidden rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal text-gray-900 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-200 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-red-900"
                   />
                 </label>
                 <p className="mt-1 text-right text-xs text-gray-400">

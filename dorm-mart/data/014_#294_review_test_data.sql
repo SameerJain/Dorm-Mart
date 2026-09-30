@@ -323,18 +323,17 @@ INSERT INTO purchased_items (
 
 -- Update purchase_history table for buyer
 -- Insert or update the purchase_history record with the product_id in the JSON array
+-- Record the purchase in the entry shape confirm_purchases writes and that
+-- Purchase History and review submission read: {product_id, recorded_at, confirm_payload}.
+SET @purchase_entry = JSON_OBJECT(
+  'product_id', @product_id,
+  'recorded_at', DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%s+00:00'),
+  'confirm_payload', JSON_OBJECT('is_successful', TRUE)
+);
 INSERT INTO purchase_history (user_id, items)
-VALUES (@buyer_id, JSON_ARRAY(@product_id))
+VALUES (@buyer_id, JSON_ARRAY(JSON_EXTRACT(@purchase_entry, '$')))
 ON DUPLICATE KEY UPDATE
-  items = JSON_ARRAY_APPEND(
-    CASE 
-      WHEN JSON_SEARCH(items, 'one', CAST(@product_id AS CHAR)) IS NULL 
-      THEN items 
-      ELSE JSON_REMOVE(items, JSON_UNQUOTE(JSON_SEARCH(items, 'one', CAST(@product_id AS CHAR))))
-    END,
-    '$',
-    @product_id
-  ),
+  items = JSON_ARRAY_APPEND(COALESCE(items, JSON_ARRAY()), '$', JSON_EXTRACT(@purchase_entry, '$')),
   updated_at = NOW();
 
 -- Note: Review should be manually submitted by tester (testuser@buffalo.edu)

@@ -63,7 +63,11 @@ INSERT INTO INVENTORY (
   'North Campus',
   'Fair',
   'Fabric storage bin that held my winter clothes and extra towels for a whole semester with no rips or broken seams. Folds flat when empty, handy if you don''t want a rigid box in the way between semesters. Some light wear and marks on the outside from being moved around, which is why it''s priced where it is. Both handles are solid, and the top is open so it won''t keep dust out like a lidded bin would. Bin only, nothing inside. $15.99, open to offers. Bring a bag to carry it since it doesn''t fold small enough for a backpack.',
-  JSON_ARRAY('/images/storage-bin-product-image.jpg'),
+  JSON_ARRAY(
+    '/images/storage-bin-product-image.jpg',
+    '/images/storage-bin-product-image-2.jpg',
+    '/images/storage-bin-product-image-3.jpg'
+  ),
   15.99,
   'Active',
   0,
@@ -136,7 +140,12 @@ INSERT INTO INVENTORY (
   'Ellicott',
   'Excellent',
   'Tabletop mirror that tilts to whatever angle you need so you''re not leaning over your desk. Glass is clear with no cracks or fog, and the base stays put when you adjust it. No built in light or magnification, just a plain mirror. Switched to a wall mirror so it doesn''t have a spot in my room anymore. $35, open to offers or a trade. Wrap it in something soft if it''s riding in a bag with books.',
-  JSON_ARRAY('/images/desk-mirror-product-image.webp'),
+  JSON_ARRAY(
+    '/images/desk-mirror-product-image.webp',
+    '/images/desk-mirror-product-image-2.jpg',
+    '/images/desk-mirror-product-image-3.jpg',
+    '/images/desk-mirror-product-image-4.jpg'
+  ),
   35.00,
   'Active',
   1,
@@ -359,7 +368,11 @@ INSERT INTO INVENTORY (
   'Ellicott',
   'Fair',
   'Frying pan that got me through a semester of eggs, grilled cheese, and reheated leftovers, so it''s definitely used, not display worthy. Cooking surface has marks and the outside isn''t spotless, which is reflected in the price. Base sits flat, handle''s secure with no cracks or loose screws, and a little oil or butter helps stuff release. Good size for one or two people. No lid or utensils, and I haven''t tried it on every stovetop type so check yours. $20 or I''d trade for a kitchen item I''d actually use. Can meet on campus.',
-  JSON_ARRAY('/images/frying-pan-product-image.jpg'),
+  JSON_ARRAY(
+    '/images/frying-pan-product-image.jpg',
+    '/images/frying-pan-product-image-2.jpg',
+    '/images/frying-pan-product-image-3.jpg'
+  ),
   20.00,
   'Active',
   1,
@@ -394,7 +407,12 @@ INSERT INTO INVENTORY (
   'Desk lamp with an adjustable arm and a rotating shade, so you can aim the light where you need it instead of lighting the whole room. I used it next to my bed for reading and at my desk for late study sessions, and it was bright enough to see notes clearly without keeping my roommate awake. No cracks or loose joints and the base stays steady with the arm fully extended. The bulb in it is included but you can swap in a different brightness or color temperature. Switched to a wall mounted light so it''s just been sitting in a corner. Leave room to adjust the arm so you don''t knock into a monitor.
 
 Open to a lower offer or a trade instead of the full $50. Can meet on campus.',
-  JSON_ARRAY('/images/desk-lamp-product-image.jpg'),
+  JSON_ARRAY(
+    '/images/desk-lamp-product-image.jpg',
+    '/images/desk-lamp-product-image-2.jpg',
+    '/images/desk-lamp-product-image-3.jpg',
+    '/images/desk-lamp-product-image-4.jpg'
+  ),
   50.00,
   'Active',
   1,
@@ -434,9 +452,9 @@ Use per the directions on the packaging, including ventilation.
 $15 for all three, open to offers. Can meet on campus.',
   JSON_ARRAY(
     '/images/lysol-pack-product-image.jpeg',
-    '/images/lysol-pack-product-image-2.jpg',
     '/images/lysol-pack-product-image-3.jpg',
-    '/images/lysol-pack-product-image-4.jpg'
+    '/images/lysol-pack-product-image-4.jpg',
+    '/images/lysol-pack-product-image-5.jpg'
   ),
   15.00,
   'Active',
@@ -505,7 +523,8 @@ INSERT INTO INVENTORY (
 Match the exact edition and ISBN to your syllabus first, professors sometimes assign a different printing. Physical book only, no access code or online login. $30, but I''m open to a trade or a lower price, especially if you''re also grabbing another book from my listings. Can meet on campus.',
   JSON_ARRAY(
     '/images/african-american-history-textbook-product-image.jpg',
-    '/images/african-american-history-textbook-product-image-2.jpg'
+    '/images/african-american-history-textbook-product-image-2.jpg',
+    '/images/african-american-history-textbook-product-image-3.jpg'
   ),
   30.00,
   'Active',
@@ -549,8 +568,7 @@ Match the heat setting to the fabric label instead of guessing. $45, or I''d con
   JSON_ARRAY(
     '/images/steam-iron-product-image.webp',
     '/images/steam-iron-product-image-2.jpg',
-    '/images/steam-iron-product-image-3.jpg',
-    '/images/steam-iron-product-image-4.jpg'
+    '/images/steam-iron-product-image-3.jpg'
   ),
   45.00,
   'Active',
@@ -587,8 +605,7 @@ INSERT INTO INVENTORY (
   JSON_ARRAY(
     '/images/swiffer-product-image.jpg',
     '/images/swiffer-product-image-2.jpg',
-    '/images/swiffer-product-image-3.jpg',
-    '/images/swiffer-product-image-4.jpg'
+    '/images/swiffer-product-image-3.jpg'
   ),
   15.00,
   'Active',

@@ -34,7 +34,7 @@ try {
     $stmt = $conn->prepare(
         'SELECT pr.review_id, pr.product_id, pr.buyer_user_id, pr.seller_user_id,
                 pr.rating, pr.product_rating, pr.review_text, pr.image1_url, pr.image2_url, pr.image3_url,
-                pr.created_at, pr.updated_at,
+                pr.video_url, pr.created_at, pr.updated_at,
                 ua.first_name, ua.last_name, ua.email
          FROM product_reviews pr
          LEFT JOIN user_accounts ua ON pr.buyer_user_id = ua.user_id
@@ -67,6 +67,7 @@ try {
             'image1_url' => $row['image1_url'] ?? null,
             'image2_url' => $row['image2_url'] ?? null,
             'image3_url' => $row['image3_url'] ?? null,
+            'video_url' => $row['video_url'] ?? null,
             'created_at' => $row['created_at'],
             'updated_at' => $row['updated_at'],
             'buyer_name' => $buyerName,

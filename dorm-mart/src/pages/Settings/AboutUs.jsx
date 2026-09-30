@@ -15,7 +15,7 @@ const developers = [
     linkedin: "https://www.linkedin.com/in/sameer-jain1/",
     photo: sameerPhoto,
     contribution:
-      "Built the login and account-security system, including password reset, two-factor authentication, CSRF protection, and defenses against XSS, SQL injection, and brute-force attempts. Added the seller dashboard, scheduled and ongoing purchases with chat integration, the wishlist and ratings system, message reporting with profanity filtering, and the Railway deployment with a custom domain and transactional email.",
+      "Sameer built the login and password-recovery flows and worked on account security. He created the dark mode system, seller dashboard, purchase scheduling, wishlists, and product reviews, including the scheduling controls in chat. He has continued maintaining the app, with work on Railway deployment, the custom domain, and email delivery.",
   },
   {
     name: "Anish Banerjee",
@@ -25,7 +25,7 @@ const developers = [
     linkedin: "https://www.linkedin.com/in/anish-banerjee-71aba9290/",
     photo: anishPhoto,
     contribution:
-      "Set up the project's original database connection and built account creation, password changes, and product listing and search from the ground up. Added the dark mode theme, the home feed, the view-product and receipt pages, the purchase history and confirm-purchase APIs, and the private and public profile pages with negotiated-price support.",
+      "Anish set up the first database connection and built account creation and password changes. He worked on creating listings, browsing the home feed, searching with filters, and viewing product details. He also built purchase confirmation, receipts, the purchase-history API, and the personal and public profile pages.",
   },
   {
     name: "Chris (Sooseok) Kim",
@@ -35,7 +35,7 @@ const developers = [
     linkedin: "https://www.linkedin.com/in/kim-chris-sooseok/",
     photo: chrisPhoto,
     contribution:
-      "Built the purchase history page and the chat system from the ground up, including the real-time messaging backend, unread-message notifications, image uploads, and chat deletion. Added wishlist increment and notification tracking, a year filter on purchase history, redesigned the navbar and settings menu for mobile, and built the FAQ pages.",
+      "Chris built the chat system so buyers and sellers could message each other, share photos, and keep track of unread messages. He also built the purchase-history page and its year filter, added wishlist counts and notifications, and made the navigation, settings, and search filters easier to use on phones. He wrote the FAQ pages and the scripts for applying database migrations and test data.",
   },
 ];
 

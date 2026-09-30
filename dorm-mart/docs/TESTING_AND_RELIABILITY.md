@@ -4,9 +4,11 @@ How Dorm Mart's automated tests run, the rule every test has to meet, and the re
 
 ## Suites
 
+For the complete first-party test-file source inventory, open [TEST_CATALOG.md](TEST_CATALOG.md). Every file is enclosed in a collapsed section. Regenerate it after editing tests with `node scripts/generate-test-catalog.js` from `dorm-mart/`; `--check` verifies it is current without rewriting it.
+
 | Command (from `dorm-mart/`) | What it runs |
 | --- | --- |
-| `npm test -- --watchAll=false` | Jest (react-scripts 5 / Jest 27): component tests under `src/pages/**` and adversarial helper tests under `src/__adversarial_tests__/` |
+| `npm test -- --watchAll=false` | Jest (react-scripts 5 / Jest 27): frontend tests under `src/__tests__/`, including adversarial tests under `src/__tests__/adversarial/` |
 | `npm run test:backend` | Five CLI PHP scripts under `api/tests/` (no database, no network) |
 | `npm run test:backend:integration` | `api/tests/purchase_lifecycle_test.php` (needs a database) |
 | `npm run test:mutation` | Stryker mutation run over the pure frontend helpers (see below) |

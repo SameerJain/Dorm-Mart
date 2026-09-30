@@ -175,7 +175,8 @@ INSERT INTO INVENTORY (
   'Scrub Daddy sponge, barely used since I bought a pack and only needed one at a time. Firms up in cold water for baked on messes and softens in warm water for regular dishes. Just the sponge in the photo, no spray or other supplies. $10 firm, happy to meet on campus.',
   JSON_ARRAY(
     '/images/scrub-daddy.jpg',
-    '/images/scrub-daddy-2.jpg'
+    '/images/scrub-daddy-2.jpg',
+    '/images/scrub-daddy-3.jpg'
   ),
   10.00,
   'Active',
@@ -217,8 +218,7 @@ Selling because I''m downsizing my kitchen stuff before moving out at the end of
   JSON_ARRAY(
     '/images/air-fryer.jpg',
     '/images/air-fryer-2.jpg',
-    '/images/air-fryer-3.jpg',
-    '/images/air-fryer-4.jpg'
+    '/images/air-fryer-3.jpg'
   ),
   50.00,
   'Active',

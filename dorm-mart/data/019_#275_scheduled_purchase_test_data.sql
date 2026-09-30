@@ -34,7 +34,11 @@ INSERT INTO INVENTORY (
   'North Campus',
   'Like New',
   'Drawstring laundry bag with two carry handles for when it''s too full to grab by the string. The fabric held a full hamper''s worth of clothes all year without straining the seams. Barely used since I mostly did wash straight out of a hamper, and it folds flat when empty if you''re short on floor space. No shoulder strap, just the handles, and no detergent or supplies included. $12, and I''ll go lower if you''re picking up something else from my listings. Can meet on campus.',
-  JSON_ARRAY('/images/laundry-bag-product-image.webp'),
+  JSON_ARRAY(
+    '/images/laundry-bag-product-image.webp',
+    '/images/laundry-bag-product-image-2.jpg',
+    '/images/laundry-bag-product-image-3.jpg'
+  ),
   12.00,
   'Active',
   0,
@@ -67,7 +71,11 @@ INSERT INTO INVENTORY (
   'House plant in the pot shown in the photos, healthy green leaves with no yellowing or dropped growth lately. Pot is included so you don''t have to find one right away. It''s been sitting near a window with decent indirect light and seems happy there.
 
 Watering depends on the species and your light, so message me for care tips instead of assuming a generic schedule. If you have pets, look up whether this plant is safe for them before bringing it home. $15 firm since it''s already priced low for the size. Bring something to keep it upright if you''re walking.',
-  JSON_ARRAY('/images/small-splant-product-image.jpg'),
+  JSON_ARRAY(
+    '/images/small-splant-product-image.jpg',
+    '/images/small-splant-product-image-2.jpg',
+    '/images/small-splant-product-image-3.jpg'
+  ),
   15.00,
   'Active',
   0,
@@ -106,7 +114,9 @@ Keep it on a flat stable surface away from bedding and curtains, and check your 
 Selling since I won''t need it next year and don''t want it eating closet space over the summer. $35, flexible. Happy to plug it in and show it heats up before you buy. Can meet on campus.',
   JSON_ARRAY(
     '/images/small-heater-product-image.webp',
-    '/images/small-heater-product-image-2.jpg'
+    '/images/small-heater-product-image-2.jpg',
+    '/images/small-heater-product-image-3.jpg',
+    '/images/small-heater-product-image-4.jpg'
   ),
   35.00,
   'Active',

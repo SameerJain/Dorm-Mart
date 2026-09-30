@@ -96,7 +96,11 @@ INSERT INTO INVENTORY (
   'Starry wallpaper, exact design and color arrangement shown in the listing photo. Barely used and it still has the original packaging, so check the material and application instructions there before buying since I haven''t tested it myself.
 
 I haven''t listed exact dimensions, so ask if you need to know how much wall it covers, and try picturing it in the spot you have in mind, especially if there are shelves or furniture against that wall. Also check your housing rules before putting anything on a dorm wall. $20, open to offers, and I can meet on campus.',
-  JSON_ARRAY('/images/starry-wallpaper-image.jpg'),
+  JSON_ARRAY(
+    '/images/starry-wallpaper-image.jpg',
+    '/images/starry-wallpaper-image-2.jpg',
+    '/images/starry-wallpaper-image-3.jpg'
+  ),
   20.00,
   'Active',
   0,
@@ -126,7 +130,11 @@ INSERT INTO INVENTORY (
   'North Campus',
   'Like New',
   '$20 for this sunset print wallpaper, open to offers if that''s a stretch. Warm orange and pink palette, shown in the listing photo. Check it against your actual room lighting though, colors look pretty different under a warm bulb than in daylight. Unused and still in the original packaging, comes exactly as pictured with no hanging tools or extra adhesive beyond what''s on the material. No exact dimensions listed so ask if you need to know the coverage. Check your housing rules first if it''s going in a dorm. Easy to carry rolled up, can meet on campus.',
-  JSON_ARRAY('/images/sunset-wallpaper-image.png'),
+  JSON_ARRAY(
+    '/images/sunset-wallpaper-image.png',
+    '/images/sunset-wallpaper-image-2.jpg',
+    '/images/sunset-wallpaper-image-3.jpg'
+  ),
   20.00,
   'Active',
   0,

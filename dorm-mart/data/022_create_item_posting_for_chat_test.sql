@@ -39,7 +39,11 @@ Application: depends on the material, so ask if you''re not sure whether it need
 Housing: if you rent or live in a dorm, check whether this type of material is allowed
 
 Colors will look a little different under your room lighting, so treat the photo as a guide. $20, flexible on price. Can meet on campus whenever works.',
-  JSON_ARRAY('/images/nightmoon-wallpaper-image.jpg'),
+  JSON_ARRAY(
+    '/images/nightmoon-wallpaper-image.jpg',
+    '/images/nightmoon-wallpaper-image-2.jpg',
+    '/images/nightmoon-wallpaper-image-3.jpg'
+  ),
   20.00,
   'Active',
   0,

@@ -20,6 +20,7 @@ export default function SellerListingRow({
   const status = String(listing.status || "").toLowerCase();
   const canModify =
     listing.has_accepted_scheduled_purchase !== true && status !== "sold";
+  const canEdit = canModify && status !== "pending";
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 sm:p-6 overflow-hidden">
@@ -65,7 +66,7 @@ export default function SellerListingRow({
               {String(listing.status)}
             </span>
 
-            {canModify && (
+            {canEdit && (
               <button
                 onClick={() => onEdit(listing.id)}
                 className="whitespace-nowrap coarse:-my-1 coarse:px-1.5 coarse:py-2 font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 hover:underline"

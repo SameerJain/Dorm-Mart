@@ -172,7 +172,11 @@ INSERT INTO INVENTORY (
   'Custom GameCube controller with shells from Control In Color. The front and outer shells have a stylized take on Hokusai''s Great Wave off Kanagawa, the back has SAMMY printed on it, and there''s blue tape wrapped around the cord too. Easy to spot at a setup full of identical pads, which is honestly the whole appeal.
 
 Everything I changed is cosmetic, nothing is modded inside, so it plays like a stock pad. Stick tension is a little looser than a brand new one, which is the main thing to know if you want it for Melee. Fine for casual runs, but I''d pair it with UCF and a decent monitor for anything competitive. Check the back tag in the photos before messaging since that''s part of what you''re getting. Price is flexible, reasonable offers welcome. Can meet on campus.',
-  JSON_ARRAY('/images/custom-gamecube-controller.jpg'),
+  JSON_ARRAY(
+    '/images/custom-gamecube-controller.jpg',
+    '/images/custom-gamecube-controller-2.jpg',
+    '/images/custom-gamecube-controller-3.jpg'
+  ),
   80.00,
   'Active',
   0,

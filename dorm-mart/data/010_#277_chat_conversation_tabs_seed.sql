@@ -48,7 +48,8 @@ INSERT INTO INVENTORY (
   JSON_ARRAY(
     '/images/blue-water-bottle.jpg',
     '/images/blue-water-bottle-2.jpg',
-    '/images/blue-water-bottle-3.jpg'
+    '/images/blue-water-bottle-3.jpg',
+    '/images/blue-water-bottle-4.jpg'
   ),
   15.00,
   'Active',

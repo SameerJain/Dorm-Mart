@@ -3,6 +3,7 @@ import EditableStarRating from "./EditableStarRating";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useSubmitLock } from "../../hooks/useSubmitLock";
 import ReviewImageGallery from "./components/ReviewImageGallery";
+import ReviewVideo from "./components/ReviewVideo";
 import { onProductImageError } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
 import {
@@ -55,6 +56,8 @@ function ReviewModal({
   const [charCount, setCharCount] = useState(0);
   const [uploadedImages, setUploadedImages] = useState([]); // Array of {file, url, uploadedUrl}
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmCallback, setConfirmCallback] = useState(null);
@@ -80,6 +83,7 @@ function ReviewModal({
       setCharCount(0);
       setError(null);
       setUploadedImages([]);
+      setVideoUrl(null);
       // Don't reset confirmation modal state here - let handleSubmit control it
     } else if (!isOpen) {
       // Only reset confirmation modal state when modal closes
@@ -131,12 +135,13 @@ function ReviewModal({
       rating > 0 ||
       productRating > 0 ||
       reviewText.trim().length > 0 ||
-      uploadedImages.length > 0
+      uploadedImages.length > 0 || videoUrl !== null
     );
   };
 
   // Handle close with confirmation if needed
   const handleClose = () => {
+    if (isUploadingVideo || isUploadingImage || isSubmitting) return;
     if (hasUnsavedChanges()) {
       setConfirmMessage(
         "You have unsaved changes. Are you sure you want to close?",
@@ -149,6 +154,33 @@ function ReviewModal({
       return;
     }
     onClose();
+  };
+
+  const handleVideoSelect = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!["video/mp4", "video/webm", "video/quicktime"].includes(file.type) || file.size > 25 * 1024 * 1024) {
+      setError("Use an MP4, WebM, or MOV video up to 25 MB");
+      return;
+    }
+    setIsUploadingVideo(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("video", file);
+      const response = await csrfFetch(`${API_BASE}/reviews/upload_review_video.php`, {
+        method: "POST", body, credentials: "include",
+      });
+      if (!response.ok) throw new Error(await readApiError(response, "Video upload failed"));
+      const result = await readJsonResponse(response);
+      if (!result?.success) throw new Error(result?.error || "Video upload failed");
+      setVideoUrl(result.video_url);
+    } catch (err) {
+      setError(err.message || "Video upload failed");
+    } finally {
+      setIsUploadingVideo(false);
+    }
   };
 
   const handleImageSelect = async (e) => {
@@ -243,7 +275,7 @@ function ReviewModal({
     }
 
     if (mode !== "create") return;
-    if (isSubmitting || pendingSubmit) return; // Prevent double submission
+    if (isSubmitting || pendingSubmit || isUploadingImage || isUploadingVideo) return;
 
     if (rating <= 0) {
       setError("Please select a seller rating");
@@ -305,6 +337,7 @@ function ReviewModal({
           rating: rating,
           product_rating: productRating,
           review_text: reviewText.trim(),
+          video_url: videoUrl,
           ...imageUrls,
         },
       );
@@ -326,7 +359,7 @@ function ReviewModal({
   };
 
   const isFormValid =
-    rating > 0 && productRating > 0 && reviewText.trim().length > 0;
+    rating > 0 && productRating > 0 && reviewText.trim().length > 0 && !isUploadingImage && !isUploadingVideo;
 
   if (!isOpen) return null;
 
@@ -504,6 +537,23 @@ function ReviewModal({
                 )}
               </div>
 
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" htmlFor="review-video">Video (optional)</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">One MP4, WebM, or MOV video, up to 25 MB.</p>
+                {videoUrl ? (
+                  <>
+                    <ReviewVideo url={videoUrl} />
+                    <button type="button" onClick={() => setVideoUrl(null)} disabled={isSubmitting}
+                      className="text-sm text-red-600 dark:text-red-400">Remove video</button>
+                  </>
+                ) : (
+                  <input id="review-video" type="file" accept="video/mp4,video/webm,video/quicktime"
+                    onChange={handleVideoSelect} disabled={isUploadingVideo || isSubmitting}
+                    className="block w-full text-sm text-gray-700 dark:text-gray-300" />
+                )}
+                {isUploadingVideo && <p role="status" className="mt-2 text-sm text-gray-500">Uploading video...</p>}
+              </div>
+
               {/* Error Message */}
               {error && (
                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -558,6 +608,7 @@ function ReviewModal({
               </div>
 
               <ReviewImageGallery review={existingReview} viewMode={viewMode} />
+              <ReviewVideo url={existingReview?.video_url} />
 
               {existingReview?.created_at && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">

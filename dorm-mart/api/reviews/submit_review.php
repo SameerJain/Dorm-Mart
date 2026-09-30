@@ -72,6 +72,20 @@ try {
     };
 
     [$image1Url, $image2Url, $image3Url] = array_map($validateImageUrl, $rawImageUrls);
+    $videoUrl = $payload['video_url'] ?? null;
+    if ($videoUrl !== null) {
+        if (!is_string($videoUrl) || !preg_match(
+            '#^/media/review-images/review_u' . $userId . '_\d{8}_\d{6}_[a-f0-9]{12}\.(?:mp4|webm|mov)$#D',
+            $videoUrl
+        )) {
+            json_response(['success' => false, 'error' => 'Review video must belong to your upload session'], 400);
+        }
+        $root = real_upload_path(data_media_dir('review-images'));
+        $path = $root !== null ? realpath($root . DIRECTORY_SEPARATOR . basename($videoUrl)) : false;
+        if ($path === false || !str_starts_with($path, rtrim($root, '/\\') . DIRECTORY_SEPARATOR) || !is_file($path)) {
+            json_response(['success' => false, 'error' => 'Review video not found'], 400);
+        }
+    }
     $presentImageUrls = array_values(array_filter([$image1Url, $image2Url, $image3Url]));
     if (count($presentImageUrls) !== count(array_unique($presentImageUrls))) {
         json_response(['success' => false, 'error' => 'Review images must be unique'], 400);
@@ -144,13 +158,13 @@ try {
 
     // Insert the review with optional images
     $stmt = $conn->prepare(
-        'INSERT INTO product_reviews (product_id, buyer_user_id, seller_user_id, rating, product_rating, review_text, image1_url, image2_url, image3_url) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO product_reviews (product_id, buyer_user_id, seller_user_id, rating, product_rating, review_text, image1_url, image2_url, image3_url, video_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare review insert');
     }
-    $stmt->bind_param('iiiddssss', $productId, $userId, $sellerId, $rating, $productRating, $reviewText, $image1Url, $image2Url, $image3Url);
+    $stmt->bind_param('iiiddsssss', $productId, $userId, $sellerId, $rating, $productRating, $reviewText, $image1Url, $image2Url, $image3Url, $videoUrl);
     try {
         $success = $stmt->execute();
     } catch (mysqli_sql_exception $e) {

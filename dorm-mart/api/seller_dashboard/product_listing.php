@@ -146,8 +146,8 @@ try {
 
     $soldFlag = (int)($existing['sold'] ?? 0);
     $statusStr = (string)($existing['item_status'] ?? '');
-    if ($soldFlag === 1 || $statusStr === 'Sold') {
-      json_response(['ok' => false, 'error' => 'Sold listings cannot be edited.'], 403);
+    if ($soldFlag === 1 || in_array($statusStr, ['Pending', 'Sold'], true)) {
+      json_response(['ok' => false, 'error' => 'Pending or sold listings cannot be edited.'], 403);
     }
 
     if ($status === 'Draft' && scheduled_purchase_has_active_accepted($conn, $itemId, 0)) {
@@ -329,8 +329,8 @@ try {
       $rejectLocked(404, 'Product not found or you do not have permission to edit this product.');
     }
     $lockedStatus = (string)($lockedRow['item_status'] ?? '');
-    if ((int)($lockedRow['sold'] ?? 0) === 1 || $lockedStatus === 'Sold') {
-      $rejectLocked(403, 'Sold listings cannot be edited.');
+    if ((int)($lockedRow['sold'] ?? 0) === 1 || in_array($lockedStatus, ['Pending', 'Sold'], true)) {
+      $rejectLocked(403, 'Pending or sold listings cannot be edited.');
     }
     if ($status === 'Active' && $lockedStatus !== 'Active' && $activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
       $rejectLocked(403, listing_cap_error($capAction));
@@ -354,7 +354,7 @@ try {
                    date_listed=IF(? = 1, CURRENT_DATE, date_listed)
              WHERE product_id=? AND seller_id=?
                AND (sold IS NULL OR sold = 0)
-               AND (item_status IS NULL OR item_status <> 'Sold')";
+               AND (item_status IS NULL OR item_status NOT IN ('Pending', 'Sold'))";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param(
       'ssssssdiisiii',
