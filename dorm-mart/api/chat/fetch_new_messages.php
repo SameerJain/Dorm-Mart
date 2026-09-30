@@ -4,7 +4,7 @@ require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../helpers/profanity.php';
 require_once __DIR__ . '/../helpers/request.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
 
@@ -107,7 +107,8 @@ while ($row = $res->fetch_assoc()) {
         }
     }
     $rawContent = (string)$row['content'];
-    $row['content'] = filter_profanity($conn, $rawContent);
+    // System cards (schedule, intro, ...) carry names and titles, not chat text.
+    $row['content'] = $row['metadata'] === null ? filter_profanity($conn, $rawContent) : $rawContent;
     if ((int)$row['sender_id'] === $userId && $row['deleted_at'] === null && $row['metadata'] === null) {
         $row['raw_content'] = $rawContent;
     }

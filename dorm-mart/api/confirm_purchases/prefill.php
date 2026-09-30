@@ -62,7 +62,7 @@ try {
         $schedRow['payment_fallback_at'] = gmdate('Y-m-d H:i:s');
     }
 
-    $meetingIso = confirm_purchase_utc_atom($schedRow['meeting_at'] ?? null);
+    $meetingIso = dm_utc_atom($schedRow['meeting_at'] ?? null);
     $buyerFullName = trim(($schedRow['buyer_first'] ?? '') . ' ' . ($schedRow['buyer_last'] ?? ''));
     if ($buyerFullName === '') {
         $buyerFullName = 'User ' . (int)$schedRow['buyer_user_id'];
@@ -105,9 +105,5 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
-    if (isset($conn) && $conn instanceof mysqli) {
-        try { $conn->rollback(); } catch (Throwable $ignored) {}
-    }
-    error_log('confirm-purchase prefill error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+    api_fail($e, 'confirm-purchase prefill', $conn ?? null);
 }

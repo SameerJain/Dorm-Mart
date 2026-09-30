@@ -17,11 +17,7 @@ try {
 
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $productId = request_int($payload, 'product_id');
-
-    if ($productId <= 0) {
-        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
-    }
+    $productId = require_product_id($payload);
 
     $conn = db();
     $conn->set_charset('utf8mb4');
@@ -33,6 +29,5 @@ try {
         'has_active' => $hasActive
     ]);
 } catch (Throwable $e) {
-    error_log('scheduled-purchase check_active error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+    api_fail($e, 'scheduled-purchase check_active');
 }

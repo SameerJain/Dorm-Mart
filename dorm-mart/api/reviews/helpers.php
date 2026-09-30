@@ -1,6 +1,18 @@
 <?php
 declare(strict_types=1);
 
+function require_half_star_rating(array $payload, string $key, string $rangeError, string $stepError): float
+{
+    $rating = strict_decimal_value($payload[$key] ?? null);
+    if ($rating === null || $rating < 0.5 || $rating > 5) {
+        json_response(['success' => false, 'error' => $rangeError], 400);
+    }
+    if (abs(($rating * 2) - round($rating * 2)) > 0.000001) {
+        json_response(['success' => false, 'error' => $stepError], 400);
+    }
+    return $rating;
+}
+
 function review_product(mysqli $conn, int $productId): ?array
 {
     $stmt = $conn->prepare(

@@ -82,7 +82,7 @@ try {
     if (proc_close($migration) !== 0) throw new RuntimeException('Test schema migration failed; inspect ' . $log);
     $password = bin2hex(random_bytes(16));
     $hash = password_hash($password, PASSWORD_DEFAULT);
-    for ($id = 1; $id <= 3; $id++) {
+    for ($id = 1; $id <= 4; $id++) {
         $email = 'lifecycle' . $id . '@buffalo.edu';
         $stmt = $conn->prepare("INSERT INTO user_accounts (user_id,first_name,last_name,grad_month,grad_year,email,hash_pass) VALUES (?, 'Lifecycle', 'Test', 5, 2027, ?, ?)");
         $stmt->bind_param('iss', $id, $email, $hash);
@@ -99,7 +99,7 @@ try {
         if (@file_get_contents($base . '/api/auth/get_csrf_token.php') !== false) break;
         usleep(100000);
     }
-    for ($id = 1; $id <= 3; $id++) {
+    for ($id = 1; $id <= 4; $id++) {
         $login = api($id, 'auth/login.php', ['email' => 'lifecycle' . $id . '@buffalo.edu', 'password' => $password]);
         if (!ok($login)) throw new RuntimeException('Fixture login failed: ' . json_encode($login));
         $tokens[$id] = api($id, 'auth/get_csrf_token.php', null)['body']['csrf_token'];
@@ -165,6 +165,12 @@ try {
     $secondRequest = (int)schedule($product, $secondConversation)['body']['data']['request_id'];
     check(ok(api(3, 'scheduled_purchases/respond.php', ['request_id' => $secondRequest, 'action' => 'accept'])), 'another buyer can reserve after unsuccessful exchange');
     check(rejected(confirm($product, $conversation, $request)), 'old unsuccessful schedule cannot steal a newer reservation');
+    $secondConfirmationId = (int)confirm($product, $secondConversation, $secondRequest)['body']['data']['confirm_request_id'];
+    check($secondConfirmationId > $confirmationId, 'second buyer has a newer confirmation on the same listing');
+    $firstBuyerReceipt = api(2, 'receipt/view_receipt.php?product_id=' . $product, null);
+    check(ok($firstBuyerReceipt), 'first buyer can still open their receipt after another buyer confirms');
+    check(ok(api(3, 'receipt/view_receipt.php?product_id=' . $product, null)), 'second buyer can open their receipt');
+    check(!ok(api(4, 'receipt/view_receipt.php?product_id=' . $product, null)), 'an unrelated user cannot open a receipt for the listing');
 
     [$product, $conversation] = fixture();
     $request = accepted($product, $conversation);
@@ -173,6 +179,29 @@ try {
     check(rejected(api(2, 'chat/create_message.php', ['conv_id' => $conversation, 'receiver_id' => 1, 'content' => 'Still here?'])), 'closed chat rejects text messages');
     check(rejected(api(2, 'scheduled_purchases/respond.php', ['request_id' => $request, 'action' => 'accept'])), 'deleted listing rejects stale schedule card');
     check(rejected(confirm($product, $conversation, $request)), 'deleted listing rejects confirmation');
+
+    // Last: this deletes buyer 2.
+    [$product, $conversation] = fixture();
+    accepted($product, $conversation);
+    check(ok(api(2, 'auth/delete_account.php', ['confirmation' => 'lifecycle2@buffalo.edu', 'currentPassword' => $password])), 'buyer can delete their account');
+    check(row("SELECT item_status FROM INVENTORY WHERE product_id=$product")['item_status'] === 'Active', 'buyer account deletion puts their reserved item back on sale');
+
+    // Ban: seller 1 is banned by moderator 4 while buyer 3 holds a reservation.
+    [$product, $conversation] = fixture(3);
+    $request = (int)schedule($product, $conversation)['body']['data']['request_id'];
+    check(ok(api(3, 'scheduled_purchases/respond.php', ['request_id' => $request, 'action' => 'accept'])), 'buyer reserves before the seller is banned');
+    $conn->query("UPDATE user_accounts SET role='moderator' WHERE user_id=4");
+    check(ok(api(4, 'moderation/ban_user.php', ['user_id' => 1, 'banned' => true, 'reason' => 'Lifecycle test'])), 'moderator can ban the seller');
+    check(row("SELECT status FROM scheduled_purchase_requests WHERE request_id=$request")['status'] === 'cancelled', "banning cancels the banned user's open schedules");
+    check(row("SELECT item_status FROM INVENTORY WHERE product_id=$product")['item_status'] === 'Active', 'the reserved item is released when its seller is banned');
+    $results = api(3, 'search/get_search_items.php', ['q' => 'Lifecycle desk'])['body'] ?? [];
+    check(!in_array($product, array_map(static fn($r) => (int)($r['id'] ?? 0), is_array($results) ? $results : []), true), "a banned seller's listings are hidden from search");
+    check(api(3, 'product/view_product.php?product_id=' . $product, null)['status'] === 404, "a banned seller's product page is hidden");
+    check(rejected(api(3, 'chat/ensure_conversation.php', ['product_id' => $product])), 'nobody can start a chat with a banned seller');
+    check(rejected(api(3, 'chat/create_message.php', ['conv_id' => $conversation, 'receiver_id' => 1, 'content' => 'Hello?'])), 'nobody can message a banned seller');
+    check((int)row("SELECT COUNT(*) AS c FROM moderation_actions WHERE action='ban_user' AND target_user_id=1")['c'] === 1, 'the ban is written to the moderation audit log');
+    check(ok(api(4, 'moderation/ban_user.php', ['user_id' => 1, 'banned' => false, 'reason' => 'Lifecycle test'])), 'moderator can lift the ban');
+    check(api(3, 'product/view_product.php?product_id=' . $product, null)['status'] === 200, 'listings come back once the ban is lifted');
 
     echo "$checks checks, $failures failures" . PHP_EOL;
 } finally {

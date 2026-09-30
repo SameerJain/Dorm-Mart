@@ -34,8 +34,7 @@ const waitForSave = (expected) =>
     { timeout: SAVE_WAIT_MS },
   );
 
-beforeEach(() => {
-  jest.clearAllMocks();
+const mockLoadedPreferences = (overrides = {}) => {
   global.fetch = jest.fn((url) =>
     url.includes("get_categories.php")
       ? Promise.resolve(response([]))
@@ -49,10 +48,16 @@ beforeEach(() => {
               contactPhone: "(716) 555-0123",
               interests: [],
               theme: "light",
+              ...overrides,
             },
           }),
         ),
   );
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockLoadedPreferences();
   csrfFetch.mockResolvedValue(response({ ok: true }));
 });
 
@@ -97,7 +102,17 @@ test("shows backend validation failures instead of silently losing changes", asy
   ).toContain("Unable to save preferences");
 });
 
-test.each(["off", "daily", "weekly"])("persists the %s promotional email frequency", async (frequency) => {
+// Autosave sends only fields that differ from what loaded, so each case starts
+// from a different frequency than the one it selects.
+test.each([
+  ["off", "weekly"],
+  ["daily", "off"],
+  ["weekly", "off"],
+])("persists the %s promotional email frequency", async (frequency, loadedFrequency) => {
+  mockLoadedPreferences({
+    promoFrequency: loadedFrequency,
+    promoEmails: loadedFrequency !== "off",
+  });
   render(<UserPreferences />);
 
   await waitFor(() => expect(screen.getByRole("checkbox").checked).toBe(true));

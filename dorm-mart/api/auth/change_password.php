@@ -2,26 +2,11 @@
 
 declare(strict_types=1);
 
-// Include security headers for XSS protection
-require __DIR__ . '/../security/security.php';
-dm_enforce_https();
-set_security_headers();
-set_secure_cors();
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+init_json_endpoint('POST', ['ok' => false, 'error' => 'Method Not Allowed']);
 
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  http_response_code(204);
-  exit;
-}
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-  http_response_code(405);
-  echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
-  exit;
-}
-
-require __DIR__ . '/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/request.php';
 
 auth_boot_session();
@@ -29,37 +14,27 @@ $userId = require_login();
 
 /* Read body (JSON or form) - IMPORTANT: Do NOT HTML-encode passwords before hashing */
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
-if (strpos($ct, 'application/json') !== false) {
-  $data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON payload']);
-  // Passwords must remain raw - they're hashed, not displayed
-  $current = is_string($data['currentPassword'] ?? null) ? $data['currentPassword'] : '';
-  $next = is_string($data['newPassword'] ?? null) ? $data['newPassword'] : '';
-  require_csrf_token($data['csrf_token'] ?? null);
-} else {
-  // Passwords must remain raw - they're hashed, not displayed
-  $current = is_string($_POST['currentPassword'] ?? null) ? $_POST['currentPassword'] : '';
-  $next = is_string($_POST['newPassword'] ?? null) ? $_POST['newPassword'] : '';
-  require_csrf_token($_POST['csrf_token'] ?? null);
-}
+$data = strpos($ct, 'application/json') !== false
+  ? json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON payload'])
+  : $_POST;
+// Passwords must remain raw - they're hashed, not displayed
+$current = is_string($data['currentPassword'] ?? null) ? $data['currentPassword'] : '';
+$next = is_string($data['newPassword'] ?? null) ? $data['newPassword'] : '';
+require_csrf_token($data['csrf_token'] ?? null);
 
 /* Validate inputs */
 $MAX_LEN = 64;
 if ($current === '' || $next === '') {
-  http_response_code(400);
-  echo json_encode(['ok' => false, 'error' => 'Missing required fields']);
-  exit;
+  json_response(['ok' => false, 'error' => 'Missing required fields'], 400);
 }
 if (strlen($current) > $MAX_LEN || strlen($next) > $MAX_LEN) {
-  http_response_code(400);
-  echo json_encode(['ok' => false, 'error' => 'Entered password is too long']);
-  exit;
+  json_response(['ok' => false, 'error' => 'Entered password is too long'], 400);
 }
 if (!validate_password_policy($next)) {
-  http_response_code(400);
-  echo json_encode(['ok' => false, 'error' => 'Password does not meet policy']);
-  exit;
+  json_response(['ok' => false, 'error' => 'Password does not meet policy'], 400);
 }
 
+$conn = null;
 try {
   $conn = db();
 
@@ -67,44 +42,33 @@ try {
   $stmt = $conn->prepare('SELECT hash_pass, is_protected FROM user_accounts WHERE user_id = ? LIMIT 1');
   $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
-  $res = $stmt->get_result();
+  $row = $stmt->get_result()->fetch_assoc();
+  $stmt->close();
 
-  if ($res->num_rows === 0) {
-    $stmt->close();
+  if (!$row) {
     $conn->close();
-    http_response_code(404);
-    echo json_encode(['ok' => false, 'error' => 'User not found']);
-    exit;
+    json_response(['ok' => false, 'error' => 'User not found'], 404);
   }
 
-  $row = $res->fetch_assoc();
-  $stmt->close();
-  
   $isProtected = (int)($row['is_protected'] ?? 0) === 1;
 
   $passwordLimit = consume_password_confirm_attempt($userId);
   if ($passwordLimit['blocked']) {
     $conn->close();
-    http_response_code(429);
-    echo json_encode(password_confirm_retry_error($passwordLimit));
-    exit;
+    json_response(password_confirm_retry_error($passwordLimit), 429);
   }
 
   // SECURITY NOTE: password_verify() safely checks the submitted password.
   if (!password_verify($current, (string)$row['hash_pass'])) {
     $conn->close();
-    http_response_code(401);
-    echo json_encode(['ok' => false, 'error' => 'Invalid current password']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Invalid current password'], 401);
   }
   clear_password_confirm_attempts($userId);
 
   /* Optional: reject reuse of the same password */
   if (password_verify($next, (string)$row['hash_pass'])) {
     $conn->close();
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'New password must differ from current']);
-    exit;
+    json_response(['ok' => false, 'error' => 'New password must differ from current'], 400);
   }
 
   // Seeded demo/test accounts are shared, so their password stays fixed. Say so
@@ -112,14 +76,12 @@ try {
   // sent them to the login page while nothing had happened.
   if ($isProtected) {
     $conn->close();
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => "This shared demo account's password can't be changed."]);
-    exit;
+    json_response(['ok' => false, 'error' => "This shared demo account's password can't be changed."], 403);
   }
 
   // SECURITY NOTE: password_hash() stores only the salted bcrypt hash.
-  $newHash = password_hash($next, PASSWORD_BCRYPT, ['cost' => 12]);
-  
+  $newHash = hash_password($next);
+
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
   $upd = $conn->prepare(
     'UPDATE user_accounts
@@ -131,37 +93,22 @@ try {
   $upd->bind_param('si', $newHash, $userId);  // 's' = string, 'i' = integer
   $upd->execute();
   $upd->close();
+  $conn->close();
+  $conn = null;
   mark_all_login_devices_signed_out($userId);
 
   /* Rotate session id and log out to force re-auth */
   session_regenerate_id(true);
-  // Clear auth_token cookie if your schema still has it (harmless if absent)
-  if (isset($_COOKIE['auth_token'])) {
-    setcookie('auth_token', '', [
-      'expires'  => time() - 3600,
-      'path'     => '/',
-      'httponly' => true,
-      'secure'   => auth_is_https_request(),
-      'samesite' => 'Lax'
-    ]);
-  }
-
-  $conn->close();
 
   // End the session so the client must log in again (your UI already redirects)
   logout_destroy_session();
 
-  echo json_encode(['ok' => true]);
+  json_response(['ok' => true]);
 } catch (Throwable $e) {
-  if (isset($stmt) && $stmt) {
-    $stmt->close();
+  // Statements are closed where they are used; only the connection can still be open.
+  if ($conn instanceof mysqli) {
+    try { $conn->close(); } catch (Throwable $_) {}
   }
-  if (isset($upd) && $upd) {
-    $upd->close();
-  }
-  if (isset($conn) && $conn) {
-    $conn->close();
-  }
-  http_response_code(500);
-  echo json_encode(['ok' => false, 'error' => 'Server error']);
+  error_log('change_password error: ' . $e->getMessage());
+  json_response(['ok' => false, 'error' => 'Server error'], 500);
 }

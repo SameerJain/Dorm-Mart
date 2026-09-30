@@ -87,6 +87,7 @@ export default function LandingPage() {
             {activeTab === "forYou" && (
               <ForYouSection
                 hasPersonalization={hasPersonalization}
+                isLoading={isLoading}
                 items={forYouItems}
                 wishlistedIds={wishlistedIds}
               />
@@ -94,6 +95,7 @@ export default function LandingPage() {
 
             {activeTab === "explore" && (
               <ExploreSection
+                isLoading={isLoading}
                 items={exploreItems}
                 wishlistedIds={wishlistedIds}
               />
@@ -112,7 +114,7 @@ export default function LandingPage() {
               )}
               {errorItems && (
                 <p className="text-center text-sm text-red-500">
-                  Couldn't load latest listings. Showing sample items.
+                  Couldn't load listings right now. Please refresh to try again.
                 </p>
               )}
             </div>

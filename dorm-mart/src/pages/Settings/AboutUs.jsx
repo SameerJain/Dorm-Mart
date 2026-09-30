@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
+import PageBackButton from "../../components/PageBackButton";
 import sameerPhoto from "../../assets/team/sameer-jain.png";
 import anishPhoto from "../../assets/team/anish-banerjee.png";
-import chrisPhoto from "../../assets/team/chris-kim.png";
+import chrisPhoto from "../../assets/team/chris-kim.jpg";
 
 const developers = [
   {
@@ -26,7 +28,7 @@ const developers = [
       "Set up the project's original database connection and built account creation, password changes, and product listing and search from the ground up. Added the dark mode theme, the home feed, the view-product and receipt pages, the purchase history and confirm-purchase APIs, and the private and public profile pages with negotiated-price support.",
   },
   {
-    name: "Chris Kim",
+    name: "Chris (Sooseok) Kim",
     title: "DevOps King",
     email: "sooseokkim99@gmail.com",
     github: "https://github.com/chris-sooseok",
@@ -109,9 +111,13 @@ function DeveloperPhoto({ developer }) {
 }
 
 function AboutUs() {
+  const navigate = useNavigate();
   return (
     <SettingsLayout>
       <div className="mx-auto max-w-6xl">
+        <div className="mb-4 flex justify-end">
+          <PageBackButton onClick={() => navigate(-1)} />
+        </div>
         <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 px-6 py-10 text-center text-white sm:px-10">
           <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-100">
             Behind Dorm Mart
@@ -144,12 +150,10 @@ function AboutUs() {
               <p className="mt-4 flex-1 leading-6 text-gray-600 dark:text-gray-300">
                 {developer.contribution}
               </p>
-              <a
-                href={`mailto:${developer.email}`}
-                className="mt-5 break-words text-sm font-medium text-gray-700 underline decoration-gray-300 underline-offset-4 hover:text-blue-700 dark:text-gray-200 dark:hover:text-blue-300"
-              >
+              {/* Shown as text so it can be copied; the Email button below opens mail. */}
+              <p className="mt-5 select-all break-words text-sm font-medium text-gray-700 dark:text-gray-200">
                 {developer.email}
-              </a>
+              </p>
 
               <div className="mt-5 grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
                 <a

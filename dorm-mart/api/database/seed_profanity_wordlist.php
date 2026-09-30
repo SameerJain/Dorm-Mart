@@ -20,6 +20,11 @@ const PROFANITY_WORDLIST_EXCLUDED = [
     // clinical/anatomical terms (not vulgar on their own; slang equivalents remain)
     'condom', 'genital', 'genitalia', 'genitals', 'foreskin', 'vaginal',
     'vulva', 'labia', 'rectal', 'rectum', 'scrotum', 'sperm',
+    'penis', 'vagina', 'clitoris', 'sex',
+    // literal meanings that show up in listings: tennis balls, blow dryer,
+    // wire stripper, fruit tart, "Homo sapiens" textbooks (moderators can
+    // re-add any of these from the dashboard if they start being abused)
+    'balls', 'blow', 'stripper', 'tart', 'homo',
 ];
 
 /**

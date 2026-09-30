@@ -71,7 +71,7 @@ function payment_complete_purchase_transaction(
         'buyer_id' => (int)$row['buyer_user_id'],
         'seller_id' => (int)$row['seller_user_id'],
         'meet_location' => $row['meet_location'],
-        'meeting_at' => confirm_purchase_utc_atom($row['meeting_at']),
+        'meeting_at' => dm_utc_atom($row['meeting_at']),
         'description' => $row['description'],
         'negotiated_price' => $finalPrice,
         'is_trade' => false,
@@ -135,7 +135,7 @@ function payment_complete_purchase_transaction(
     ]);
 
     if ($conversationId > 0) {
-        insert_confirm_chat_message(
+        chat_insert_system_message(
             $conn,
             $conversationId,
             $buyerId,
@@ -154,7 +154,7 @@ function payment_complete_purchase_transaction(
                 'payment_amount_cents' => $amountCents,
                 'payment_status' => 'succeeded',
                 'completion_source' => 'stripe',
-                'meeting_at' => confirm_purchase_utc_atom($row['meeting_at']),
+                'meeting_at' => dm_utc_atom($row['meeting_at']),
             ]
         );
     }

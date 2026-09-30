@@ -139,6 +139,17 @@ if (!function_exists('strict_iso_datetime_value')) {
     }
 }
 
+if (!function_exists('require_product_id')) {
+    function require_product_id(array $source, string $key = 'product_id'): int
+    {
+        $productId = request_int($source, $key);
+        if ($productId <= 0) {
+            json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
+        }
+        return $productId;
+    }
+}
+
 if (!function_exists('validate_password_policy')) {
     function validate_password_policy(string $password): bool
     {

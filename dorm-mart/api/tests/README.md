@@ -11,11 +11,21 @@ Run with `npm run test:backend`, or individually:
   image upload, and payment helpers.
 - `login_location_test.php` — IP scope detection and location lookup/caching.
 - `promotional_digest_test.php` — promo email send-window and eligibility logic.
+- `helpers_unit_test.php` — phone normalization, HTTP byte-range parsing for media,
+  signed unsubscribe tokens, and the promotional digest email package.
+- `profanity_test.php` — the chat profanity filter: look-alike characters, stretched
+  letters, separators, word endings, no false positives inside other words, and
+  large word lists split across several regexes.
 - `db_connection_test.php` — one-off manual check that the configured database is
   reachable (`php api/tests/db_connection_test.php`).
 - `xss_encoding_test.php` — manual browser check that output encoding is applied;
   open `api/tests/xss_encoding_test.php?test=<script>` from a browser on a local/CLI
   host (blocked everywhere else via `require_local_or_cli_access()`).
+
+## Needs a local database
+
+- `purchase_lifecycle_test.php` — schedule/confirm/relist flow against a local MySQL
+  database. Run with `npm run test:backend:integration`; it refuses non-local hosts.
 
 ## `integration/` (needs a running server + real credentials)
 

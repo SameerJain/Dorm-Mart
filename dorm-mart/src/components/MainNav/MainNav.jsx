@@ -129,9 +129,10 @@ function MainNav() {
           Dorm Mart
         </button>
         <div className="flex-1 min-w-0 mx-0.5 sm:mx-2 md:mx-3 lg:mx-5">
-          <div className="flex h-10 sm:h-11 md:h-15 min-w-0 items-center overflow-hidden rounded-full bg-white shadow-inner">
+          <div className="flex h-10 sm:h-11 md:h-15 min-w-0 items-center overflow-hidden rounded-full bg-white shadow-inner focus-within:ring-2 focus-within:ring-blue-300">
             <input
-              type="text"
+              type="search"
+              aria-label="Search listings"
               placeholder="Search"
               value={searchText}
               ref={inputRef}
@@ -166,7 +167,8 @@ function MainNav() {
                 e.preventDefault();
                 handleSearchSubmit(searchText);
               }}
-              className="flex h-full w-9 shrink-0 items-center justify-center border-l border-slate-200 border-black sm:w-12 md:w-16 lg:w-20"
+              aria-label="Search"
+              className="flex h-full w-9 shrink-0 items-center justify-center border-l border-slate-200 focus:outline-none focus-visible:bg-slate-100 sm:w-12 md:w-16 lg:w-20"
             >
               <img
                 src={searchIcon}
@@ -201,6 +203,8 @@ function MainNav() {
               }}
               className="flex items-center justify-center p-2 rounded-lg"
               aria-label="Menu"
+              aria-haspopup="menu"
+              aria-expanded={showDropdown}
             >
               <svg
                 className="w-9 h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 text-white dark:text-gray-100"
@@ -306,6 +310,8 @@ function MainNav() {
             }}
             className="flex flex-col justify-center items-center w-10 h-10 gap-1.5"
             aria-label="Menu"
+            aria-haspopup="menu"
+            aria-expanded={showMobileMenu}
           >
             <span className="w-6 h-0.5 bg-white dark:bg-gray-200"></span>
             <span className="w-6 h-0.5 bg-white dark:bg-gray-200"></span>
@@ -348,7 +354,7 @@ function MainNav() {
                   {unreadNotificationTotal > 0 && (
                     <span
                       className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
-                      aria-label={`${unreadNotificationTotal} unread notifications`}
+                      aria-hidden="true"
                     >
                       {unreadNotificationTotal > 99
                         ? "99+"
@@ -357,6 +363,9 @@ function MainNav() {
                   )}
                 </span>
                 <span>Notifications</span>
+                {unreadNotificationTotal > 0 && (
+                  <span className="sr-only">{`, ${unreadNotificationTotal} unread`}</span>
+                )}
               </button>
 
               <button
@@ -371,13 +380,16 @@ function MainNav() {
                   {unreadMsgTotal > 0 && (
                     <span
                       className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
-                      aria-label={`${unreadMsgTotal} unread`}
+                      aria-hidden="true"
                     >
                       {unreadMsgTotal > 99 ? "99+" : unreadMsgTotal}
                     </span>
                   )}
                 </span>
                 <span>Chat</span>
+                {unreadMsgTotal > 0 && (
+                  <span className="sr-only">{`, ${unreadMsgTotal} unread`}</span>
+                )}
               </button>
 
               {/* "Market" dropdown (mobile) */}

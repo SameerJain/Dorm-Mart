@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../helpers/listing_reports.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
+require_once __DIR__ . '/../helpers/moderation.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 
@@ -59,6 +60,12 @@ try {
         $stmt->close();
 
         listing_report_notify_reporter($conn, $reportId, (int)($report['reporter_id'] ?? 0), $title, false);
+        moderation_log_action($conn, $moderatorId, 'dismiss_listing_report', [
+            'target_user_id' => $report['seller_id'] ?? null,
+            'target_type' => 'listing_report',
+            'target_id' => $reportId,
+            'details' => $title,
+        ]);
         $conn->commit();
         json_response(['success' => true, 'report_id' => $reportId, 'status' => 'dismissed']);
     }
@@ -135,6 +142,13 @@ try {
     foreach ($openReports as $open) {
         listing_report_notify_reporter($conn, (int)$open['report_id'], (int)($open['reporter_id'] ?? 0), $title, true);
     }
+    moderation_log_action($conn, $moderatorId, 'remove_listing', [
+        'target_user_id' => $item ? (int)$item['seller_id'] : ($report['seller_id'] ?? null),
+        'target_type' => 'listing_report',
+        'target_id' => $reportId,
+        'details' => $title . ' | reason: ' . ($removalReason !== '' ? $removalReason : (string)$report['reason'])
+            . ($note !== '' ? ' | note: ' . $note : ''),
+    ]);
 
     $conn->commit();
 

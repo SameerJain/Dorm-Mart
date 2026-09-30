@@ -3,6 +3,37 @@ import { Link } from "react-router-dom";
 import { API_BASE } from "../../utils/apiConfig.js";
 import { csrfFetch } from "../../utils/csrfFetch.js";
 import { LISTING_REPORT_REASONS, listingReportReasonLabel } from "../../utils/listingReportReasons.js";
+import { ConfirmDialog } from "../../components/Dialog.jsx";
+import { formatDateTime } from "../../utils/formatters.js";
+
+const LIST_KEYS = {
+  listing_reports: "listing_reports_page",
+  reports: "reports_page",
+  flagged_messages: "flagged_page",
+};
+
+const ACTION_LABELS = {
+  ban_user: "Banned user",
+  unban_user: "Unbanned user",
+  resolve_message_report: "Resolved message report",
+  dismiss_message_report: "Dismissed message report",
+  remove_listing: "Removed listing",
+  dismiss_listing_report: "Dismissed listing report",
+  clear_message_flag: "Cleared flagged message",
+  add_blocked_word: "Added blocked word",
+  remove_blocked_word: "Removed blocked word",
+};
+
+function Pager({ info, onPage, disabled }) {
+  if (!info || (info.page === 0 && !info.has_more)) return null;
+  return (
+    <div className="mt-3 flex items-center justify-end gap-2 text-sm">
+      <button type="button" disabled={disabled || info.page === 0} onClick={() => onPage(info.page - 1)} className="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-50 dark:border-gray-600">Previous</button>
+      <span className="text-gray-600 dark:text-gray-400">Page {info.page + 1}</span>
+      <button type="button" disabled={disabled || !info.has_more} onClick={() => onPage(info.page + 1)} className="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-50 dark:border-gray-600">Next</button>
+    </div>
+  );
+}
 
 async function readJson(response) {
   const data = await response.json().catch(() => ({}));
@@ -51,7 +82,7 @@ function ActionButton({ children, onClick, disabled = false, type = "button" }) 
   );
 }
 
-function ListingReportRow({ report, working, onResolve, onChangeBan }) {
+function ListingReportRow({ report, working, onResolve, onChangeBan, onConfirm }) {
   const [removalReason, setRemovalReason] = useState(report.reason);
   const [note, setNote] = useState("");
   const isOpen = report.status === "open";
@@ -60,8 +91,12 @@ function ListingReportRow({ report, working, onResolve, onChangeBan }) {
 
   function remove() {
     const others = otherOpen > 0 ? ` It will also resolve ${otherOpen} other open report${otherOpen === 1 ? "" : "s"} on this listing.` : "";
-    if (!window.confirm(`Remove "${report.listing_title}"? This deletes the listing and notifies the seller.${others}`)) return;
-    onResolve({ report_id: report.report_id, action: "remove", removal_reason: removalReason, note: note.trim() });
+    onConfirm({
+      title: `Remove "${report.listing_title}"?`,
+      description: `This deletes the listing and notifies the seller.${others}`,
+      confirmLabel: "Remove",
+      run: () => onResolve({ report_id: report.report_id, action: "remove", removal_reason: removalReason, note: note.trim() }),
+    });
   }
 
   return (
@@ -79,7 +114,7 @@ function ListingReportRow({ report, working, onResolve, onChangeBan }) {
       <td className="max-w-sm p-3">
         <p className="font-medium">{listingReportReasonLabel(report.reason)}</p>
         {report.details && <p className="mt-1 whitespace-pre-wrap text-xs text-gray-600 dark:text-gray-400">{report.details}</p>}
-        <p className="mt-1 text-xs text-gray-500">{new Date(report.created_at).toLocaleString()}</p>
+        <p className="mt-1 text-xs text-gray-500">{formatDateTime(report.created_at)}</p>
       </td>
       <td className="p-3 text-xs text-gray-600 dark:text-gray-400">Seller: {report.seller_name || "Deleted User"}<br />Reporter: {report.reporter_name || "Deleted User"}</td>
       <td className="p-3">
@@ -118,12 +153,18 @@ export default function ModeratorDashboard() {
   const [newWord, setNewWord] = useState("");
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
+  const [pages, setPages] = useState({ listing_reports: 0, reports: 0, flagged_messages: 0 });
+  // Pending confirmation: { title, description, confirmLabel, run, banReason? }
+  const [confirming, setConfirming] = useState(null);
 
   const load = useCallback(async () => {
     setError("");
+    const query = new URLSearchParams(
+      Object.entries(LIST_KEYS).map(([list, param]) => [param, String(pages[list] || 0)]),
+    ).toString();
     try {
       const [dashboardData, wordData] = await Promise.all([
-        fetch(`${API_BASE}/moderation/dashboard.php`, { credentials: "include" }).then(readJson),
+        fetch(`${API_BASE}/moderation/dashboard.php?${query}`, { credentials: "include" }).then(readJson),
         fetch(`${API_BASE}/moderation/profanity_words.php`, { credentials: "include" }).then(readJson),
       ]);
       setDashboard(dashboardData);
@@ -131,7 +172,7 @@ export default function ModeratorDashboard() {
     } catch (requestError) {
       setError(requestError.message);
     }
-  }, []);
+  }, [pages]);
 
   useEffect(() => {
     load();
@@ -155,15 +196,28 @@ export default function ModeratorDashboard() {
     }
   }
 
-  async function changeBan(userId, isBanned, reason = "Unsafe chat activity") {
+  function changeBan(userId, isBanned, reason = "Unsafe chat activity") {
     if (!userId) return;
-    const action = isBanned ? "unban" : "ban";
-    if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
-    await post("ban_user.php", {
-      user_id: userId,
-      banned: !isBanned,
-      reason,
+    setConfirming({
+      title: isBanned ? "Unban this user?" : "Ban this user?",
+      description: isBanned
+        ? "They will be able to sign in again."
+        : "They will be signed out everywhere and blocked from signing in.",
+      confirmLabel: isBanned ? "Unban" : "Ban",
+      banReason: isBanned ? null : reason,
+      run: (banReason) => post("ban_user.php", {
+        user_id: userId,
+        banned: !isBanned,
+        reason: isBanned ? "Moderator unban" : (banReason || "").trim() || reason,
+      }),
     });
+  }
+
+  async function runConfirmed() {
+    const pending = confirming;
+    if (!pending) return;
+    await pending.run(pending.banReason);
+    setConfirming(null);
   }
 
   async function addWord(event) {
@@ -177,6 +231,17 @@ export default function ModeratorDashboard() {
   if (!dashboard && !error) {
     return <main className="p-8 text-center text-gray-600 dark:text-gray-300">Loading moderation tools...</main>;
   }
+  if (!dashboard) {
+    // Nothing loaded: show the failure and a retry, not empty "No reports yet" tables.
+    return (
+      <main className="p-8 text-center text-gray-700 dark:text-gray-200">
+        <p role="alert" className="mx-auto max-w-lg rounded-lg bg-red-100 p-4 text-red-800 dark:bg-red-950 dark:text-red-200">{error}</p>
+        <button type="button" onClick={load} className="mt-4 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600">Try again</button>
+      </main>
+    );
+  }
+  const pagination = dashboard.pagination || {};
+  const goToPage = (list) => (page) => setPages((current) => ({ ...current, [list]: Math.max(0, page) }));
 
   const stats = dashboard?.stats || {};
   const cards = [
@@ -199,6 +264,7 @@ export default function ModeratorDashboard() {
           <nav className="flex gap-3 text-sm font-semibold">
             <Link className="text-blue-600 hover:underline dark:text-blue-400" to="/privacy-policy">Privacy Policy</Link>
             <Link className="text-blue-600 hover:underline dark:text-blue-400" to="/terms-of-service">Terms of Service</Link>
+            <Link className="text-blue-600 hover:underline dark:text-blue-400" to="/safety">Public safety page</Link>
           </nav>
         </header>
 
@@ -227,12 +293,14 @@ export default function ModeratorDashboard() {
                     working={working}
                     onResolve={(body) => post("resolve_listing_report.php", body)}
                     onChangeBan={changeBan}
+                    onConfirm={setConfirming}
                   />
                 ))}
                 {(dashboard?.listing_reports || []).length === 0 && <tr><td colSpan="5" className="p-6 text-center text-gray-500">No listing reports yet.</td></tr>}
               </tbody>
             </table>
           </div>
+          <Pager info={pagination.listing_reports} onPage={goToPage("listing_reports")} disabled={working} />
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -260,6 +328,7 @@ export default function ModeratorDashboard() {
               </tbody>
             </table>
           </div>
+          <Pager info={pagination.reports} onPage={goToPage("reports")} disabled={working} />
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -272,14 +341,18 @@ export default function ModeratorDashboard() {
                   <tr key={message.message_id} className="border-b align-top dark:border-gray-700">
                     <td className="max-w-xl p-3"><ModeratedMessageText message={message} /></td>
                     <td className="p-3">{message.sender_fname}<br /><span className="text-xs text-gray-500">{message.sender_email || "Deleted account"}</span></td>
-                    <td className="p-3 text-xs">Conversation #{message.conv_id}<br />{new Date(message.created_at).toLocaleString()}</td>
-                    <td className="p-3">{message.sender_id && message.sender_role !== "moderator" && <ActionButton disabled={working} onClick={() => changeBan(message.sender_id, Boolean(Number(message.sender_is_banned)))}>{Number(message.sender_is_banned) ? "Unban user" : "Ban user"}</ActionButton>}</td>
+                    <td className="p-3 text-xs">Conversation #{message.conv_id}<br />{formatDateTime(message.created_at)}</td>
+                    <td className="p-3"><div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={working} onClick={() => post("clear_flag.php", { message_id: message.message_id })} className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold disabled:opacity-50 dark:border-gray-600">Clear flag</button>
+                      {message.sender_id && message.sender_role !== "moderator" && <ActionButton disabled={working} onClick={() => changeBan(message.sender_id, Boolean(Number(message.sender_is_banned)))}>{Number(message.sender_is_banned) ? "Unban user" : "Ban user"}</ActionButton>}
+                    </div></td>
                   </tr>
                 ))}
                 {(dashboard?.flagged_messages || []).length === 0 && <tr><td colSpan="4" className="p-6 text-center text-gray-500">No flagged messages.</td></tr>}
               </tbody>
             </table>
           </div>
+          <Pager info={pagination.flagged_messages} onPage={goToPage("flagged_messages")} disabled={working} />
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -297,7 +370,52 @@ export default function ModeratorDashboard() {
             ))}
           </div>
         </section>
+
+        {(dashboard.recent_actions || []).length > 0 && (
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <h2 className="text-xl font-bold">Recent moderator actions</h2>
+            <ul className="mt-4 divide-y divide-gray-200 text-sm dark:divide-gray-700">
+              {dashboard.recent_actions.map((entry) => (
+                <li key={entry.action_id} className="flex flex-wrap justify-between gap-2 py-2">
+                  <span>
+                    <span className="font-semibold">{ACTION_LABELS[entry.action] || entry.action}</span>
+                    {entry.target_user_name ? ` · ${entry.target_user_name}` : ""}
+                    {entry.details ? <span className="text-gray-600 dark:text-gray-400">{` · ${entry.details}`}</span> : null}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {entry.moderator_name || "Former moderator"} · {formatDateTime(entry.created_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
+
+      {confirming && (
+        <ConfirmDialog
+          title={confirming.title}
+          description={<p>{confirming.description}</p>}
+          confirmLabel={confirming.confirmLabel}
+          busyLabel="Working…"
+          busy={working}
+          error={error}
+          onConfirm={runConfirmed}
+          onCancel={() => setConfirming(null)}
+        >
+          {confirming.banReason != null && (
+            <label className="mb-4 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Reason (kept on the account)
+              <input
+                value={confirming.banReason}
+                maxLength={255}
+                onChange={(event) => setConfirming((current) => ({ ...current, banReason: event.target.value }))}
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              />
+            </label>
+          )}
+        </ConfirmDialog>
+      )}
     </main>
   );
 }

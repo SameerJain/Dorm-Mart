@@ -5,122 +5,16 @@ import NextStepsMessageCard from "./NextStepsMessageCard";
 import ConfirmMessageCard from "./ConfirmMessageCard";
 import ReviewPromptMessageCard from "./ReviewPromptMessageCard";
 import BuyerRatingPromptMessageCard from "./BuyerRatingPromptMessageCard";
-import ReportMessageModal from "./ReportMessageModal";
 import MessageActions from "./MessageActions";
 import TypingIndicatorMessage from "./TypingIndicatorMessage";
 import PaymentSystemMessageCard from "./PaymentSystemMessageCard";
 import { API_BASE } from "../../../utils/apiConfig";
-import { csrfFetch } from "../../../utils/csrfFetch";
 import { isVideoMediaUrl } from "../../../utils/imageFallback";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { withFirstFrame } from "../../../utils/videoSrc";
-
-/**
- * Report + copy state for one message. Actions live in the message's ⋯ menu;
- * this only surfaces a short status line after the user does something.
- */
-function useMessageActionState(messageId, onDelete) {
-  const [reportState, setReportState] = useState("idle"); // idle | confirming | reporting | reported | failed
-  const [deleteState, setDeleteState] = useState("idle"); // idle | confirming | deleting | failed
-  const [deleteError, setDeleteError] = useState("");
-  const [copied, setCopied] = useState(false);
-  const copiedTimer = useRef(null);
-
-  useEffect(() => () => clearTimeout(copiedTimer.current), []);
-
-  async function report() {
-    setReportState("reporting");
-    try {
-      const response = await csrfFetch(`${API_BASE}/moderation/report_message.php`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message_id: messageId }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.success) throw new Error(data.error || "Unable to report message");
-      setReportState("reported");
-    } catch (_) {
-      setReportState("failed");
-    }
-  }
-
-  async function remove() {
-    setDeleteState("deleting");
-    setDeleteError("");
-    try {
-      await onDelete(messageId);
-      // The message re-renders as a "deleted" placeholder, unmounting this state.
-    } catch (err) {
-      setDeleteError(err?.message || "");
-      setDeleteState("failed");
-    }
-  }
-
-  async function copy(text) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      clearTimeout(copiedTimer.current);
-      copiedTimer.current = setTimeout(() => setCopied(false), 1500);
-    } catch (_) {
-      // Clipboard can be blocked (insecure context / permissions); nothing to undo.
-    }
-  }
-
-  const reported = reportState === "reported";
-  const reportAction = {
-    key: "report",
-    label: reported ? "Reported" : reportState === "failed" ? "Retry report" : "Report message",
-    icon: "report",
-    danger: true,
-    disabled: reported || reportState === "reporting",
-    onSelect: () => setReportState("confirming"),
-  };
-
-  const deleteAction = onDelete && {
-    key: "delete",
-    label: deleteState === "failed" ? "Retry delete" : "Delete message",
-    icon: "trash",
-    danger: true,
-    disabled: deleteState === "deleting",
-    onSelect: () => setDeleteState("confirming"),
-  };
-
-  const status = copied
-    ? "Copied"
-    : deleteState === "failed"
-      ? deleteError && deleteError !== "Internal server error"
-        ? `Couldn't delete the message: ${deleteError}`
-        : "Couldn't delete the message. Try again from the message menu."
-      : reported
-      ? "Reported · a moderator will review it"
-      : reportState === "failed"
-        ? "Couldn't send the report. Try again from the message menu."
-        : "";
-
-  const modal =
-    reportState === "confirming" || reportState === "reporting" ? (
-      <ReportMessageModal
-        isReporting={reportState === "reporting"}
-        onCancel={() => setReportState("idle")}
-        onConfirm={report}
-      />
-    ) : deleteState === "confirming" || deleteState === "deleting" ? (
-      <ReportMessageModal
-        title="Delete message?"
-        body="This message will be removed for both of you and replaced with a note that it was deleted."
-        confirmLabel="Delete"
-        busyLabel="Deleting..."
-        isReporting={deleteState === "deleting"}
-        onCancel={() => setDeleteState("idle")}
-        onConfirm={remove}
-      />
-    ) : null;
-
-  const statusIsError = !copied && (reportState === "failed" || deleteState === "failed");
-  return { copy, reportAction, deleteAction, status, statusIsError, modal };
-}
+import { CHAT_MAX_LENGTH, chatCharCount } from "../utils/chatConstants";
+import { formatDateTime } from "../../../utils/formatters";
+import useMessageActionState from "../hooks/useMessageActionState";
 
 function DeletedMessage({ mine }) {
   return (
@@ -165,9 +59,8 @@ function triggerDownload(url) {
   link.remove();
 }
 
-// Server limits count Unicode code points (mb_strlen), not UTF-16 units.
-const MAX_MESSAGE_CHARS = 500;
-const charCount = (text) => Array.from(text || "").length;
+const charCount = chatCharCount;
+const MAX_MESSAGE_CHARS = CHAT_MAX_LENGTH;
 
 function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
   // The sender edits what they actually typed; message.content may have
@@ -276,7 +169,7 @@ function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
             <div className={"mt-1 text-[10px] " + (mine ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
               {fmtTime(message.ts)}
               {message.editedAt ? (
-                <span title={`Edited ${new Date(message.editedAt).toLocaleString()}`}> · Edited</span>
+                <span title={`Edited ${formatDateTime(message.editedAt)}`}> · Edited</span>
               ) : null}
             </div>
           </>

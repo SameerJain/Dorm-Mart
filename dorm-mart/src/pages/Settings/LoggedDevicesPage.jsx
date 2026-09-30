@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
+import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
 import { formatLoginTimestamp } from "./loggedDevicesUtils";
 
@@ -63,6 +64,12 @@ function DeviceCard({ device }) {
               <dt className="font-medium text-slate-500 dark:text-gray-400">Logged in</dt>
               <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{formatLoginTimestamp(device.logged_in_at)}</dd>
             </div>
+            {device.last_seen_at && !device.signed_out_at && (
+              <div>
+                <dt className="font-medium text-slate-500 dark:text-gray-400">Last active</dt>
+                <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{formatLoginTimestamp(device.last_seen_at)}</dd>
+              </div>
+            )}
             {device.signed_out_at && (
               <div>
                 <dt className="font-medium text-slate-500 dark:text-gray-400">Signed out</dt>
@@ -122,11 +129,14 @@ export default function LoggedDevicesPage() {
   return (
     <SettingsLayout>
       <div className="mx-auto max-w-4xl">
-        <header className="border-b border-slate-200 pb-4 dark:border-gray-700">
-          <h1 className="font-serif text-2xl font-semibold text-blue-600 dark:text-blue-400">Logged Devices</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">
-            Review your 50 most recent login sessions, with your current device first.
-          </p>
+        <header className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4 dark:border-gray-700">
+          <div>
+            <h1 className="font-serif text-2xl font-semibold text-blue-600 dark:text-blue-400">Logged Devices</h1>
+            <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">
+              Review your 50 most recent login sessions, with your current device first.
+            </p>
+          </div>
+          <PageBackButton onClick={() => navigate(-1)} />
         </header>
 
         <section className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">

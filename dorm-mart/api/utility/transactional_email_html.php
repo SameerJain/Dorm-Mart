@@ -206,8 +206,11 @@ function dm_transactional_promo_welcome_package(string $firstName): array
     return ['subject' => $subject, 'html' => $html, 'text' => $text];
 }
 
-/** @param array<int,array{title:string,price:float,url:string,image_url?:?string}> $items */
-function dm_promotional_items_package(string $firstName, array $items): array
+/**
+ * @param array<int,array{title:string,price:float,url:string,image_url?:?string}> $items
+ * @param ?string $unsubscribeUrl one-click unsubscribe link (see helpers/promo_unsubscribe.php)
+ */
+function dm_promotional_items_package(string $firstName, array $items, ?string $unsubscribeUrl = null): array
 {
     $name = $firstName !== '' ? $firstName : 'Student';
     $rows = '';
@@ -215,8 +218,10 @@ function dm_promotional_items_package(string $firstName, array $items): array
     foreach ($items as $item) {
         $title = escape_html((string)$item['title']);
         $url = escape_html((string)$item['url']);
-        $price = '$' . number_format((float)$item['price'], 2);
-        $image = !empty($item['image_url']) ? '<a href="' . $url . '"><img src="' . escape_html((string)$item['image_url']) . '" alt="' . $title . '" width="120" style="display:block;width:120px;height:90px;object-fit:cover;border-radius:8px;border:0;"></a>' : '';
+        $price = (float)$item['price'] <= 0 ? 'Free' : '$' . number_format((float)$item['price'], 2);
+        // Outlook and Gmail ignore object-fit, so a fixed 120x90 box stretched
+        // photos. Fix the width and let the height follow the photo instead.
+        $image = !empty($item['image_url']) ? '<a href="' . $url . '"><img src="' . escape_html((string)$item['image_url']) . '" alt="' . $title . '" width="120" style="display:block;width:120px;height:auto;max-height:120px;border-radius:8px;border:0;"></a>' : '';
         $rows .= '<tr><td width="136" valign="middle" style="padding:14px 16px 14px 0;border-bottom:1px solid #334155;">' . $image . '</td><td valign="middle" style="padding:14px 0;border-bottom:1px solid #334155;"><a href="' . $url . '" style="color:#38bdf8;font-weight:700;text-decoration:underline;">' . $title . '</a><br><span style="color:#cbd5e1;">' . $price . '</span></td></tr>';
         $textRows[] = $item['title'] . ' - ' . $price . "\n" . $item['url'];
     }
@@ -225,10 +230,23 @@ function dm_promotional_items_package(string $firstName, array $items): array
         . '<p style="margin:0 0 12px;color:#f1f5f9;font-size:24px;font-weight:700;">Items picked for you &#10024;</p>'
         . '<p style="color:#cbd5e1;">Hey ' . escape_html($name) . '! We spotted a few marketplace finds you might love. Take a peek before another student grabs them!</p>'
         . '<table role="presentation" width="100%" style="border-collapse:collapse;">' . $rows . '</table>'
-        . '<p style="margin:24px 0;color:#94a3b8;font-size:13px;">Change the frequency or turn these emails off in <a href="' . escape_html($settingsUrl) . '" style="color:#38bdf8;">User Preferences</a>.</p>';
-    return [
+        . '<p style="margin:24px 0;color:#94a3b8;font-size:13px;">Change the frequency or turn these emails off in <a href="' . escape_html($settingsUrl) . '" style="color:#38bdf8;">User Preferences</a>.'
+        . ($unsubscribeUrl !== null
+            ? ' Or <a href="' . escape_html($unsubscribeUrl) . '" style="color:#38bdf8;">unsubscribe with one click</a>.'
+            : '')
+        . '</p>';
+    $package = [
         'subject' => 'Items picked for you - Dorm Mart',
         'html' => dm_transactional_shell('Items picked for you - Dorm Mart', 'Fresh marketplace finds picked for you.', $inner),
-        'text' => "Items picked for you - Dorm Mart\n\nHey {$name}! We spotted a few marketplace finds you might love. Take a peek before another student grabs them!\n\n" . implode("\n\n", $textRows) . "\n\nManage promotional emails: {$settingsUrl}",
+        'text' => "Items picked for you - Dorm Mart\n\nHey {$name}! We spotted a few marketplace finds you might love. Take a peek before another student grabs them!\n\n" . implode("\n\n", $textRows) . "\n\nManage promotional emails: {$settingsUrl}"
+            . ($unsubscribeUrl !== null ? "\nUnsubscribe: {$unsubscribeUrl}" : ''),
     ];
+    if ($unsubscribeUrl !== null) {
+        // RFC 2369 / RFC 8058: lets mail apps show their own Unsubscribe button.
+        $package['headers'] = [
+            'List-Unsubscribe' => '<' . $unsubscribeUrl . '>',
+            'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
+        ];
+    }
+    return $package;
 }

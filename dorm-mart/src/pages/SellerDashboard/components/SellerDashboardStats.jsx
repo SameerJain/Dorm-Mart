@@ -16,7 +16,7 @@ function plural(count, word) {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
-export default function SellerDashboardStats({ metrics, stats, onCreateNewListing, onOpenOngoingPurchases }) {
+export default function SellerDashboardStats({ metrics, stats, statsStatus = "ready", onCreateNewListing, onOpenOngoingPurchases }) {
   const summaryItems = [
     ["Total Posts", metrics.totalPosts],
     [
@@ -37,10 +37,13 @@ export default function SellerDashboardStats({ metrics, stats, onCreateNewListin
           key: "earnings",
           label: "Earnings",
           value: formatCurrency(stats.earnings),
+          // Earnings come only from purchases the buyer confirmed at a final price (not trades).
           detail:
-            stats.sales_count > 0
-              ? `${formatCurrency(stats.avg_sale)} avg across ${plural(stats.sales_count, "sale")}`
-              : "No completed sales yet",
+            (stats.paid_sales_count ?? 0) > 0
+              ? `${formatCurrency(stats.avg_sale)} avg across ${plural(stats.paid_sales_count, "confirmed sale")}`
+              : stats.sales_count > 0
+                ? "From confirmed sales only"
+                : "No completed sales yet",
         },
         {
           key: "rating",
@@ -56,12 +59,12 @@ export default function SellerDashboardStats({ metrics, stats, onCreateNewListin
           value: stats.upcoming_meetups,
           detail: nextMeeting
             ? `Next: ${nextMeeting}`
-            : stats.awaiting_reply > 0
-              ? `${plural(stats.awaiting_reply, "request")} awaiting a reply`
+            : stats.awaiting_buyer > 0
+              ? `${plural(stats.awaiting_buyer, "request")} waiting on the buyer`
               : "Nothing scheduled",
           extra:
-            nextMeeting && stats.awaiting_reply > 0
-              ? `${plural(stats.awaiting_reply, "request")} awaiting a reply`
+            nextMeeting && stats.awaiting_buyer > 0
+              ? `${plural(stats.awaiting_buyer, "request")} waiting on the buyer`
               : null,
           onClick: onOpenOngoingPurchases,
         },
@@ -92,7 +95,7 @@ export default function SellerDashboardStats({ metrics, stats, onCreateNewListin
           <button
             type="button"
             onClick={onCreateNewListing}
-            className="w-full sm:w-auto bg-white hover:bg-gray-50 dark:bg-gray-100 dark:hover:bg-white text-[#2563eb] px-8 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-3 border-2 border-blue-600 dark:border-blue-800 shadow-lg hover:shadow-xl transform hover:scale-105 hover:underline"
+            className="w-full sm:w-auto bg-white hover:bg-gray-50 dark:bg-gray-100 dark:hover:bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-3 border-2 border-blue-600 dark:border-blue-800 shadow-lg hover:shadow-xl transform hover:scale-105 hover:underline"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -106,6 +109,17 @@ export default function SellerDashboardStats({ metrics, stats, onCreateNewListin
             <Metric key={label} label={label} value={value} detail={detail} />
           ))}
         </div>
+
+        {statsStatus === "loading" && !stats && (
+          <p aria-live="polite" className="mt-3 text-sm text-blue-100">
+            Loading earnings, rating and meetups…
+          </p>
+        )}
+        {statsStatus === "error" && !stats && (
+          <p role="alert" className="mt-3 rounded-lg bg-white/15 px-3 py-2 text-sm text-white">
+            Couldn't load earnings, rating and meetups. Refresh the page to try again.
+          </p>
+        )}
 
         {insights.length > 0 && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">

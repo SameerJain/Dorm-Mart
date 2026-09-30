@@ -195,7 +195,7 @@ try {
             $msgSenderId = $userId;
             $msgReceiverId = ($convRow['user1_id'] == $userId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
 
-            scheduled_purchase_insert_chat_message($conn, $conversationId, $msgSenderId, $msgReceiverId, $messageContent, [
+            chat_insert_system_message($conn, $conversationId, $msgSenderId, $msgReceiverId, $messageContent, [
                 'type' => 'schedule_cancelled',
                 'request_id' => $requestId,
             ]);

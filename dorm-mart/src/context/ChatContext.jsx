@@ -192,6 +192,16 @@ export function ChatProvider({ children }) {
   const [unreadNotificationsByProduct, setUnreadNotificationsByProduct] =
     useState([]);
   const [unreadNotificationTotal, setUnreadNotificationTotal] = useState(0);
+  // "loading" until the first fetch returns, then "ready"; "error" only when
+  // nothing has ever loaded (a failed poll keeps the last good list).
+  const [notificationsStatus, setNotificationsStatus] = useState("loading");
+
+  function markAllNotificationsReadLocal() {
+    setUnreadNotificationsByProduct((prev) =>
+      (prev || []).map((item) => ({ ...item, is_read: true })),
+    );
+    setUnreadNotificationTotal(0);
+  }
 
   function markNotificationReadLocal(notificationId) {
     const id = Number(notificationId);
@@ -738,6 +748,25 @@ export function ChatProvider({ children }) {
     return startVisiblePolling(tick, UNREAD_MSG_POLL_MS);
   }, [loadConversations, myId]);
 
+  /**
+   * Fetch notifications once. The background poll uses it, and the
+   * Notifications page calls it on mount so it works (and shows real
+   * loading/error states) even when background polling is turned off.
+   */
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const { notifications, total } = await tickFetchUnreadNotifications();
+      setUnreadNotificationsByProduct(notifications || []);
+      setUnreadNotificationTotal(Number(total) || 0);
+      setNotificationsStatus("ready");
+    } catch (e) {
+      if (e.name === "AbortError") return;
+      logger.error("tickFetchUnreadNotifications error:", e);
+      // Keep showing the last good list; only report an error if there is none.
+      setNotificationsStatus((current) => (current === "ready" ? current : "error"));
+    }
+  }, []);
+
   useEffect(() => {
     const notificationOn = envBool(
       process.env.REACT_APP_CHAT_NOTIFICATION_ON,
@@ -747,23 +776,8 @@ export function ChatProvider({ children }) {
     if (!notificationOn) return;
     if (!myId) return;
 
-    const tick = async () => {
-      const controller = new AbortController();
-      try {
-        const { notifications, total } = await tickFetchUnreadNotifications(
-          controller.signal,
-        );
-        setUnreadNotificationsByProduct(notifications || []);
-        setUnreadNotificationTotal(Number(total) || 0);
-      } catch (e) {
-        if (e.name !== "AbortError") logger.error("tickFetchUnreadNotifications error:", e);
-      } finally {
-        controller.abort();
-      }
-    };
-
-    return startVisiblePolling(tick, UNREAD_NOTIFICATION_POLL_MS);
-  }, [myId]);
+    return startVisiblePolling(refreshNotifications, UNREAD_NOTIFICATION_POLL_MS);
+  }, [myId, refreshNotifications]);
 
   const messages = useMemo(
     () => messagesByConv[activeConvId] || [],
@@ -785,6 +799,7 @@ export function ChatProvider({ children }) {
     unreadMsgTotal,
     unreadNotificationTotal,
     unreadNotificationsByProduct,
+    notificationsStatus,
     // user info
     myId,
     // actions
@@ -796,6 +811,8 @@ export function ChatProvider({ children }) {
     clearActiveConversation,
     registerConversation: upsertConversationRow,
     markNotificationReadLocal,
+    markAllNotificationsReadLocal,
+    refreshNotifications,
     removeNotificationLocal,
     clearNotificationsLocal,
     removeConversationLocal,

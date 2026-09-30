@@ -19,6 +19,7 @@ export default function ItemCardNew({
   sellerUsername,
   sellerEmail,
   isWishlisted = false,
+  reason = null,
   fixedWidth = false,
   showRemoveButton = false,
   onRemoveFromWishlist = null,
@@ -147,6 +148,13 @@ export default function ItemCardNew({
           <p className="text-[11px] text-gray-500 dark:text-gray-300 flex items-center gap-1 min-w-0">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
             <span className="truncate">Sold by {seller}</span>
+          </p>
+        ) : null}
+
+        {/* why this listing was recommended (For You feed only) */}
+        {reason ? (
+          <p className="truncate text-[11px] text-blue-700 dark:text-blue-300" title={reason}>
+            {reason}
           </p>
         ) : null}
 

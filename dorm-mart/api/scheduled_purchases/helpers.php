@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../chat/helpers.php';
+require_once __DIR__ . '/../helpers/notifications.php';
 
 function scheduled_purchase_has_active_accepted(mysqli $conn, int $productId, int $excludeRequestId): bool
 {
@@ -93,16 +94,6 @@ function scheduled_purchase_latest_confirm_status(mysqli $conn, int $requestId):
     return $row ? (string)$row['status'] : null;
 }
 
-function scheduled_purchase_utc_atom($value): ?string
-{
-    if ($value === null || $value === '') {
-        return null;
-    }
-
-    $dt = date_create((string)$value, new DateTimeZone('UTC'));
-    return $dt ? $dt->format(DateTime::ATOM) : null;
-}
-
 function scheduled_purchase_now_utc_atom(): string
 {
     return (new DateTime('now', new DateTimeZone('UTC')))->format(DateTime::ATOM);
@@ -110,40 +101,8 @@ function scheduled_purchase_now_utc_atom(): string
 
 function scheduled_purchase_user_display_name(mysqli $conn, int $userId): string
 {
-    $names = scheduled_purchase_user_display_names($conn, [$userId]);
+    $names = chat_display_names($conn, [$userId]);
     return $names[$userId] ?? ('User ' . $userId);
-}
-
-function scheduled_purchase_user_display_names(mysqli $conn, array $userIds): array
-{
-    $ids = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn($id) => $id > 0)));
-    if (!$ids) {
-        return [];
-    }
-
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $stmt = $conn->prepare("SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN ($placeholders)");
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare user name lookup');
-    }
-
-    $types = str_repeat('i', count($ids));
-    $stmt->bind_param($types, ...$ids);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    $names = [];
-    while ($res && ($row = $res->fetch_assoc())) {
-        $id = (int)$row['user_id'];
-        $full = trim((string)$row['first_name'] . ' ' . (string)$row['last_name']);
-        $names[$id] = $full !== '' ? $full : ('User ' . $id);
-    }
-    $stmt->close();
-
-    foreach ($ids as $id) {
-        $names[$id] = $names[$id] ?? ('User ' . $id);
-    }
-
-    return $names;
 }
 
 function scheduled_purchase_conversation_participants(mysqli $conn, int $conversationId): ?array
@@ -162,39 +121,99 @@ function scheduled_purchase_conversation_participants(mysqli $conn, int $convers
     return $row ?: null;
 }
 
-function scheduled_purchase_insert_chat_message(
-    mysqli $conn,
-    int $conversationId,
-    int $senderId,
-    int $receiverId,
-    string $content,
-    array $metadata,
-    bool $incrementUnread = true
-): int {
-    $names = scheduled_purchase_user_display_names($conn, [$senderId, $receiverId]);
-    $senderName = $names[$senderId] ?? ('User ' . $senderId);
-    $receiverName = $names[$receiverId] ?? ('User ' . $receiverId);
-    $metadataJson = json_encode($metadata, JSON_UNESCAPED_SLASHES);
+/**
+ * Cancel every schedule still in play for a user who is leaving the
+ * marketplace (account deleted or banned): pending requests and accepted ones
+ * whose sale has not completed. Pending Confirm Purchase forms are voided, the
+ * other party is told, and items this user had reserved go back on sale.
+ *
+ * Runs inside the caller's transaction. A Stripe payment that still succeeds
+ * later is refunded by the webhook, which treats a cancelled schedule as inactive.
+ *
+ * @return int number of schedules cancelled
+ */
+function scheduled_purchase_cancel_all_for_user(mysqli $conn, int $userId, string $counterpartMessage): int
+{
+    $stmt = $conn->prepare(
+        "SELECT spr.request_id, spr.status, spr.seller_user_id, spr.buyer_user_id,
+                spr.inventory_product_id, inv.title, inv.photos
+           FROM scheduled_purchase_requests spr
+           LEFT JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
+          WHERE (spr.seller_user_id = ? OR spr.buyer_user_id = ?)
+            AND spr.status IN ('pending', 'accepted')
+          FOR UPDATE"
+    );
+    if (!$stmt) throw new RuntimeException('Failed to prepare open schedule lookup');
+    $stmt->bind_param('ii', $userId, $userId);
+    $stmt->execute();
+    $schedules = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
 
-    $msgStmt = $conn->prepare('INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    if (!$msgStmt) {
-        throw new RuntimeException('Failed to prepare schedule chat message');
-    }
-    $msgStmt->bind_param('iiissss', $conversationId, $senderId, $receiverId, $senderName, $receiverName, $content, $metadataJson);
-    $msgStmt->execute();
-    $msgId = $msgStmt->insert_id;
-    $msgStmt->close();
+    $cancel = $conn->prepare(
+        "UPDATE scheduled_purchase_requests SET status = 'cancelled', canceled_by_user_id = NULL
+          WHERE request_id = ? AND status IN ('pending', 'accepted')"
+    );
+    $void = $conn->prepare(
+        "UPDATE confirm_purchase_requests SET status = 'seller_cancelled'
+          WHERE scheduled_request_id = ? AND status = 'pending'"
+    );
+    $release = $conn->prepare(
+        "UPDATE INVENTORY SET item_status = 'Active' WHERE product_id = ? AND item_status = 'Pending'"
+    );
+    if (!$cancel || !$void || !$release) throw new RuntimeException('Failed to prepare schedule cancellation');
 
-    if ($incrementUnread) {
-        chat_unhide_for_user($conn, $conversationId, $receiverId);
-        $updateStmt = $conn->prepare('UPDATE conversation_participants SET unread_count = unread_count + 1, first_unread_msg_id = CASE WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ? ELSE first_unread_msg_id END WHERE conv_id = ? AND user_id = ?');
-        if (!$updateStmt) {
-            throw new RuntimeException('Failed to prepare unread update');
+    $cancelled = 0;
+    foreach ($schedules as $schedule) {
+        $requestId = (int)$schedule['request_id'];
+        // A completed sale stays completed; only unfinished schedules are cancelled.
+        if (in_array(scheduled_purchase_latest_confirm_status($conn, $requestId),
+                ['buyer_accepted', 'auto_accepted', 'payment_completed'], true)) {
+            continue;
         }
-        $updateStmt->bind_param('iii', $msgId, $conversationId, $receiverId);
-        $updateStmt->execute();
-        $updateStmt->close();
-    }
 
-    return $msgId;
+        $cancel->bind_param('i', $requestId);
+        $cancel->execute();
+        if ($cancel->affected_rows !== 1) continue;
+        $cancelled++;
+        $void->bind_param('i', $requestId);
+        $void->execute();
+        notification_cancel_schedule($conn, $requestId);
+        notification_clear_prompt($conn, $requestId, 'schedule_request');
+        notification_clear_prompt($conn, $requestId, 'confirm_request');
+
+        $productId = (int)($schedule['inventory_product_id'] ?? 0);
+        $title = (string)($schedule['title'] ?? 'Scheduled purchase');
+        $image = notification_first_image($schedule['photos'] ?? null);
+        $counterpartId = (int)$schedule['seller_user_id'] === $userId
+            ? (int)$schedule['buyer_user_id']
+            : (int)$schedule['seller_user_id'];
+        if ($counterpartId > 0) {
+            notification_insert($conn, [
+                'recipient_user_id' => $counterpartId, 'type' => 'schedule_cancelled',
+                'product_id' => $productId > 0 ? $productId : null, 'scheduled_request_id' => $requestId,
+                'title' => $title, 'message' => $counterpartMessage, 'image_url' => $image,
+                'severity' => 'urgent', 'destination' => '/app/seller-dashboard/ongoing-purchases',
+                'idempotency_key' => 'schedule-cancelled-' . $requestId,
+            ]);
+        }
+
+        if ($schedule['status'] !== 'accepted' || $productId <= 0
+            || scheduled_purchase_has_active_accepted($conn, $productId, $requestId)) {
+            continue;
+        }
+        $release->bind_param('i', $productId);
+        $release->execute();
+        if ($release->affected_rows > 0) {
+            notification_for_wishlist($conn, $productId, [
+                'type' => 'item_back_on_sale', 'title' => $title, 'message' => $title . ' is back on sale.',
+                'image_url' => $image, 'severity' => 'success', 'destination' => '/app/viewProduct/' . $productId,
+                'idempotency_key' => 'back-on-sale-cancel-' . $requestId,
+            ], $userId);
+        }
+    }
+    $cancel->close();
+    $void->close();
+    $release->close();
+
+    return $cancelled;
 }

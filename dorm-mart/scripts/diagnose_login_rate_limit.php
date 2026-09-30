@@ -1,13 +1,13 @@
 <?php
 /**
- * Read-only diagnostic for the login and account-creation rate limiters.
+ * Read-only diagnostic for the rate limiters.
  *
- * Both limiters fail open by design: consume_rate_limit() and
- * consume_account_creation_attempt() swallow their exceptions and report "not
- * blocked", so a limiter that has stopped throttling looks identical from
- * outside to one that is simply not being tripped. This prints what the
- * black-box view cannot: each table's schema, its live rows, and the MySQL
- * session settings that decide how the timestamp columns round-trip.
+ * Every throttle (login, 2FA codes, account creation, chat, reports) keeps its
+ * buckets in login_rate_limits under a namespaced key. A limiter that has
+ * stopped accumulating looks, from outside, just like one that is simply not
+ * being tripped. This prints what the black-box view cannot: the table's
+ * schema, its live rows, and the MySQL session settings that decide how the
+ * timestamp columns round-trip.
  *
  * Read the rows first. Buckets stuck at an attempt count of 1 mean each request
  * is hashing to a fresh key rather than accumulating -- that is what a bad
@@ -56,7 +56,7 @@ foreach (['VERSION()', '@@global.time_zone', '@@session.time_zone', 'UTC_TIMESTA
     printf("%-38s %s\n", $expr, $value);
 }
 
-foreach (['login_rate_limits', 'account_creation_rate_limits'] as $table) {
+foreach (['login_rate_limits'] as $table) {
     heading($table);
 
     $exists = $conn->query("SHOW TABLES LIKE '" . $conn->real_escape_string($table) . "'");
@@ -85,8 +85,8 @@ foreach (['login_rate_limits', 'account_creation_rate_limits'] as $table) {
 
 heading('round-trip check: does UTC_TIMESTAMP() survive a TIMESTAMP column?');
 // login_rate_limits.last_failed_attempt is TIMESTAMP (timezone-converted on
-// read and write); account_creation_rate_limits.last_attempt_at is DATETIME
-// (stored verbatim). Were the TIMESTAMP column ever to read back shifted, the
+// read and write), unlike a DATETIME (stored verbatim), shown alongside for
+// comparison. Were the TIMESTAMP column ever to read back shifted, the
 // limiter's 10-minute window test would always be true and attempts would reset
 // to 1 every request. MySQL 9 and MariaDB 10.4 both round-trip it correctly, so
 // this is a guard against a future engine or timezone change, not a known fault.

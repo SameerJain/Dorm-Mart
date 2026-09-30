@@ -70,7 +70,7 @@ Unknown routes use `NotFoundPage`. The December raw-loader behavior for unfinish
   - promotional email frequency (`off`, `daily`, or `weekly`);
   - optional seller phone number; and
   - a switch controlling whether buyers in the seller's chats can see the seller's email/phone.
-- `scripts/send_promotional_digests.php` is a CLI job for due daily/weekly interest-matched listing emails. Adding the script does not schedule it automatically; the deployment must provide a cron/scheduled job.
+- `scripts/send_promotional_digests.php` is a CLI job for due daily/weekly interest-matched listing emails. On Railway it runs from the cron service defined in `dorm-mart/railway.promotional.toml` (21:00 and 22:00 UTC; the script only sends in the 5 p.m. Eastern hour). Digests include only listings posted since the user's last digest, skip banned sellers, and carry a signed one-click unsubscribe link and `List-Unsubscribe` header when `PROMO_UNSUBSCRIBE_SECRET` is set. The script refuses to send if `FRONTEND_BASE_URL` is not absolute.
 - The About Us page is implemented at `/app/setting/about-us` with the current team and contact links.
 - Account deletion is implemented and requires both the exact confirmation phrase and current password. It removes the user's owned/private data and listings, closes affected chats, notifies users who wishlisted removed items, anonymizes retained counterpart-facing chat/history records, deletes owned uploads, and signs the user out.
 - Protected fixture and moderator accounts cannot be deleted. Seed-account protection is applied after local data migration.
@@ -121,7 +121,8 @@ Unknown routes use `NotFoundPage`. The December raw-loader behavior for unfinish
 - Chat is split into composer, header, sidebar, list, message cards, special purchase/review cards, image modal, typing hooks, and utilities.
 - Users can send text and image messages, see typing indicators, delete a conversation from their own list, and report another user's message.
 - A sender can edit only their latest eligible text message in a conversation. Image/system/deleted messages cannot be edited.
-- `api/chat/delete_message.php` supports soft-deleting the sender's latest message, but the current React UI does not expose an individual-message delete button.
+- The sender can delete their latest non-card message from its chat menu (`api/chat/delete_message.php`, soft delete). System cards cannot be deleted, and neither edits nor deletes are allowed once the chat is closed. Editing keeps the pre-edit text in `messages.original_content` for moderators and is refused while the message has an open report.
+- Chat polls every 1.5 s and skips a tick while the previous poll is still running. Read-only chat/media endpoints release the PHP session lock early. Hiding a conversation clears its unread count; any message or system card that adds to a user's unread count un-hides it for that user (`chat_unhide_for_user()`).
 - Deleted messages are retained as records and rendered as “This message was deleted”; their content/media no longer count toward unread badges.
 - Profanity matches are stored as flagged raw messages for moderators, while normal chat readers receive filtered text.
 - Seller contact information appears in buyer chats only when the seller enabled contact sharing.
@@ -137,10 +138,11 @@ Unknown routes use `NotFoundPage`. The December raw-loader behavior for unfinish
 - Moderator accounts must be provisioned from the CLI, for example:
 
   ```powershell
-  php api/database/create_moderator.php moderator@example.com "use-a-strong-password" "Dorm Mart" "Moderator"
+  php api/database/create_moderator.php moderator@example.com "Dorm Mart" "Moderator"
+  # prompts for the password (or pipe it in); it is never passed as an argument
   ```
 
-- The old committed default moderator credential was revoked by migration `022_revoke_default_moderator.sql`; `data/029_moderator_account.sql` no longer seeds a password.
+- The old committed default moderator credential was revoked by migration `legacy/022_revoke_default_moderator.sql`; `data/029_moderator_account.sql` no longer seeds a password.
 
 ### Scheduled and confirmed purchases
 
@@ -205,9 +207,9 @@ Shared code lives under `api/config`, `api/helpers`, `api/security`, `api/utilit
 
 ## Database migrations and development data
 
-- Schema migration files were consolidated from the December many-file history into clearer base migrations `001`–`009`, followed by additive migrations through `024`.
-- Newer migrations add general notifications, promotional frequency, view counts, login history, account deletion support, recommendation behavior, 2FA, seller phone numbers, moderation/profanity, message soft deletion, session versioning, default-moderator revocation, schema reconciliation, and account-creation rate limits.
-- Migration numbering intentionally has gaps (for example `017`); execution is based on natural filename order plus the `schema_migrations` ledger, not contiguous numbering.
+- The whole schema is one file, `migrations/001_baseline.sql`. New databases (a fresh checkout, the lifecycle test) build from it. Stripe payments live in `002_stripe_connect_payments.sql`, which only runs when `dm_payments_enabled()` is true. `003_drop_unused_tables.sql` removes the two tables the baseline left out from older databases (a no-op on new ones). New schema changes go in `004_*.sql` onward, one file per change. `api/database/wipe_data.php` refuses non-local hosts unless given `--allow-remote-host=<host>`.
+- The baseline dropped two unused tables (`wishlist_notification`, replaced by `notifications`; `account_creation_rate_limits`, merged into `login_rate_limits`) and five indexes that repeated a unique key's leading column. `purchased_items` is still there: nothing writes to it, but purchase history still shows its legacy rows.
+- `migrations/legacy/` holds the old 001–028 chain. It exists only for databases created before the baseline (production, older local copies): `migrate_schema.php` sees their old filenames in `schema_migrations`, runs whatever legacy files are missing, then records `001_baseline.sql` as reached **without running it**. That path drops nothing itself; migration `003` then removes the two unused tables. Once every such database has upgraded, `migrations/legacy/` can be deleted.
 - `migrate_schema.php` is CLI-only, applies only unapplied filenames, and records them in `schema_migrations`.
 - Railway runs `php api/database/migrate_schema.php` before deployment through `dorm-mart/railway.toml`.
 - `migrate_data.php` is CLI-only and local-only. Every run truncates local application tables (preserving the schema ledger and profanity words), copies fixture images, reapplies all SQL files in `data`, and marks fixture accounts protected.
@@ -216,9 +218,9 @@ Shared code lives under `api/config`, `api/helpers`, `api/security`, `api/utilit
 
 ### Profanity word list
 
-- The base list still lives in migration `019_moderation_and_profanity.sql` (a small, intentionally short set — this file is public).
-- A much larger English word list is seeded separately by `migrate_schema.php`, which calls `seed_profanity_wordlist()` (`api/database/seed_profanity_wordlist.php`). That function pulls words from the `snipe/banbuilder` Composer package and inserts them into `profanity_words`, tracked once in `schema_migrations` as `seed_profanity_wordlist_banbuilder_v2`.
-- The upstream dictionary is broader than we want (clinical/anatomical terms, generic words like "cornhole"/"fanny"/"screw"/"killer" that collide with normal marketplace chat, and violent/political terms better handled by human moderation). `PROFANITY_WORDLIST_EXCLUDED` in that file filters those out before insert, and also deletes them if an older seed run already added them. Adjust that array (and bump the tracked migration name, e.g. `_v3`, so it re-reconciles) if the list needs further tuning.
+- The base list lives in `migrations/001_baseline.sql` (originally migration `019`) (a small, intentionally short set — this file is public).
+- A much larger English word list is seeded separately by `migrate_schema.php`, which calls `seed_profanity_wordlist()` (`api/database/seed_profanity_wordlist.php`). That function pulls words from the `snipe/banbuilder` Composer package and inserts them into `profanity_words`, tracked once in `schema_migrations` as `seed_profanity_wordlist_banbuilder_v3`.
+- The upstream dictionary is broader than we want (clinical/anatomical terms, generic words like "cornhole"/"fanny"/"screw"/"killer" that collide with normal marketplace chat, and violent/political terms better handled by human moderation). `PROFANITY_WORDLIST_EXCLUDED` in that file filters those out before insert, and also deletes them if an older seed run already added them. Adjust that array (and bump the tracked migration name, e.g. `_v4`, so it re-reconciles) if the list needs further tuning. Matching tolerates look-alike characters (`sh1t`, `$hit`), stretched letters, punctuation or zero-width characters inside a word, and common endings, so variants do not need their own entries.
 - **`dorm-mart/vendor/snipe/banbuilder/src/dict/` is gitignored on purpose** — the rest of `vendor/` is committed as usual in this repo, but that one folder holds the raw word-list data, and keeping an explicit slur list out of a public repo's git history is the point (it's still fully public code-wise, just not baked into commits forever). If your local `vendor/` doesn't have it, run `composer install` from `dorm-mart/` once — Composer re-downloads the package, dict files included, from the upstream source (the gitignore only stops us from re-committing it, it doesn't stop Composer from fetching it).
 - If those files are missing, `migrate_schema.php` does **not** fail — it logs the seed step under `"skipped"` in its JSON output and leaves the rest of the migration run alone. Railway's build always runs `composer install` automatically, so production is unaffected either way.
 - New words can always be added/removed live from the Moderator Dashboard regardless of any of the above — that path never touches git.
@@ -245,7 +247,7 @@ npm run start:api
 
 ### Tests and build
 
-The old handoff statement that Jest had no matching tests is no longer true. The current tree has 25 frontend test files, including adversarial utility coverage and component tests for account creation, chat, moderation, notifications, listing actions, scheduled purchases, settings, and 2FA.
+The old handoff statement that Jest had no matching tests is no longer true. The current tree has 37 frontend test files, including adversarial utility coverage and component tests for account creation, chat, moderation, notifications, listing actions, scheduled purchases, settings, and 2FA.
 
 From `dorm-mart`:
 
@@ -294,9 +296,9 @@ Key environment variables are documented in `environment_configuration.md` (next
 
 - The generic media endpoint intentionally refuses chat media. Do not “fix” chat images by routing them through the public product-image endpoint.
 - Uploaded files require persistent Railway storage; a placeholder with a valid database row often means the volume/path is missing, not that the React component is broken.
-- `send_promotional_digests.php` requires an external schedule; committing the file alone does not send recurring digests.
+- `send_promotional_digests.php` runs from the Railway cron service in `railway.promotional.toml`; a deployment without that service sends no digests.
 - Logged Devices does not currently provide per-device remote sign-out. Password change/reset is the available revoke-all path.
-- The backend has a latest-message soft-delete endpoint, but there is no current individual-message delete control in the chat UI.
+- Moderator decisions (report resolutions, listing removals, flag clears, word-list edits) are written to `moderation_actions` (created in the baseline; originally migration `028`) and shown as "Recent moderator actions" on the dashboard. Logging is best effort and never blocks the action.
 - Static legal PDFs remain in `public/pdfs` even though the current UI uses native legal pages.
 - Some historical/ad hoc API tests remain for reference. Use the npm scripts and the current `.test.js/.test.jsx` suite as the normal automated checks.
 - The app has compatibility aliases for both `viewProduct`/`viewproduct` and `viewReceipt`/`viewreceipt`; prefer the canonical mixed-case routes already used by current navigation.

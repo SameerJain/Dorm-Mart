@@ -1,7 +1,7 @@
 export const legalDocuments = {
   privacy: {
     title: "Privacy Policy",
-    updated: "September 22, 2026",
+    updated: "September 27, 2026",
     intro:
       "Dorm Mart is a marketplace for UB students, built and run by UB students. This policy explains what we collect, why we collect it, who can see it, and what you can do about it. The short version: we take what we need to run the marketplace and keep it safe, we don't sell your data to anyone, and you can delete your account whenever you want.",
     sections: [
@@ -105,7 +105,7 @@ export const legalDocuments = {
           "Reviews you've written, and the average rating you've earned.",
         ],
         after: [
-          "Your phone number stays hidden unless you add one and turn on contact sharing yourself. Your messages go to the person you sent them to and nobody else.",
+          "Your email address and phone number stay hidden unless you turn on contact sharing in Settings. When it's on, only buyers who message you about one of your listings see them, inside that chat. Your messages go to the person you sent them to and nobody else.",
           "Moderators can read a reported conversation, but only the reported thread and only while they're looking into a report. They can't browse your messages for fun.",
         ],
       },
@@ -115,7 +115,7 @@ export const legalDocuments = {
           "We don't sell your personal information, and we don't share it for advertising. Beyond what other students see, your data leaves Dorm Mart in four situations:",
         ],
         items: [
-          "Service providers we need to operate: hosting, the database, email delivery, and error monitoring. They're contractually limited to the job we hired them for.",
+          "Service providers we need to operate: hosting, the database, email delivery, and error monitoring. They're contractually limited to the job we hired them for. When you sign in, your IP address is also sent to an IP location service (ipwho.is) to show an approximate city in your sign-in history.",
           "Stripe, if optional card payments are switched on and you use them, so sellers can be paid and disputes can be handled.",
           "Safety and law enforcement, when there's a valid court order or subpoena, or when someone is in immediate danger. We'll tell you when this happens unless we're legally barred from telling you.",
           "A future owner, if Dorm Mart is ever transferred to one. You'd get notice before that happened.",
@@ -140,8 +140,7 @@ export const legalDocuments = {
         items: [
           "Account and profile data: as long as your account is open.",
           "Listings, messages, and reviews: while your account is open, plus a limited window afterward so we can finish investigations and meet audit needs.",
-          "Sign-in and security logs: typically 12 to 24 months.",
-          "Inactive accounts: deleted after two years with no sign-in.",
+          "Sign-in history: kept while your account is open and deleted with your account.",
           "Transaction and payment records: kept as long as accounting, tax, and dispute rules require. Where Stripe was involved, Stripe keeps its own copy under its own schedule.",
           "Backups: they age out on a fixed rotation, so deleted data can sit in a backup for a short time before it's gone for good.",
         ],
@@ -158,7 +157,7 @@ export const legalDocuments = {
             items: [
               "Use a password you don't use anywhere else.",
               "Turn on two-factor authentication in Settings.",
-              "Check your signed-in devices in Settings and end any session you don't recognize.",
+              "Check your signed-in devices in Settings. If you see one you don't recognize, change your password: that signs out every other session.",
               "Sign out on shared and lab computers.",
               "Tell us right away if something looks wrong with your account.",
             ],
@@ -168,12 +167,12 @@ export const legalDocuments = {
       {
         title: "10. What you can control",
         items: [
-          "Edit your profile, graduation year, and preferences in Settings.",
+          "Edit your profile photo, bio, and preferences in Settings.",
           "Turn promotional email on or off, and change how often it arrives.",
           "Show or hide your phone number.",
-          "Review your sign-in history and end sessions you don't recognize.",
+          "Review your sign-in history, and sign out every other session by changing your password.",
           "Change your password, and turn two-factor authentication on or off.",
-          "Delete your account from Settings. You'll confirm with your password and by typing DELETE MY ACCOUNT. Your listings come down, your uploaded photos are removed, and anyone who wishlisted your items is told the listing is gone.",
+          "Delete your account from Settings. You'll confirm with your password and by typing your account email. Your listings come down, your uploaded photos are removed, and anyone who wishlisted your items is told the listing is gone.",
         ],
         after: [
           "Deletion removes your personal data. We keep the minimum required for legal, tax, and fraud-prevention reasons, which is typically a stripped-down transaction record with no profile attached to it.",
@@ -233,7 +232,7 @@ export const legalDocuments = {
   },
   terms: {
     title: "Terms of Service",
-    updated: "September 22, 2026",
+    updated: "September 27, 2026",
     intro:
       "Dorm Mart is a marketplace where University at Buffalo students buy, sell, and trade with each other. These are the rules for using it. We've written them in plain English, because terms nobody reads protect nobody. If something here doesn't make sense, ask us before you agree to it.",
     sections: [
@@ -457,7 +456,7 @@ export const legalDocuments = {
             items: [
               "Delete your account from Settings. Your listings come down and your personal data is removed.",
               "Completed transaction records may be kept where the law requires it.",
-              "Deleting your account doesn't cancel a deal you already agreed to.",
+              "Deleting your account cancels any purchases you have scheduled but not yet completed, and the other person sees a notice in your chat.",
             ],
           },
           {

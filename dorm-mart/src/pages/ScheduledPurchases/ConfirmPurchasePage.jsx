@@ -5,10 +5,7 @@ import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
 import { useSubmitLock } from "../../hooks/useSubmitLock";
-import {
-  formatCurrency as formatSharedCurrency,
-  formatDateTime as formatSharedDateTime,
-} from "../../utils/formatters";
+import { formatCurrency, formatDateTime } from "../../utils/formatters";
 import { MAX_LISTING_PRICE } from "../../utils/priceValidation";
 // Price limits - max matches ProductListingPage and SchedulePurchasePage exactly
 const PRICE_LIMITS = {
@@ -21,13 +18,13 @@ const DEFAULT_FAILURE_REASONS = [
   { value: "other", label: "Other (describe)" },
 ];
 
-function formatDateTime(iso) {
+function formatMeetingTime(iso) {
   if (!iso) return "TBD";
-  return formatSharedDateTime(iso);
+  return formatDateTime(iso);
 }
 
-function formatCurrency(value) {
-  return formatSharedCurrency(value) ?? "N/A";
+function formatPriceOrNA(value) {
+  return formatCurrency(value) ?? "N/A";
 }
 
 export default function ConfirmPurchasePage() {
@@ -290,7 +287,7 @@ export default function ConfirmPurchasePage() {
                     Meeting
                   </p>
                   <p className="font-medium text-gray-900 dark:text-gray-100 break-words overflow-hidden">
-                    {formatDateTime(prefill?.meeting_at)}
+                    {formatMeetingTime(prefill?.meeting_at)}
                   </p>
                 </div>
               </div>
@@ -387,7 +384,7 @@ export default function ConfirmPurchasePage() {
                 <div className="text-sm text-gray-500 dark:text-gray-300">
                   Previously agreed price:{" "}
                   <span className="font-medium text-gray-900 dark:text-gray-100">
-                    {formatCurrency(
+                    {formatPriceOrNA(
                       prefill?.negotiated_price ?? prefill?.default_final_price,
                     )}
                   </span>

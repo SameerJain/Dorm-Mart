@@ -20,7 +20,7 @@ describe("seller dashboard utility boundaries", () => {
 
     expect(listing.categories).toEqual([]);
     expect(listing.has_accepted_scheduled_purchase).toBe(true);
-    expect(listing.image).toContain("/media/image.php");
+    expect(listing.image).toMatch(/\/media\/image\.php\?url=%2Fimages%2Flamp\.jpg$/);
     expect(listing.wishlisted).toBe(0);
     expect(listing.views).toBe(7);
   });
@@ -45,15 +45,18 @@ describe("seller dashboard utility boundaries", () => {
 
   test("filters and sorts without leaking invalid dates into comparisons", () => {
     const listings = [
-      { id: 1, status: "Sold", categories: ["Books"], createdAt: "bad", price: 20 },
+      // Input order, newest-first and price-low-to-high all differ, so a sort
+      // that does nothing or uses the wrong key cannot pass.
+      { id: 1, status: "Sold", categories: ["Books"], createdAt: "bad", price: 5 },
       { id: 2, status: "Sold", categories: ["Books"], createdAt: "2026-01-02", price: 10 },
+      { id: 4, status: "Sold", categories: ["Books"], createdAt: "2026-01-01", price: 7 },
       { id: 3, status: "Active", categories: ["Tech"], createdAt: "2026-01-03", price: 30 },
     ];
 
     const filtered = filterListings(listings, "Sold", "Books");
-    expect(filtered.map((listing) => listing.id)).toEqual([1, 2]);
-    expect(sortListings(filtered, "Newest First").map((listing) => listing.id)).toEqual([2, 1]);
-    expect(sortListings(filtered, "Price: Low to High").map((listing) => listing.id)).toEqual([2, 1]);
+    expect(filtered.map((listing) => listing.id)).toEqual([1, 2, 4]);
+    expect(sortListings(filtered, "Newest First").map((listing) => listing.id)).toEqual([2, 4, 1]);
+    expect(sortListings(filtered, "Price: Low to High").map((listing) => listing.id)).toEqual([1, 4, 2]);
   });
 
   test("reads rating values from object, scalar, and malformed payloads", () => {

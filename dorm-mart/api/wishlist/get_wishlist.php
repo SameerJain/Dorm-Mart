@@ -6,8 +6,8 @@ require_once __DIR__ . '/../helpers/inventory.php';
 
 init_json_endpoint('GET');
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 function wishlist_seller_name(array $row): string
 {

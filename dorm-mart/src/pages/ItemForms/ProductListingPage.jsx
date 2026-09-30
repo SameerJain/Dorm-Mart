@@ -12,7 +12,6 @@ import {
   resolveProductPhotoUrl,
 } from "../../utils/imageFallback";
 import logger from "../../utils/logger";
-import { containsMemePrice } from "../../utils/priceValidation";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useSubmitLock } from "../../hooks/useSubmitLock";
 import ListingForm from "./components/ListingForm";
@@ -32,6 +31,7 @@ import {
   MAX_VIDEO_BYTES,
   PRICE_INPUT_PATTERN,
 } from "./utils/listingFormConfig";
+import { validateDraft, validateListing } from "./utils/listingValidation";
 
 function ProductListingPage() {
   const { id } = useParams();
@@ -375,51 +375,15 @@ function ProductListingPage() {
   };
 
   const validateAll = () => {
-    const newErrors = {};
-
-    if (!title.trim()) {
-      newErrors.title = "Title is required";
-    } else if (title.length > LIMITS.title) {
-      newErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
-    }
-
-    if (!description.trim()) {
-      newErrors.description = "Description is required";
-    } else if (description.length > LIMITS.description) {
-      newErrors.description = `Description must be ${LIMITS.description} characters or fewer`;
-    }
-
-    if (price === "") {
-      newErrors.price = "Price is required";
-    } else if (containsMemePrice(price)) {
-      newErrors.price =
-        "The price has a meme input in it. Please try a different price.";
-    } else if (!Number.isFinite(Number(price))) {
-      newErrors.price = "Please enter a valid price";
-    } else if (Number(price) < LIMITS.priceMin) {
-      newErrors.price = `Minimum price is $${LIMITS.priceMin.toFixed(2)}`;
-    } else if (Number(price) > LIMITS.price) {
-      newErrors.price = `Price must be $${LIMITS.price} or less`;
-    }
-
-    if (!categories || categories.length === 0) {
-      newErrors.categories = "Select at least one category";
-    } else if (categories.length > CATEGORIES_MAX) {
-      newErrors.categories = `Select at most ${CATEGORIES_MAX} categories`;
-    }
-
-    if (!itemLocation) {
-      newErrors.itemLocation = "Select an item location";
-    }
-    if (!condition || condition === "") {
-      newErrors.condition = "Select an item condition";
-    }
-
-    if (!hasListingPhoto(images)) {
-      newErrors.images =
-        "At least one photo is required. Videos are optional and count toward the 6-media limit.";
-    }
-
+    const newErrors = validateListing({
+      title,
+      description,
+      price,
+      categories,
+      itemLocation,
+      condition,
+      images,
+    });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -696,6 +660,10 @@ function ProductListingPage() {
     resetCropper();
   }
 
+  const scrollToFormTop = () => {
+    formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   async function submitListing(e, status) {
     e.preventDefault();
     setServerMsg(null);
@@ -703,54 +671,24 @@ function ProductListingPage() {
 
     if (isEdit && isSold) {
       setServerMsg("Cannot edit sold items.");
-      formTopRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      scrollToFormTop();
       return;
     }
 
     if (savingDraft) {
-      const draftErrors = {};
-      if (!hasListingPhoto(images)) {
-        draftErrors.images =
-          "At least one photo is required. Videos are optional and count toward the 6-media limit.";
-      }
-      if (!title.trim()) {
-        draftErrors.title = "Title is required";
-      } else if (title.length > LIMITS.title) {
-        draftErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
-      }
       // Price is optional while drafting, but the backend still rejects a
       // non-empty value that isn't a real, in-range price — validate it here
       // too so an incomplete value like "." doesn't round-trip to the server
       // just to come back as an error.
-      if (price !== "") {
-        if (containsMemePrice(price)) {
-          draftErrors.price =
-            "The price has a meme input in it. Please try a different price.";
-        } else if (!Number.isFinite(Number(price))) {
-          draftErrors.price = "Please enter a valid price";
-        } else if (Number(price) < LIMITS.priceMin) {
-          draftErrors.price = `Minimum price is $${LIMITS.priceMin.toFixed(2)}`;
-        } else if (Number(price) > LIMITS.price) {
-          draftErrors.price = `Price must be $${LIMITS.price} or less`;
-        }
-      }
+      const draftErrors = validateDraft({ title, price, images });
       setErrors(draftErrors);
       if (Object.keys(draftErrors).length > 0) {
-        formTopRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+        scrollToFormTop();
         setShowTopErrorBanner(true);
         return;
       }
     } else if (!validateAll()) {
-      formTopRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      scrollToFormTop();
       setShowTopErrorBanner(true);
       return;
     }

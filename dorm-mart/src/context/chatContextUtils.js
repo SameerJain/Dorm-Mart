@@ -5,9 +5,9 @@ import logger from "../utils/logger";
 // Shared with RootLayout so the two startup auth checks become one request.
 export { fetchMe } from "../utils/handleAuth";
 
-export async function fetchConversations(signal) {
-  // returns: { success: true, conversations: [{ conv_id, user_1, user_2, ... }] }
-  const r = await fetch(`${API_BASE}/chat/fetch_conversations.php`, {
+// Session-authenticated GET used by every chat/notification poll.
+async function pollGet(path, signal) {
+  const r = await fetch(`${API_BASE}${path}`, {
     method: "GET",
     headers: { Accept: "application/json" },
     credentials: "include",
@@ -17,33 +17,21 @@ export async function fetchConversations(signal) {
   return r.json();
 }
 
-export async function fetchConversationApi(convId, signal) {
-  // returns: { success: true, messages: [{ message_id, sender_id, content, created_at, ... }] }
-  const r = await fetch(
-    `${API_BASE}/chat/fetch_conversation.php?conv_id=${convId}`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      credentials: "include", // session-based auth
-      signal,
-    },
-  );
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+export function fetchConversations(signal) {
+  // returns: { success: true, conversations: [{ conv_id, user_1, user_2, ... }] }
+  return pollGet("/chat/fetch_conversations.php", signal);
 }
 
-export async function fetchNewMessages(activeConvId, ts, signal) {
-  const r = await fetch(
-    `${API_BASE}/chat/fetch_new_messages.php?conv_id=${activeConvId}&ts=${ts}`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      credentials: "include", // session-based auth
-      signal,
-    },
+export function fetchConversationApi(convId, signal) {
+  // returns: { success: true, messages: [{ message_id, sender_id, content, created_at, ... }] }
+  return pollGet(`/chat/fetch_conversation.php?conv_id=${convId}`, signal);
+}
+
+export function fetchNewMessages(activeConvId, ts, signal) {
+  return pollGet(
+    `/chat/fetch_new_messages.php?conv_id=${activeConvId}&ts=${ts}`,
+    signal,
   );
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
 }
 
 export async function editLastMessageApi(messageId, content) {
@@ -95,7 +83,7 @@ export async function tickFetchNewMessages(
   const myIdNum = Number(myId);
   if (!Number.isInteger(myIdNum) || myIdNum <= 0) {
     logger.error("Invalid myId in tickFetchNewMessages:", myId);
-    return { messages: [], typingStatus, cursorTs };
+    return { messages: [], typingStatus, cursorTs, conversationStatus };
   }
 
   // Always return typing status, even if no new messages
@@ -146,15 +134,8 @@ export async function tickFetchNewMessages(
   return { messages, typingStatus, cursorTs, conversationStatus };
 }
 
-export async function fetchUnreadMessages(signal) {
-  const r = await fetch(`${API_BASE}/chat/fetch_unread_messages.php`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    credentials: "include", // session-based auth
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+export function fetchUnreadMessages(signal) {
+  return pollGet("/chat/fetch_unread_messages.php", signal);
 }
 
 export async function tickFetchUnreadMessages(signal) {
@@ -175,15 +156,8 @@ export async function tickFetchUnreadMessages(signal) {
   return { unreads, total };
 }
 
-export async function fetchUnreadNotifications(signal) {
-  const r = await fetch(`${API_BASE}/wishlist/fetch_unread_notifications.php`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    credentials: "include", // session-based auth
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+export function fetchUnreadNotifications(signal) {
+  return pollGet("/wishlist/fetch_unread_notifications.php", signal);
 }
 
 export async function tickFetchUnreadNotifications(signal) {
@@ -198,6 +172,9 @@ const SEND_ERROR_MESSAGES = {
   missing_fields: "Type a message before sending.",
   missing_image: "Choose a photo or video to send.",
   content_too_long: "Messages can be at most 500 characters.",
+  file_too_large: "That file is too large to send. Videos can be up to 25 MB.",
+  image_too_large: "Photos can be up to 2 MB.",
+  unsupported_type: "That file type isn't supported. Send a JPG, PNG, WebP, MP4, WebM, or MOV file.",
 };
 
 /**

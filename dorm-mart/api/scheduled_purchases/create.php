@@ -9,6 +9,7 @@ require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/../payments/helpers.php';
 require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../helpers/moderation.php';
 
 init_json_endpoint('POST');
 
@@ -34,6 +35,7 @@ try {
     // New fields for price negotiation and trades
     $negotiatedPriceRaw = $payload['negotiated_price'] ?? null;
     $negotiatedPrice = null;
+    $negotiatedPriceString = '';
     if ($negotiatedPriceRaw !== null && $negotiatedPriceRaw !== '') {
         $negotiatedPriceString = is_string($negotiatedPriceRaw)
             ? trim($negotiatedPriceRaw)
@@ -199,6 +201,9 @@ try {
     // Ensure buyer is not the seller
     if ($buyerId === $sellerId) {
         json_response(['success' => false, 'error' => 'Cannot schedule with yourself'], 400);
+    }
+    if (moderation_user_is_banned($conn, $buyerId)) {
+        json_response(['success' => false, 'error' => 'This user is no longer available'], 403);
     }
 
     $paymentMode = null;
@@ -366,7 +371,7 @@ try {
         $messageContent = $sellerDisplayName . ' has scheduled a purchase. Please Accept or Deny.';
         $listingPrice = isset($itemRow['listing_price']) ? (float)$itemRow['listing_price'] : null;
 
-        scheduled_purchase_insert_chat_message($conn, $conversationId, $sellerId, $buyerId, $messageContent, [
+        chat_insert_system_message($conn, $conversationId, $sellerId, $buyerId, $messageContent, [
             'type' => 'schedule_request',
             'request_id' => $requestId,
             'inventory_product_id' => $inventoryId,

@@ -233,7 +233,7 @@ function payment_insert_fallback_message(mysqli $conn, array $schedule, string $
     $sellerId = (int)($schedule['seller_user_id'] ?? 0);
     if ($conversationId <= 0 || $buyerId <= 0 || $sellerId <= 0) return;
 
-    insert_confirm_chat_message(
+    chat_insert_system_message(
         $conn,
         $conversationId,
         $buyerId,
@@ -364,6 +364,12 @@ function payment_can_apply_refund_status(string $currentStatus, string $nextStat
     return in_array($nextStatus, ['refund_pending', 'refund_failed', 'refunded'], true);
 }
 
+/** Dispute outcomes where the seller keeps the funds. */
+function payment_dispute_resolved_for_seller(string $disputeStatus): bool
+{
+    return in_array($disputeStatus, ['won', 'prevented', 'warning_closed'], true);
+}
+
 function payment_can_apply_dispute_status(?string $currentStatus, string $nextStatus): bool
 {
     $terminal = ['won', 'lost', 'prevented', 'warning_closed'];
@@ -436,7 +442,7 @@ function payment_finalize_refund_transaction(
             ['late_payment', 'completion_conflict', 'fallback_payment', 'schedule_inactive'],
             true
         );
-        insert_confirm_chat_message(
+        chat_insert_system_message(
             $conn,
             $conversationId,
             $isLateRefund ? $buyerId : $sellerId,

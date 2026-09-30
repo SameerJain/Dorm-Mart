@@ -67,7 +67,9 @@ try {
 
     // Proving possession of the code releases the issuance throttle, so a user who
     // needed a few codes to get in is not left locked out of requesting more.
-    clear_rate_limit(scoped_rate_limit_key('two_factor_issue', $userId));
+    foreach (two_factor_issue_keys($userId) as $issueKey) {
+        clear_rate_limit($issueKey);
+    }
 
     regenerate_session_on_login();
     clear_two_factor_challenge();

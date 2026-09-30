@@ -73,7 +73,6 @@ describe("ModeratorDashboard", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
     });
     csrfFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
-    jest.spyOn(window, "confirm").mockReturnValue(true);
 
     render(<ModeratorDashboard />);
 
@@ -84,6 +83,8 @@ describe("ModeratorDashboard", () => {
     fireEvent.change(screen.getByLabelText("Reason shown to seller"), { target: { value: "prohibited" } });
     fireEvent.change(screen.getByPlaceholderText("Optional note to the seller"), { target: { value: "  No weapons  " } });
     fireEvent.click(screen.getByRole("button", { name: "Remove listing" }));
+    // Confirmed in the in-page dialog instead of window.confirm.
+    fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
 
     await waitFor(() => expect(csrfFetch).toHaveBeenCalled());
     const [url, options] = csrfFetch.mock.calls[0];

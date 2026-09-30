@@ -1,26 +1,8 @@
 <?php
 declare(strict_types=1);
 
-// Include security headers for XSS protection
-require_once __DIR__ . '/../security/security.php';
-dm_enforce_https();
-set_security_headers();
-set_secure_cors();
-
-header('Content-Type: application/json; charset=utf-8');
-
-// Handle preflight requests
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-// Only allow POST requests
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+init_json_endpoint('POST');
 
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/request.php';
@@ -28,47 +10,39 @@ require_once __DIR__ . '/device_history.php';
 
 // Get request data
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
-if (strpos($ct, 'application/json') !== false) {
-    $data = json_request_body_or_error(['success' => false, 'error' => 'Invalid JSON payload']);
-    // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
-    $token = is_string($data['token'] ?? null) ? trim($data['token']) : '';
-    $newPassword = is_string($data['newPassword'] ?? null) ? $data['newPassword'] : '';
-    $uid = request_int($data, 'uid');
-} else {
-    // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
-    $token = is_string($_POST['token'] ?? null) ? trim($_POST['token']) : '';
-    $newPassword = is_string($_POST['newPassword'] ?? null) ? $_POST['newPassword'] : '';
-    $uid = request_int($_POST, 'uid');
-}
+$data = strpos($ct, 'application/json') !== false
+    ? json_request_body_or_error(['success' => false, 'error' => 'Invalid JSON payload'])
+    : $_POST;
+// IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
+$token = is_string($data['token'] ?? null) ? trim($data['token']) : '';
+$newPassword = is_string($data['newPassword'] ?? null) ? $data['newPassword'] : '';
+$uid = request_int($data, 'uid');
 
 // Validate inputs
 if (!preg_match('/^[a-f0-9]{64}$/D', $token) || $newPassword === '' || $uid <= 0) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Token, user ID, and new password are required']);
-    exit;
+    json_response(['success' => false, 'error' => 'Token, user ID, and new password are required'], 400);
 }
 
 // Validate password policy
 $MAX_LEN = 64;
 if (strlen($newPassword) > $MAX_LEN) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Password is too long. Maximum length is 64 characters.']);
-    exit;
+    json_response(['success' => false, 'error' => 'Password is too long. Maximum length is 64 characters.'], 400);
 }
 
 if (!validate_password_policy($newPassword)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Password does not meet policy requirements']);
-    exit;
+    json_response(['success' => false, 'error' => 'Password does not meet policy requirements'], 400);
 }
 
+$conn = null;
 try {
     $conn = db();
-    
+
     $isValidToken = false;
     $userId = null;
+    $verifiedTokenHash = '';
+    $isProtected = false;
     $stmt = $conn->prepare('
-        SELECT user_id, reset_token_hash
+        SELECT user_id, reset_token_hash, is_protected
         FROM user_accounts
         WHERE user_id = ?
           AND reset_token_hash IS NOT NULL
@@ -86,6 +60,7 @@ try {
             $isValidToken = true;
             $userId = (int)$row['user_id'];
             $verifiedTokenHash = (string)$row['reset_token_hash'];
+            $isProtected = (int)($row['is_protected'] ?? 0) === 1;
         }
     }
 
@@ -93,16 +68,21 @@ try {
 
     if (!$isValidToken) {
         $conn->close();
-        echo json_encode(['success' => false, 'error' => 'Invalid or expired reset token']);
-        exit;
+        json_response(['success' => false, 'error' => 'Invalid or expired reset token']);
+    }
+
+    // Links issued before forgot_password stopped sending them still arrive here.
+    if ($isProtected) {
+        $conn->close();
+        json_response(['success' => false, 'error' => "This shared demo account's password can't be changed."], 403);
     }
 
     // Hash the new password
-    $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+    $hashedPassword = hash_password($newPassword);
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare('
-        UPDATE user_accounts 
+        UPDATE user_accounts
         SET hash_pass = ?, hash_auth = NULL, reset_token_hash = NULL,
             reset_token_expires = NULL, last_reset_request = NULL,
             auth_version = auth_version + 1
@@ -112,26 +92,26 @@ try {
     // concurrent submits: only the first UPDATE finds it still in place.
     $stmt->bind_param('sis', $hashedPassword, $userId, $verifiedTokenHash);
     $stmt->execute();
-    
-    if ($stmt->affected_rows === 0) {
-        $stmt->close();
-        $conn->close();
-        // Another submit consumed the token first.
-        echo json_encode(['success' => false, 'error' => 'Invalid or expired reset token']);
-        exit;
-    }
-
+    $consumed = $stmt->affected_rows > 0;
     $stmt->close();
     $conn->close();
+    $conn = null;
+
+    if (!$consumed) {
+        // Another submit consumed the token first.
+        json_response(['success' => false, 'error' => 'Invalid or expired reset token']);
+    }
+
     mark_all_login_devices_signed_out((int)$userId);
 
-    echo json_encode([
+    json_response([
         'success' => true,
         'message' => 'Password has been reset successfully'
     ]);
-    
-} catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Server error']);
+} catch (Throwable $e) {
+    if ($conn instanceof mysqli) {
+        try { $conn->close(); } catch (Throwable $_) {}
+    }
+    error_log('reset_password error: ' . $e->getMessage());
+    json_response(['success' => false, 'error' => 'Server error'], 500);
 }
-?>

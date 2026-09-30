@@ -6,8 +6,8 @@ require_once __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('POST');
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 try {
     $userId = require_login();
@@ -19,7 +19,7 @@ try {
 
     require_csrf_token($input['csrf_token'] ?? null);
 
-    // Reset unread_count to 0 for all products for this seller
+    // Mark every delivered notification for the caller as read.
     $stmt = $conn->prepare(
         'UPDATE notifications SET is_read = 1
          WHERE recipient_user_id = ? AND is_read = 0 AND available_at <= NOW()'

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/moderation.php';
 require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint('POST');
@@ -57,6 +58,10 @@ try {
 
     if ($sellerId === $buyerId) {
         json_response(['success' => false, 'error' => 'Cannot message your own listing'], 400);
+    }
+
+    if (moderation_user_is_banned($conn, $sellerId)) {
+        json_response(['success' => false, 'error' => 'This user is no longer available'], 403);
     }
 
     $orderedA = min($buyerId, $sellerId);

@@ -60,7 +60,7 @@ try {
         return;
     }
 
-    $meetingIso = confirm_purchase_utc_atom($schedRow['meeting_at'] ?? null);
+    $meetingIso = dm_utc_atom($schedRow['meeting_at'] ?? null);
 
     // XSS PROTECTION: Escape user-generated content
     $scheduledInfo = [
@@ -185,9 +185,5 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
-    if (isset($conn) && $conn instanceof mysqli) {
-        try { $conn->rollback(); } catch (Throwable $ignored) {}
-    }
-    error_log('confirm-purchase status error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+    api_fail($e, 'confirm-purchase status', $conn ?? null);
 }

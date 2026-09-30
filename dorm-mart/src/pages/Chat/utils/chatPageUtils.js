@@ -1,5 +1,6 @@
 export default function fmtTime(ts) {
-  const d = new Date(ts); // if ts is seconds, use new Date(ts * 1000)
+  // Timestamps are JS milliseconds throughout the chat layer.
+  const d = new Date(ts);
   const now = new Date();
 
   // Compare calendar dates in the user's local time zone
@@ -72,6 +73,12 @@ const isVirtualPrompt = (message) =>
   String(message.message_id || "").startsWith("review_prompt_") ||
   String(message.message_id || "").startsWith("buyer_rating_prompt_");
 
+/**
+ * Merge raw messages with virtual review prompts for display.
+ * Superseded confirm requests/responses are hidden so only the latest
+ * response per confirm_request_id remains, then review prompts are appended
+ * after the latest accepted confirmation.
+ */
 export function buildDisplayMessages({
   activeReceiverId,
   hasAcceptedConfirm,

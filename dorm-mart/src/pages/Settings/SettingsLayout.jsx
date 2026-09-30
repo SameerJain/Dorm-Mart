@@ -3,10 +3,59 @@ import { useState } from "react";
 import { logout } from "../../utils/handleAuth";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
+const SETTINGS_LINKS = [
+  { label: "My Profile", to: "/app/setting/my-profile" },
+  { label: "Account Info", to: "/app/setting/personal-information" },
+  { label: "User Preferences", to: "/app/setting/user-preferences" },
+  { label: "Change Password", to: "/app/setting/change-password" },
+  { label: "Logged Devices", to: "/app/setting/security-options" },
+  { label: "Two-Factor Authentication", to: "/app/setting/two-factor-authentication" },
+  { label: "About Us", to: "/app/setting/about-us" },
+  { label: "Delete Account", to: "/app/setting/delete-account" },
+];
+
+const LOGOUT_BUTTON_CLASS =
+  "mt-1 rounded-lg border border-white/50 px-3 py-2 text-base font-medium leading-6 text-white transition hover:border-white/75 hover:bg-white/20 active:bg-white/30 dark:border-white/35 dark:hover:border-white/55 dark:hover:bg-white/15";
+
+function settingsLinkClass({ isActive }) {
+  return [
+    "rounded-lg px-3 py-2 text-base font-medium leading-6 text-white transition",
+    "hover:underline hover:bg-white/10 dark:hover:bg-white/10",
+    isActive
+      ? "bg-white/15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] dark:bg-white/10 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
+      : "bg-transparent",
+  ].join(" ");
+}
+
+function SettingsNavLinks({ onNavigate, onLogout }) {
+  return (
+    <>
+      {SETTINGS_LINKS.map((l) => (
+        <NavLink
+          key={l.to}
+          to={l.to}
+          onClick={onNavigate}
+          className={settingsLinkClass}
+        >
+          {l.label}
+        </NavLink>
+      ))}
+      <button
+        onClick={() => {
+          onLogout();
+          onNavigate?.();
+        }}
+        className={LOGOUT_BUTTON_CLASS}
+      >
+        Log Out
+      </button>
+    </>
+  );
+}
+
 function SettingsLayout({ children }) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const navigate = useNavigate();
-  const linkBase = "/app/setting";
 
   useBodyScrollLock(showMobileMenu);
 
@@ -14,17 +63,6 @@ function SettingsLayout({ children }) {
     await logout();
     navigate("/login");
   };
-
-  const links = [
-    { label: "My Profile", to: `${linkBase}/my-profile` },
-    { label: "Account Info", to: `${linkBase}/personal-information` },
-    { label: "User Preferences", to: `${linkBase}/user-preferences` },
-    { label: "Change Password", to: `${linkBase}/change-password` },
-    { label: "Logged Devices", to: `${linkBase}/security-options` },
-    { label: "Two-Factor Authentication", to: `${linkBase}/two-factor-authentication` },
-    { label: "About Us", to: `${linkBase}/about-us` },
-    { label: "Delete Account", to: `${linkBase}/delete-account` },
-  ];
 
   return (
     // Back to normal: no `relative`, still using the height minus nav
@@ -62,34 +100,9 @@ function SettingsLayout({ children }) {
           <div className="px-4 py-3">
             <h2 className="text-xl font-serif font-semibold">Settings</h2>
           </div>
-          <div
-            className="h-px w-full"
-            style={{ background: "rgba(255,255,255,0.25)" }}
-          />
+          <div className="h-px w-full bg-white/25" />
           <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2">
-            {links.map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                className={({ isActive }) =>
-                  [
-                    "rounded-lg px-3 py-2 text-base font-medium leading-6 text-white transition",
-                    "hover:underline hover:bg-white/10 dark:hover:bg-white/10",
-                    isActive
-                      ? "bg-white/15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] dark:bg-white/10 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
-                      : "bg-transparent",
-                  ].join(" ")
-                }
-              >
-                {l.label}
-              </NavLink>
-            ))}
-            <button
-              onClick={handleLogout}
-              className="mt-1 rounded-lg border border-white/50 px-3 py-2 text-base font-medium leading-6 text-white transition hover:border-white/75 hover:bg-white/20 active:bg-white/30 dark:border-white/35 dark:hover:border-white/55 dark:hover:bg-white/15"
-            >
-              Log Out
-            </button>
+            <SettingsNavLinks onLogout={handleLogout} />
           </nav>
         </aside>
 
@@ -135,50 +148,18 @@ function SettingsLayout({ children }) {
                 </svg>
               </button>
             </div>
-            <div
-              className="h-px w-full"
-              style={{ background: "rgba(255,255,255,0.25)" }}
-            />
+            <div className="h-px w-full bg-white/25" />
             <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto overscroll-contain p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-              {links.map((l) => (
-                <NavLink
-                  key={l.to}
-                  to={l.to}
-                  onClick={() => setShowMobileMenu(false)}
-                  className={({ isActive }) =>
-                    [
-                      "rounded-lg px-3 py-2 text-base font-medium leading-6 text-white transition",
-                      "hover:underline hover:bg-white/10 dark:hover:bg-white/10",
-                      isActive
-                        ? "bg-white/15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] dark:bg-white/10 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
-                        : "bg-transparent",
-                    ].join(" ")
-                  }
-                >
-                  {l.label}
-                </NavLink>
-              ))}
-              <button
-                onClick={() => {
-                  handleLogout();
-                  setShowMobileMenu(false);
-                }}
-                className="mt-1 rounded-lg border border-white/50 px-3 py-2 text-base font-medium leading-6 text-white transition hover:border-white/75 hover:bg-white/20 active:bg-white/30 dark:border-white/35 dark:hover:border-white/55 dark:hover:bg-white/15"
-              >
-                Log Out
-              </button>
+              <SettingsNavLinks
+                onNavigate={() => setShowMobileMenu(false)}
+                onLogout={handleLogout}
+              />
             </nav>
           </aside>
         </div>
 
         {/* Content (stretch to bottom) */}
-        <main
-          className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 pb-10 sm:pb-12 shadow overflow-auto min-h-0"
-          style={{
-            overscrollBehaviorY: "contain",
-            WebkitOverflowScrolling: "touch",
-          }}
-        >
+        <main className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 pb-10 sm:pb-12 shadow overflow-auto overscroll-contain min-h-0">
           {children}
         </main>
       </div>

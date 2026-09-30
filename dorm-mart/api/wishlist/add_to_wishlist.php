@@ -6,8 +6,8 @@ require_once __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('POST');
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
 require_once __DIR__ . '/../helpers/recommendations.php';
 
@@ -21,10 +21,7 @@ try {
     
     require_csrf_token($input['csrf_token'] ?? null);
     
-    $productId = request_int($input, 'product_id');
-    if ($productId <= 0) {
-        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
-    }
+    $productId = require_product_id($input);
 
     $checkStmt = $conn->prepare("SELECT product_id, seller_id, title, photos FROM INVENTORY WHERE product_id = ? AND item_status = 'Active' AND (sold IS NULL OR sold = 0)");
     if (!$checkStmt) {
@@ -79,13 +76,13 @@ try {
         'message' => 'A buyer saved this listing to their wishlist.',
         'image_url' => notification_first_image($product['photos'] ?? null),
         'destination' => '/app/viewProduct/' . $productId,
-        'idempotency_key' => 'wishlist-added-' . $wishlistId,
+        // One notice per buyer per listing: keyed on the wishlist row id, every
+        // remove-and-re-add pinged the seller again.
+        'idempotency_key' => 'wishlist-added-' . $userId . '-' . $productId,
     ]);
     $conn->commit();
 
     json_response(['success' => true, 'wishlist_id' => $wishlistId, 'product_id' => $productId]);
 } catch (Throwable $e) {
-    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
-    error_log('add_to_wishlist error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+    api_fail($e, 'add_to_wishlist', $conn ?? null);
 }

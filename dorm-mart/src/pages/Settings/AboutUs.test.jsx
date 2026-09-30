@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import AboutUs from "./AboutUs";
 
 jest.mock("./SettingsLayout", () => ({ children }) => <div>{children}</div>);
+jest.mock("react-router-dom", () => ({ useNavigate: () => jest.fn() }), { virtual: true });
 
 test("shows each developer and their contact links", () => {
   render(<AboutUs />);
@@ -18,7 +19,7 @@ test("shows each developer and their contact links", () => {
       linkedin: "https://www.linkedin.com/in/anish-banerjee-71aba9290/",
     },
     {
-      name: "Chris Kim",
+      name: "Chris (Sooseok) Kim",
       email: "sooseokkim99@gmail.com",
       linkedin: "https://www.linkedin.com/in/kim-chris-sooseok/",
     },
@@ -26,8 +27,9 @@ test("shows each developer and their contact links", () => {
     const card = screen.getByRole("heading", { name }).closest("article");
     const cardContent = within(card);
 
-    expect(cardContent.getByRole("img", { name: new RegExp(name) })).toBeTruthy();
-    expect(cardContent.getByRole("link", { name: email }).getAttribute("href")).toBe(
+    expect(cardContent.getByRole("img", { name: new RegExp(name.replace(/[()]/g, "\\$&")) })).toBeTruthy();
+    expect(cardContent.getByText(email)).toBeTruthy();
+    expect(cardContent.getByRole("link", { name: "Email" }).getAttribute("href")).toBe(
       `mailto:${email}`,
     );
     expect(

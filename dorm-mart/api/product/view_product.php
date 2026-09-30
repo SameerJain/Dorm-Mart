@@ -50,7 +50,8 @@ try {
             i.sold_to,
             ua.first_name,
             ua.last_name,
-            ua.email
+            ua.email,
+            ua.is_banned AS seller_is_banned
         FROM INVENTORY AS i
         LEFT JOIN user_accounts AS ua ON i.seller_id = ua.user_id
         WHERE i.product_id = ?
@@ -73,6 +74,13 @@ try {
     $stmt->close();
 
     if (!$row) {
+        json_response(['ok' => false, 'error' => 'Product not found'], 404);
+    }
+
+    // A banned seller's listings are hidden; the buyer of a completed purchase
+    // still sees theirs so the receipt keeps working.
+    if ((int)($row['seller_is_banned'] ?? 0) === 1
+        && (int)$row['seller_id'] !== $userId && (int)($row['sold_to'] ?? 0) !== $userId) {
         json_response(['ok' => false, 'error' => 'Product not found'], 404);
     }
 

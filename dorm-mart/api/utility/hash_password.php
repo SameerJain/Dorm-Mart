@@ -28,6 +28,14 @@
  * - Copy the generated hashes into your SQL INSERT statements
  */
 
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit("Forbidden\n");
+}
+
+// hash_password() and the shared bcrypt cost.
+require_once __DIR__ . '/../security/security.php';
+
 // Check if passwords were provided as arguments
 if ($argc > 1) {
     // Batch mode - hash all provided passwords
@@ -38,7 +46,7 @@ if ($argc > 1) {
         $password = $argv[$i];
         // Hash + salt using bcrypt (salt generated and embedded automatically)
         // Uses PHP's secure password hashing with bcrypt algorithm
-        $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+        $hash = hash_password($password);
 
         echo "Password #{$i}: {$password}\n";
         echo "Hash:        {$hash}\n\n";
@@ -63,7 +71,7 @@ if ($argc > 1) {
         }
 
         // Hash + salt using bcrypt (salt generated and embedded automatically)
-        $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+        $hash = hash_password($password);
         echo "Hash: {$hash}\n\n";
 
         $count++;

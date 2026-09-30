@@ -2,6 +2,7 @@ import ListingGrid from "./ListingGrid";
 
 export default function ForYouSection({
   hasPersonalization,
+  isLoading = false,
   items,
   wishlistedIds,
 }) {
@@ -21,8 +22,8 @@ export default function ForYouSection({
       </header>
 
       {items.length ? (
-        <ListingGrid items={items} wishlistedIds={wishlistedIds} />
-      ) : (
+        <ListingGrid items={items} wishlistedIds={wishlistedIds} showReasons />
+      ) : isLoading ? null : (
         <p className="text-sm text-gray-400 dark:text-gray-500 italic">
           No active listings are available yet.
         </p>

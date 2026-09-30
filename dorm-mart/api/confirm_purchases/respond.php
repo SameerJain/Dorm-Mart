@@ -116,7 +116,7 @@ try {
     $metadata = build_confirm_response_metadata($row, $metadataType);
 
     if ($conversationId > 0) {
-        $names = get_user_display_names($conn, [$buyerId]);
+        $names = chat_display_names($conn, [$buyerId]);
         $buyerName = $names[$buyerId] ?? ('User ' . $buyerId);
         $actionText = $action === 'accept' ? 'accepted' : 'denied';
         $messageContent = $buyerName . ' has ' . $actionText . ' the Confirm Purchase form.';
@@ -124,7 +124,7 @@ try {
         $receiverId = get_conversation_receiver_id($conn, $conversationId, $buyerId);
         if ($receiverId !== null) {
             delete_confirm_request_message($conn, $conversationId, $confirmRequestId);
-            insert_confirm_chat_message($conn, $conversationId, $buyerId, $receiverId, $messageContent, $metadata);
+            chat_insert_system_message($conn, $conversationId, $buyerId, $receiverId, $messageContent, $metadata);
         }
     }
 
@@ -149,7 +149,5 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
-    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
-    error_log('confirm-purchase respond error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+    api_fail($e, 'confirm-purchase respond', $conn ?? null);
 }

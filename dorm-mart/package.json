@@ -17,7 +17,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "start:api": "php -S localhost:8080 router.php",
+    "start:api": "php -d upload_max_filesize=26M -d post_max_size=30M -S localhost:8080 router.php",
     "_commint_start-local": "used to enforce locally running react to load .env.development",
     "start-local-mac": "env-cmd -f .env.development bash -c 'echo Using $REACT_APP_API_BASE && react-scripts start'",
     "start-local-win": "env-cmd -f .env.development cross-env react-scripts start",
@@ -32,7 +32,10 @@
     "build-cattle-mac": "env-cmd -f .env.cattle bash -c 'echo Building prod && GENERATE_SOURCEMAP=false react-scripts build'",
     "build-cattle-win": "env-cmd -f .env.cattle cross-env GENERATE_SOURCEMAP=false react-scripts build",
     "test": "react-scripts test --runInBand",
-    "test:backend": "php api/tests/adversarial_validation_test.php && php api/tests/login_location_test.php && php api/tests/promotional_digest_test.php",
+    "test:backend": "php api/tests/adversarial_validation_test.php && php api/tests/login_location_test.php && php api/tests/promotional_digest_test.php && php api/tests/helpers_unit_test.php && php api/tests/profanity_test.php",
+    "test:backend:integration": "php api/tests/purchase_lifecycle_test.php",
+    "test:mutation": "stryker run",
+    "lint:php": "node scripts/php-lint.js",
     "eject": "react-scripts eject",
     "build-deploy": "npm run build-local-win && deploy.bat"
   },
@@ -56,6 +59,8 @@
     ]
   },
   "devDependencies": {
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/jest-runner": "10.0.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",

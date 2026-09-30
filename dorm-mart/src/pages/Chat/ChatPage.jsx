@@ -1,12 +1,4 @@
-import {
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ChatContext } from "../../context/ChatContext";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
@@ -25,6 +17,8 @@ import {
   buildDisplayMessages,
   parseChatMetadata,
 } from "./utils/chatPageUtils";
+import useAutoGrowTextarea from "./hooks/useAutoGrowTextarea";
+import useChatAutoScroll from "./hooks/useChatAutoScroll";
 
 /** Root Chat page: wires context, sidebar, messages, and composer together */
 export default function ChatPage() {
@@ -51,7 +45,6 @@ export default function ChatPage() {
   } = ctx;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const MAX_LEN = 500;
   const scrollRef = useRef(null);
   const [draft, setDraft] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -61,34 +54,12 @@ export default function ChatPage() {
   const [attachOpen, setAttachOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
 
-  useBodyScrollLock(deleteConfirmOpen || paymentOpen);
+  // The hide-conversation dialog locks scroll itself (components/Dialog).
+  useBodyScrollLock(paymentOpen);
   const [attachedImage, setAttachedImage] = useState(null);
 
-  const taRef = useRef(null);
-  const autoGrow = useCallback(() => {
-    const el = taRef.current;
-    if (!el) return;
-    const minLine =
-      typeof window !== "undefined" &&
-      window.matchMedia("(min-width: 768px)").matches
-        ? 44
-        : 48;
-    const trimmed = (el.value || "").trim();
-    if (!trimmed) {
-      el.style.height = `${minLine}px`;
-      el.style.overflowY = "hidden";
-      return;
-    }
-    el.style.height = "auto";
-    const next = Math.max(minLine, el.scrollHeight);
-    el.style.height = `${next}px`;
-    el.style.overflowY = el.scrollHeight > el.clientHeight ? "auto" : "hidden";
-  }, []);
-
   /** Sync textarea height before paint so composer row stays aligned with attach/send */
-  useLayoutEffect(() => {
-    autoGrow();
-  }, [draft, autoGrow]);
+  const { taRef, autoGrow } = useAutoGrowTextarea(draft);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -189,35 +160,11 @@ export default function ChatPage() {
   const isOtherPersonTyping = typingStatus?.is_typing || false;
   const typingUserName = typingStatus?.typing_user_first_name || null;
 
-  /** Auto-scroll to bottom when active conversation or messages change - optimized with requestAnimationFrame */
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    // Use requestAnimationFrame for smoother scrolling
-    const rafId = requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
-    });
-
-    return () => cancelAnimationFrame(rafId);
-    // Note: Removed automatic hiding of typing indicator on messages.length change
-    // The backend already handles typing status expiration, and this was causing
-    // race conditions where the indicator would disappear when messages were being fetched
-  }, [activeConvId, messages.length]);
-
-  /** Auto-scroll to bottom when typing indicator appears - optimized with requestAnimationFrame */
-  useEffect(() => {
-    if (isOtherPersonTyping) {
-      // Use requestAnimationFrame for smoother scrolling
-      const rafId = requestAnimationFrame(() => {
-        const el = scrollRef.current;
-        if (el) {
-          el.scrollTop = el.scrollHeight;
-        }
-      });
-      return () => cancelAnimationFrame(rafId);
-    }
-  }, [isOtherPersonTyping]);
+  useChatAutoScroll(scrollRef, {
+    activeConvId,
+    messageCount: messages.length,
+    isOtherPersonTyping,
+  });
 
   /** Wrapper to prevent message creation when item is deleted. Resolves true on success. */
   const handleCreateMessage = useCallback(
@@ -557,7 +504,6 @@ export default function ChatPage() {
             />
 
             <ChatComposer
-              MAX_LEN={MAX_LEN}
               activeConversation={activeConversation}
               attachOpen={attachOpen}
               attachedImage={attachedImage}

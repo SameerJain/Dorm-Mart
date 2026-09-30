@@ -1,6 +1,6 @@
 import ListingGrid from "./ListingGrid";
 
-export default function ExploreSection({ items, wishlistedIds }) {
+export default function ExploreSection({ isLoading = false, items, wishlistedIds }) {
   return (
     <section className="space-y-4">
       <header>
@@ -10,12 +10,15 @@ export default function ExploreSection({ items, wishlistedIds }) {
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Randomized picks from across campus.
         </p>
-        <p className="text-xs text-gray-400 dark:text-gray-500">
-          Showing at least 30 items so you can browse deeper.
-        </p>
       </header>
 
-      <ListingGrid items={items} wishlistedIds={wishlistedIds} />
+      {items.length ? (
+        <ListingGrid items={items} wishlistedIds={wishlistedIds} />
+      ) : isLoading ? null : (
+        <p className="text-sm text-gray-400 dark:text-gray-500 italic">
+          No active listings are available yet.
+        </p>
+      )}
     </section>
   );
 }

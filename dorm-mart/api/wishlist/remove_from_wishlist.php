@@ -6,8 +6,8 @@ require_once __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('POST');
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/recommendations.php';
 
 try {
@@ -20,10 +20,7 @@ try {
     
     require_csrf_token($input['csrf_token'] ?? null);
     
-    $productId = request_int($input, 'product_id');
-    if ($productId <= 0) {
-        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
-    }
+    $productId = require_product_id($input);
 
     $stmt = $conn->prepare('DELETE FROM wishlist WHERE user_id = ? AND product_id = ?');
     if (!$stmt) {
@@ -45,23 +42,10 @@ try {
     }
 
     recommendation_record_behavior($conn, $userId, $productId, 'wishlist_remove');
-
-    $notifStmt = $conn->prepare(
-        'UPDATE wishlist_notification
-        SET unread_count = CASE
-            WHEN unread_count > 0 THEN unread_count - 1
-            ELSE 0
-        END
-        WHERE product_id = ?'
-    );
-    if ($notifStmt) {
-        $notifStmt->bind_param('i', $productId);
-        $notifStmt->execute();
-        $notifStmt->close();
-    }
+    // (The legacy wishlist_notification counter is no longer read anywhere;
+    // seller alerts live in the notifications table since migration 010.)
 
     json_response(['success' => true, 'product_id' => $productId]);
 } catch (Throwable $e) {
-    error_log('remove_from_wishlist error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+    api_fail($e, 'remove_from_wishlist');
 }

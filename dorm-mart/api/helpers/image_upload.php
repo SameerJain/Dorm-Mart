@@ -94,7 +94,18 @@ if (!function_exists('data_uploads_root')) {
     {
         $projectRoot = project_root_path();
         $envRoot = getenv('DATA_UPLOADS_DIR');
-        $root = $envRoot !== false && trim($envRoot) !== '' ? trim($envRoot) : $projectRoot;
+        $configured = $envRoot !== false && trim($envRoot) !== '';
+        $root = $configured ? trim($envRoot) : $projectRoot;
+
+        // On Railway the project directory is rebuilt on every deploy, so
+        // uploads stored there vanish while their database rows remain (the
+        // app then shows placeholders everywhere). Say so loudly, once per
+        // request, instead of failing silently.
+        static $warned = false;
+        if (!$configured && !$warned && getenv('RAILWAY_ENVIRONMENT') !== false) {
+            $warned = true;
+            error_log('DATA_UPLOADS_DIR is not set on Railway: uploads are written to the ephemeral project directory and will be lost on the next deploy. Point it at a mounted volume.');
+        }
 
         if (!preg_match('/^[A-Za-z]:[\/\\\\]/', $root) && $root[0] !== '/') {
             $root = $projectRoot . DIRECTORY_SEPARATOR . $root;
@@ -177,6 +188,56 @@ if (!function_exists('delete_owned_listing_media')) {
             if (is_file($file) && !@unlink($file)) {
                 error_log('Failed to delete listing media: ' . $filename);
             }
+        }
+    }
+}
+
+// Each upload writes a new file to the persistent volume, and the profile-photo
+// and review-image endpoints save before anything references the file. Without
+// a cap, one account running a script could fill the volume.
+const IMAGE_UPLOAD_MAX_PER_WINDOW = 20;
+const IMAGE_UPLOAD_WINDOW_MINUTES = 10;
+const IMAGE_UPLOAD_LOCKOUT_MINUTES = 10;
+
+if (!function_exists('require_upload_quota')) {
+    /** Claim one upload for this user in the given scope, or answer 429 and exit. */
+    function require_upload_quota(int $userId, string $scope): void
+    {
+        $limit = consume_rate_limit(
+            scoped_rate_limit_key('image_upload_' . $scope, $userId),
+            IMAGE_UPLOAD_MAX_PER_WINDOW,
+            IMAGE_UPLOAD_WINDOW_MINUTES,
+            IMAGE_UPLOAD_LOCKOUT_MINUTES
+        );
+        if (!$limit['blocked']) {
+            return;
+        }
+        $retryAfterSeconds = max(1, (int)$limit['retry_after_seconds']);
+        if (!headers_sent()) {
+            header('Retry-After: ' . $retryAfterSeconds);
+        }
+        json_response([
+            'success' => false,
+            'error' => 'You are uploading images too quickly. Please wait a few minutes and try again.',
+        ], 429);
+    }
+}
+
+if (!function_exists('delete_owned_profile_photo')) {
+    /**
+     * Delete a profile photo file this user uploaded. Only /images/profile_<id>_*
+     * names are touched, the same shape update_profile.php accepts, so a stale
+     * or foreign path can never remove someone else's file.
+     */
+    function delete_owned_profile_photo(?string $url, int $userId): void
+    {
+        if ($userId <= 0 || !is_string($url)
+            || !preg_match('#^/images/(profile_' . $userId . '_[a-f0-9]{16}\.(?:jpg|png|webp))$#D', $url, $m)) {
+            return;
+        }
+        $file = rtrim(data_images_dir(), '/\\') . DIRECTORY_SEPARATOR . $m[1];
+        if (is_file($file) && !@unlink($file)) {
+            error_log('Failed to delete replaced profile photo: ' . $m[1]);
         }
     }
 }

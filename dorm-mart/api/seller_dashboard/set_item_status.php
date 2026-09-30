@@ -6,8 +6,8 @@ require_once __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('POST');
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
 require_once __DIR__ . '/../scheduled_purchases/helpers.php';
 require_once __DIR__ . '/listing_cap.php';
@@ -99,6 +99,8 @@ try {
         $type = 'item_sold'; $message = $existing['title'] . ' has been sold.'; $severity = 'warning';
     }
     if ($type) {
+        // Toggling a listing back and forth should leave only its current state.
+        notification_supersede_unread($conn, $id, ['item_pending', 'item_back_on_sale', 'item_sold']);
         notification_for_wishlist($conn, $id, [
             'type' => $type, 'title' => (string)$existing['title'], 'message' => $message,
             'image_url' => notification_first_image($existing['photos'] ?? null), 'severity' => $severity,
@@ -122,8 +124,6 @@ try {
 
     json_response(['success' => true, 'id' => $id, 'status' => $status]);
 } catch (Throwable $e) {
-    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
-    error_log('set_item_status error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+    api_fail($e, 'set_item_status', $conn ?? null);
 }
 

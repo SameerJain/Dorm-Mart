@@ -9,6 +9,8 @@ dorm-mart/vendor/snipe/banbuilder/src/dict/
 
 # Testing
 dorm-mart/coverage
+dorm-mart/stryker-tmp
+dorm-mart/reports/mutation
 
 # Production
 dorm-mart/build

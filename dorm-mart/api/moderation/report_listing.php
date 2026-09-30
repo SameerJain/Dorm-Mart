@@ -7,6 +7,7 @@ require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../helpers/listing_reports.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/moderation.php';
 
 init_json_endpoint('POST');
 $reporterId = require_login();
@@ -28,6 +29,8 @@ if (mb_strlen($details, 'UTF-8') > LISTING_REPORT_DETAILS_MAX) {
 if ($reason === 'other' && $details === '') {
     json_response(['success' => false, 'error' => 'Please describe the problem'], 400);
 }
+
+moderation_require_report_quota('report_listing', $reporterId);
 
 try {
     $conn = db();

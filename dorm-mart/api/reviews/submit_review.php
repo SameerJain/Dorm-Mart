@@ -19,31 +19,21 @@ try {
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    // Validate product_id
-    $productId = request_int($payload, 'product_id');
-    if ($productId <= 0) {
-        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
-    }
+    $productId = require_product_id($payload);
 
-    // Validate rating (seller rating, 0-5 in 0.5 increments)
-    $rating = strict_decimal_value($payload['rating'] ?? null);
-    if ($rating === null || $rating < 0.5 || $rating > 5) {
-        json_response(['success' => false, 'error' => 'Seller rating must be between 0.5 and 5'], 400);
-    }
-    // Check for 0.5 increments
-    if (abs(($rating * 2) - round($rating * 2)) > 0.000001) {
-        json_response(['success' => false, 'error' => 'Seller rating must be in 0.5 increments'], 400);
-    }
+    $rating = require_half_star_rating(
+        $payload,
+        'rating',
+        'Seller rating must be between 0.5 and 5',
+        'Seller rating must be in 0.5 increments'
+    );
 
-    // Validate product_rating (0-5 in 0.5 increments)
-    $productRating = strict_decimal_value($payload['product_rating'] ?? null);
-    if ($productRating === null || $productRating < 0.5 || $productRating > 5) {
-        json_response(['success' => false, 'error' => 'Product rating must be between 0.5 and 5'], 400);
-    }
-    // Check for 0.5 increments
-    if (abs(($productRating * 2) - round($productRating * 2)) > 0.000001) {
-        json_response(['success' => false, 'error' => 'Product rating must be in 0.5 increments'], 400);
-    }
+    $productRating = require_half_star_rating(
+        $payload,
+        'product_rating',
+        'Product rating must be between 0.5 and 5',
+        'Product rating must be in 0.5 increments'
+    );
 
     // Validate review_text (1-1000 chars, required)
     $reviewText = is_string($payload['review_text'] ?? null) ? trim($payload['review_text']) : '';
@@ -129,22 +119,9 @@ try {
         }
     }
 
-    // If not found in purchase_history, check legacy purchased_items table
-    if (!$hasPurchased) {
-        $stmt = $conn->prepare('SELECT COUNT(*) as count FROM purchased_items WHERE buyer_user_id = ? AND item_id = ? LIMIT 1');
-        if (!$stmt) {
-            throw new RuntimeException('Failed to prepare purchased items lookup');
-        }
-        $stmt->bind_param('ii', $userId, $productId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $countRow = $result ? $result->fetch_assoc() : null;
-        $stmt->close();
-
-        if ($countRow && (int)$countRow['count'] > 0) {
-            $hasPurchased = true;
-        }
-    }
+    // purchased_items is not consulted: its item_id is that table's own
+    // counter, not a listing id, so matching it against product_id let a
+    // buyer review an unrelated listing whose id happened to collide.
 
     if (!$hasPurchased) {
         json_response(['success' => false, 'error' => 'You can only review products you have purchased'], 403);
@@ -174,7 +151,15 @@ try {
         throw new RuntimeException('Failed to prepare review insert');
     }
     $stmt->bind_param('iiiddssss', $productId, $userId, $sellerId, $rating, $productRating, $reviewText, $image1Url, $image2Url, $image3Url);
-    $success = $stmt->execute();
+    try {
+        $success = $stmt->execute();
+    } catch (mysqli_sql_exception $e) {
+        // A double-submit that passed the check above loses on the unique key.
+        if ($e->getCode() === 1062) {
+            json_response(['success' => false, 'error' => 'You have already reviewed this product'], 409);
+        }
+        throw $e;
+    }
     $reviewId = $stmt->insert_id;
     $stmt->close();
 
@@ -189,24 +174,19 @@ try {
         $reminderStmt->close();
     }
 
-    // Update seller's average seller_rating in user_accounts
-    // Check if seller_rating column exists before updating (graceful degradation)
+    // Refresh the seller's cached average. The review is already saved, so a
+    // failure here is logged rather than failing the submission.
     try {
-        $checkColumn = $conn->query("SHOW COLUMNS FROM user_accounts LIKE 'seller_rating'");
-        if ($checkColumn && $checkColumn->num_rows > 0) {
-            $stmt = $conn->prepare(
-                'UPDATE user_accounts SET seller_rating = (
-                    SELECT AVG(rating) FROM product_reviews WHERE seller_user_id = ?
-                ) WHERE user_id = ?'
-            );
-            if ($stmt) {
-                $stmt->bind_param('ii', $sellerId, $sellerId);
-                $stmt->execute();
-                $stmt->close();
-            }
-        }
+        $stmt = $conn->prepare(
+            'UPDATE user_accounts SET seller_rating = (
+                SELECT AVG(rating) FROM product_reviews WHERE seller_user_id = ?
+            ) WHERE user_id = ?'
+        );
+        $stmt->bind_param('ii', $sellerId, $sellerId);
+        $stmt->execute();
+        $stmt->close();
     } catch (Throwable $updateError) {
-        // Silently ignore seller_rating update failures to not break review submission
+        error_log('seller_rating refresh failed for seller ' . $sellerId . ': ' . $updateError->getMessage());
     }
 
     notification_review_received($conn, 'product', $sellerId, $userId, $productId, $rating, (int)$reviewId);

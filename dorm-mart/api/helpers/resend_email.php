@@ -25,6 +25,10 @@ function dm_send_resend_email(string $recipient, array $package): array
             'text' => $package['text'],
             'reply_to' => dm_mail_reply_to_email(),
         ];
+        // Extra headers such as List-Unsubscribe for promotional digests.
+        if (!empty($package['headers']) && is_array($package['headers'])) {
+            $payload['headers'] = $package['headers'];
+        }
         foreach (($package['inline_images'] ?? []) as $image) {
             if (empty($image['path']) || !is_file($image['path']) || empty($image['cid'])) {
                 continue;

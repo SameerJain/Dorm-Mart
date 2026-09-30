@@ -5,6 +5,7 @@ import StarRating from "../Reviews/StarRating";
 import PageBackButton from "../../components/PageBackButton";
 import logger from "../../utils/logger";
 import { API_BASE } from "../../utils/apiConfig";
+import { formatDate } from "../../utils/formatters";
 /**
  * BuyerReviewsPage Component
  *
@@ -137,7 +138,7 @@ function BuyerReviewsPage() {
                 {/* Date */}
                 {review.created_at && (
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(review.created_at).toLocaleDateString()}
+                    {formatDate(review.created_at)}
                   </p>
                 )}
               </div>

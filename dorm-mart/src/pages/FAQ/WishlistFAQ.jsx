@@ -1,3 +1,5 @@
+import FAQItemList from "./FAQItemList";
+
 const WISHLIST_FAQ_ITEMS = [
   {
     question: "How do I add an item to my wishlist?",
@@ -26,21 +28,7 @@ const WISHLIST_FAQ_ITEMS = [
 ];
 
 function WishlistFAQ() {
-  return (
-    <div className="space-y-2.5 text-sm text-gray-700 dark:text-gray-300">
-      {WISHLIST_FAQ_ITEMS.map((item, index) => (
-        <div
-          key={index}
-          className="pb-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
-        >
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-            {item.question}
-          </h3>
-          <p className="mt-0.5">{item.answer}</p>
-        </div>
-      ))}
-    </div>
-  );
+  return <FAQItemList items={WISHLIST_FAQ_ITEMS} />;
 }
 
 export default WishlistFAQ;

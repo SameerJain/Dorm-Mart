@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import StarRating from "./StarRating";
 import EditableStarRating from "./EditableStarRating";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useSubmitLock } from "../../hooks/useSubmitLock";
@@ -14,6 +13,8 @@ import {
 import { csrfFetch } from "../../utils/csrfFetch";
 import { formatDate } from "../../utils/formatters";
 import SubmitConfirmationDialog from "../../components/SubmitConfirmationDialog";
+import ReviewTextArea from "../../components/forms/ReviewTextArea";
+import ViewRatingBlock from "./components/ViewRatingBlock";
 
 /**
  * ReviewModal Component
@@ -420,43 +421,16 @@ function ReviewModal({
 
               {/* Review Text Section */}
               <div className="mb-6">
-                <label
-                  htmlFor="review-text"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Review <span className="text-red-500">*</span>
-                </label>
-                <div
-                  className="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
-                >
-                  <textarea
-                    id="review-text"
-                    value={reviewText}
-                    onChange={handleReviewTextChange}
-                    placeholder="Share your experience with this product..."
-                    rows={6}
-                    maxLength={maxChars}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    style={{
-                      border: "none",
-                      borderRadius: "0",
-                      overflow: "auto",
-                      scrollbarWidth: "thin",
-                      scrollbarColor: "rgba(156, 163, 175, 0.5) transparent",
-                    }}
-                    required
-                  />
-                </div>
-                <div className="mt-1 flex items-center justify-between">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {charCount} / {maxChars} characters
-                  </p>
-                  {charCount >= maxChars && (
-                    <p className="text-xs text-red-500">
-                      Maximum character limit reached
-                    </p>
-                  )}
-                </div>
+                <ReviewTextArea
+                  id="review-text"
+                  label="Review"
+                  value={reviewText}
+                  onChange={handleReviewTextChange}
+                  placeholder="Share your experience with this product..."
+                  maxChars={maxChars}
+                  charCount={charCount}
+                  required
+                />
               </div>
 
               {/* Image Upload Section */}
@@ -566,35 +540,8 @@ function ReviewModal({
           ) : (
             // View Mode
             <div>
-              {/* Seller Rating Display */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Seller Rating
-                </label>
-                <div className="flex items-center gap-3">
-                  <StarRating rating={rating} readOnly={true} size={32} />
-                  <span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    {rating.toFixed(1)} / 5.0
-                  </span>
-                </div>
-              </div>
-
-              {/* Product Rating Display */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Product Rating
-                </label>
-                <div className="flex items-center gap-3">
-                  <StarRating
-                    rating={productRating}
-                    readOnly={true}
-                    size={32}
-                  />
-                  <span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    {productRating.toFixed(1)} / 5.0
-                  </span>
-                </div>
-              </div>
+              <ViewRatingBlock label="Seller Rating" rating={rating} />
+              <ViewRatingBlock label="Product Rating" rating={productRating} />
 
               {/* Review Text Display */}
               <div className="mb-6">

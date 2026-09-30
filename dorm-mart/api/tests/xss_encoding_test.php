@@ -5,7 +5,7 @@
  */
 
 // Include security headers and functions
-require __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../security/security.php';
 
 require_local_or_cli_access();
 

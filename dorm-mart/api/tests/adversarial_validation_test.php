@@ -56,10 +56,11 @@ foreach (['tomorrow', '2026-02-30T12:00:00Z', '2026-08-20 12:00:00', '2026-08-20
     expect_value(strict_iso_datetime_value($value), null, 'malformed datetime accepted');
 }
 
+// The only accepting case: without the fixture, a function that rejects every
+// image would still pass, so a missing file is a failure, not a skip.
 $knownImage = dirname(__DIR__, 2) . '/images/air-fryer.jpg';
-if (is_file($knownImage)) {
-    expect_value(uploaded_image_dimensions_are_safe($knownImage, 'image/jpeg'), true, 'known image rejected');
-}
+expect_value(is_file($knownImage), true, 'image fixture images/air-fryer.jpg missing');
+expect_value(uploaded_image_dimensions_are_safe($knownImage, 'image/jpeg'), true, 'known image rejected');
 expect_value(uploaded_image_dimensions_are_safe(dirname(__DIR__, 2) . '/package.json', 'image/jpeg'), false, 'non-image accepted');
 
 foreach ([['0.50', 50], ['1', 100], ['9999.99', 999999]] as [$value, $expected]) {
@@ -114,6 +115,10 @@ expect_value(payment_refund_is_complete(1000, 400), false, 'partial refund was t
 expect_value(payment_refund_is_complete(1000, 1000), true, 'full refund was not finalized');
 expect_value(payment_can_apply_dispute_status('under_review', 'won'), true, 'dispute could not reach a terminal state');
 expect_value(payment_can_apply_dispute_status('won', 'under_review'), false, 'stale dispute event regressed a win');
+expect_value(payment_dispute_resolved_for_seller('won'), true, 'won dispute left the payment disputed');
+expect_value(payment_dispute_resolved_for_seller('warning_closed'), true, 'closed warning left the payment disputed');
+expect_value(payment_dispute_resolved_for_seller('lost'), false, 'lost dispute restored the payment');
+expect_value(payment_dispute_resolved_for_seller('needs_response'), false, 'open dispute restored the payment');
 
 $v2Account = payment_normalize_stripe_account([
     'id' => 'acct_test',

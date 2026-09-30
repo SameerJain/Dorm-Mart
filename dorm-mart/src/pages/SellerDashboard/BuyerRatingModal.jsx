@@ -8,6 +8,7 @@ import { formatDate } from "../../utils/formatters";
 import logger from "../../utils/logger";
 import { readRatingValue } from "./utils/sellerDashboardUtils";
 import SubmitConfirmationDialog from "../../components/SubmitConfirmationDialog";
+import ReviewTextArea from "../../components/forms/ReviewTextArea";
 
 /**
  * BuyerRatingModal Component
@@ -301,42 +302,16 @@ function BuyerRatingModal({
 
               {/* Review Text Section */}
               <div className="mb-6">
-                <label
-                  htmlFor="buyer-review-text"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Review (Optional)
-                </label>
-                <div
-                  className="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 min-w-0"
-                >
-                  <textarea
-                    id="buyer-review-text"
-                    value={reviewText}
-                    onChange={handleReviewTextChange}
-                    placeholder="Share your experience with this buyer..."
-                    rows={6}
-                    maxLength={maxChars}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none break-words"
-                    style={{
-                      border: "none",
-                      borderRadius: "0",
-                      overflow: "auto",
-                      scrollbarWidth: "thin",
-                      scrollbarColor: "rgba(156, 163, 175, 0.5) transparent",
-                    }}
-                  />
-                </div>
-                <div className="mt-1 flex items-center justify-between">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {charCount} / {maxChars} characters
-                  </p>
-                  {charCount >= maxChars && (
-                    <p className="text-xs text-red-500">
-                      Maximum character limit reached
-                    </p>
-                  )}
-                </div>
+                <ReviewTextArea
+                  id="buyer-review-text"
+                  label="Review"
+                  optional
+                  value={reviewText}
+                  onChange={handleReviewTextChange}
+                  placeholder="Share your experience with this buyer..."
+                  maxChars={maxChars}
+                  charCount={charCount}
+                />
               </div>
 
               {/* Error Message */}

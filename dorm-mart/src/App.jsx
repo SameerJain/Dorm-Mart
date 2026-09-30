@@ -46,6 +46,7 @@ import NotificationPage from "./pages/Notification/NotificationPage.jsx";
 import FAQPage from "./pages/FAQ/FAQPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import LegalDocumentPage from "./pages/Legal/LegalDocumentPage.jsx";
+import SafetySummaryPage from "./pages/Legal/SafetySummaryPage.jsx";
 import ModeratorDashboard from "./pages/Moderator/ModeratorDashboard.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 
@@ -102,6 +103,8 @@ export const router = createHashRouter([
         path: "/terms-of-service",
         element: <LegalDocumentPage documentKey="terms" />,
       },
+      // Public, anonymous moderation numbers (no login needed).
+      { path: "/safety", element: <SafetySummaryPage /> },
       {
         path: "/forgot-password/confirmation",
         element: <ForgotPasswordConfirmation />,

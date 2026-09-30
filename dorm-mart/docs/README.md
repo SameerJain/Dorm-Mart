@@ -13,6 +13,7 @@ Supplementary Dorm Mart documents; none of these are required to run the applica
 | [RESEND_SETUP.md](RESEND_SETUP.md) | Configuring Resend for transactional email on Railway |
 | [stripe-activation-checklist.md](stripe-activation-checklist.md) | Steps to activate Stripe Connect payments |
 | [stripe-connect-plan.md](stripe-connect-plan.md) | Stripe Connect integration design notes |
+| [TESTING_AND_RELIABILITY.md](TESTING_AND_RELIABILITY.md) | Test commands, the seen-to-fail rule, Stryker mutation setup, and the vacuous-assertion audit log |
 | [README.websocket.md](README.websocket.md) | Archived notes about the retired Ratchet WebSocket experiment |
 
 For installation and deployment instructions, see the repository's [`README.project_setup.md`](../../README.project_setup.md). For a project overview, see the [main README](../../README.md).

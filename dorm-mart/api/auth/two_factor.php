@@ -59,6 +59,26 @@ try {
             json_response(['ok' => false, 'error' => 'Two-Factor Authentication is already enabled for this account.'], 409);
         }
 
+        // Each enable emails a confirmation; cap it so toggling 2FA off and on
+        // cannot be used to flood the inbox (or burn the email-provider quota).
+        $enableLimit = consume_rate_limit(
+            scoped_rate_limit_key('two_factor_enable_email', $userId),
+            TWO_FACTOR_ENABLE_EMAILS_PER_WINDOW,
+            TWO_FACTOR_ENABLE_WINDOW_MINUTES,
+            TWO_FACTOR_ENABLE_LOCKOUT_MINUTES
+        );
+        if ($enableLimit['blocked']) {
+            $conn->close();
+            $retryAfterSeconds = max(1, (int)$enableLimit['retry_after_seconds']);
+            $displayMinutes = rate_limit_retry_minutes($retryAfterSeconds);
+            header('Retry-After: ' . $retryAfterSeconds);
+            json_response([
+                'ok' => false,
+                'error' => "Two-Factor Authentication was turned on too many times recently. Please try again in {$displayMinutes} minute"
+                    . ($displayMinutes > 1 ? 's' : '') . '.',
+            ], 429);
+        }
+
         // Conditional flip: of two concurrent enables only one changes the row, so
         // only one sends the confirmation email.
         $update = $conn->prepare('UPDATE user_accounts SET two_factor_enabled = 1 WHERE user_id = ? AND two_factor_enabled = 0');

@@ -51,93 +51,6 @@ function confirm_purchase_latest_accepted_schedule(
     return $row ?: null;
 }
 
-function confirm_purchase_utc_atom($value): ?string
-{
-    if ($value === null || $value === '') return null;
-    $date = date_create((string)$value, new DateTimeZone('UTC'));
-    return $date ? $date->format(DateTime::ATOM) : null;
-}
-
-/**
- * Fetches display names for the given user ids.
- *
- * @return array<int, string>
- */
-function get_user_display_names(mysqli $conn, array $userIds): array
-{
-    if (empty($userIds)) {
-        return [];
-    }
-    $placeholders = implode(',', array_fill(0, count($userIds), '?'));
-    $types = str_repeat('i', count($userIds));
-
-    $stmt = $conn->prepare(
-        sprintf('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (%s)', $placeholders)
-    );
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare user lookup');
-    }
-    // bind_param requires references; build the array manually.
-    $bindParams = [];
-    $bindParams[] = $types;
-    foreach ($userIds as $idx => $value) {
-        $userIds[$idx] = (int)$value;
-        $bindParams[] = &$userIds[$idx];
-    }
-    call_user_func_array([$stmt, 'bind_param'], $bindParams);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    $names = [];
-    while ($row = $res->fetch_assoc()) {
-        $id = (int)$row['user_id'];
-        $full = trim((string)$row['first_name'] . ' ' . (string)$row['last_name']);
-        $names[$id] = $full !== '' ? $full : ('User ' . $id);
-    }
-    $stmt->close();
-    return $names;
-}
-
-/**
- * Inserts a chat message with JSON metadata and updates unread counts.
- *
- * @return int Inserted message id.
- */
-function insert_confirm_chat_message(
-    mysqli $conn,
-    int $conversationId,
-    int $senderId,
-    int $receiverId,
-    string $content,
-    array $metadata
-): int {
-    $names = get_user_display_names($conn, [$senderId, $receiverId]);
-    $senderName = $names[$senderId] ?? ('User ' . $senderId);
-    $receiverName = $names[$receiverId] ?? ('User ' . $receiverId);
-    $metadataJson = json_encode($metadata, JSON_UNESCAPED_SLASHES);
-    if ($metadataJson === false) {
-        throw new RuntimeException('Failed to encode metadata');
-    }
-
-    $msgStmt = $conn->prepare('INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    if (!$msgStmt) {
-        throw new RuntimeException('Failed to prepare message insert');
-    }
-    $msgStmt->bind_param('iiissss', $conversationId, $senderId, $receiverId, $senderName, $receiverName, $content, $metadataJson);
-    $msgStmt->execute();
-    $msgId = (int)$msgStmt->insert_id;
-    $msgStmt->close();
-
-    chat_unhide_for_user($conn, $conversationId, $receiverId);
-    $updateStmt = $conn->prepare('UPDATE conversation_participants SET unread_count = unread_count + 1, first_unread_msg_id = CASE WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ? ELSE first_unread_msg_id END WHERE conv_id = ? AND user_id = ?');
-    if ($updateStmt) {
-        $updateStmt->bind_param('iii', $msgId, $conversationId, $receiverId);
-        $updateStmt->execute();
-        $updateStmt->close();
-    }
-
-    return $msgId;
-}
-
 function get_conversation_receiver_id(mysqli $conn, int $conversationId, int $senderId): ?int
 {
     $stmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? LIMIT 1');
@@ -524,7 +437,7 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
             $receiverId = get_conversation_receiver_id($conn, $conversationId, $buyerId);
             if ($receiverId !== null) {
                 delete_confirm_request_message($conn, $conversationId, $confirmId, ' (auto-accept)');
-                insert_confirm_chat_message(
+                chat_insert_system_message(
                     $conn,
                     $conversationId,
                     $buyerId,
@@ -631,7 +544,7 @@ function notify_seller_confirm_outcome(mysqli $conn, array $row, string $outcome
             $stmt->close();
         }
 
-        $buyer = get_user_display_names($conn, [$buyerId])[$buyerId] ?? 'Your buyer';
+        $buyer = chat_display_names($conn, [$buyerId])[$buyerId] ?? 'Your buyer';
         $successful = (bool)($row['is_successful'] ?? false);
 
         if ($outcome === 'buyer_declined') {

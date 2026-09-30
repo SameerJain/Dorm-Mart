@@ -1,6 +1,22 @@
 <?php
 declare(strict_types=1);
 
+if (!function_exists('inventory_seller_visible_sql')) {
+    /**
+     * SQL condition hiding listings whose seller is banned. A ban only blocks
+     * login on its own; every query that shows listings to other users adds
+     * this so a banned seller's items drop out of browse, search and profiles,
+     * and come back unchanged if the ban is lifted.
+     *
+     * @param string $sellerColumn qualified seller id column, e.g. "i.seller_id"
+     */
+    function inventory_seller_visible_sql(string $sellerColumn): string
+    {
+        return "NOT EXISTS (SELECT 1 FROM user_accounts banned_seller"
+            . " WHERE banned_seller.user_id = {$sellerColumn} AND banned_seller.is_banned = 1)";
+    }
+}
+
 if (!function_exists('inventory_json_array')) {
     function inventory_json_array($value): array
     {

@@ -8,6 +8,7 @@ import { API_BASE } from "../utils/apiConfig";
 import { clearCsrfToken } from "../utils/csrfFetch";
 import { useEmailPolicy } from "../hooks/useEmailPolicy";
 import { useSubmitLock } from "../hooks/useSubmitLock";
+import TurnstileWidget from "../components/TurnstileWidget";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -20,6 +21,10 @@ function LoginPage() {
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationEmail, setVerificationEmail] = useState("");
+  // Set once the server asks for a human check; stays until the page reloads.
+  const [captchaSiteKey, setCaptchaSiteKey] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
   const runExclusive = useSubmitLock();
 
@@ -96,6 +101,19 @@ function LoginPage() {
       return;
     }
 
+    if (captchaSiteKey && !turnstileToken) {
+      setError("Please complete the verification check.");
+      setLoading(false);
+      return;
+    }
+
+    // Turnstile tokens are single-use: send this one and render a fresh widget.
+    const submittedToken = turnstileToken;
+    if (captchaSiteKey) {
+      setTurnstileToken("");
+      setCaptchaResetKey((key) => key + 1);
+    }
+
     try {
       // Call backend login API
       const response = await fetch(`${API_BASE}/auth/login.php`, {
@@ -107,6 +125,7 @@ function LoginPage() {
         body: JSON.stringify({
           email: email.trim(),
           password: password,
+          ...(submittedToken ? { turnstile_token: submittedToken } : {}),
         }),
       });
 
@@ -117,6 +136,9 @@ function LoginPage() {
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorData.message || errorMessage;
+          if (errorData.requires_captcha && errorData.captcha_site_key) {
+            setCaptchaSiteKey(errorData.captcha_site_key);
+          }
         } catch (e) {
           // Response isn't JSON, use status text
           errorMessage = `Server error (${response.status}): ${response.statusText}`;
@@ -321,7 +343,7 @@ function LoginPage() {
 
               {/* Error message display */}
               {error && (
-                <div className="mb-4 p-3 sm:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <div role="alert" className="mb-4 p-3 sm:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
                   <p className="text-sm sm:text-base leading-relaxed">
                     {error}
                   </p>
@@ -361,16 +383,34 @@ function LoginPage() {
                       disabled={loading}
                       className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-center tracking-[0.35em] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm text-xl md:text-2xl disabled:opacity-60 disabled:cursor-not-allowed"
                     />
+                    {/* A way out of the code step: wrong account, or the email never
+                        arrived. Signing in again sends a fresh code (and passes the
+                        server's Turnstile check when it asks for one). */}
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => {
+                        setRequiresTwoFactor(false);
+                        setVerificationCode("");
+                        setVerificationEmail("");
+                        setError("");
+                      }}
+                      className="mt-3 text-sm font-semibold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60"
+                    >
+                      Didn't get a code? Sign in again or use a different account
+                    </button>
                   </div>
                 ) : (
                   <>
                 {/* Email input */}
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
+                  <label htmlFor="login-email" className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     University Email Address
                   </label>
                   <input
+                    id="login-email"
                     type="email"
+                    autoComplete="username"
                     value={email}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -390,11 +430,13 @@ function LoginPage() {
 
                 {/* Password input */}
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
+                  <label htmlFor="login-password" className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     Password
                   </label>
                   <input
+                    id="login-password"
                     type="password"
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     maxLength={64}
@@ -403,6 +445,19 @@ function LoginPage() {
                     className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
+
+                {captchaSiteKey && (
+                  <TurnstileWidget
+                    siteKey={captchaSiteKey}
+                    resetKey={captchaResetKey}
+                    onToken={setTurnstileToken}
+                    onLoadError={() =>
+                      setError(
+                        "Could not load the verification check. Please disable any content blockers and reload the page.",
+                      )
+                    }
+                  />
+                )}
                   </>
                 )}
 

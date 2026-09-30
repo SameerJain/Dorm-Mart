@@ -25,6 +25,9 @@ function SellerDashboardPage() {
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [notice, setNotice] = useState("");
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedReview, setSelectedReview] = useState(null);
   const [selectedReviewProduct, setSelectedReviewProduct] = useState(null);
@@ -35,7 +38,9 @@ function SellerDashboardPage() {
   const { listings, loading, summaryMetrics, deleteListing } =
     useSellerListings();
   // Refetch insights once listings load and after any delete.
-  const sellerStats = useSellerStats(loading ? null : listings);
+  const { stats: sellerStats, status: sellerStatsStatus } = useSellerStats(
+    loading ? null : listings,
+  );
   const { productReviews, buyerRatings, updateBuyerRating } =
     useSellerDashboardReviews(listings);
 
@@ -94,26 +99,35 @@ function SellerDashboardPage() {
   const openDeleteConfirm = (id) => {
     const listing = listings.find((item) => item.id === id);
     if (listing && String(listing.status || "").toLowerCase() === "sold") {
-      alert("Cannot delete sold items.");
+      setNotice("Sold items stay on your dashboard as a record of the sale and can't be deleted.");
       return;
     }
+    setNotice("");
+    setDeleteError("");
     setPendingDeleteId(id);
     setConfirmOpen(true);
   };
 
   const closeDeleteConfirm = () => {
+    if (deleting) return;
     setConfirmOpen(false);
     setPendingDeleteId(null);
+    setDeleteError("");
   };
 
   const handleDelete = async () => {
-    if (!pendingDeleteId) return;
+    if (!pendingDeleteId || deleting) return;
+    setDeleting(true);
+    setDeleteError("");
     try {
       await deleteListing(pendingDeleteId);
-      closeDeleteConfirm();
+      setConfirmOpen(false);
+      setPendingDeleteId(null);
     } catch (error) {
       logger.error("Delete error:", error);
-      alert(error?.message || "Failed to delete listing.");
+      setDeleteError(error?.message || "Couldn't delete the listing. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -161,6 +175,7 @@ function SellerDashboardPage() {
       <SellerDashboardStats
         metrics={summaryMetrics}
         stats={sellerStats}
+        statsStatus={sellerStatsStatus}
         onCreateNewListing={handleCreateNewListing}
         onOpenOngoingPurchases={() => navigate("/app/seller-dashboard/ongoing-purchases")}
       />
@@ -169,6 +184,15 @@ function SellerDashboardPage() {
         <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">
           My Listings
         </h2>
+
+        {notice && (
+          <p
+            role="status"
+            className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+          >
+            {notice}
+          </p>
+        )}
 
         {loading ? (
           <div className="text-center py-12">
@@ -213,6 +237,8 @@ function SellerDashboardPage() {
         <DeleteListingModal
           onClose={closeDeleteConfirm}
           onDelete={handleDelete}
+          busy={deleting}
+          error={deleteError}
         />
       )}
 

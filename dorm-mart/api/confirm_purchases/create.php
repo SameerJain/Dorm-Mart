@@ -193,7 +193,7 @@ try {
 
     $buyerId = (int)$schedRow['buyer_user_id'];
     $itemTitle = (string)$schedRow['item_title'];
-    $meetingIso = confirm_purchase_utc_atom($schedRow['meeting_at'] ?? null);
+    $meetingIso = dm_utc_atom($schedRow['meeting_at'] ?? null);
 
     $expiresAt = new DateTime('now', new DateTimeZone('UTC'));
     $expiresAt->modify('+24 hours');
@@ -281,7 +281,7 @@ try {
     ];
 
     $messageContent = $sellerDisplayName . ' submitted a Confirm Purchase form for ' . $itemTitle . '.';
-    insert_confirm_chat_message($conn, $conversationId, $sellerId, $buyerId, $messageContent, $metadata);
+    chat_insert_system_message($conn, $conversationId, $sellerId, $buyerId, $messageContent, $metadata);
 
     // The seller's own "complete the form" reminder is now moot, and the buyer
     // has 24 hours before this is accepted on their behalf, so prompt them.
@@ -308,7 +308,5 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
-    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
-    error_log('confirm-purchase create error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+    api_fail($e, 'confirm-purchase create', $conn ?? null);
 }

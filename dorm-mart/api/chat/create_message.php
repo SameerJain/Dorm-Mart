@@ -3,11 +3,12 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../helpers/profanity.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../helpers/moderation.php';
 
 init_json_endpoint('POST');
 
@@ -52,6 +53,9 @@ if ($senderId === $receiverId) {
 }
 if (!chat_user_exists($conn, $receiverId)) {
     json_response(['success' => false, 'error' => 'Receiver not found'], 404);
+}
+if (moderation_user_is_banned($conn, $receiverId)) {
+    json_response(['success' => false, 'error' => 'This user is no longer available'], 403);
 }
 
 // Flood cap only — set far above any realistic typing speed so ordinary

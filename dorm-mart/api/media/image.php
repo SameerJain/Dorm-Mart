@@ -125,6 +125,5 @@ if (isset($_GET['url']) && $_GET['url'] !== '') {
     stream_media($path);
 }
 
-// if neither param present
 http_response_code(400);
 exit('Missing file or url');

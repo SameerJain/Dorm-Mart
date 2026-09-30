@@ -2,85 +2,47 @@
 
 declare(strict_types=1);
 
-// Include security headers for XSS protection
-require_once __DIR__ . '/../security/security.php';
-set_security_headers();
-// Ensure CORS headers are present for React dev server and local PHP server
-set_secure_cors();
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+init_json_endpoint('POST', ['ok' => false, 'error' => 'Method Not Allowed']);
 
-header('Content-Type: application/json; charset=utf-8');
-
-dm_enforce_https();
-
-require __DIR__ . '/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/two_factor.php';
 require_once __DIR__ . '/../helpers/request.php';
 
 // Initialize session for rate limiting (must be done before checking rate limits)
 auth_boot_session();
 
-// Respond to CORS preflight after setting CORS headers
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-// Rate limiting will be checked after recording failed attempts
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
-
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-    $raw = file_get_contents('php://input', false, null, 0, MAX_JSON_REQUEST_BYTES + 1);
-    $data = is_string($raw) ? decode_json_object($raw) : null;
-    if ($data === null) {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => 'Invalid JSON format']);
-        exit;
-    }
-
-    if (!is_string($data['email'] ?? null) || !is_string($data['password'] ?? null)) {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => 'Invalid credentials format']);
-        exit;
-    }
-    $emailRaw = strtolower(trim($data['email']));
-    $passwordRaw = $data['password'];
+    $data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON format']);
 } else {
-    if (!is_string($_POST['email'] ?? null) || !is_string($_POST['password'] ?? null)) {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => 'Invalid credentials format']);
-        exit;
-    }
-    $emailRaw = strtolower(trim($_POST['email']));
-    $passwordRaw = $_POST['password'];
+    $data = $_POST;
 }
+if (!is_string($data['email'] ?? null) || !is_string($data['password'] ?? null)) {
+    json_response(['ok' => false, 'error' => 'Invalid credentials format'], 400);
+}
+$emailRaw = strtolower(trim($data['email']));
+$passwordRaw = $data['password'];
+$turnstileToken = $data['turnstile_token'] ?? '';
+$turnstileToken = is_string($turnstileToken) ? trim($turnstileToken) : '';
 
 // Accept any valid email format (to support existing non-UB accounts)
 $email = validate_input($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
 $password = strlen($passwordRaw) <= 64 ? $passwordRaw : false;
 
 if ($email === false || $password === false) {
-    http_response_code(400);
     $msg = $email === false ? 'Invalid email format' : 'Invalid password format. Please check your password.';
-    echo json_encode(['ok' => false, 'error' => $msg]);
-    exit;
+    json_response(['ok' => false, 'error' => $msg], 400);
 }
 
-if ($email === '' || $password === '') {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Missing required fields']);
-    exit;
+// The pattern above already rejects an empty email.
+if ($password === '') {
+    json_response(['ok' => false, 'error' => 'Missing required fields'], 400);
 }
 // Validate email format using PHP's built-in validator
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid email format']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Invalid email format'], 400);
 }
 
 try {
@@ -88,17 +50,40 @@ try {
     // lockout applies whether or not the submitted credentials happen to be valid.
     // Claiming (rather than checking, then recording a failure later) is what makes
     // this safe under concurrency: parallel submissions cannot all read the same
-    // pre-lockout count and slip through together. A correct password clears the
-    // bucket below, so this never penalizes a legitimate login.
-    $rateLimitKey = login_rate_limit_key($email);
-    $rateLimit = consume_login_attempt($rateLimitKey);
-    if ($rateLimit['blocked']) {
-        $retryAfterSeconds = max(1, (int)$rateLimit['retry_after_seconds']);
-        $displayMinutes = rate_limit_retry_minutes($retryAfterSeconds);
-        header('Retry-After: ' . $retryAfterSeconds);
-        http_response_code(429);
-        echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$displayMinutes} minute" . ($displayMinutes > 1 ? 's' : '') . "."]);
-        exit;
+    // pre-lockout count and slip through together. A correct password settles the
+    // buckets below, so this never penalizes a legitimate login.
+    $rateLimit = claim_login_attempt($email, $turnstileToken);
+    $rateLimitKey = $rateLimit['account_key'];
+    // Audit trail for failed and throttled logins (OWASP A09). The email is
+    // hashed with the client IP (the rate-limit key) so the log can correlate
+    // repeated attempts without storing addresses or raw IPs.
+    $loginRequestId = bin2hex(random_bytes(8));
+    $logLoginOutcome = static function (string $event, array $context = []) use ($loginRequestId, $rateLimitKey): void {
+        dm_log_auth_event('login', $loginRequestId, $event, $context + ['attempt_key' => substr($rateLimitKey, 0, 16)]);
+    };
+    if ($rateLimit['outcome'] !== 'allowed') {
+        $logLoginOutcome('attempt_' . $rateLimit['outcome']);
+    }
+    if ($rateLimit['outcome'] === 'challenge') {
+        // Past the free attempts: a solved Turnstile check is required before the
+        // password is even looked at, so the check cannot be skipped by a guess.
+        json_response([
+            'ok' => false,
+            'requires_captcha' => true,
+            'captcha_site_key' => turnstile_site_key(),
+            'error' => $turnstileToken === ''
+                ? 'Too many attempts. Please complete the verification check, then log in again.'
+                : 'Verification check failed. Please try it again.',
+        ], 403);
+    }
+    if ($rateLimit['outcome'] === 'unavailable') {
+        json_response(['ok' => false, 'error' => 'Login is temporarily unavailable. Please try again shortly.'], 503);
+    }
+    if ($rateLimit['outcome'] === 'blocked') {
+        json_response([
+            'ok' => false,
+            'error' => rate_limit_retry_message('Too many failed attempts.', (int)$rateLimit['retry_after_seconds']),
+        ], 429);
     }
 
     $conn = db();
@@ -115,10 +100,12 @@ try {
     if ($res->num_rows === 0) {
         $stmt->close();
         $conn->close();
+        // Spend the same bcrypt time as a real check, so response timing does
+        // not reveal which emails have accounts (forgot_password hides it too).
+        password_verify($password, '$2y$12$' . str_repeat('a', 53));
 
-        http_response_code(401);
-        echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
-        exit;
+        $logLoginOutcome('failed_unknown_account');
+        json_response(['ok' => false, 'error' => 'Invalid credentials'], 401);
     }
     $row = $res->fetch_assoc();
     $stmt->close();
@@ -126,27 +113,22 @@ try {
     // SECURITY NOTE: password_verify() safely checks the submitted password.
     if (!password_verify($password, (string)$row['hash_pass'])) {
         $conn->close();
-
-        http_response_code(401);
-        echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
-        exit;
+        $logLoginOutcome('failed_password', ['user_id' => (int)$row['user_id']]);
+        json_response(['ok' => false, 'error' => 'Invalid credentials'], 401);
     }
 
     $userId = (int)$row['user_id'];
 
     if (!empty($row['is_banned'])) {
         $conn->close();
-        http_response_code(403);
-        echo json_encode(['ok' => false, 'error' => 'Account suspended']);
-        exit;
+        json_response(['ok' => false, 'error' => 'Account suspended'], 403);
     }
-    
+
     $conn->close();
-    
+
     // Clear rate limiting data on successful login BEFORE regenerating session ID
     // This prevents the new session from inheriting any lockout state
-    require_once __DIR__ . '/../security/security.php';
-    clear_rate_limit($rateLimitKey);
+    settle_successful_login($rateLimitKey);
 
     $theme = 'light'; // default
     if (isset($row['theme'])) {
@@ -158,20 +140,29 @@ try {
         // per-challenge guess counter. Without a cap on issuance, someone holding
         // the password gets unlimited rounds of guesses at the code and can flood
         // the account owner's inbox, so throttle how often a challenge can be sent.
-        $challengeKey = scoped_rate_limit_key('two_factor_issue', $userId);
+        [$clientKey, $accountKey] = two_factor_issue_keys($userId);
         $challengeLimit = consume_rate_limit(
-            $challengeKey,
+            $clientKey,
             TWO_FACTOR_MAX_CHALLENGES,
             TWO_FACTOR_CHALLENGE_WINDOW_MINUTES,
             TWO_FACTOR_CHALLENGE_LOCKOUT_MINUTES
         );
+        if (!$challengeLimit['blocked']) {
+            $challengeLimit = consume_rate_limit(
+                $accountKey,
+                TWO_FACTOR_MAX_CHALLENGES_PER_ACCOUNT,
+                TWO_FACTOR_ACCOUNT_WINDOW_MINUTES,
+                TWO_FACTOR_CHALLENGE_LOCKOUT_MINUTES
+            );
+        }
         if ($challengeLimit['blocked']) {
-            $retryAfterSeconds = max(1, (int)$challengeLimit['retry_after_seconds']);
-            $displayMinutes = rate_limit_retry_minutes($retryAfterSeconds);
-            header('Retry-After: ' . $retryAfterSeconds);
-            http_response_code(429);
-            echo json_encode(['ok' => false, 'error' => "Too many verification codes requested. Please try again in {$displayMinutes} minute" . ($displayMinutes > 1 ? 's' : '') . "."]);
-            exit;
+            json_response([
+                'ok' => false,
+                'error' => rate_limit_retry_message(
+                    'Too many verification codes requested.',
+                    (int)$challengeLimit['retry_after_seconds']
+                ),
+            ], 429);
         }
 
         regenerate_session_on_login();
@@ -189,17 +180,14 @@ try {
         if (!$emailResult['ok']) {
             clear_two_factor_challenge();
             error_log('Two-factor login email failed for user_id ' . $userId . ': ' . ($emailResult['error'] ?? 'unknown error'));
-            http_response_code(503);
-            echo json_encode(['ok' => false, 'error' => 'Unable to send a verification code. Please try again.']);
-            exit;
+            json_response(['ok' => false, 'error' => 'Unable to send a verification code. Please try again.'], 503);
         }
 
-        echo json_encode([
+        json_response([
             'ok' => true,
             'requires_two_factor' => true,
             'email' => mask_two_factor_email((string)$row['email']),
         ]);
-        exit;
     }
 
     // Regenerate session ID to prevent session fixation attacks
@@ -213,9 +201,8 @@ try {
     // Persist across restarts
     issue_remember_cookie($userId);
 
-    echo json_encode(['ok' => true, 'theme' => $theme, 'role' => $row['role'] ?? 'user']);
+    json_response(['ok' => true, 'theme' => $theme, 'role' => $row['role'] ?? 'user']);
 } catch (Throwable $e) {
     error_log('login error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Server error']);
+    json_response(['ok' => false, 'error' => 'Server error'], 500);
 }

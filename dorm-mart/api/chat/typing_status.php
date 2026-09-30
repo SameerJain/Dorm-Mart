@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
 
@@ -56,8 +56,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->close();
             json_response(['success' => false, 'error' => 'Failed to update typing status'], 500);
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         $conn->rollback();
+        error_log('typing_status update error: ' . $e->getMessage());
         json_response(['success' => false, 'error' => 'Failed to update typing status'], 500);
     }
 

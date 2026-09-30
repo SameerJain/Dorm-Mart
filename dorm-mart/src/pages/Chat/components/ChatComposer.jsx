@@ -1,7 +1,7 @@
 import ImageModal from "./ImageModal";
+import { CHAT_MAX_LENGTH } from "../utils/chatConstants";
 
 export default function ChatComposer({
-  MAX_LEN,
   activeConversation,
   attachOpen,
   attachedImage,
@@ -38,7 +38,6 @@ export default function ChatComposer({
           onClick={(e) => e.preventDefault()}
           onMouseDown={(e) => e.preventDefault()}
           onKeyDown={(e) => e.preventDefault()}
-          style={{ pointerEvents: "all" }}
           aria-label="Chat is closed"
         ></div>
       )}
@@ -221,7 +220,7 @@ export default function ChatComposer({
                 onKeyDown={handleKeyDown}
                 placeholder="Type a message."
                 rows={1}
-                maxLength={MAX_LEN}
+                maxLength={CHAT_MAX_LENGTH}
                 aria-describedby="message-char-remaining"
                 wrap="soft"
                 className="m-0 box-border block min-h-[44px] max-h-[28vh] w-full resize-none overflow-y-hidden whitespace-pre-wrap break-words rounded-xl border-2 border-gray-300 bg-white px-3 py-2.5 pr-11 text-base leading-5 text-gray-900 focus:ring-2 focus:ring-indigo-500 md:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
@@ -231,7 +230,7 @@ export default function ChatComposer({
                 id="message-char-remaining"
                 className="pointer-events-none absolute right-2.5 bottom-2 text-xs text-gray-500 dark:text-gray-400"
               >
-                {MAX_LEN - draft.length}
+                {CHAT_MAX_LENGTH - draft.length}
               </span>
             </div>
           )}

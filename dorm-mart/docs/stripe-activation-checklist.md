@@ -41,4 +41,4 @@ Set these in the deployment secret store, never in git:
 - Live equivalents of all five variables
 - `FRONTEND_BASE_URL=https://dormmart.me`
 
-Run migration `025_stripe_connect_payments.sql`, deploy with payments disabled, and complete the scenarios in the integration plan. Enable `PAYMENTS_ENABLED=true` only after Sandbox passes and Stripe confirms the direct-charge marketplace responsibility model for live use.
+Run migration `002_stripe_connect_payments.sql` (formerly `025`), deploy with payments disabled, and complete the scenarios in the integration plan. Enable `PAYMENTS_ENABLED=true` only after Sandbox passes and Stripe confirms the direct-charge marketplace responsibility model for live use.

@@ -51,15 +51,18 @@ function ConversationItem({
   const hoverColor =
     sectionType === "buyers" ? "hover:bg-green-600" : "hover:bg-blue-600";
 
+  const label = c.productTitle || (c.productId ? `Item #${c.productId}` : c.receiverName);
+
   return (
-    <li key={c.conv_id} className="relative group">
+    <li className="relative group">
       <button
+        type="button"
         onClick={() => {
           fetchConversation(c.conv_id);
           setIsMobileList(false);
         }}
         className={
-          "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-3 lg:px-4 text-left transition " +
+          "flex w-full items-center justify-between gap-2 rounded-xl py-3 pl-3 pr-12 lg:pl-4 text-left transition coarse:pr-14 " +
           (buttonColorClass ||
             (isHighlighted ? "bg-indigo-50 text-indigo-700" : hoverColor))
         }
@@ -81,7 +84,7 @@ function ConversationItem({
                   apiBase: API_BASE,
                   proxyUnknown: true,
                 })}
-                alt={c.productTitle || "Product"}
+                alt=""
                 onError={onProductImageError}
                 className="w-full h-full object-cover"
                 loading="lazy"
@@ -89,42 +92,36 @@ function ConversationItem({
             </div>
           )}
           {unread > 0 && (
-            <span
-              className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-xs leading-5"
-              aria-label={`${unread} unread`}
-            >
+            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-xs leading-5">
               {unread > 99 ? "99+" : unread}
+              <span className="sr-only"> unread</span>
             </span>
           )}
-          <div
-            onClick={(e) => handleDeleteClick(c.conv_id, e)}
-            className="opacity-60 hover:opacity-100 transition-opacity p-1.5 coarse:p-2.5 coarse:-mr-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 cursor-pointer"
-            aria-label="Delete conversation"
-            title="Delete conversation"
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleDeleteClick(c.conv_id, e);
-              }
-            }}
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </div>
         </div>
+      </button>
+      {/* A sibling of the row button, not nested inside it: a button inside a
+          button is invalid HTML and unreachable for keyboard and screen readers. */}
+      <button
+        type="button"
+        onClick={(e) => handleDeleteClick(c.conv_id, e)}
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-red-600 opacity-60 transition-opacity hover:bg-red-100 hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 coarse:p-2.5 dark:text-red-400 dark:hover:bg-red-900/30"
+        aria-label={`Remove conversation about ${label} from your list`}
+        title="Remove from your chat list"
+      >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+          />
+        </svg>
       </button>
     </li>
   );

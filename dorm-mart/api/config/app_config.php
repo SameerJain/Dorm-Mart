@@ -295,3 +295,13 @@ function dm_stripe_checkout_domain(): string
 {
     return dm_url_origin(dm_frontend_base_url());
 }
+
+/** Format a stored UTC datetime as ISO-8601 (ATOM); null for empty or unparseable input. */
+function dm_utc_atom($value): ?string
+{
+    if ($value === null || $value === '') {
+        return null;
+    }
+    $date = date_create((string)$value, new DateTimeZone('UTC'));
+    return $date ? $date->format(DateTime::ATOM) : null;
+}

@@ -443,7 +443,7 @@ function qualify_purchase_history_url(string $path): string
     // Behind Railway's TLS-terminating proxy $_SERVER['HTTPS'] is unset, so trust
     // X-Forwarded-Proto too. Emitting http:// on an https:// page gets the image
     // blocked as mixed content by the CSP.
-    $scheme = auth_is_https_request() ? 'https://' : 'http://';
+    $scheme = is_https_request() ? 'https://' : 'http://';
     $host = $_SERVER['HTTP_HOST'] ?? '';
     if ($host === '') {
         return $path;

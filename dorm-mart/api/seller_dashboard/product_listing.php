@@ -371,11 +371,21 @@ try {
     $conn->begin_transaction();
     // Seller row first, then the listing row: the same lock order as set_item_status.php.
     $activeCount = listing_cap_locked_active_count($conn, $userId, $itemId);
-    $lockStmt = $conn->prepare('SELECT item_status FROM INVENTORY WHERE product_id = ? AND seller_id = ? FOR UPDATE');
+    $lockStmt = $conn->prepare('SELECT item_status, sold FROM INVENTORY WHERE product_id = ? AND seller_id = ? FOR UPDATE');
     $lockStmt->bind_param('ii', $itemId, $userId);
     $lockStmt->execute();
-    $lockedStatus = (string)($lockStmt->get_result()->fetch_assoc()['item_status'] ?? '');
+    $lockedRow = $lockStmt->get_result()->fetch_assoc();
     $lockStmt->close();
+    // A purchase can complete, or the listing be deleted, after the early check.
+    // Without this, the guarded UPDATE below silently matched nothing while the
+    // response, notifications, and media cleanup all proceeded as if it had.
+    if (!$lockedRow) {
+      $rejectLocked(404, 'Product not found or you do not have permission to edit this product.');
+    }
+    $lockedStatus = (string)($lockedRow['item_status'] ?? '');
+    if ((int)($lockedRow['sold'] ?? 0) === 1 || $lockedStatus === 'Sold') {
+      $rejectLocked(403, 'Sold listings cannot be edited.');
+    }
     if ($status === 'Active' && $lockedStatus !== 'Active' && $activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
       $rejectLocked(403, $capError('publishing this draft'));
     }
@@ -422,6 +432,7 @@ try {
     $firstImage = notification_first_image($photosJson);
     if ($status === 'Active' && abs($oldPrice - (float)$price) >= 0.005) {
       $reduced = (float)$price < $oldPrice;
+      notification_supersede_unread($conn, $itemId, ['price_reduced', 'price_increased']);
       notification_for_wishlist($conn, $itemId, [
         'type' => $reduced ? 'price_reduced' : 'price_increased',
         'title' => $title,
@@ -433,6 +444,7 @@ try {
       ]);
     }
     if ($status === 'Active' && !empty($newImageUrls)) {
+      notification_supersede_unread($conn, $itemId, ['images_added']);
       notification_for_wishlist($conn, $itemId, [
         'type' => 'images_added', 'title' => $title,
         'message' => 'New media was added to this listing.', 'image_url' => $firstImage,
@@ -485,15 +497,7 @@ try {
   );
   $stmt->execute();
 
-  // Create wishlist_notification row for this new listing
   $newProductId = (int)$conn->insert_id;
-  $firstImageUrl = notification_first_image($photosJson);
-  $wnSql = "INSERT INTO wishlist_notification (seller_id, product_id, title, image_url, unread_count)
-            VALUES (?, ?, ?, ?, 0)";
-  $wnStmt = $conn->prepare($wnSql);
-  $wnStmt->bind_param('iiss', $userId, $newProductId, $title, $firstImageUrl);
-  $wnStmt->execute();
-  $wnStmt->close();
   $conn->commit();
 
   echo json_encode([

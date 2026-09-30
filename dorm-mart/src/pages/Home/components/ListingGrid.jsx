@@ -1,6 +1,6 @@
 import ItemCardNew from "../../../components/ItemCardNew";
 
-export default function ListingGrid({ items, wishlistedIds }) {
+export default function ListingGrid({ items, wishlistedIds, showReasons = false }) {
   return (
     <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(210px,1fr))] overflow-x-hidden min-w-0">
       {items.map((item, index) => (
@@ -16,6 +16,7 @@ export default function ListingGrid({ items, wishlistedIds }) {
           sellerUsername={item.sellerUsername}
           sellerEmail={item.sellerEmail}
           isWishlisted={wishlistedIds.has(item.id)}
+          reason={showReasons ? item.recommendationReason : null}
         />
       ))}
     </div>

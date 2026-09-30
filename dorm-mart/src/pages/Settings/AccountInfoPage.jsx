@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
+import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
 import { formatAccountDate, formatGraduationDate, isValidPhoneNumber } from "./accountInfoUtils";
 
@@ -40,9 +41,12 @@ export default function AccountInfoPage() {
   return (
     <SettingsLayout>
       <div className="mx-auto max-w-3xl">
-        <header className="border-b border-slate-200 pb-4 dark:border-gray-700">
-          <h1 className="font-serif text-2xl font-semibold text-blue-600 dark:text-blue-400">Account Info</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">Information associated with your Dorm Mart account.</p>
+        <header className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4 dark:border-gray-700">
+          <div>
+            <h1 className="font-serif text-2xl font-semibold text-blue-600 dark:text-blue-400">Account Info</h1>
+            <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">Information associated with your Dorm Mart account.</p>
+          </div>
+          <PageBackButton onClick={() => navigate(-1)} />
         </header>
 
         {error ? (
@@ -56,10 +60,36 @@ export default function AccountInfoPage() {
             <div className="sm:col-span-2"><InfoRow label="UB email" value={account.email} /></div>
             <InfoRow label="Graduation date" value={formatGraduationDate(account.grad_month, account.grad_year)} />
             <InfoRow label="Account created" value={formatAccountDate(account.join_date)} />
-            {isValidPhoneNumber(account.phone_number) ? (
-              <InfoRow label="Phone number" value={account.phone_number.trim()} />
-            ) : null}
+            <InfoRow
+              label="Phone number"
+              value={isValidPhoneNumber(account.phone_number) ? account.phone_number.trim() : "Not set"}
+            />
           </dl>
+        )}
+
+        {account && (
+          <section className="mt-6 rounded-xl border border-slate-200 p-4 text-sm text-slate-700 dark:border-gray-700 dark:text-gray-300">
+            <h2 className="font-semibold text-slate-900 dark:text-gray-100">Changing these details</h2>
+            <p className="mt-1">
+              Your name, UB email, and graduation date come from sign-up and can't be edited here.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => navigate("/app/setting/my-profile")}
+                className="font-semibold text-blue-700 hover:underline dark:text-blue-300"
+              >
+                Edit profile photo and bio
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/app/setting/user-preferences")}
+                className="font-semibold text-blue-700 hover:underline dark:text-blue-300"
+              >
+                Phone number and contact sharing
+              </button>
+            </div>
+          </section>
         )}
 
         <section className="mt-8 border-t border-slate-200 pt-6 dark:border-gray-700">

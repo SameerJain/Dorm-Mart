@@ -1,6 +1,24 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 import { withFirstFrame } from "../../../utils/videoSrc";
+import {
+  MAX_IMAGE_BYTES,
+  MAX_VIDEO_BYTES,
+  ALLOWED_IMAGE_MIME_TYPES,
+  ALLOWED_IMAGE_EXTENSIONS,
+  ALLOWED_VIDEO_MIME_TYPES,
+  ALLOWED_VIDEO_EXTENSIONS,
+} from "../../ItemForms/utils/listingFormConfig";
+
+const ALLOWED_MIME = new Set([
+  ...ALLOWED_IMAGE_MIME_TYPES,
+  ...ALLOWED_VIDEO_MIME_TYPES,
+]);
+const ALLOWED_EXTS = new Set([
+  ...ALLOWED_IMAGE_EXTENSIONS,
+  ...ALLOWED_VIDEO_EXTENSIONS,
+]);
+const VIDEO_EXTS = ALLOWED_VIDEO_EXTENSIONS;
 
 export default function ImageModal({
   open,
@@ -14,27 +32,6 @@ export default function ImageModal({
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
-
-  // Limits & allow-list
-  const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
-  const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
-  const ALLOWED_MIME = new Set([
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "video/mp4",
-    "video/webm",
-    "video/quicktime",
-  ]);
-  const ALLOWED_EXTS = new Set([
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-    ".mp4",
-    ".webm",
-    ".mov",
-  ]);
 
   const resetPicker = useCallback(() => {
     setFile(null);
@@ -86,9 +83,7 @@ export default function ImageModal({
   function isVideoFile(f) {
     if (f.type) return ALLOWED_MIME.has(f.type) && f.type.startsWith("video/");
     const name = (f.name || "").toLowerCase();
-    return new Set([".mp4", ".webm", ".mov"]).has(
-      name.slice(name.lastIndexOf(".")),
-    );
+    return VIDEO_EXTS.has(name.slice(name.lastIndexOf(".")));
   }
 
   function onFileChange(e) {

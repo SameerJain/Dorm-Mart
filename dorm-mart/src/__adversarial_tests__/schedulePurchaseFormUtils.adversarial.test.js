@@ -18,6 +18,17 @@ describe("schedule purchase form utility boundaries", () => {
         acceptTrades: true,
       }),
     );
+    // Falsy and unrecognised values must come out false, not merely "not false".
+    expect(
+      normalizeScheduleListing({ price_nego: "maybe", trades: "0" }),
+    ).toEqual(
+      expect.objectContaining({ priceNegotiable: false, acceptTrades: false }),
+    );
+    // The camelCase field wins when both shapes are present and disagree.
+    expect(
+      normalizeScheduleListing({ priceNegotiable: false, price_nego: "1" })
+        .priceNegotiable,
+    ).toBe(false);
   });
 
   test("resolves custom meet location only for Other", () => {
@@ -29,8 +40,23 @@ describe("schedule purchase form utility boundaries", () => {
     );
   });
 
+  test("passes missing listings and blank meet locations through as null", () => {
+    expect(normalizeScheduleListing(null)).toBeNull();
+    expect(normalizeScheduleListing({ meet_location: "" }).meet_location).toBeNull();
+    expect(normalizeScheduleListing({ meet_location: "Ellicott" }).meet_location).toBe("Ellicott");
+  });
+
+  test("accepts valid negotiated prices with no error", () => {
+    expect(validateNegotiatedPrice("12.50")).toEqual({ value: 12.5, error: "" });
+    expect(validateNegotiatedPrice("  12.50  ")).toEqual({ value: 12.5, error: "" });
+    expect(validateNegotiatedPrice("   ")).toEqual({ value: null, error: "" });
+    // The ceiling itself is allowed; only amounts above it are rejected.
+    expect(validateNegotiatedPrice("9999.99")).toEqual({ value: 9999.99, error: "" });
+    // Only the literal digits count as a meme: $4.20 is not "420".
+    expect(validateNegotiatedPrice("4.20")).toEqual({ value: 4.2, error: "" });
+  });
+
   test("rejects invalid negotiated prices with explicit reasons", () => {
-    expect(validateNegotiatedPrice("12.50").value).toBe(12.5);
     expect(validateNegotiatedPrice("420").error).toMatch(/meme input/);
     expect(validateNegotiatedPrice("10", { isTrade: true }).error).toMatch(
       /Cannot enter a price/,

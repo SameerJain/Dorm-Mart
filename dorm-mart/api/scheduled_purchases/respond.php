@@ -298,7 +298,7 @@ try {
             $msgSenderId = $buyerId;
             $msgReceiverId = ($convRow['user1_id'] == $buyerId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
 
-            scheduled_purchase_insert_chat_message($conn, $conversationId, $msgSenderId, $msgReceiverId, $messageContent, [
+            chat_insert_system_message($conn, $conversationId, $msgSenderId, $msgReceiverId, $messageContent, [
                 'type' => $action === 'accept' ? 'schedule_accepted' : 'schedule_denied',
                 'request_id' => $requestId,
             ]);
@@ -310,7 +310,7 @@ try {
                 $nextStepsContent = $usesPayment
                     ? 'Built-in payment opens at the scheduled time for 30 minutes. A successful payment completes the purchase automatically. Check the Ongoing Purchases page for the full meeting details.'
                     : 'Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities! Once the exchange is done, the seller will send the Confirm Purchase form. Check the Ongoing Purchases page for the full meeting details, including contact info the seller has chosen to share.';
-                scheduled_purchase_insert_chat_message($conn, $conversationId, $msgSenderId, $msgReceiverId, $nextStepsContent, [
+                chat_insert_system_message($conn, $conversationId, $msgSenderId, $msgReceiverId, $nextStepsContent, [
                     'type' => 'next_steps',
                     'request_id' => $requestId,
                 ], false);
@@ -318,7 +318,7 @@ try {
         }
     }
 
-    $meetingAtIso = scheduled_purchase_utc_atom($row['meeting_at'] ?? null);
+    $meetingAtIso = dm_utc_atom($row['meeting_at'] ?? null);
     $responseAtIso = scheduled_purchase_now_utc_atom();
 
     // XSS PROTECTION: Escape user-generated content before returning in JSON

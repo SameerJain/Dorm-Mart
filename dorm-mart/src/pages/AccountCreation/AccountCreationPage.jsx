@@ -406,7 +406,7 @@ function CreateAccountPage() {
                           });
                         }}
                       >
-                        Terms & Conditions
+                        Terms of Service
                       </button>{" "}
                       and{" "}
                       <button

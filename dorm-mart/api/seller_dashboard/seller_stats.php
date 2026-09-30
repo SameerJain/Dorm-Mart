@@ -8,8 +8,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/listing_cap.php';
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint('GET');
 
@@ -32,15 +32,35 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Completed sales: the confirmed final price when there is one, otherwise the asking price.
+    // Items sold, however they were marked sold, and how long they took.
     $sales = seller_stats_row(
         $conn,
         "SELECT COUNT(*) AS sales_count,
-                COALESCE(SUM(COALESCE(final_price, listing_price)), 0) AS earnings,
                 AVG(CASE WHEN date_sold IS NOT NULL AND date_listed IS NOT NULL
                          THEN GREATEST(DATEDIFF(date_sold, date_listed), 0) END) AS avg_days_to_sell
            FROM INVENTORY
           WHERE seller_id = ? AND (sold = 1 OR item_status = 'Sold')",
+        'i',
+        $userId
+    );
+
+    // Money actually made: only purchases the buyer confirmed (or that
+    // auto-confirmed / were paid) as successful, at the recorded final price,
+    // excluding trades. Items a seller simply marked "Sold" no longer add their
+    // asking price, and trades no longer count as cash.
+    // Note: a refunded electronic payment that was not relisted still counts;
+    // payments are disabled in code, so revisit when they are turned on.
+    $earned = seller_stats_row(
+        $conn,
+        "SELECT COUNT(*) AS paid_sales_count,
+                COALESCE(SUM(cpr.final_price), 0) AS earnings
+           FROM confirm_purchase_requests cpr
+           JOIN scheduled_purchase_requests spr ON spr.request_id = cpr.scheduled_request_id
+          WHERE cpr.seller_user_id = ?
+            AND cpr.is_successful = 1
+            AND cpr.status IN ('buyer_accepted', 'auto_accepted', 'payment_completed')
+            AND cpr.final_price IS NOT NULL
+            AND spr.is_trade = 0",
         'i',
         $userId
     );
@@ -53,11 +73,14 @@ try {
         $userId
     );
 
+    // A meetup still counts as upcoming during its 30-minute window (the same
+    // window the payment flow uses), not only before its start time.
     $meetups = seller_stats_row(
         $conn,
-        "SELECT SUM(status = 'accepted' AND meeting_at >= UTC_TIMESTAMP()) AS upcoming,
-                MIN(CASE WHEN status = 'accepted' AND meeting_at >= UTC_TIMESTAMP() THEN meeting_at END) AS next_meeting_at,
-                SUM(status = 'pending' AND meeting_at >= UTC_TIMESTAMP()) AS awaiting_reply
+        "SELECT SUM(status = 'accepted' AND meeting_at >= UTC_TIMESTAMP() - INTERVAL 30 MINUTE) AS upcoming,
+                MIN(CASE WHEN status = 'accepted' AND meeting_at >= UTC_TIMESTAMP() - INTERVAL 30 MINUTE
+                         THEN meeting_at END) AS next_meeting_at,
+                SUM(status = 'pending' AND meeting_at >= UTC_TIMESTAMP()) AS awaiting_buyer
            FROM scheduled_purchase_requests
           WHERE seller_user_id = ?",
         'i',
@@ -65,15 +88,17 @@ try {
     );
 
     $salesCount = (int)($sales['sales_count'] ?? 0);
-    $earnings = round((float)($sales['earnings'] ?? 0), 2);
+    $paidSalesCount = (int)($earned['paid_sales_count'] ?? 0);
+    $earnings = round((float)($earned['earnings'] ?? 0), 2);
     $nextMeeting = $meetups['next_meeting_at'] ?? null;
 
     json_response([
         'success' => true,
         'data' => [
             'sales_count' => $salesCount,
+            'paid_sales_count' => $paidSalesCount,
             'earnings' => $earnings,
-            'avg_sale' => $salesCount > 0 ? round($earnings / $salesCount, 2) : null,
+            'avg_sale' => $paidSalesCount > 0 ? round($earnings / $paidSalesCount, 2) : null,
             'avg_days_to_sell' => $sales['avg_days_to_sell'] !== null ? round((float)$sales['avg_days_to_sell'], 1) : null,
             'review_count' => (int)($reviews['review_count'] ?? 0),
             'rating_avg' => $reviews['rating_avg'] !== null ? round((float)$reviews['rating_avg'], 1) : null,
@@ -81,7 +106,8 @@ try {
             'next_meeting_at' => $nextMeeting !== null
                 ? (new DateTimeImmutable((string)$nextMeeting, new DateTimeZone('UTC')))->format(DateTime::ATOM)
                 : null,
-            'awaiting_reply' => (int)($meetups['awaiting_reply'] ?? 0),
+            // Requests the seller sent that the buyer has not answered yet.
+            'awaiting_buyer' => (int)($meetups['awaiting_buyer'] ?? 0),
             'active_limit' => MAX_ACTIVE_LISTINGS_PER_SELLER,
         ],
     ]);

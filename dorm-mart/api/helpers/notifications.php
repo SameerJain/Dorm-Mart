@@ -197,3 +197,21 @@ function notification_cancel_schedule(mysqli $conn, int $requestId): void
     $stmt->execute();
     $stmt->close();
 }
+
+/**
+ * Drop a product's unread notifications of the given types before sending a
+ * newer one, so repeated edits (price changes, status toggles) leave each
+ * recipient only the latest update instead of a pile of stale ones.
+ */
+function notification_supersede_unread(mysqli $conn, int $productId, array $types): void
+{
+    if (!$types) return;
+    $placeholders = implode(',', array_fill(0, count($types), '?'));
+    $stmt = $conn->prepare(
+        "DELETE FROM notifications WHERE product_id = ? AND is_read = 0 AND type IN ($placeholders)"
+    );
+    if (!$stmt) throw new RuntimeException('Failed to prepare notification supersede');
+    $stmt->bind_param('i' . str_repeat('s', count($types)), $productId, ...$types);
+    $stmt->execute();
+    $stmt->close();
+}

@@ -1,62 +1,25 @@
 <?php
 
-// Include security utilities
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/api_bootstrap.php';
+init_json_endpoint('POST', ['ok' => false, 'error' => 'Method Not Allowed']);
+
 require_once __DIR__ . '/auth_handle.php';
-dm_enforce_https();
-set_security_headers();
-set_secure_cors();
-
-header('Content-Type: application/json; charset=utf-8');
-
-/*composer needs to be installed in order to enable mailing services
-Get composer from getcomposer.org
-Run in cmd at dorm-mart
-composer require phpmailer/phpmailer
-
-If composer cannot be installed or is giving errors then follow the following steps:
-1. Download PHPMailer ZIP: https://github.com/PHPMailer/PHPMailer/releases
-2. Extract src/ into dorm-mart/vendor/PHPMailer/src
-*/
-
-
-$PROJECT_ROOT = dirname(__DIR__, 2);
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-require_once __DIR__ . '/../utility/transactional_email_html.php';
 require_once __DIR__ . '/../config/app_config.php';
 require_once __DIR__ . '/../helpers/request.php';
-require_once __DIR__ . '/../helpers/resend_email.php';
-
-// Resend does not need the legacy mail libraries.
-if (dm_env_string('RESEND_API_KEY') === '') {
-    if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
-        require $PROJECT_ROOT . '/vendor/autoload.php';
-    } else {
-        require $PROJECT_ROOT . '/vendor/PHPMailer/src/PHPMailer.php';
-        require $PROJECT_ROOT . '/vendor/PHPMailer/src/SMTP.php';
-        require $PROJECT_ROOT . '/vendor/PHPMailer/src/Exception.php';
-    }
-}
+require_once __DIR__ . '/../helpers/email.php';
 
 const ACCOUNT_REQUEST_ACCEPTED_MESSAGE = 'If eligible, account instructions will be sent.';
+const TEMP_PASSWORD_LENGTH = 8;
 $accountRequestStartedAt = microtime(true);
 
+/** Every outcome answers identically after the same delay, so none reveals whether the email is eligible or taken. */
 function accept_account_request(): void
 {
     global $accountRequestStartedAt;
-    $remainingMicros = (int)max(0, (2 - (microtime(true) - $accountRequestStartedAt)) * 1000000);
-    if ($remainingMicros > 0) {
-        usleep($remainingMicros);
-    }
-    http_response_code(202);
-    echo json_encode([
+    json_response_after($accountRequestStartedAt, 2.0, [
         'ok' => true,
         'message' => ACCOUNT_REQUEST_ACCEPTED_MESSAGE,
-    ]);
-    exit;
+    ], 202);
 }
 
 function remove_undeliverable_account(mysqli $conn, int $userId, string $email, string $requestId): bool
@@ -81,10 +44,9 @@ function remove_undeliverable_account(mysqli $conn, int $userId, string $email, 
 }
 
 
-function generate_password(int $length = 8): string
+function generate_password(): string
 {
-    // Fixed length of 8 characters
-    $length = 8;
+    $length = TEMP_PASSWORD_LENGTH;
 
     $uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $lowers = 'abcdefghijklmnopqrstuvwxyz';
@@ -116,98 +78,6 @@ function generate_password(int $length = 8): string
     return implode('', $password);
 }
 
-// Example:
-// echo generate_password(12);
-
-function send_welcome_gmail(array $user, string $tempPassword): array
-{
-    if (dm_env_string('RESEND_API_KEY') !== '') {
-        return dm_send_resend_email($user['email'], dm_transactional_welcome_package($user['firstName'] ?? '', $tempPassword));
-    }
-    global $PROJECT_ROOT;
-
-    // Ensure PHP is using UTF-8 internally
-    if (function_exists('mb_internal_encoding')) {
-        @mb_internal_encoding('UTF-8');
-    }
-
-    $mail = new PHPMailer(true);
-    try {
-        $mail->isSMTP();
-        $mail->Host       = dm_smtp_host();
-        $mail->SMTPAuth   = true;
-        $gmailUsername = getenv('GMAIL_USERNAME');
-        $gmailPassword = getenv('GMAIL_PASSWORD');
-        
-        // Debug: Log if credentials are missing (but don't expose passwords)
-        if (empty($gmailUsername) || empty($gmailPassword)) {
-            error_log("Email sending failed: GMAIL_USERNAME or GMAIL_PASSWORD not set. Username set: " . (!empty($gmailUsername) ? 'yes' : 'no') . ", password set: " . (!empty($gmailPassword) ? 'yes' : 'no'));
-            return ['ok' => false, 'provider' => 'smtp', 'error' => 'Email configuration missing'];
-        }
-        
-        $mail->Username   = $gmailUsername;
-        $mail->Password   = $gmailPassword;
-        $secure = dm_smtp_secure();
-        $mail->SMTPSecure = $secure === 'smtps' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = dm_smtp_port();
-
-        // Optimizations for faster email delivery
-        $mail->Timeout = dm_smtp_timeout();
-        $mail->SMTPKeepAlive = false;
-        $allowSelfSigned = dm_smtp_allow_self_signed();
-        $mail->SMTPOptions = [
-            'ssl' => [
-                'verify_peer'       => !$allowSelfSigned,
-                'verify_peer_name'  => !$allowSelfSigned,
-                'allow_self_signed' => $allowSelfSigned,
-            ]
-        ];
-        // Tell PHPMailer we are sending UTF-8 and how to encode it
-        $mail->CharSet   = 'UTF-8';
-        $mail->Encoding  = 'base64'; // robust for UTF-8; 'quoted-printable' also fine
-        // Optional: $mail->setLanguage('en');
-
-        // From/To
-        $mail->setFrom(dm_mail_from_email(), dm_mail_from_name());
-        $mail->addReplyTo(dm_mail_reply_to_email(), dm_mail_reply_to_name());
-        $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
-
-        $pkg = dm_transactional_welcome_package($user['firstName'] ?? '', $tempPassword);
-        $subject = $pkg['subject'];
-        $html = $pkg['html'];
-        $text = $pkg['text'];
-
-        $mail->Subject = $subject;
-        $mail->isHTML(true);
-        $mail->Body    = $html;
-        $mail->AltBody = $text;
-
-        error_log("SMTP welcome email attempt started for: " . ($user['email'] ?? 'unknown'));
-        $mail->send();
-        error_log("SMTP welcome email sent successfully to: " . ($user['email'] ?? 'unknown'));
-        return ['ok' => true, 'provider' => 'smtp', 'error' => null];
-    } catch (Throwable $e) {
-        $errorMsg = $mail->ErrorInfo ?? $e->getMessage();
-        error_log("PHPMailer exception in send_welcome_gmail: " . $errorMsg);
-        return ['ok' => false, 'provider' => 'smtp', 'error' => $errorMsg];
-    }
-}
-
-header('Content-Type: application/json; charset=utf-8');
-
-// Preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-// Enforce POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
-
 // Read the JSON body from React's fetch()
 $data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON body']);
 
@@ -215,9 +85,7 @@ $data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON body
 if (!is_string($data['firstName'] ?? null)
     || !is_string($data['lastName'] ?? null)
     || !is_string($data['email'] ?? null)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Invalid input format'], 400);
 }
 $firstNameRaw = trim($data['firstName']);
 $lastNameRaw = trim($data['lastName']);
@@ -227,17 +95,19 @@ $requestId = bin2hex(random_bytes(8));
 // Consume quota before inspecting the email so rate-limit behavior cannot reveal
 // whether an address is registered, eligible, or deliverable.
 $accountRateLimit = consume_account_creation_attempt();
+if (!empty($accountRateLimit['unavailable'])) {
+    dm_log_auth_event('create_account', $requestId, 'rate_limiter_unavailable');
+    json_response(['ok' => false, 'error' => 'Account creation is temporarily unavailable. Please try again shortly.'], 503);
+}
 if ($accountRateLimit['blocked']) {
     $retryAfterSeconds = max(1, (int)$accountRateLimit['retry_after_seconds']);
     header('Retry-After: ' . $retryAfterSeconds);
     dm_log_auth_event('create_account', $requestId, 'rate_limited');
-    http_response_code(429);
-    echo json_encode([
+    json_response([
         'ok' => false,
         'error' => 'Too many account requests. Please try again in a few minutes.',
         'retry_after_seconds' => $retryAfterSeconds,
-    ]);
-    exit;
+    ], 429);
 }
 
 // Load email policy configuration
@@ -252,11 +122,9 @@ $promos = strict_boolean_value($data['promos'] ?? false);
 $termsAccepted = strict_boolean_value($data['terms'] ?? null);
 
 if ($gradMonth === null || $gradYear === null || $promos === null || $termsAccepted !== true) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => $termsAccepted !== true
+    json_response(['ok' => false, 'error' => $termsAccepted !== true
         ? 'You must agree to the terms'
-        : 'Invalid input format']);
-    exit;
+        : 'Invalid input format'], 400);
 }
 
 // Email validation based on ALLOW_ALL_EMAILS flag
@@ -276,10 +144,10 @@ if (ALLOW_ALL_EMAILS) {
     }
 }
 
-if ($firstName === false || $lastName === false || $email === false) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid input format']);
-    exit;
+// The name pattern requires at least one character, so this also covers blank
+// names; an invalid email was already answered above.
+if ($firstName === false || $lastName === false) {
+    json_response(['ok' => false, 'error' => 'Invalid input format'], 400);
 }
 
 $emailLocalPart = explode('@', $email)[0] ?? '';
@@ -288,17 +156,9 @@ if (preg_match('/^\d+$/', $emailLocalPart)) {
     accept_account_request();
 }
 
-// Validate
-if ($firstName === '' || $lastName === '' || $email === '') {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Missing required fields']);
-    exit;
-}
 // --- Validate graduation date format ---
 if ($gradMonth < 1 || $gradMonth > 12 || $gradYear < 1900) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid graduation date']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Invalid graduation date'], 400);
 }
 
 // --- Current and limit dates ---
@@ -308,19 +168,15 @@ $maxFutureYear = $currentYear + 6;
 
 // --- Check for past date ---
 if ($gradYear < $currentYear || ($gradYear === $currentYear && $gradMonth < $currentMonth)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Graduation date cannot be in the past']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Graduation date cannot be in the past'], 400);
 }
 
 // --- Check for excessive future date ---
 if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > $currentMonth)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Graduation date cannot be more than 6 years in the future']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Graduation date cannot be more than 6 years in the future'], 400);
 }
 
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../database/db_connect.php';
 try {
     $conn = db();
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
@@ -338,8 +194,8 @@ try {
 
     // 2) Generate & hash password
     // SECURITY NOTE: Store only the salted password hash.
-    $tempPassword = generate_password(8);
-    $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+    $tempPassword = generate_password();
+    $hashPass     = hash_password($tempPassword);
 
     // 3) Insert user
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
@@ -382,7 +238,10 @@ try {
 
     try {
         dm_log_auth_event('create_account', $requestId, 'delivery_started', ['user_id' => $newUserId]);
-        $emailResult = send_welcome_gmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
+        $emailResult = dm_send_email(
+            ["firstName" => $firstName, "lastName" => $lastName, "email" => $email],
+            dm_transactional_welcome_package($firstName, $tempPassword)
+        );
         if (!$emailResult['ok']) {
             dm_log_auth_event('create_account', $requestId, 'delivery_failed', [
                 'user_id' => $newUserId,

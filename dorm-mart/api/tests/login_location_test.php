@@ -8,10 +8,17 @@ function check_location(bool $condition, string $message): void
 }
 
 $_SESSION = [];
+// Record lookups instead of throwing: an uncaught exception kills the script
+// before check_location can report which rule broke.
+$leaked = [];
+$recordLeak = static function (string $ip) use (&$leaked): array {
+    $leaked[] = $ip;
+    return ['success' => true, 'city' => 'Leaked'];
+};
 foreach (['127.0.0.1' => 'local', '::1' => 'local', '::ffff:127.0.0.1' => 'local', '192.168.1.2' => 'private', '10.0.0.1' => 'private', 'fc00::1' => 'private', 'Unknown' => 'unknown', '8.8.8.8' => 'public'] as $ip => $scope) {
     check_location(login_ip_scope($ip) === $scope, "scope for $ip");
     if ($scope !== 'public') {
-        check_location(login_ip_location($ip, static function () { throw new RuntimeException('Non-public IP sent to lookup'); }) === null, 'non-public location');
+        check_location(login_ip_location($ip, $recordLeak) === null && $leaked === [], "non-public $ip never sent to lookup");
     }
 }
 
@@ -35,5 +42,10 @@ $failure = static function () use (&$calls): array { $calls++; return ['success'
 check_location(login_ip_location('1.1.1.1', $failure) === null, 'provider failure handled');
 check_location(login_ip_location('1.1.1.1', $failure) === null && $calls === 2, 'failed lookups cached');
 check_location(login_ip_location('8.8.4.4', static fn() => ['success' => true, 'city' => [], 'region' => null]) === null, 'malformed provider fields ignored');
-check_location(login_ip_location('9.9.9.9', static function () { throw new RuntimeException('Lookup budget exceeded'); }) === null, 'history lookup budget bounded');
+$overBudget = false;
+$budgetLookup = static function () use (&$overBudget): array {
+    $overBudget = true;
+    return ['success' => true, 'city' => 'Buffalo'];
+};
+check_location(login_ip_location('9.9.9.9', $budgetLookup) === null && !$overBudget, 'history lookup budget bounded');
 echo "PASS: IP scopes, public lookup, header fallback, caching, failures, and lookup budget\n";

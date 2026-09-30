@@ -6,9 +6,10 @@ require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/moderation.php';
 
 init_json_endpoint();
-require_moderator();
+$moderatorId = require_moderator();
 
 try {
     $conn = db();
@@ -46,7 +47,15 @@ try {
     }
     $stmt->bind_param('s', $word);
     $stmt->execute();
+    $changed = $stmt->affected_rows > 0;
     $stmt->close();
+
+    if ($changed) {
+        moderation_log_action($conn, $moderatorId, $action === 'add' ? 'add_blocked_word' : 'remove_blocked_word', [
+            'target_type' => 'word',
+            'details' => $word,
+        ]);
+    }
 
     json_response(['success' => true, 'word' => $word, 'action' => $action]);
 } catch (Throwable $e) {

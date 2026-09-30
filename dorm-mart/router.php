@@ -12,16 +12,8 @@ $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $requestPath = parse_url($requestUri, PHP_URL_PATH);
 header_remove('X-Powered-By');
 
-function router_is_https_request(): bool
-{
-    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
-}
-
-function router_csp_header(): string
-{
-    return "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' wss:; frame-ancestors 'none';";
-}
+// Same HTTPS check and CSP the API sends, so the two cannot drift apart.
+require_once __DIR__ . '/api/security/transport.php';
 
 // Route API requests to PHP files
 if (strpos($requestPath, '/api/') === 0) {
@@ -137,7 +129,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
 header('Cross-Origin-Opener-Policy: same-origin');
 header_remove('X-Powered-By');
-if (router_is_https_request()) {
+if (is_https_request()) {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 }
 
@@ -175,7 +167,7 @@ if ($resolvedBuildPath !== false
 
     // CSP on HTML responses; JS/CSS/fonts get cache headers instead
     if ($extLower === 'html') {
-        header('Content-Security-Policy: ' . router_csp_header());
+        header('Content-Security-Policy: ' . security_csp_header());
     } elseif (in_array($extLower, ['js', 'css', 'woff2', 'woff', 'ttf'], true)) {
         header('Cache-Control: public, max-age=31536000, immutable');
     }
@@ -193,7 +185,7 @@ if ($resolvedBuildPath !== false
 $indexPath = __DIR__ . '/build/index.html';
 if (file_exists($indexPath)) {
     header('Content-Type: text/html');
-    header('Content-Security-Policy: ' . router_csp_header());
+    header('Content-Security-Policy: ' . security_csp_header());
     readfile($indexPath);
     exit;
 }

@@ -2,6 +2,7 @@
 // Session + persistent login helpers
 
 require_once __DIR__ . '/device_history.php';
+require_once __DIR__ . '/../security/transport.php';
 
 const REMEMBER_COOKIE = 'remember_token';
 const REMEMBER_TTL_DAYS = 7; // persistent login length
@@ -14,12 +15,10 @@ function auth_boot_session(): void
   ini_set('session.use_strict_mode', '1');
   ini_set('session.cookie_httponly', '1');
 
-  $secure = auth_is_https_request();
-
   session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'secure'   => $secure,
+    'secure'   => is_https_request(),
     'httponly' => true,
     'samesite' => 'Lax', // if your frontend is cross-site XHR, set 'None' + secure=true
   ]);
@@ -36,13 +35,24 @@ function regenerate_session_on_login(): void
   unset($_SESSION['csrf_token']);
 }
 
-function auth_is_https_request(): bool
+/* ---------- Persistent login ("remember me") ---------- */
+
+/** The one place the remember-me cookie's flags are set. Pass an expiry in the past to clear it. */
+function set_remember_cookie(string $value, int $expires): void
 {
-  return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-    || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+  setcookie(REMEMBER_COOKIE, $value, [
+    'expires'  => $expires,
+    'path'     => '/',
+    'secure'   => is_https_request(),
+    'httponly' => true,
+    'samesite' => 'Lax', // see comment in auth_boot_session
+  ]);
 }
 
-/* ---------- Persistent login ("remember me") ---------- */
+function remember_cookie_expiry(): int
+{
+  return time() + REMEMBER_TTL_DAYS * 24 * 60 * 60;
+}
 
 function issue_remember_cookie(int $userId): void
 {
@@ -57,14 +67,7 @@ function issue_remember_cookie(int $userId): void
   $stmt->close();
   $conn->close();
 
-  $secure = auth_is_https_request();
-  setcookie(REMEMBER_COOKIE, $userId . ':' . $token, [
-    'expires'  => time() + REMEMBER_TTL_DAYS * 24 * 60 * 60,
-    'path'     => '/',
-    'secure'   => $secure,
-    'httponly' => true,
-    'samesite' => 'Lax', // see comment above
-  ]);
+  set_remember_cookie($userId . ':' . $token, remember_cookie_expiry());
 }
 
 function clear_remember_cookie(?int $userId = null): void
@@ -80,13 +83,7 @@ function clear_remember_cookie(?int $userId = null): void
     $conn->close();
   }
   // clear client cookie
-  setcookie(REMEMBER_COOKIE, '', [
-    'expires'  => time() - 3600,
-    'path'     => '/',
-    'secure'   => auth_is_https_request(),
-    'httponly' => true,
-    'samesite' => 'Lax',
-  ]);
+  set_remember_cookie('', time() - 3600);
 }
 
 /**
@@ -145,14 +142,7 @@ function ensure_session(): void
   $conn->close();
   if (!$rotated) return;
 
-  $secure = auth_is_https_request();
-  setcookie(REMEMBER_COOKIE, $uid . ':' . $newToken, [
-    'expires'  => time() + REMEMBER_TTL_DAYS * 24 * 60 * 60,
-    'path'     => '/',
-    'secure'   => $secure,
-    'httponly' => true,
-    'samesite' => 'Lax',
-  ]);
+  set_remember_cookie($uid . ':' . $newToken, remember_cookie_expiry());
 }
 
 /** Require auth (calls ensure_session) */

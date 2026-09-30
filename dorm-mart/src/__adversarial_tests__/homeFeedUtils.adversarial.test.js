@@ -25,17 +25,27 @@ describe("home feed utility boundaries", () => {
     expect(item.createdAtTs).toBe(0);
   });
 
-  test("groups interested-category feed without duplicating visible items into explore", () => {
+  test("explore includes every listing, including ones matching the user's interests", () => {
     const items = [
       { id: 1, category: "Books", tags: ["Books"], createdAtTs: 3 },
       { id: 2, category: "Tech", tags: ["Tech"], createdAtTs: 2 },
       { id: 3, category: "Kitchen", tags: ["Kitchen"], createdAtTs: 1 },
     ];
 
-    const feed = buildHomeFeed(items, ["Books"], 30);
+    const feed = buildHomeFeed(items, 30);
 
-    expect(feed.itemsByInterest.Books.map((item) => item.id)).toEqual([1]);
-    expect(feed.exploreItems.map((item) => item.id)).not.toContain(1);
+    expect(feed.exploreItems.map((item) => item.id).sort()).toEqual([1, 2, 3]);
+  });
+
+  test("explore keeps the given order when only the limit changes", () => {
+    const items = Array.from({ length: 40 }, (_, i) => ({ id: i + 1 }));
+    const order = [...items].reverse();
+
+    const small = buildHomeFeed(items, 30, order).exploreItems.map((item) => item.id);
+    const large = buildHomeFeed(items, 40, order).exploreItems.map((item) => item.id);
+
+    expect(large.slice(0, small.length)).toEqual(small);
+    expect(small[0]).toBe(40);
   });
 
   test("ranks the For You feed by recommendation score without requiring interests", () => {
@@ -45,7 +55,7 @@ describe("home feed utility boundaries", () => {
       { id: 3, recommendationScore: 8, createdAtTs: 4 },
     ];
 
-    const feed = buildHomeFeed(items, [], 30);
+    const feed = buildHomeFeed(items, 30);
 
     expect(feed.forYouItems.map((item) => item.id)).toEqual([3, 2, 1]);
   });

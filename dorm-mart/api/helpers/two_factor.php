@@ -2,16 +2,37 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/promo_email.php';
+require_once __DIR__ . '/email.php';
 
 const TWO_FACTOR_CODE_TTL_SECONDS = 600;
 const TWO_FACTOR_MAX_ATTEMPTS = 5;
 
 // How often a login may mint and email a fresh verification code. Set high enough
 // that a genuine user retrying a mistyped code or a slow inbox never notices.
+// Counted per account AND client IP, so someone who only knows the password
+// cannot spend the owner's allowance and lock them out of receiving codes.
 const TWO_FACTOR_MAX_CHALLENGES = 5;
 const TWO_FACTOR_CHALLENGE_WINDOW_MINUTES = 15;
 const TWO_FACTOR_CHALLENGE_LOCKOUT_MINUTES = 15;
+// Account-wide ceiling across all IPs: still bounds inbox flooding and the total
+// number of codes an attacker can guess at.
+const TWO_FACTOR_MAX_CHALLENGES_PER_ACCOUNT = 20;
+const TWO_FACTOR_ACCOUNT_WINDOW_MINUTES = 60;
+
+// Turning 2FA on sends a confirmation email. Toggling it off and on again
+// would otherwise send one every time, so cap those emails per account.
+const TWO_FACTOR_ENABLE_EMAILS_PER_WINDOW = 3;
+const TWO_FACTOR_ENABLE_WINDOW_MINUTES = 60;
+const TWO_FACTOR_ENABLE_LOCKOUT_MINUTES = 60;
+
+/** Throttle buckets for issuing codes: [this client, the whole account]. */
+function two_factor_issue_keys(int $userId): array
+{
+    return [
+        scoped_rate_limit_key('two_factor_issue_ip:' . rate_limit_client_ip(), $userId),
+        scoped_rate_limit_key('two_factor_issue', $userId),
+    ];
+}
 
 function create_two_factor_challenge(int $userId, string $theme): string
 {
@@ -42,7 +63,7 @@ function mask_two_factor_email(string $email): string
 
 function send_two_factor_email(array $user, array $package): array
 {
-    return send_promo_welcome_email([
+    return dm_send_email([
         'firstName' => (string)($user['first_name'] ?? ''),
         'lastName' => (string)($user['last_name'] ?? ''),
         'email' => (string)($user['email'] ?? ''),

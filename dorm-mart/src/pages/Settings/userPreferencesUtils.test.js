@@ -8,7 +8,13 @@ describe("isValidContactPhone", () => {
     },
   );
 
-  it.each(["1", "+", "((((1", "716555123", "2716555123 4", "716-555-12345", "call me"])(
+  it("treats a missing value as blank", () => {
+    expect(isValidContactPhone(null)).toBe(true);
+  });
+
+  // Ten valid digits with a stray character on either end: only the character
+  // check can reject these, so both regex anchors are pinned.
+  it.each(["1", "+", "((((1", "716555123", "2716555123 4", "716-555-12345", "call me", "7165551234x", "x7165551234"])(
     "rejects %p",
     (value) => {
       expect(isValidContactPhone(value)).toBe(false);
@@ -36,6 +42,25 @@ describe("preferenceChanges", () => {
       contactPhone: "(716) 555-1234",
       interests: ["Books", "Electronics"],
     });
+  });
+
+  it("sends a change to interests alone, including a reorder", () => {
+    expect(preferenceChanges(saved, { ...saved, interests: ["Books"] })).toMatchObject({
+      interests: ["Books"],
+    });
+    expect(
+      preferenceChanges(saved, { ...saved, interests: ["Electronics", "Books"] }),
+    ).toMatchObject({ interests: ["Electronics", "Books"] });
+    // Same length and first item, different second item.
+    expect(
+      preferenceChanges(saved, { ...saved, interests: ["Books", "Furniture"] }),
+    ).toMatchObject({ interests: ["Books", "Furniture"] });
+  });
+
+  it("sends the phone number trimmed", () => {
+    expect(
+      preferenceChanges(saved, { ...saved, contactPhone: " (716) 555-9999 " }),
+    ).toMatchObject({ contactPhone: "(716) 555-9999" });
   });
 
   it("never includes theme, which the theme hook saves on its own", () => {
