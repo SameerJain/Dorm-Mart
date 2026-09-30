@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
-import { csrfFetch } from "../../../utils/csrfFetch";
+import { apiGetJson, csrfPostJson } from "../../../utils/apiClient";
 import logger from "../../../utils/logger";
 import { useSubmitLock } from "../../../hooks/useSubmitLock";
 
@@ -23,17 +23,11 @@ export default function useWishlistStatus({
     const controller = new AbortController();
     (async () => {
       try {
-        const response = await fetch(
+        const json = await apiGetJson(
           `${API_BASE}/wishlist/check_wishlist_status.php?product_id=${encodeURIComponent(productId)}`,
-          {
-            signal: controller.signal,
-            credentials: "include",
-          },
+          { signal: controller.signal },
         );
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const json = await response.json();
-        if (json.success) {
+        if (json?.success) {
           setIsInWishlist(json.in_wishlist || false);
         }
       } catch (error) {
@@ -57,25 +51,8 @@ export default function useWishlistStatus({
         ? `${API_BASE}/wishlist/remove_from_wishlist.php`
         : `${API_BASE}/wishlist/add_to_wishlist.php`;
 
-      const response = await csrfFetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          product_id: Number(productId),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const json = await response.json();
-      if (json.success) {
+      const json = await csrfPostJson(endpoint, { product_id: Number(productId) });
+      if (json?.success) {
         setIsInWishlist(!isInWishlist);
       } else {
         throw new Error(json.error || "Failed to update wishlist");

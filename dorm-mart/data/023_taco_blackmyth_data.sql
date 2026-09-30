@@ -36,11 +36,7 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Kitchen', 'Food'),
   'North Campus',
   'Like New',
-  'Fresh taco, made to order rather than sitting around waiting for a buyer. Ask about the specific fillings and toppings before ordering, since meat, beans, cheese, salsa, and vegetables can all vary and I do not want to assume what you are expecting to get.
-
-Let me know about any allergies or dietary restrictions ahead of time so I can actually accommodate them properly instead of guessing at the last minute. This is food meant to be eaten fresh, so plan on picking it up and eating it right away rather than letting it sit around in a bag between classes.
-
-$14.99, would consider a trade for another quick meal instead of cash. Can meet on campus at a time that works for both of us, ideally somewhere close to wherever it gets made so it does not sit around getting cold.',
+  'fresh taco made to order, not sitting around waiting for a buyer. ask me about fillings and toppings before ordering since meat, beans, cheese, salsa and veggies can all vary and i don''t want to guess what you''re expecting. tell me about allergies or dietary stuff ahead of time too. it''s meant to be eaten right away so plan on picking it up and eating it, not letting it sit in a bag between classes. $14.99, would trade for another quick meal. we can meet on campus somewhere close to where it gets made so it doesn''t go cold',
   JSON_ARRAY('/images/taco-image.webp'),
   14.99,
   'Active',
@@ -78,14 +74,16 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Games', 'Gaming', 'Digital'),
   'North Campus',
   'Excellent',
-  'If you like learning a boss''s attack patterns and coming back for another attempt instead of brute forcing every fight, that is a big part of what you are getting here. Black Myth: Wukong for PS5, disc copy, tested and confirmed working with no read errors.
+  'If you like learning a boss''s attack patterns and coming back for another try instead of brute forcing every fight, that''s a big part of what you''re getting here. Black Myth: Wukong for PS5, disc copy, tested and working with no read errors.
 
-You play as the Destined One in a story drawing heavily on Journey to the West, using staff combat and magical transformations through encounters with creatures pulled from Chinese mythology. The combat genuinely rewards paying attention to what each enemy is doing rather than pressing through every fight the same way.
+You play as the Destined One in a story that draws heavily on Journey to the West, using staff combat and magical transformations against creatures from Chinese mythology. It rewards paying attention to what each enemy is doing.
 
-Confirm your PS5 has a disc drive before buying, since the digital only version obviously will not work with a physical disc. No DLC, bonus content, or extra codes included, just the base game as originally released.
-
-$80, open to offers. Can meet on campus, and I am happy to answer questions about how far I got or what to expect from specific sections.',
-  JSON_ARRAY('/images/black-myth-wukong-image.jpg'),
+Need a PS5 with a disc drive, the digital only console won''t read it. Base game only, no DLC or codes. $80, open to offers. Can meet on campus and I''m happy to tell you how far I got or what to expect from certain sections.',
+  JSON_ARRAY(
+    '/images/black-myth-wukong-image.jpg',
+    '/images/black-myth-wukong-image-2.jpg',
+    '/images/black-myth-wukong-image-3.jpg'
+  ),
   80,
   'Active',
   0,

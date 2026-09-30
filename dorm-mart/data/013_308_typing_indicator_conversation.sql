@@ -51,14 +51,15 @@ SELECT
   JSON_ARRAY('Electronics', 'Utility'),
   'North Campus',
   'Like New',
-  'Anker portable charger with PowerIQ fast charging, the kind of thing that has saved me more than once when every outlet in the library was already taken. It holds a charge well and has gotten my phone through a full day of classes plus a commute without needing a top up.
+  'Anker portable charger with PowerIQ fast charging, the thing that''s saved me more than once when every outlet in the library was taken. It holds a charge well and got my phone through a full day of classes plus a commute without a top up. Charging speed depends on your device and cable, and battery sizes vary a lot between phones, so I won''t promise a specific number of full charges. Charger only, no cable, so bring your own. Tested and works exactly as it should. Selling because I upgraded to a bigger capacity one and don''t need two.
 
-Charging speed depends on the device and cable you connect, so I am not promising a specific number of full charges since battery sizes vary a lot between phones. This listing is for the charger itself only, no cable included, so bring your own or plan to buy one separately.
-
-It has been tested and works exactly as it should, no slow charging or connection issues that I have noticed. Selling because I upgraded to a higher capacity charger and do not need two.
-
-$35, price is firm. Can meet on campus, and I am happy to demonstrate it charging before you buy if that would help.',
-  JSON_ARRAY('/images/anker-charger-product-image.jpg'),
+$35, price is firm. Can meet on campus and I''ll show it charging before you buy if that helps.',
+  JSON_ARRAY(
+    '/images/anker-charger-product-image.jpg',
+    '/images/anker-charger-product-image-2.jpg',
+    '/images/anker-charger-product-image-3.jpg',
+    '/images/anker-charger-product-image-4.jpg'
+  ),
   35.00,
   'Active',
   0,

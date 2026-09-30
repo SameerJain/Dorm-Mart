@@ -61,6 +61,41 @@ After this pass: PHP lint passes for 174 of 174 files, all 5 backend suites pass
 | M5 | God components: `ProductListingPage` (893 lines), `MyProfile` (829), `ChatContext` (824). | 7 | 5 | 7 | 4.1 | Same pattern as the earlier `SellerDashboardPage` split: page shell, feature hooks, and pure utils. Add tests first. |
 | M6 | 26 frontend files still call `fetch` directly instead of `apiClient.js`. | 6 | 4 | 6 | 4.0 | Migrate one flow per PR. `node scripts/refactor-audit.js` tracks the count. |
 
+## Code review pass (2026-09-30)
+
+A bug, security, and performance review ran after the quick wins. PHPStan (level 3, run once from outside the repo) found the first two items.
+
+### Bugs fixed
+
+| Finding | Where | How it was verified |
+|---|---|---|
+| The Accounts v2 webhook passed an undefined `$secret` to the SDK, so every genuine Stripe event was rejected as "Invalid webhook signature" (400). Seller readiness changes never synced, and payment fallbacks never applied. This is latent while `dm_payments_enabled()` returns `false`. | `payments/webhook_processor.php` | A signed probe against the original line got 400; against the fix, the signature was accepted. Forged signatures still get 400. |
+| The same handler called `fetchRelatedObject()`, a full Stripe API round-trip, only to read the account id, then fetched the same account again. The id now comes from the notification. | `payments/webhook_processor.php` | Same probe. |
+| A receipt looked up by product id picked the product's latest confirm request, not the viewer's. A buyer whose exchange fell through got 403 on their own receipt once someone else bought the item. | `receipt/view_receipt.php` | New integration check, which fails against the old query. |
+| A listing edit re-locked the row but never re-checked it. If the item sold or was deleted between the first check and the lock, the edit reported success, sent wishlist notifications, and deleted media still used by the sold listing and its receipt. | `seller_dashboard/product_listing.php` | Reasoned from the code; the race can't be reproduced under Windows `php -S`. |
+| A double-clicked wishlist add returned 500 on the duplicate key instead of "already in wishlist". It now uses `INSERT IGNORE` plus `affected_rows`. | `wishlist/add_to_wishlist.php` | Integration check for the sequential case. |
+| Chat media held a MySQL connection open for the whole file stream (a 25 MB video can take minutes). It also opened the connection before authenticating, and its JSON errors had no JSON content type. | `chat/serve_chat_image.php` | Integration check, which fails against the pre-session code. |
+| `listing_delete` skipped the chat closure message and the `item_deleted` flag if a statement failed to prepare, then deleted the listing anyway. | `helpers/listing_reports.php` | Integration suite. |
+| `useCurrentUserId` and `LoginPage` called `me.php` directly, bypassing `fetchMe()`. That helper shares one request across callers, because parallel calls race on the rotating remember-me cookie. | two frontend files | Jest. |
+| A chat effect disabled the textarea through `taRef`, but a closed chat doesn't render the textarea, so the code never ran. Only clearing the draft did anything. This was also the build's only lint warning. | `Chat/ChatPage.jsx` | The build now compiles with no warnings. |
+
+### Repetition removed
+
+- `auth_reject()` replaces five copies of the 401/403 block in `auth_handle.php`.
+- `router_api_error()` and `router_not_found()` replace eight response blocks in `router.php`. The three routability checks became one condition.
+- `media_fail()` replaces nine exits in `media/image.php`. Its URL branches now only choose a directory.
+- `listing_cap_error()` and `listing_cap_active_count()` replace three copies of the cap message and two copies of the count query.
+- `price_has_blocked_digits()` replaces the blocked-price loop copied into two endpoints (with new unit checks).
+- `product_listing.php` and `get_buyer_reviews.php` now use the standard bootstrap and `json_response`.
+- `useCategories()` replaces two separate category loaders.
+- Six frontend GETs now use `apiGetJson` or `csrfPostJson`.
+
+### Still open
+
+- `useReceiptDetail` still calls `fetch` directly, because `ViewReceiptPage` branches on the `"HTTP …"` error prefix. Migrate both together.
+- `composer.json` allows PHP 8.0, where mysqli errors are silent by default, but the code assumes exceptions. Raise the floor to 8.1, or set the report mode in `db()`. Three endpoints deliberately switch reporting off and would need review.
+- The system chat messages in `delete_account`, `expire_stale`, and `ensure_conversation` use fixed sender names and bulk `INSERT … SELECT`, so they don't fit `chat_insert_system_message()`.
+
 ## Major and infrastructure work (strategic)
 
 Ranked with effort ignored:

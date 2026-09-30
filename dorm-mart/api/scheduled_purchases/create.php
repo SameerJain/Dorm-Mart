@@ -249,13 +249,8 @@ try {
         if ($negotiatedPrice > 9999.99) {
             json_response(['success' => false, 'error' => 'Negotiated price must be $9999.99 or less'], 400);
         }
-        // Check the string as entered, like the listing form and the frontend do;
-        // a float cast drops trailing zeros and lets "4.20" through as "4.2".
-        $priceDigitsOnly = preg_replace('/[^0-9]/', '', $negotiatedPriceString);
-        foreach (['80085','8008','5318008','42069','66666','6969','42042','1488','420','666','69','67'] as $_m) {
-            if (strpos($priceDigitsOnly, $_m) !== false) {
-                json_response(['success' => false, 'error' => 'Invalid price value'], 400);
-            }
+        if (price_has_blocked_digits($negotiatedPriceString)) {
+            json_response(['success' => false, 'error' => 'Invalid price value'], 400);
         }
     }
 

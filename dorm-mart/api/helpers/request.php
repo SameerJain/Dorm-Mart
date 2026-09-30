@@ -150,6 +150,24 @@ if (!function_exists('require_product_id')) {
     }
 }
 
+if (!function_exists('price_has_blocked_digits')) {
+    /**
+     * Whether a price, as the user typed it, contains a joke number we refuse.
+     * Checked on the string so "4.20" is caught even though (float) drops the 0.
+     * Keep in sync with MEME_PRICE_SEQUENCES in src/utils/priceValidation.js.
+     */
+    function price_has_blocked_digits(string $price): bool
+    {
+        $digits = preg_replace('/[^0-9]/', '', $price);
+        foreach (['80085', '8008', '5318008', '42069', '66666', '6969', '42042', '1488', '420', '666', '69', '67'] as $sequence) {
+            if (strpos($digits, $sequence) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 if (!function_exists('validate_password_policy')) {
     function validate_password_policy(string $password): bool
     {

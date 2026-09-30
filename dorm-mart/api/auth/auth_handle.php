@@ -3,9 +3,11 @@
 
 require_once __DIR__ . '/device_history.php';
 require_once __DIR__ . '/../security/transport.php';
+require_once __DIR__ . '/../helpers/response.php';
 
 const REMEMBER_COOKIE = 'remember_token';
 const REMEMBER_TTL_DAYS = 7; // persistent login length
+const DEVICE_HISTORY_REFRESH_SECONDS = 300;
 
 function auth_boot_session(): void
 {
@@ -145,35 +147,36 @@ function ensure_session(): void
   set_remember_cookie($uid . ':' . $newToken, remember_cookie_expiry());
 }
 
+/**
+ * Send an auth failure in the shape clients expect, then stop.
+ *
+ * @return never
+ */
+function auth_reject(int $status, string $error, array $extra = []): void
+{
+  json_response(['ok' => false, 'success' => false, 'error' => $error] + $extra, $status);
+}
+
 /** Require auth (calls ensure_session) */
 function require_login(): int
 {
   ensure_session();
   if (empty($_SESSION['user_id'])) {
-    header('Content-Type: application/json; charset=utf-8');
-    http_response_code(401);
-    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Not authenticated']);
-    exit;
+    auth_reject(401, 'Not authenticated');
   }
   $userId = (int) $_SESSION['user_id'];
   $account = auth_account($userId);
   if (!$account || !isset($_SESSION['auth_version'])
       || (int)$_SESSION['auth_version'] !== (int)$account['auth_version']) {
     logout_destroy_session();
-    header('Content-Type: application/json; charset=utf-8');
-    http_response_code(401);
-    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Not authenticated']);
-    exit;
+    auth_reject(401, 'Not authenticated');
   }
   if ((int)$account['is_banned'] === 1) {
     logout_destroy_session();
-    header('Content-Type: application/json; charset=utf-8');
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Account suspended']);
-    exit;
+    auth_reject(403, 'Account suspended');
   }
   $lastTouched = (int)($_SESSION['device_history_touched_at'] ?? 0);
-  if (time() - $lastTouched >= 300) {
+  if (time() - $lastTouched >= DEVICE_HISTORY_REFRESH_SECONDS) {
     record_login_device($userId);
   }
   return $userId;
@@ -201,10 +204,7 @@ function require_moderator(): int
   $userId = require_login();
   $account = auth_account($userId);
   if (($account['role'] ?? 'user') !== 'moderator') {
-    header('Content-Type: application/json; charset=utf-8');
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Moderator access required']);
-    exit;
+    auth_reject(403, 'Moderator access required');
   }
   return $userId;
 }
@@ -266,14 +266,6 @@ function validate_csrf_token(string $token): bool {
 
 function require_csrf_token($token): void {
   if (!is_string($token) || $token === '' || !validate_csrf_token($token)) {
-    header('Content-Type: application/json; charset=utf-8');
-    http_response_code(403);
-    echo json_encode([
-      'ok' => false,
-      'success' => false,
-      'error' => 'CSRF token validation failed',
-      'code' => 'csrf_invalid',
-    ]);
-    exit;
+    auth_reject(403, 'CSRF token validation failed', ['code' => 'csrf_invalid']);
   }
 }

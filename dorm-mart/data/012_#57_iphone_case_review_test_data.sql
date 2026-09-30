@@ -86,12 +86,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Electronics'),
   'North Campus',
   'Like New',
-  'iPhone case with barely any wear on the grip or edges, since it spent most of its time in a drawer rather than actually on a phone. The most important thing here is getting the exact fit right, so please compare your specific iPhone model against this case before buying rather than assuming similar looking phones share the same camera cutout or button placement.
+  'Barely worn iPhone case, the grip and edges look almost new since it spent most of its time in a drawer. Please check your exact iPhone model against it before buying, similar looking phones don''t always share the same camera cutout or button placement.
 
-This listing is for the case only, no phone, cable, or screen protector included. I would not treat any case as a guarantee against drop damage, but it does add real grip and some corner protection compared to using the phone bare, which is really the main reason I bought it in the first place.
-
-$15, and I am not looking to negotiate much on something this small, but ask if you want to compare it against your phone in person before deciding. Can meet on campus.',
-  JSON_ARRAY('/images/iphone-case-product-image.jpg'),
+Case only, no phone, cable, or screen protector. It won''t make your phone drop proof but it adds real grip and some corner protection over going bare. $15, not really negotiating on something this small, but ask if you want to compare it against your phone in person. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/iphone-case-product-image.jpg',
+    '/images/iphone-case-product-image-2.jpg'
+  ),
   15.00,
   'Sold',
   0,

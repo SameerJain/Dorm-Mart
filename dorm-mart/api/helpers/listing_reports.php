@@ -64,18 +64,22 @@ function listing_delete(mysqli $conn, int $productId, int $sellerId, array $item
             'INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata)
              VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
-        if ($msgStmt) {
-            $msgStmt->bind_param('iiissss', $convId, $user1Id, $user2Id, $user1Fname, $user2Fname, $chatMessage, $metadata);
-            $msgStmt->execute();
-            $msgStmt->close();
+        // Throw rather than skip: the caller's transaction must not delete the
+        // listing while leaving its chats open with no closure notice.
+        if (!$msgStmt) {
+            throw new RuntimeException('Failed to prepare listing deletion message');
         }
+        $msgStmt->bind_param('iiissss', $convId, $user1Id, $user2Id, $user1Fname, $user2Fname, $chatMessage, $metadata);
+        $msgStmt->execute();
+        $msgStmt->close();
 
         $updateStmt = $conn->prepare('UPDATE conversations SET item_deleted = TRUE WHERE conv_id = ?');
-        if ($updateStmt) {
-            $updateStmt->bind_param('i', $convId);
-            $updateStmt->execute();
-            $updateStmt->close();
+        if (!$updateStmt) {
+            throw new RuntimeException('Failed to prepare conversation close');
         }
+        $updateStmt->bind_param('i', $convId);
+        $updateStmt->execute();
+        $updateStmt->close();
     }
 
     $stmt = $conn->prepare('DELETE FROM INVENTORY WHERE product_id = ? AND seller_id = ?');

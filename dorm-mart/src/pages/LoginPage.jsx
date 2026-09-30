@@ -6,6 +6,7 @@ import PreLoginNavLinks from "../components/PreLoginNavLinks";
 import { THEME_CACHE_KEY, THEME_PENDING_KEY } from "../utils/loadTheme.js";
 import { API_BASE } from "../utils/apiConfig";
 import { clearCsrfToken } from "../utils/csrfFetch";
+import { fetchMe } from "../utils/handleAuth";
 import { useEmailPolicy } from "../hooks/useEmailPolicy";
 import { useSubmitLock } from "../hooks/useSubmitLock";
 import TurnstileWidget from "../components/TurnstileWidget";
@@ -172,18 +173,8 @@ function LoginPage() {
           } catch (_) {}
 
           try {
-            const meRes = await fetch(`${API_BASE}/auth/me.php`, {
-              method: "GET",
-              credentials: "include",
-            });
-            if (meRes.ok) {
-              const meJson = await meRes.json();
-              const userId = meJson.user_id;
-              if (userId) {
-                const userThemeKey = `userTheme_${userId}`;
-                localStorage.setItem(userThemeKey, data.theme);
-              }
-            }
+            const { user_id: userId } = await fetchMe();
+            if (userId) localStorage.setItem(`userTheme_${userId}`, data.theme);
           } catch (e) {
             // User not authenticated or error - continue anyway
           }

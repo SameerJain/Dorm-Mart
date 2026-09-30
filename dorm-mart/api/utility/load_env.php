@@ -26,7 +26,15 @@ function load_env(): void
             continue;
         }
 
-        putenv($key . '=' . dm_clean_env_value($value));
+        // Threaded Apache shares one process environment across requests, and PHP
+        // reverts putenv() values when any request ends, so parallel requests race
+        // and lose DB_NAME. apache_setenv() is per-request and getenv() reads it.
+        $cleaned = dm_clean_env_value($value);
+        if (function_exists('apache_setenv')) {
+            apache_setenv($key, $cleaned);
+        } else {
+            putenv($key . '=' . $cleaned);
+        }
     }
 }
 

@@ -71,26 +71,9 @@ export default function ChatPage() {
     (c) => c.conv_id === activeConvId,
   );
 
-  /** Clear draft when item is deleted and prevent any input */
+  // A closed chat replaces the textarea with a notice, so only the draft needs clearing.
   useEffect(() => {
-    if (activeConversation?.item_deleted) {
-      // Clear draft immediately
-      setDraft("");
-      // Clear textarea value and remove focus
-      if (taRef.current) {
-        taRef.current.value = "";
-        taRef.current.blur();
-        // Force the textarea to be disabled
-        taRef.current.disabled = true;
-        taRef.current.readOnly = true;
-      }
-    } else {
-      // Re-enable if item is not deleted
-      if (taRef.current) {
-        taRef.current.disabled = false;
-        taRef.current.readOnly = false;
-      }
-    }
+    if (activeConversation?.item_deleted) setDraft("");
   }, [activeConversation?.item_deleted]);
 
   /** Compute header label for the active chat */

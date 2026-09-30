@@ -172,12 +172,11 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Kitchen', 'Utility'),
   'North Campus',
   'Like New',
-  'Scrub Daddy sponge, barely used since I bought a pack and only needed one at a time. The texture changes with water temperature: cold water firms it up for scrubbing baked on messes, and warm water softens it for everyday dishes.
-
-This listing is just for the sponge shown in the photo, no cleaning spray or other supplies included. It works on most kitchen surfaces, though I would check care instructions before using it on anything with a delicate finish like nonstick coating. Small enough to keep by a shared sink without adding clutter to a crowded counter, and it rinses clean without holding onto smells the way some sponges do.
-
-Price is firm at $10. Happy to meet up on campus for a quick handoff, no need to schedule anything elaborate for something this small and easy to carry.',
-  JSON_ARRAY('/images/scrub-daddy.jpg'),
+  'Scrub Daddy sponge, barely used since I bought a pack and only needed one at a time. Firms up in cold water for baked on messes and softens in warm water for regular dishes. Just the sponge in the photo, no spray or other supplies. $10 firm, happy to meet on campus.',
+  JSON_ARRAY(
+    '/images/scrub-daddy.jpg',
+    '/images/scrub-daddy-2.jpg'
+  ),
   10.00,
   'Active',
   0,
@@ -207,14 +206,20 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Kitchen', 'Utility'),
   'North Campus',
   'Good',
-  'This air fryer got a lot of use for quick meals between classes, mostly fries, chicken, and reheating food I did not feel like microwaving. It still heats up fast and works exactly the way it should, no weird noises or slow starts.
+  'Air fryer that handled most of my between-class meals (fries, chicken, reheating stuff I didn''t feel like microwaving). Still heats up fast, no weird noises or slow starts.
 
-There are a few marks and some scuffing on the outside from regular use, which is why I am not calling it like new, but nothing about that affects performance. The basket and tray are both included, along with the base unit. No extra racks or attachments beyond what came in the box originally.
+- Basket, tray, and base unit included
+- Some scuffs and marks on the outside from regular use, doesn''t affect how it works
+- Compact, so smaller batches only. Not ideal if you cook for a group
+- No extra racks or attachments beyond what came in the box
 
-The compact size was useful when I did not have much counter space, though it also means you are cooking smaller batches rather than a full family meal at once. If you usually cook for several people, keep that in mind before buying. Selling because I am downsizing my kitchen stuff before moving out at the end of the semester.
-
-Open to reasonable offers on the $50 price. Can meet on campus, and I am happy to walk through the controls in person when you pick it up.',
-  JSON_ARRAY('/images/air-fryer.jpg'),
+Selling because I''m downsizing my kitchen stuff before moving out at the end of the semester. $50 but open to reasonable offers. Can meet on campus and show you the controls when you pick it up.',
+  JSON_ARRAY(
+    '/images/air-fryer.jpg',
+    '/images/air-fryer-2.jpg',
+    '/images/air-fryer-3.jpg',
+    '/images/air-fryer-4.jpg'
+  ),
   50.00,
   'Active',
   0,
@@ -244,12 +249,18 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Decor', 'Games'),
   'North Campus',
   'Like New',
-  'Pim plushie from Smiling Friends, the kind of face that looks unimpressed no matter how you pose it on a shelf. No rips, flat spots, or loose stitching anywhere on the plush, and the color is still solid without any fading from sunlight.
-
-This listing is just for the plush itself, no display stand, no other characters, nothing extra bundled in beyond what is shown in the photo. It would work as a shelf decoration next to other figures, or as a gift for a friend who actually watches the show, since the appeal here is really just being Pim.
-
-Open to trades if you have something a Smiling Friends fan would appreciate instead of cash. Otherwise $20, and I can meet up on campus whenever works for you, no rush on timing. Bring a bag if you want to keep it clean on the way home.',
-  JSON_ARRAY('/images/pim-plushie.jpg'),
+  'Pim plushie from Smiling Friends
+looks unimpressed no matter how you pose him on a shelf
+no rips, flat spots, or loose stitching and the color hasn''t faded
+plush only, no stand or other characters
+$20 or trade me something a Smiling Friends fan would like
+can meet on campus whenever, no rush',
+  JSON_ARRAY(
+    '/images/pim-plushie.jpg',
+    '/images/pim-plushie-2.jpg',
+    '/images/pim-plushie-3.jpg',
+    '/images/pim-plushie-4.jpg'
+  ),
   20.00,
   'Active',
   1,

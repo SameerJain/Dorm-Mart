@@ -44,12 +44,12 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Health', 'Dorm Essentials'),
   'North Campus',
   'Like New',
-  'Blue water bottle, no leaks, no cracks, and the cap still seals tightly. I used it a handful of times before switching to a different bottle, so it has spent most of its life sitting in a cabinet rather than actually being used daily.
-
-I am not claiming a specific capacity or insulation time, so if either of those matters for your routine, ask before buying and I will measure it for you. I have not run it through a dishwasher, so I can only vouch for hand washing, not how it holds up on a heat cycle. The bottle in the photo is exactly the one being sold, nothing else included.
-
-Price is $15 but I am open to a reasonable offer, especially if you are also grabbing something else from my listings. Easy to meet up on campus since it is small enough to hand off between classes without scheduling anything in advance.',
-  JSON_ARRAY('/images/blue-water-bottle.jpg'),
+  'Blue water bottle with no leaks, no cracks, and a cap that still seals tight. I only used it a handful of times before switching to a different one, so it mostly lived in a cabinet. I haven''t checked the exact capacity or how long it keeps drinks cold, so ask and I''ll measure it for you. Hand wash only as far as I know since it''s never been through a dishwasher. Just the bottle in the photo. $15, but I''ll take a reasonable offer, especially if you grab something else from my listings. Small enough to hand off between classes.',
+  JSON_ARRAY(
+    '/images/blue-water-bottle.jpg',
+    '/images/blue-water-bottle-2.jpg',
+    '/images/blue-water-bottle-3.jpg'
+  ),
   15.00,
   'Active',
   0,
@@ -79,12 +79,14 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('School', 'Dorm Essentials'),
   'North Campus',
   'Good',
-  'White and blue backpack with several separate compartments, which was genuinely useful for keeping notebooks apart from chargers and pens instead of everything sliding around together at the bottom of one big pocket. It is in good condition, meaning there is some visible wear on the lighter fabric from actually being carried around campus, not just sitting in a closet unused.
+  'White and blue backpack with a bunch of separate compartments, which was actually useful for keeping notebooks away from chargers and pens instead of everything sliding to the bottom of one big pocket. Good condition, meaning some visible wear on the lighter fabric from getting carried around campus, and the zippers all still glide smoothly with no broken pulls or stuck tracks.
 
-Zippers all still work smoothly, no broken pulls or stuck tracks anywhere on the bag. I would compare your laptop against the sleeve dimensions in the photos before buying, since I do not want to promise a fit based on screen size alone without you checking first. This is the bag by itself, nothing packed inside it.
-
-Selling because I switched to a different bag style for this semester. $25, open to offers, and happy to meet somewhere on campus at a time that works for you.',
-  JSON_ARRAY('/images/white-blue-backpack.jpg'),
+Compare your laptop to the sleeve dimensions in the photos before you buy, I don''t want to promise a fit based on screen size alone. Bag only, nothing packed inside. Switched to a different style this semester. $25, open to offers, and I can meet somewhere on campus that works for you.',
+  JSON_ARRAY(
+    '/images/white-blue-backpack.jpg',
+    '/images/white-blue-backpack-2.jpg',
+    '/images/white-blue-backpack-3.jpg'
+  ),
   25.00,
   'Active',
   0,

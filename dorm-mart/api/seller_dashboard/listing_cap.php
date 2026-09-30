@@ -19,6 +19,12 @@ function listing_cap_locked_active_count(mysqli $conn, int $sellerId, int $exclu
     $lock->store_result();
     $lock->close();
 
+    return listing_cap_active_count($conn, $sellerId, $excludeProductId);
+}
+
+/** Unlocked count, for a fast early rejection before any uploads are saved. */
+function listing_cap_active_count(mysqli $conn, int $sellerId, int $excludeProductId = 0): int
+{
     $stmt = $conn->prepare(
         "SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = 'Active' AND product_id != ?"
     );
@@ -27,4 +33,11 @@ function listing_cap_locked_active_count(mysqli $conn, int $sellerId, int $exclu
     $count = (int)$stmt->get_result()->fetch_assoc()['cnt'];
     $stmt->close();
     return $count;
+}
+
+/** @param string $action what the seller was trying to do, e.g. "creating a new one" */
+function listing_cap_error(string $action): string
+{
+    return 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER
+        . " active listings. Please deactivate or remove an existing listing before {$action}.";
 }

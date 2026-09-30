@@ -39,27 +39,21 @@ try {
         json_response(['success' => false, 'error' => 'Cannot add your own listing to wishlist'], 400);
     }
 
-    $checkWishlistStmt = $conn->prepare('SELECT wishlist_id FROM wishlist WHERE user_id = ? AND product_id = ?');
-    if (!$checkWishlistStmt) {
-        throw new RuntimeException('Failed to prepare wishlist check');
-    }
-    $checkWishlistStmt->bind_param('ii', $userId, $productId);
-    $checkWishlistStmt->execute();
-    $wishlistResult = $checkWishlistStmt->get_result();
-    if ($wishlistResult->num_rows > 0) {
-        json_response(['success' => false, 'error' => 'Product already in wishlist'], 400);
-    }
-    $checkWishlistStmt->close();
-
+    // Let the unique key decide duplicates, so a double-click gets a 400, not a 500.
     $conn->begin_transaction();
-    $stmt = $conn->prepare('INSERT INTO wishlist (user_id, product_id) VALUES (?, ?)');
+    $stmt = $conn->prepare('INSERT IGNORE INTO wishlist (user_id, product_id) VALUES (?, ?)');
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare insert');
     }
     $stmt->bind_param('ii', $userId, $productId);
     $stmt->execute();
+    $inserted = $stmt->affected_rows === 1;
     $wishlistId = $conn->insert_id;
     $stmt->close();
+    if (!$inserted) {
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'Product already in wishlist'], 400);
+    }
 
     $updateStmt = $conn->prepare('UPDATE INVENTORY SET wishlisted = wishlisted + 1 WHERE product_id = ?');
     if ($updateStmt) {

@@ -9,17 +9,23 @@ require_once __DIR__ . '/../helpers/image_upload.php';
 require_once __DIR__ . '/../helpers/file_stream.php';
 set_security_headers();
 set_secure_cors();
+
+/** @return never */
+function media_fail(int $status, string $message): void
+{
+    http_response_code($status);
+    exit($message);
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     header('Allow: GET');
-    http_response_code(405);
-    exit('Method Not Allowed');
+    media_fail(405, 'Method Not Allowed');
 }
 
 // Must match upload_profile_photo.php / product_listing.php: uploads honor DATA_UPLOADS_DIR.
 $imageDir = real_upload_path(data_images_dir());
 if ($imageDir === null) {
-    http_response_code(500);
-    exit('Image directory not found');
+    media_fail(500, 'Image directory not found');
 }
 
 function stream_media(string $path): void
@@ -33,8 +39,7 @@ function stream_media(string $path): void
         'video/mp4', 'video/webm', 'video/quicktime',
     ];
     if (!in_array($mime, $allowed, true)) {
-        http_response_code(404);
-        exit('Media not found');
+        media_fail(404, 'Media not found');
     }
 
     // Uploaded files get a random name and are never rewritten in place, so a
@@ -54,13 +59,11 @@ function media_path_in_root(string $root, string $filename): ?string
 // 1) ?file=filename.png
 if (isset($_GET['file']) && $_GET['file'] !== '') {
     if (!is_string($_GET['file'])) {
-        http_response_code(400);
-        exit('Invalid file');
+        media_fail(400, 'Invalid file');
     }
     $path = media_path_in_root($imageDir, $_GET['file']);
     if ($path === null) {
-        http_response_code(404);
-        exit('Image not found');
+        media_fail(404, 'Image not found');
     }
     stream_media($path);
 }
@@ -68,62 +71,30 @@ if (isset($_GET['file']) && $_GET['file'] !== '') {
 // 2) ?url=/data/images/filename.png OR /media/review-images/filename.jpg
 if (isset($_GET['url']) && $_GET['url'] !== '') {
     if (!is_string($_GET['url'])) {
-        http_response_code(400);
-        exit('Invalid url');
+        media_fail(400, 'Invalid url');
     }
-    $url = $_GET['url'];
+    $url = explode('?', $_GET['url'], 2)[0];
 
-    // strip query part if present
-    $qpos = strpos($url, '?');
-    if ($qpos !== false) {
-        $url = substr($url, 0, $qpos);
-    }
-
-    $path = null;
-
-    // Handle /images/ paths (profile photos and other images)
-    $prefix = '/images/';
-    if (str_starts_with($url, $prefix)) {
-        $file = substr($url, strlen($prefix));
-        $file = basename($file);
-        $path = media_path_in_root($imageDir, $file);
-    }
-    // Handle /data/images/ paths (legacy)
-    elseif (str_starts_with($url, '/data/images/')) {
-        $file = substr($url, strlen('/data/images/'));
-        $file = basename($file);
-        $path = media_path_in_root($imageDir, $file);
-    }
-    // Handle /media/review-images/ paths
-    elseif (str_starts_with($url, '/media/review-images/')) {
-        $file = basename(substr($url, strlen('/media/review-images/')));
-        $mediaRoot = real_upload_path(data_media_dir('review-images'));
-        $path = $mediaRoot !== null ? media_path_in_root($mediaRoot, $file) : null;
-    }
     // Private chat media is intentionally unavailable from this generic endpoint.
-    elseif (str_starts_with($url, '/media/chat-images/')
-        || str_starts_with($url, '/media/chat-attachments/')) {
-        http_response_code(404);
-        exit('Image not found');
+    if (str_starts_with($url, '/media/chat-images/') || str_starts_with($url, '/media/chat-attachments/')) {
+        media_fail(404, 'Image not found');
     }
-    // Handle other /media/ paths — basename() prevents traversal, realpath() prevents symlink escape
-    elseif (str_starts_with($url, '/media/')) {
-        $file = basename(substr($url, strlen('/media/')));
-        $mediaRoot = real_upload_path(data_media_dir());
-        $path = $mediaRoot !== null ? media_path_in_root($mediaRoot, $file) : null;
+
+    // The prefix only picks the directory. Only the file name is used, so
+    // basename() blocks traversal and media_path_in_root() blocks symlink escape.
+    if (str_starts_with($url, '/media/review-images/')) {
+        $root = real_upload_path(data_media_dir('review-images'));
+    } elseif (str_starts_with($url, '/media/')) {
+        $root = real_upload_path(data_media_dir());
+    } else {
+        $root = $imageDir; // /images/, legacy /data/images/, or a bare file name
     }
-    // Fallback: maybe someone passed just filename
-    else {
-        $file = basename($url);
-        $path = media_path_in_root($imageDir, $file);
-    }
+    $path = $root !== null ? media_path_in_root($root, basename($url)) : null;
 
     if ($path === null) {
-        http_response_code(404);
-        exit('Image not found');
+        media_fail(404, 'Image not found');
     }
     stream_media($path);
 }
 
-http_response_code(400);
-exit('Missing file or url');
+media_fail(400, 'Missing file or url');

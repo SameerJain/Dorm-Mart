@@ -86,12 +86,11 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Kitchen'),
   'North Campus',
   'Like New',
-  'Small rice cooker, works fine and still cooks a full pot of rice evenly without burning the bottom layer, which was my main worry buying used kitchen appliances in the first place. Barely used overall, mostly because I ended up eating out more than I expected to this semester.
-
-Comes with the inner cooking pot and the measuring cup that came with it originally, no extra accessories beyond that. I have not tested it with every type of rice, so results may vary slightly depending on what you are cooking and how much water you use relative to the markings inside.
-
-If you are living in campus housing, double check your building''s rules about kitchen appliances before buying, since some places restrict certain wattages. $25, price is firm, but I am happy to meet on campus at a time that works for you.',
-  JSON_ARRAY('/images/rice-cooker-product-image.jpg'),
+  'Small rice cooker that still cooks a full pot evenly without scorching the bottom layer, which was my main worry buying used. Barely used because I ended up eating out way more than I expected this semester. Comes with the inner pot and the measuring cup it originally shipped with, nothing else. I haven''t tried every kind of rice so results may vary depending on the type and how much water you use. Check your building''s rules on kitchen appliances before buying, some places restrict wattage. $25 firm, can meet on campus at a time that works for you.',
+  JSON_ARRAY(
+    '/images/rice-cooker-product-image.jpg',
+    '/images/rice-cooker-product-image-2.jpg'
+  ),
   25.00,
   'Sold',
   0,

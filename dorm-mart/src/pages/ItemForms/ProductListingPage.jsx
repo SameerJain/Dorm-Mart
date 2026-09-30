@@ -18,7 +18,7 @@ import ListingForm from "./components/ListingForm";
 import ImageCropperModal from "./components/ImageCropperModal";
 import ListingStatusBanners from "./components/ListingStatusBanners";
 import ListingSuccessModal from "./components/ListingSuccessModal";
-import useListingCategories from "./hooks/useListingCategories";
+import useCategories from "../../hooks/useCategories";
 import {
   CATEGORIES_MAX,
   DEFAULT_FORM,
@@ -77,8 +77,11 @@ function ProductListingPage() {
 
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const { availableCategories, catFetchError, catLoading } =
-    useListingCategories();
+  const {
+    categories: availableCategories,
+    error: catFetchError,
+    loading: catLoading,
+  } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState("");
 
   const [showCropper, setShowCropper] = useState(false);

@@ -6,19 +6,17 @@ import {
   resolveStoredImageUrl,
 } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
+import { apiGetJson } from "../../utils/apiClient";
 import { useState, useEffect, useCallback, useRef } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
 import { formatDateTime } from "../../utils/formatters";
 
 // Resolves to the buyer's review for this product, or null when there is none.
 async function fetchExistingReview(productId) {
-  const response = await fetch(
+  const result = await apiGetJson(
     `${API_BASE}/reviews/get_review.php?product_id=${encodeURIComponent(productId)}`,
-    { method: "GET", credentials: "include" },
   );
-  if (!response.ok) return null;
-  const result = await response.json();
-  return result.success && result.has_review ? result.review : null;
+  return result?.success && result.has_review ? result.review : null;
 }
 
 function PurchasedItem({

@@ -6,6 +6,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/contact_phone.php';
 require_once __DIR__ . '/../helpers/file_stream.php';
 require_once __DIR__ . '/../helpers/promo_unsubscribe.php';
+require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../utility/transactional_email_html.php';
 
 if (PHP_SAPI !== 'cli') {
@@ -76,5 +77,11 @@ expect_same(str_contains($withLink['html'], '<img src="https://dormmart.me/image
 expect_same(str_contains($withLink['html'], 'object-fit'), false, 'email images do not rely on object-fit');
 $withoutLink = dm_promotional_items_package('Ava', $items);
 expect_same(isset($withoutLink['headers']), false, 'no unsubscribe headers without a link');
+
+// --- price_has_blocked_digits ---
+expect_same(price_has_blocked_digits('12.50'), false, 'ordinary price is allowed');
+expect_same(price_has_blocked_digits('4.20'), true, 'blocked digits are caught across the decimal point');
+expect_same(price_has_blocked_digits('4.2'), false, 'the check reads the digits as typed');
+expect_same(price_has_blocked_digits('$1,337.69'), true, 'formatting characters are ignored');
 
 echo "PASS: {$checks} helper checks\n";

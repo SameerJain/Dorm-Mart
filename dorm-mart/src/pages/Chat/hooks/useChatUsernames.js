@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
+import { apiGetJson } from "../../../utils/apiClient";
 
+// Callers treat a rejection like a missing name.
 async function fetchUsername(userId) {
-  const res = await fetch(
+  const json = await apiGetJson(
     `${API_BASE}/profile/get_username.php?user_id=${encodeURIComponent(userId)}`,
-    {
-      credentials: "include",
-    },
   );
-  const json = await res.json().catch(() => null);
-  return res.ok && json?.success && json.username ? json.username : null;
+  return json?.success && json.username ? json.username : null;
 }
 
 export default function useChatUsernames({

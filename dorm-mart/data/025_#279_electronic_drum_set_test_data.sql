@@ -33,14 +33,19 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Electronics', 'Gaming'),
   'North Campus',
   'Like New',
-  'No sticks, pedals, or a seat included, so plan on sourcing those separately if you do not already have them. Electronic drum set with mesh pads, cymbals, and a drum module on an adjustable rack, all of it still working correctly.
+  'No sticks, pedals, or seat included, so you''ll need to source those if you don''t already have them.
 
-Mesh heads keep noise down compared to an acoustic kit, though hitting the pads and pedals still produces some sound and vibration, so keep that in mind if you have roommates. The module includes several drum kits along with a metronome and practice functions, which I used a lot when I was first learning.
+Electronic drum set with mesh pads, cymbals, and a drum module on an adjustable rack, all working correctly. The module has several drum kits plus a metronome and practice functions, which I used a lot when I was first learning.
 
-USB and audio outputs are available for connecting to a computer or recording setup, but check the model against your own equipment first. Selling because I do not have room for it in my new place and it has mostly gone unused for months.
+Mesh heads are quieter than an acoustic kit, but hitting the pads and pedals still makes some noise and vibration, so keep roommates in mind. USB and audio outputs are there for connecting to a computer or recording, but check the model against your own gear first.
 
-Flexible on the $250 price. Measure your practice space before buying, since even a compact electronic kit takes up more room than it looks like in photos.',
-  JSON_ARRAY('/images/electronic-drum-set-product-image.jpeg'),
+Selling because I don''t have room in my new place and it''s mostly gone unused for months. Measure your space first, even a compact kit takes up more room than it looks like in photos. $250, flexible.',
+  JSON_ARRAY(
+    '/images/electronic-drum-set-product-image.jpeg',
+    '/images/electronic-drum-set-product-image-2.jpg',
+    '/images/electronic-drum-set-product-image-3.jpg',
+    '/images/electronic-drum-set-product-image-4.jpg'
+  ),
   250.00,
   'Active',
   0,

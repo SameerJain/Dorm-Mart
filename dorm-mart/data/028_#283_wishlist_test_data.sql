@@ -33,12 +33,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Kitchen'),
   'North Campus',
   'Like New',
-  'Box of Brita replacement filters, unopened and still sealed in the original packaging. Double check the specific filter type against your pitcher before buying, since Brita makes a few different designs and the brand name alone does not guarantee a fit.
-
-Compatible with a range of Brita pitchers and dispensers, but I would rather you confirm compatibility directly than get home and find out it does not snap in properly. This listing is for the filter box itself, not a pitcher or dispenser, and I have not opened it to check the exact count inside beyond what is printed on the box.
-
-$25 for the box, open to offers if the price feels high for what it is. Can meet on campus for a quick handoff since it is small enough to carry easily in a backpack, no need to plan around a bigger pickup.',
-  JSON_ARRAY('/images/britta-filter-product-image.jpg'),
+  'Box of Brita replacement filters, unopened and still sealed. Brita makes a few different designs so check the filter type against your pitcher before buying, since the brand name alone doesn''t guarantee a fit. Filters only, no pitcher, and I haven''t opened it so I can''t confirm the count beyond what''s printed on the box. $25, open to offers. Small enough for a backpack so a quick handoff on campus works.',
+  JSON_ARRAY(
+    '/images/britta-filter-product-image.jpg',
+    '/images/britta-filter-product-image-2.jpg',
+    '/images/britta-filter-product-image-3.jpg',
+    '/images/britta-filter-product-image-4.jpg'
+  ),
   25.00,
   'Active',
   0,
@@ -68,12 +69,15 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Electronics', 'Office'),
   'North Campus',
   'Like New',
-  'TECKNET wired mouse in red, works fine with no connection issues or lag that I have noticed. Comfortable, contoured grip shape for everyday use, and both the buttons and scroll wheel respond exactly as they should.
+  'TECKNET wired mouse in red, no connection issues or lag that I''ve noticed. Contoured grip, and the buttons and scroll wheel all respond like they should.
 
-Check the exact model and connection type in the photos before buying so you know it will actually work with the ports on your specific computer. I would not assume any special gaming features or an adjustable sensitivity range without confirming the model first, since it is a fairly standard mouse rather than anything marketed for competitive gaming.
-
-This listing is for the mouse only, no keyboard or other desk accessories included beyond what is shown. $15, and I am not really looking to negotiate on something this inexpensive, but ask if you want to see it working in person first. Can meet on campus.',
-  JSON_ARRAY('/images/teknet-mouse-product-image.webp'),
+Check the model and connection type in the photos to make sure it works with your computer''s ports. It''s a pretty standard mouse, so don''t assume gaming features or adjustable sensitivity without confirming. Mouse only, no keyboard or other desk stuff. $15 and I''m not really negotiating, but ask if you want to see it working first. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/teknet-mouse-product-image.webp',
+    '/images/teknet-mouse-product-image-2.jpg',
+    '/images/teknet-mouse-product-image-3.jpg',
+    '/images/teknet-mouse-product-image-4.jpg'
+  ),
   15.00,
   'Active',
   0,

@@ -65,14 +65,8 @@ try {
         ], 409);
     }
 
-    // Enforce cap on active listings per seller when activating
-    if ($status === 'Active') {
-        if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
-            json_response([
-                'success' => false,
-                'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . ' active listings. Please deactivate or remove an existing listing before activating this one.'
-            ], 403);
-        }
+    if ($status === 'Active' && $activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+        json_response(['success' => false, 'error' => listing_cap_error('activating this one')], 403);
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding

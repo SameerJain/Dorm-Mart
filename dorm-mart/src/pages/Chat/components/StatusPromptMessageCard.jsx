@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
+import { apiGetJson } from "../../../utils/apiClient";
 import logger from "../../../utils/logger";
 
 const DONE_STYLES = {
@@ -36,14 +37,8 @@ export function usePromptStatus({ productId, statusUrl, resultKey, logLabel }) {
   const refetch = useCallback(async () => {
     if (!productId) return;
     try {
-      const response = await fetch(`${API_BASE}${statusUrl}?product_id=${productId}`, {
-        method: "GET",
-        credentials: "include",
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setIsDone(!!(result.success && result[resultKey]));
-      }
+      const result = await apiGetJson(`${API_BASE}${statusUrl}?product_id=${productId}`);
+      setIsDone(!!(result?.success && result[resultKey]));
     } catch (error) {
       logger.error(logLabel, error);
     } finally {

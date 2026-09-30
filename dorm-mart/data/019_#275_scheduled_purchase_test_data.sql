@@ -33,11 +33,7 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Utility'),
   'North Campus',
   'Like New',
-  'Laundry bag with a drawstring closure at the top and two carry handles for when it is too full to just grab by the string. Fabric is sturdy and holds a full hamper''s worth of clothes without straining at the seams, at least based on how I used it all year.
-
-Barely used overall since I ended up doing my wash straight out of a hamper most weeks instead of transferring everything into a bag first. It folds down flat when empty, which is nice if you do not have room for a rigid hamper taking up floor space in a small room.
-
-This is being sold on its own, no detergent or other laundry supplies included, and there is no strap for carrying it over a shoulder, just the two handles. $12, and I am open to a lower offer if you are also picking up something else from my listings. Can meet on campus.',
+  'Drawstring laundry bag with two carry handles for when it''s too full to grab by the string. The fabric held a full hamper''s worth of clothes all year without straining the seams. Barely used since I mostly did wash straight out of a hamper, and it folds flat when empty if you''re short on floor space. No shoulder strap, just the handles, and no detergent or supplies included. $12, and I''ll go lower if you''re picking up something else from my listings. Can meet on campus.',
   JSON_ARRAY('/images/laundry-bag-product-image.webp'),
   12.00,
   'Active',
@@ -68,11 +64,9 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Decor', 'Dorm Essentials'),
   'North Campus',
   'Like New',
-  'House plant in the pot shown in the photos, with healthy green leaves and no yellowing or dropped growth that I have noticed recently. The pot itself is included, so you will not need to find one right away after buying it.
+  'House plant in the pot shown in the photos, healthy green leaves with no yellowing or dropped growth lately. Pot is included so you don''t have to find one right away. It''s been sitting near a window with decent indirect light and seems happy there.
 
-Watering needs really depend on the specific species and the light in your room, so ask me directly about care instead of assuming a generic schedule will work for every plant. I have kept it near a window with decent indirect light, which seems to have worked fine so far without any obvious stress.
-
-If you have pets, it is worth checking whether this particular plant is safe for them before bringing it home. $15, price is firm since I already priced it low for a plant this size. Bring something to keep it upright on the walk back if you are on foot.',
+Watering depends on the species and your light, so message me for care tips instead of assuming a generic schedule. If you have pets, look up whether this plant is safe for them before bringing it home. $15 firm since it''s already priced low for the size. Bring something to keep it upright if you''re walking.',
   JSON_ARRAY('/images/small-splant-product-image.jpg'),
   15.00,
   'Active',
@@ -103,14 +97,17 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Utility'),
   'North Campus',
   'Like New',
-  'Small ceramic heater with a tip over shutoff and overheat protection built in, though obviously those features do not replace using it carefully. Heats up a room within a few minutes and the controls are simple, just a dial rather than anything complicated.
+  'Small ceramic heater with tip over shutoff and overheat protection. Those features don''t replace using it carefully though.
 
-Keep it on a stable, flat surface with clearance away from bedding, curtains, and anything else flammable. Before buying, double check your building''s rules, since a lot of campus housing does not allow portable space heaters at all regardless of safety features.
+Warms a room up in a few minutes. Controls are just a dial, nothing complicated.
 
-Selling because I will not need it again next year and do not want it taking up closet space over the summer. No extension cord or other accessories included beyond the heater itself.
+Keep it on a flat stable surface away from bedding and curtains, and check your building''s rules first because a lot of campus housing doesn''t allow space heaters at all. Heater only, no extension cord.
 
-Flexible on the $35 price, and happy to demonstrate that it turns on and heats up before you buy. Can meet on campus.',
-  JSON_ARRAY('/images/small-heater-product-image.webp'),
+Selling since I won''t need it next year and don''t want it eating closet space over the summer. $35, flexible. Happy to plug it in and show it heats up before you buy. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/small-heater-product-image.webp',
+    '/images/small-heater-product-image-2.jpg'
+  ),
   35.00,
   'Active',
   0,

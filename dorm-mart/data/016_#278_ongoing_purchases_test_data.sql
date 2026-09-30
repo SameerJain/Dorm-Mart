@@ -33,13 +33,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Gaming', 'Furniture', 'Office'),
   'North Campus',
   'Like New',
-  'Gaming chair with a tall back, adjustable armrests, a reclining backrest, and separate head and lower back cushions that clip on and off. Height and recline settings both still adjust smoothly, no sticking or grinding when you change position.
+  '$180 or best offer.
 
-I would still recommend sitting in it before deciding, since a chair that feels great to me might feel completely different to someone with a different build. The base and wheels roll fine on both carpet and hardwood, no wobble or squeaking that I have noticed. The cushions shown in the photos are included.
+Gaming chair with a tall back, adjustable armrests, a reclining backrest, and separate head and lower back cushions that clip on and off (both cushions are included). Height and recline still adjust smoothly with no sticking or grinding, and the wheels roll fine on carpet and hardwood with no wobble or squeak.
 
-Selling because I switched desks and no longer have room for a chair this size. It is full sized, so plan on a car or at least one other person to help carry it.
+Try sitting in it before you decide, since a chair that feels great to me might not fit someone with a different build.
 
-Open to reasonable offers on the $180 price. Can meet on campus, though we would probably need to coordinate a pickup spot with enough room to load it.',
+Selling because I switched desks and don''t have space for it anymore. It''s full sized, so bring a car or a friend to help carry it, and we''d need a pickup spot on campus with room to load it.',
   JSON_ARRAY('/images/gaming-chair-product-image.jpeg'),
   180.00,
   'Active',
@@ -70,12 +70,11 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Decor'),
   'North Campus',
   'Like New',
-  'Single Christmas ornament, no chips, cracks, or faded spots on the finish. I bought it during a holiday sale and never actually got around to putting up a tree that year, so it has just been sitting wrapped in a box since.
-
-This is one ornament, not a set, and the listing photo shows exactly the design and color you would be getting rather than a generic stock image. It is light enough to hang without needing a particularly sturdy branch, so it would work on a small dorm tree, a wreath, or even hung somewhere on its own.
-
-$12, and I am not really looking to negotiate much on something this inexpensive, though I am not totally against a reasonable offer either. Easy to meet up on campus whenever works for you, no need to plan far ahead for something this small and light to carry.',
-  JSON_ARRAY('/images/christmas-ornament-test-image.jpg'),
+  'Single Christmas ornament, no chips, cracks, or faded spots. Bought it during a holiday sale and never put up a tree that year, so it''s been wrapped in a box ever since. One ornament, not a set, and the photo shows the exact design you''d get. $12, and I''m not against a reasonable offer. Easy to meet on campus.',
+  JSON_ARRAY(
+    '/images/christmas-ornament-test-image.jpg',
+    '/images/christmas-ornament-test-image-2.jpg'
+  ),
   12.00,
   'Active',
   0,

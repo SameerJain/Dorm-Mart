@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import { useTheme } from "../../hooks/useTheme";
 import PageBackButton from "../../components/PageBackButton";
+import useCategories from "../../hooks/useCategories";
 import logger from "../../utils/logger";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
@@ -33,35 +34,11 @@ function UserPreferences() {
   const showSuggestions = searchQuery.length > 0;
   const phoneInvalid = !isValidContactPhone(contactPhone);
 
-  const [availableCategories, setAvailableCategories] = useState([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [categoriesError, setCategoriesError] = useState(null);
-
-  // Load categories from backend
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setCategoriesLoading(true);
-        setCategoriesError(null);
-        const res = await fetch(`${API_BASE}/categories/get_categories.php`);
-        if (!res.ok) throw new Error("Failed to load categories");
-        const data = await res.json();
-        if (!Array.isArray(data)) throw new Error("Invalid categories format");
-        if (!cancelled) setAvailableCategories(data);
-      } catch (e) {
-        if (!cancelled) {
-          logger.error("Failed to load categories:", e);
-          setCategoriesError(e.message);
-        }
-      } finally {
-        if (!cancelled) setCategoriesLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const {
+    categories: availableCategories,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useCategories();
 
   const handleInterestToggle = (interest) => {
     setSelectedInterests((prev) => {

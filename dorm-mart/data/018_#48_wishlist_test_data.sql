@@ -33,14 +33,19 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Books', 'School'),
   'North Campus',
   'Like New',
-  'Calculus: Early Transcendentals textbook. Match the edition and ISBN against your syllabus before buying, since professors sometimes assign a specific printing and the exercises can differ between editions even when the title looks identical.
+  'Calculus: Early Transcendentals, finished the class so I don''t need it taking up shelf space. Pages are clean, no writing, highlighting, or torn corners. It covers differential and integral calculus with worked examples, diagrams, and practice problems, and I found it more helpful than lecture notes when reviewing before an exam.
 
-Pages are clean with no writing, highlighting, or torn corners. The book covers differential and integral calculus with worked examples, diagrams, and practice problems throughout, and I found it genuinely useful for reviewing a concept before an exam rather than relying only on lecture notes.
+Before you buy:
+- Match the edition and ISBN to your syllabus. Exercises can differ between editions even when the title looks identical
+- Physical book only, no online access code or homework platform login
+- If your class needs digital access you''ll have to buy that separately
 
-This listing is for the physical book only, no online access code or homework platform login included. If your class requires digital access, you will need to purchase that separately regardless of which physical copy you buy.
-
-Finished the class already, so I do not need it taking up space anymore. Reasonable offers are welcome on the $80 price, and I can meet up on campus to hand it off.',
-  JSON_ARRAY('/images/calculus-early-transcdentals-product-image.jpg'),
+$80, reasonable offers welcome. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/calculus-early-transcdentals-product-image.jpg',
+    '/images/calculus-early-transcdentals-product-image-2.jpg',
+    '/images/calculus-early-transcdentals-product-image-3.jpg'
+  ),
   80.00,
   'Active',
   0,

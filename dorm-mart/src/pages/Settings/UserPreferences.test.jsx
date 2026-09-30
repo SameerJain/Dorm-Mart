@@ -17,7 +17,11 @@ jest.mock("../../hooks/useTheme", () => ({
 }));
 jest.mock("../../utils/csrfFetch", () => ({ csrfFetch: jest.fn() }));
 
-const response = (body) => ({ ok: true, json: async () => body });
+const response = (body) => ({
+  ok: true,
+  json: async () => body,
+  text: async () => JSON.stringify(body),
+});
 
 // Saves are debounced 400ms; leave headroom for a loaded CI runner (the full
 // suite runs in band and this file timed out at 1.5s under that load).

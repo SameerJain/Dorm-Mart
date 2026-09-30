@@ -62,13 +62,7 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Utility'),
   'North Campus',
   'Fair',
-  'Fabric storage bin that held my winter clothes and extra towels for a full semester without any rips or broken seams, so it clearly holds up to regular use. It folds flat when empty, which matters if you do not want a rigid box taking up floor space between semesters.
-
-There is visible wear on the outside fabric from being moved around a lot, mostly light marks rather than anything major, which is why I priced it where I did. The two handles are both solid and work fine for pulling it off a shelf or carrying it across a room.
-
-The open top means you can see what is inside without digging through it, though it will not keep dust out the way a lidded container would. Selling just the bin, nothing inside it.
-
-$15.99, open to offers. Can meet on campus, though bring a bag or something to carry it in since it does not fold small enough to fit in a backpack.',
+  'Fabric storage bin that held my winter clothes and extra towels for a whole semester with no rips or broken seams. Folds flat when empty, handy if you don''t want a rigid box in the way between semesters. Some light wear and marks on the outside from being moved around, which is why it''s priced where it is. Both handles are solid, and the top is open so it won''t keep dust out like a lidded bin would. Bin only, nothing inside. $15.99, open to offers. Bring a bag to carry it since it doesn''t fold small enough for a backpack.',
   JSON_ARRAY('/images/storage-bin-product-image.jpg'),
   15.99,
   'Active',
@@ -101,14 +95,15 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Clothing'),
   'South Campus',
   'Like New',
-  'Pack of suit hangers with shaped shoulders that keep jackets and dress shirts from collapsing at the top, plus a lower bar for pants so a full outfit can hang together. No cracked pieces, bent arms, or loose joints anywhere in the set.
+  'Pack of suit hangers with shaped shoulders so jackets and dress shirts don''t collapse at the top, plus a lower bar for pants. No cracked pieces, bent arms, or loose joints in the set. I bought more than I needed during a closet clean out, so most of them have just been hanging there unused. Handy if your interview clothes are draped over a chair right now, or you''re moving soon and want your shirts to arrive with fewer wrinkles. Selling the whole pack together.
 
-Bought more than I actually needed during a closet clean out at the start of the year, so most of these have just been hanging unused rather than holding anything. Selling the whole pack together rather than splitting it into smaller quantities.
-
-These would be genuinely useful if you have interview clothes currently draped over a chair, or if you are about to move and want your shirts to survive the trip with fewer wrinkles. Bring a bag when you come to pick them up, since loose hangers have a way of catching on everything.
-
-Open to trading for something else useful instead of cash. Can meet on campus.',
-  JSON_ARRAY('/images/suit-hangers-product-image.jpg'),
+Open to a trade instead of cash. Can meet on campus, bring a bag since loose hangers catch on everything.',
+  JSON_ARRAY(
+    '/images/suit-hangers-product-image.jpg',
+    '/images/suit-hangers-product-image-2.jpg',
+    '/images/suit-hangers-product-image-3.jpg',
+    '/images/suit-hangers-product-image-4.jpg'
+  ),
   18.00,
   'Active',
   1,
@@ -140,13 +135,7 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Bed', 'Utility'),
   'Ellicott',
   'Excellent',
-  'Tabletop mirror that tilts to whatever angle you need instead of forcing you to lean over the desk to see yourself properly. Glass is clear with no cracks or foggy patches, and the base stays steady even when you adjust the angle repeatedly throughout the day.
-
-Switched to a wall mounted mirror recently, so this one no longer has a spot in my room. It has no built in light or magnification, just a plain mirror on a tilting base, so do not assume extra features that are not shown in the photos before buying.
-
-Has been kept indoors away from moisture the whole time I owned it, and the frame only shows minor signs of handling. Small enough to fit on a nightstand, desk, or narrow counter without crowding anything else nearby.
-
-$35, open to offers or a trade. Bring something soft to wrap it in if you are carrying it in a bag with books.',
+  'Tabletop mirror that tilts to whatever angle you need so you''re not leaning over your desk. Glass is clear with no cracks or fog, and the base stays put when you adjust it. No built in light or magnification, just a plain mirror. Switched to a wall mirror so it doesn''t have a spot in my room anymore. $35, open to offers or a trade. Wrap it in something soft if it''s riding in a bag with books.',
   JSON_ARRAY('/images/desk-mirror-product-image.webp'),
   35.00,
   'Active',
@@ -211,14 +200,17 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Decor', 'Misc.'),
   'Other',
   'Like New',
-  'Was originally going to build out a whole wall of music posters, bought this one, and then changed my mind about the room before ever framing it. It has mostly been stored flat since, which kept the paper in good shape.
+  'Was going to build a whole wall of music posters, bought this one, then changed my mind about the room before I ever framed it. It''s been stored flat since, so the paper is in good shape: no tears, folds, water marks, or writing on the image.
 
-Paper is clean with no tears, folds, water marks, or writing anywhere on the image. The portrait and warm color palette are what made me pick this one specifically, so check the photo closely if the exact tone matters for the room you are decorating.
+The portrait and warm color palette are why I picked it, so look closely at the photo if the exact tone matters for your room.
 
-This listing is for the poster only, no frame or hanging clips included, so you will need your own if you plan to display it right away. Rolling it for transport is fine, just keep it flat again once you get it home to avoid new creases.
-
-Would consider trading for another piece of wall art instead of cash. Otherwise $24.99, and I can meet on campus.',
-  JSON_ARRAY('/images/bob-marley-poster-product-image.jpg'),
+Poster only, no frame or hanging clips. Rolling it for the walk home is fine, just flatten it again once you''re back to avoid new creases. $24.99, or I''d consider trading for another piece of wall art. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/bob-marley-poster-product-image.jpg',
+    '/images/bob-marley-poster-product-image-2.jpg',
+    '/images/bob-marley-poster-product-image-3.jpg',
+    '/images/bob-marley-poster-product-image-4.jpg'
+  ),
   24.99,
   'Active',
   1,
@@ -250,14 +242,21 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Gaming', 'Games'),
   'Other',
   'Fair',
-  'PS2 with the kind of visible wear you would expect from years of actual use, scuffs and scratches on the case, but the disc door still opens and closes normally and the console powers on every time without issues. Comes with the console itself, one controller, the power cable, and the video cable, all shown together in the photos.
+  'PS2 with the scuffs and scratches you''d expect from years of actual use, but it powers on every time and the disc door opens and closes fine.
 
-Check your TV''s available inputs before buying, since a lot of newer televisions only have HDMI and you may need an adapter to connect an older console like this one. I have not tested every port repeatedly, so I would try it with your own setup as soon as possible after buying rather than assuming it will work.
+Includes:
+- Console
+- One controller
+- Power cable
+- Video cable
+(all shown in the photos, no games)
 
-No games are included with this listing, just the hardware. It is a reasonable starter setup if you want to revisit older games without paying collector prices for something in pristine display condition.
-
-$50, open to offers. Bring a tote or backpack big enough for the console and all the loose cables so nothing ends up dragging on your way back.',
-  JSON_ARRAY('/images/playstation-2-product-image.jpg'),
+Heads up that a lot of newer TVs are HDMI only, so you may need an adapter for a console this old. I haven''t tested every port repeatedly, so try it with your own setup soon after buying. Cheap way to revisit old games without paying collector prices. $50, open to offers. Bring a tote or backpack big enough for the cables.',
+  JSON_ARRAY(
+    '/images/playstation-2-product-image.jpg',
+    '/images/playstation-2-product-image-2.jpg',
+    '/images/playstation-2-product-image-3.jpg'
+  ),
   50.00,
   'Active',
   0,
@@ -289,14 +288,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Electronics', 'Gaming', 'Games'),
   'South Campus',
   'Like New',
-  'Selling because I switched to a single larger monitor setup and no longer need a second screen taking up desk space. Mini LED monitor with a bright, clear picture, no dead pixels or cracks anywhere on the screen that I have noticed.
-
-Takes both HDMI and USB C connections, but check what your specific laptop or console actually outputs before buying, since having a matching port does not always mean a device supports video through it. The stand folds away for easier storage or transport, and the cables shown in the photos are included with the sale.
-
-Frame and screen are both clean with no visible damage. It is a solid option if you want extra screen space for notes, a second window, or gaming without committing to a large permanent monitor on a small desk.
-
-Flexible on the $80 price. Can meet on campus, and happy to plug it in and show that it powers on before you buy.',
-  JSON_ARRAY('/images/mini-led-monitor-product-image.jpg'),
+  'Selling because I moved to a single larger monitor and don''t need a second screen eating desk space. It''s a mini LED monitor with a bright, clear picture, and I haven''t noticed any dead pixels or cracks. Takes both HDMI and USB C, but check what your laptop or console actually outputs first since a matching port doesn''t always mean it supports video. The stand folds away for storage or carrying, the cables in the photos are included, and the frame and screen are both clean with no visible damage. Good pick for extra screen space for notes, a second window, or gaming without committing to a big permanent monitor on a small desk. Flexible on the $80. Can meet on campus and I''m happy to plug it in so you can see it power on before you buy.',
+  JSON_ARRAY(
+    '/images/mini-led-monitor-product-image.jpg',
+    '/images/mini-led-monitor-product-image-2.jpg',
+    '/images/mini-led-monitor-product-image-3.jpg',
+    '/images/mini-led-monitor-product-image-4.jpg'
+  ),
   80.00,
   'Active',
   0,
@@ -360,13 +358,7 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Kitchen', 'Food'),
   'Ellicott',
   'Fair',
-  'Frying pan that got me through a full semester of eggs, grilled cheese, and reheated leftovers, so it is definitely a used pan rather than something display worthy. The cooking surface has visible marks from regular cooking, and the outside is not spotless, which is reflected in the price.
-
-Base still sits completely flat on the stove, and the handle is secure with no cracks or loose screws anywhere. A little oil or butter helps food release cleanly, same as it did when I was using it regularly. It is a manageable size for cooking for one or two people rather than a full family meal.
-
-This listing is just for the pan, no lid or utensils included. Check your stovetop compatibility before buying, since I have not tested it against every surface type.
-
-Would trade for another kitchen item I could actually use instead of cash. Otherwise $20, and I can meet on campus.',
+  'Frying pan that got me through a semester of eggs, grilled cheese, and reheated leftovers, so it''s definitely used, not display worthy. Cooking surface has marks and the outside isn''t spotless, which is reflected in the price. Base sits flat, handle''s secure with no cracks or loose screws, and a little oil or butter helps stuff release. Good size for one or two people. No lid or utensils, and I haven''t tried it on every stovetop type so check yours. $20 or I''d trade for a kitchen item I''d actually use. Can meet on campus.',
   JSON_ARRAY('/images/frying-pan-product-image.jpg'),
   20.00,
   'Active',
@@ -399,13 +391,9 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Misc.', 'Utility'),
   'Other',
   'Excellent',
-  'Desk lamp with an adjustable arm and a shade that rotates, so you can point the light exactly where you need it instead of lighting up the whole room. No cracks or loose joints anywhere, and the base stays steady even when the arm is fully extended.
+  'Desk lamp with an adjustable arm and a rotating shade, so you can aim the light where you need it instead of lighting the whole room. I used it next to my bed for reading and at my desk for late study sessions, and it was bright enough to see notes clearly without keeping my roommate awake. No cracks or loose joints and the base stays steady with the arm fully extended. The bulb in it is included but you can swap in a different brightness or color temperature. Switched to a wall mounted light so it''s just been sitting in a corner. Leave room to adjust the arm so you don''t knock into a monitor.
 
-I used this both beside my bed for reading and at my desk during late study sessions, and it gave off enough light to actually see notes clearly without keeping a roommate awake. The bulb currently in it is included, though you are welcome to swap in a different brightness or color temperature if you prefer.
-
-Switched to a wall mounted light recently, so this one has just been sitting unused in the corner. Does not take up much desk space, though you should still leave room to adjust the arm without knocking into a monitor.
-
-Open to a lower offer or a trade instead of the full $50 asking price. Can meet on campus.',
+Open to a lower offer or a trade instead of the full $50. Can meet on campus.',
   JSON_ARRAY('/images/desk-lamp-product-image.jpg'),
   50.00,
   'Active',
@@ -438,12 +426,18 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Utility', 'Dorm Essentials'),
   'North Campus',
   'Excellent',
-  'Three pack of Lysol air sanitizer spray, one purple, one orange, and one blue bottle, all shown together in the photo. Nothing is leaking or cracked, and the labels are still fully readable if you want to check the exact scents before deciding which one you would use first.
-
-Ended up with more household cleaning supplies than I actually needed after a recent move, so I am passing this set along rather than letting it sit unused in a cabinet. I am selling all three bottles together as a set rather than splitting them up individually, so the price covers the whole pack.
-
-Use according to the directions on the packaging, including any ventilation instructions, since I am not vouching for use beyond what the label recommends. $15 for all three, open to offers. Can meet on campus for a quick handoff.',
-  JSON_ARRAY('/images/lysol-pack-product-image.jpeg'),
+  'Three pack of Lysol air sanitizer spray:
+purple, orange, and blue, all shown in the photo.
+Nothing leaking or cracked and the labels are readable so you can check scents.
+Got way more cleaning supplies than I needed after moving so I''m passing them on. Selling all three together, not split up.
+Use per the directions on the packaging, including ventilation.
+$15 for all three, open to offers. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/lysol-pack-product-image.jpeg',
+    '/images/lysol-pack-product-image-2.jpg',
+    '/images/lysol-pack-product-image-3.jpg',
+    '/images/lysol-pack-product-image-4.jpg'
+  ),
   15.00,
   'Active',
   0,
@@ -506,14 +500,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('School'),
   'North Campus',
   'Like New',
-  'Finished this class already and do not need my copy of Freedom on My Mind anymore, so it has just been sitting on a shelf since the semester ended. Pages are clean with no writing or highlighting inside from me, and the cover shows very little wear.
+  'Finished this class, so my copy of Freedom on My Mind has been sitting on a shelf since the semester ended. Pages are clean with no writing or highlighting from me and the cover has very little wear. The book mixes readings, primary sources, maps, and photographs, and the index was really useful for finding a specific person or event before an exam.
 
-The book covers African American history through a mix of readings, primary sources, maps, and photographs, and I found the index genuinely useful for finding a specific person or event quickly before an exam instead of flipping through chapters blindly.
-
-Match the exact edition and ISBN against your syllabus before buying, since professors sometimes assign a different printing even when the title looks the same on the cover. This listing is for the physical book only, no online access code or digital platform login included.
-
-Open to a trade or a lower price than the $30 listed, especially if you are also grabbing another book from my listings. Can meet on campus.',
-  JSON_ARRAY('/images/african-american-history-textbook-product-image.jpg'),
+Match the exact edition and ISBN to your syllabus first, professors sometimes assign a different printing. Physical book only, no access code or online login. $30, but I''m open to a trade or a lower price, especially if you''re also grabbing another book from my listings. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/african-american-history-textbook-product-image.jpg',
+    '/images/african-american-history-textbook-product-image-2.jpg'
+  ),
   30.00,
   'Active',
   1,
@@ -545,14 +538,20 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Clothing', 'Electronics'),
   'South Campus',
   'Excellent',
-  'Mostly used this for dress shirts and the occasional item I forgot in the dryer too long and needed to smooth out before class. Heats up quickly, no cord damage anywhere that I can see, and both the steam and spray functions still work exactly as they should.
+  'Steam iron, mostly used for dress shirts and the occasional thing I left in the dryer too long.
 
-The soleplate glides smoothly over fabric without catching, and the handle stays comfortable through a full ironing session. I always emptied the water tank after using it and stored it upright, so there should be no mineral buildup or standing water inside.
+Works: heats up quickly, steam and spray both work, no cord damage
+Soleplate: glides smoothly without catching
+Storage: always emptied the tank and stored it upright, so no mineral buildup that I know of
+Not included: ironing board
 
-Controls are simple and easy to read, though you should still match the heat setting to whatever fabric label you are working with rather than guessing. This listing is for the iron itself, so you will need your own ironing board or a flat surface to work on.
-
-Would consider a trade instead of cash. Otherwise $45, and I can meet up on campus.',
-  JSON_ARRAY('/images/steam-iron-product-image.webp'),
+Match the heat setting to the fabric label instead of guessing. $45, or I''d consider a trade. Can meet up on campus.',
+  JSON_ARRAY(
+    '/images/steam-iron-product-image.webp',
+    '/images/steam-iron-product-image-2.jpg',
+    '/images/steam-iron-product-image-3.jpg',
+    '/images/steam-iron-product-image-4.jpg'
+  ),
   45.00,
   'Active',
   1,
@@ -584,14 +583,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Misc.'),
   'North Campus',
   'Like New',
-  'Swiffer sweeper, handle and cleaning head both work fine with no cracks or loose joints. Used it a handful of times in my dorm before moving somewhere with an actual vacuum, so it has mostly just been sitting in the closet since then.
-
-The head turns easily to get around furniture legs and reach underneath a bed without needing to kneel on the floor. Works well on hard floors specifically, though you would still need something else entirely for carpet or a bigger mess than crumbs and dust.
-
-Box shown in the photo is included with the listing, but no replacement pads, so bring your own if you want to use it right away after buying. Light enough to carry and narrow enough to store beside a cabinet.
-
-Open to offers or a trade instead of the $15 asking price. Can meet on campus.',
-  JSON_ARRAY('/images/swiffer-product-image.jpg'),
+  'Swiffer sweeper, handle and head both work fine with no cracks or loose joints. Used it a handful of times in my dorm before moving somewhere with a real vacuum. Hard floors only, and the box is included but no replacement pads. $15 or a trade, can meet on campus.',
+  JSON_ARRAY(
+    '/images/swiffer-product-image.jpg',
+    '/images/swiffer-product-image-2.jpg',
+    '/images/swiffer-product-image-3.jpg',
+    '/images/swiffer-product-image-4.jpg'
+  ),
   15.00,
   'Active',
   1,

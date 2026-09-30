@@ -180,6 +180,28 @@ try {
     check(rejected(api(2, 'scheduled_purchases/respond.php', ['request_id' => $request, 'action' => 'accept'])), 'deleted listing rejects stale schedule card');
     check(rejected(confirm($product, $conversation, $request)), 'deleted listing rejects confirmation');
 
+    // Wishlist adds are decided by the unique key; a repeat add is a 400, not a 500.
+    [$product, $conversation] = fixture();
+    check(ok(api(2, 'wishlist/add_to_wishlist.php', ['product_id' => $product])), 'buyer can wishlist a listing');
+    $repeatAdd = api(2, 'wishlist/add_to_wishlist.php', ['product_id' => $product]);
+    check($repeatAdd['status'] === 400 && ($repeatAdd['body']['error'] ?? '') === 'Product already in wishlist', 'repeat wishlist add is rejected cleanly');
+    check((int)row("SELECT wishlisted FROM INVENTORY WHERE product_id=$product")['wishlisted'] === 1, 'repeat wishlist add does not double-count');
+
+    // Chat media is participant-only and answers errors as JSON.
+    $introMessage = (int)row("SELECT message_id FROM messages WHERE conv_id=$conversation ORDER BY message_id LIMIT 1")['message_id'];
+    $chatMedia = static function (int $user, int $messageId) use (&$base, &$cookies): array {
+        $ch = curl_init($base . '/api/chat/serve_chat_image.php?message_id=' . $messageId);
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10, CURLOPT_COOKIEFILE => $cookies[$user]]);
+        $raw = (string)curl_exec($ch);
+        $result = ['status' => curl_getinfo($ch, CURLINFO_HTTP_CODE), 'type' => (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE), 'body' => json_decode($raw, true)];
+        curl_close($ch);
+        return $result;
+    };
+    $outsider = $chatMedia(4, $introMessage);
+    check($outsider['status'] === 403 && ($outsider['body']['error'] ?? '') === 'forbidden', 'non-participant cannot fetch chat media');
+    check(str_starts_with($outsider['type'], 'application/json'), 'chat media errors are sent as JSON');
+    check(($chatMedia(2, $introMessage)['body']['error'] ?? '') === 'no_image', 'participant gets no_image for a text message');
+
     // Last: this deletes buyer 2.
     [$product, $conversation] = fixture();
     accepted($product, $conversation);
