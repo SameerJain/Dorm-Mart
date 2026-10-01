@@ -1,12 +1,7 @@
 <?php
 
-// Dev-only utility — block all web access
-if (php_sapi_name() !== 'cli') {
-    http_response_code(403);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['ok' => false, 'error' => 'Forbidden']);
-    exit;
-}
+require_once __DIR__ . '/../helpers/response.php';
+require_cli();
 
 // Include security utilities
 require_once __DIR__ . '/../security/security.php';
@@ -38,12 +33,6 @@ require_once __DIR__ . '/../security/security.php';
 
 // Include database connection
 require_once __DIR__ . '/../database/db_connect.php';
-
-// Set content type for both web and CLI
-// Handles both browser requests and command line execution
-if (php_sapi_name() !== 'cli') {
-    header('Content-Type: application/json; charset=utf-8');
-}
 
 try {
     $conn = db();

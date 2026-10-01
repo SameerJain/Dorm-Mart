@@ -9,17 +9,22 @@ import {
 } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
+import { STAR_EMPTY, STAR_FILLED } from "../../constants/colors";
+import {
+  ALLOWED_IMAGE_EXTENSIONS,
+  ALLOWED_IMAGE_MIME_TYPES,
+} from "../ItemForms/utils/listingFormConfig";
 
 /** Primary actions: match home / landing square-ish CTAs (rounded-lg, not pill). */
 const primaryActionButtonClass =
   "inline-flex items-center justify-center rounded-lg bg-blue-600 dark:bg-blue-800 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 dark:hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 touch-manipulation";
 
-// File type restrictions (same as product listing and chat)
-const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+// File type restrictions shared with product listings (single source of truth).
+const ALLOWED_MIME = ALLOWED_IMAGE_MIME_TYPES;
+const ALLOWED_EXTS = ALLOWED_IMAGE_EXTENSIONS;
 /** Same types as seller listing + extensions (Explorer often filters better with both). */
 const PROFILE_PHOTO_ACCEPT = [...ALLOWED_MIME, ...ALLOWED_EXTS].join(",");
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB - reasonable limit for profile photos
+const MAX_PROFILE_PHOTO_BYTES = 10 * 1024 * 1024;
 
 function isAllowedType(f) {
   // Prefer MIME, but fall back to extension if needed
@@ -128,16 +133,16 @@ function StarIcon({ fillFraction, size = 28 }) {
     >
       <defs>
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#fbbf24" />
-          <stop offset={offset} stopColor="#fbbf24" />
-          <stop offset={offset} stopColor="#e5e7eb" />
-          <stop offset="100%" stopColor="#e5e7eb" />
+          <stop offset="0%" stopColor={STAR_FILLED} />
+          <stop offset={offset} stopColor={STAR_FILLED} />
+          <stop offset={offset} stopColor={STAR_EMPTY} />
+          <stop offset="100%" stopColor={STAR_EMPTY} />
         </linearGradient>
       </defs>
       <path
         d="M12 .587l3.668 7.431 8.207 1.193-5.938 5.786 1.402 8.202L12 18.896l-7.339 4.303 1.402-8.202L.125 9.211l8.207-1.193z"
         fill={`url(#${gradientId})`}
-        stroke="#fbbf24"
+        stroke={STAR_FILLED}
         strokeWidth="1"
       />
     </svg>
@@ -211,7 +216,7 @@ function ReviewRow({ review }) {
         <p className="text-xs sm:text-sm font-semibold text-blue-700 dark:text-blue-400 break-words">
           {review.product_title}
         </p>
-        <p className="text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words overflow-wrap-anywhere whitespace-pre-wrap">
+        <p className="text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words whitespace-pre-wrap">
           {review.review}
         </p>
       </div>
@@ -257,7 +262,7 @@ function EditableLinkRow({
             e.stopPropagation();
             onClear();
           }}
-          className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2"
+          className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2 coarse:py-2"
         >
           Clear
         </button>
@@ -379,11 +384,9 @@ function MyProfilePage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Clear any previous errors
     setAvatarError("");
 
-    // Validate file size
-    if (file.size > MAX_BYTES) {
+    if (file.size > MAX_PROFILE_PHOTO_BYTES) {
       const errorMsg = "Image is too large. Maximum file size is 10 MB.";
       setAvatarError(errorMsg);
       event.target.value = null; // Clear the input
@@ -597,7 +600,7 @@ function MyProfilePage() {
                     <p className="text-xl sm:text-2xl font-serif font-semibold truncate block">
                       {profile?.name}
                     </p>
-                    <p className="text-xs sm:text-sm break-all dark:text-gray-300">
+                    <p className="text-xs sm:text-sm break-words dark:text-gray-300">
                       @{profile?.username}
                     </p>
                     <p
@@ -695,7 +698,7 @@ function MyProfilePage() {
                             buttonClickRef.current = false;
                           }, 300);
                         }}
-                        className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2"
+                        className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2 coarse:py-2"
                       >
                         Clear
                       </button>

@@ -44,8 +44,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Health', 'Dorm Essentials'),
   'North Campus',
   'Like New',
-  'A high-quality blue water bottle perfect for staying hydrated on campus. Great condition with no leaks or damage.',
-  JSON_ARRAY('/images/blue-water-bottle.jpg'),
+  'Blue water bottle with no leaks, no cracks, and a cap that still seals tight. I only used it a handful of times before switching to a different one, so it mostly lived in a cabinet. I haven''t checked the exact capacity or how long it keeps drinks cold, so ask and I''ll measure it for you. Hand wash only as far as I know since it''s never been through a dishwasher. Just the bottle in the photo. $15, but I''ll take a reasonable offer, especially if you grab something else from my listings. Small enough to hand off between classes.',
+  JSON_ARRAY(
+    '/images/blue-water-bottle.jpg',
+    '/images/blue-water-bottle-2.jpg',
+    '/images/blue-water-bottle-3.jpg',
+    '/images/blue-water-bottle-4.jpg'
+  ),
   15.00,
   'Active',
   0,
@@ -75,8 +80,14 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('School', 'Dorm Essentials'),
   'North Campus',
   'Good',
-  'A stylish white and blue backpack with multiple compartments. Perfect for carrying books and laptop to class.',
-  JSON_ARRAY('/images/white-blue-backpack.jpg'),
+  'White and blue backpack with a bunch of separate compartments, which was actually useful for keeping notebooks away from chargers and pens instead of everything sliding to the bottom of one big pocket. Good condition, meaning some visible wear on the lighter fabric from getting carried around campus, and the zippers all still glide smoothly with no broken pulls or stuck tracks.
+
+Compare your laptop to the sleeve dimensions in the photos before you buy, I don''t want to promise a fit based on screen size alone. Bag only, nothing packed inside. Switched to a different style this semester. $25, open to offers, and I can meet somewhere on campus that works for you.',
+  JSON_ARRAY(
+    '/images/white-blue-backpack.jpg',
+    '/images/white-blue-backpack-2.jpg',
+    '/images/white-blue-backpack-3.jpg'
+  ),
   25.00,
   'Active',
   0,

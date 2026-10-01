@@ -33,8 +33,12 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Utility'),
   'North Campus',
   'Like New',
-  'This laundry bag offers a simple, durable solution for organizing and transporting your clothes, making it perfect for dorms, apartments, travel, or everyday household use. Made from sturdy, tear-resistant fabric, it holds a generous amount of laundry without stretching or losing shape. The breathable material helps reduce odors, while the secure drawstring closure keeps clothes contained and easy to carry. Lightweight yet strong, it folds flat when not in use, saving valuable storage space. The reinforced handles provide comfortable lifting, whether you''re heading to the washer, the laundromat, or packing for a trip. With its clean, functional design and reliable construction, this laundry bag makes managing laundry easier, more organized, and more efficient for busy lifestyles.',
-  JSON_ARRAY('/images/laundry-bag-product-image.webp'),
+  'Drawstring laundry bag with two carry handles for when it''s too full to grab by the string. The fabric held a full hamper''s worth of clothes all year without straining the seams. Barely used since I mostly did wash straight out of a hamper, and it folds flat when empty if you''re short on floor space. No shoulder strap, just the handles, and no detergent or supplies included. $12, and I''ll go lower if you''re picking up something else from my listings. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/laundry-bag-product-image.webp',
+    '/images/laundry-bag-product-image-2.jpg',
+    '/images/laundry-bag-product-image-3.jpg'
+  ),
   12.00,
   'Active',
   0,
@@ -64,8 +68,14 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Decor', 'Dorm Essentials'),
   'North Campus',
   'Like New',
-  'This house plant brings a refreshing touch of natural beauty to any indoor space, making it an easy way to brighten your home, office, or dorm. With lush, vibrant foliage and a clean, modern look, it enhances your décor while helping create a calmer, more inviting atmosphere. Designed to thrive indoors, it grows well with minimal care—just occasional watering and indirect sunlight—making it perfect for beginners and experienced plant lovers alike. Its compact yet full shape fits beautifully on desks, shelves, window ledges, or tabletop displays, adding life without taking up too much space. The sturdy pot provides stable support and blends effortlessly with a wide range of interior styles. Whether you want to purify the air, elevate your décor, or simply enjoy the presence of greenery, this house plant offers a low-maintenance, visually appealing way to bring nature indoors.',
-  JSON_ARRAY('/images/small-splant-product-image.jpg'),
+  'House plant in the pot shown in the photos, healthy green leaves with no yellowing or dropped growth lately. Pot is included so you don''t have to find one right away. It''s been sitting near a window with decent indirect light and seems happy there.
+
+Watering depends on the species and your light, so message me for care tips instead of assuming a generic schedule. If you have pets, look up whether this plant is safe for them before bringing it home. $15 firm since it''s already priced low for the size. Bring something to keep it upright if you''re walking.',
+  JSON_ARRAY(
+    '/images/small-splant-product-image.jpg',
+    '/images/small-splant-product-image-2.jpg',
+    '/images/small-splant-product-image-3.jpg'
+  ),
   15.00,
   'Active',
   0,
@@ -95,8 +105,19 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Utility'),
   'North Campus',
   'Like New',
-  'This small heater delivers powerful, focused warmth in a compact design, making it perfect for bedrooms, offices, dorms, or any space that needs a quick temperature boost. Featuring efficient ceramic heating technology, it warms up fast and distributes heat evenly, helping you stay comfortable during cold mornings or chilly nights. The simple controls allow you to adjust settings with ease, while built-in safety features—such as overheat protection and a tip-over shutoff—provide added peace of mind. Lightweight and portable, it''s easy to move from room to room, and its quiet operation ensures it won''t interrupt work, sleep, or relaxation. With its sleek, space-saving design and dependable performance, this small heater is an ideal solution for staying warm and cozy all season long.',
-  JSON_ARRAY('/images/small-heater-product-image.webp'),
+  'Small ceramic heater with tip over shutoff and overheat protection. Those features don''t replace using it carefully though.
+
+Warms a room up in a few minutes. Controls are just a dial, nothing complicated.
+
+Keep it on a flat stable surface away from bedding and curtains, and check your building''s rules first because a lot of campus housing doesn''t allow space heaters at all. Heater only, no extension cord.
+
+Selling since I won''t need it next year and don''t want it eating closet space over the summer. $35, flexible. Happy to plug it in and show it heats up before you buy. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/small-heater-product-image.webp',
+    '/images/small-heater-product-image-2.jpg',
+    '/images/small-heater-product-image-3.jpg',
+    '/images/small-heater-product-image-4.jpg'
+  ),
   35.00,
   'Active',
   0,

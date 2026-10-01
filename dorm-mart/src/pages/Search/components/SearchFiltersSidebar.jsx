@@ -78,7 +78,7 @@ export default function SearchFiltersSidebar({
         <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
           Search Filters
         </h2>
-        <label className="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+        <label className="inline-flex items-center gap-2 coarse:py-1.5 text-xs text-gray-700 dark:text-gray-300">
           <input
             type="checkbox"
             checked={includeDescription}
@@ -148,7 +148,7 @@ export default function SearchFiltersSidebar({
 
       <div className="mb-4">
         <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-          Price Range ($0 – $9999.99)
+          Price Range ($0 to $9,999.99)
         </p>
         <div className="mt-2 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-2">
@@ -164,7 +164,7 @@ export default function SearchFiltersSidebar({
                 updatePrice("minPrice", event.target.value)
               }
               placeholder="Min"
-              className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              className="w-20 px-2 py-1 coarse:py-2 text-sm border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -180,7 +180,7 @@ export default function SearchFiltersSidebar({
                 updatePrice("maxPrice", event.target.value)
               }
               placeholder="Max"
-              className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              className="w-20 px-2 py-1 coarse:py-2 text-sm border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             />
           </div>
         </div>
@@ -234,7 +234,7 @@ export default function SearchFiltersSidebar({
         <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
           Options
         </p>
-        <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-2">
+        <label className="flex items-center gap-2 coarse:py-1.5 text-sm text-gray-700 dark:text-gray-300 mb-2">
           <input
             type="checkbox"
             checked={priceNegotiable}
@@ -244,7 +244,7 @@ export default function SearchFiltersSidebar({
           />
           <span>Price Negotiable</span>
         </label>
-        <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+        <label className="flex items-center gap-2 coarse:py-1.5 text-sm text-gray-700 dark:text-gray-300">
           <input
             type="checkbox"
             checked={acceptingTrades}

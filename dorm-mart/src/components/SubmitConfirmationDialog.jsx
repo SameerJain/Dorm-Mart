@@ -23,14 +23,16 @@ export default function SubmitConfirmationDialog({
       onClick={(event) => event.target === event.currentTarget && onCancel()}
     >
       <div
-        className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
+        className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="px-6 pt-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             Ready to Submit?
           </h2>
-          <p className="mt-2 text-gray-600 dark:text-gray-300">{message}</p>
+          <p className="mt-2 text-gray-600 dark:text-gray-300 break-words">
+            {message}
+          </p>
         </div>
         <div className="px-6 py-4 flex justify-end gap-3">
           <button

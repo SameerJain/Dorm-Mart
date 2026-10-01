@@ -1,3 +1,5 @@
+import FAQItemList from "./FAQItemList";
+
 const HOME_FAQ_ITEMS = [
   {
     question: 'What is the difference between "For You" and "Explore More"?',
@@ -42,21 +44,7 @@ const HOME_FAQ_ITEMS = [
 ];
 
 function HomeFAQ() {
-  return (
-    <div className="space-y-2.5 text-sm text-gray-700 dark:text-gray-300">
-      {HOME_FAQ_ITEMS.map((item, index) => (
-        <div
-          key={index}
-          className="pb-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
-        >
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-            {item.question}
-          </h3>
-          <p className="mt-0.5">{item.answer}</p>
-        </div>
-      ))}
-    </div>
-  );
+  return <FAQItemList items={HOME_FAQ_ITEMS} />;
 }
 
 export default HomeFAQ;

@@ -7,7 +7,8 @@ require_once __DIR__ . '/../helpers/image_upload.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../helpers/profanity.php';
 require_once __DIR__ . '/helpers.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/moderation.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
 
@@ -19,6 +20,13 @@ auth_boot_session();
 // --- auth: require a logged-in user ---
 $userId = require_login();
 $sender = $userId;
+
+// A body over post_max_size reaches PHP with $_POST and $_FILES both empty, so
+// the CSRF check below would fail with a misleading error (and the client
+// would retry the whole upload). Report the real cause first.
+if (empty($_POST) && empty($_FILES) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    json_response(['success' => false, 'error' => 'file_too_large'], 413);
+}
 
 // This endpoint expects multipart/form-data with an image or video attachment.
 require_multipart_formdata();
@@ -37,7 +45,11 @@ require_csrf_token($_POST['csrf_token'] ?? null);
 if ($receiverId <= 0 || (array_key_exists('conv_id', $_POST) && $_POST['conv_id'] !== '' && $convIdParam === null)) {
     json_response(['success' => false, 'error' => 'missing_receiver'], 400);
 }
-if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+$uploadError = $_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE;
+if (in_array($uploadError, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+    json_response(['success' => false, 'error' => 'file_too_large'], 413);
+}
+if (!isset($_FILES['image']) || $uploadError !== UPLOAD_ERR_OK) {
     json_response(['success' => false, 'error' => 'missing_image'], 400);
 }
 
@@ -46,13 +58,30 @@ if ($senderId === $receiverId) {
     json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
 }
 
-$receiverStmt = $conn->prepare('SELECT user_id FROM user_accounts WHERE user_id = ? LIMIT 1');
-$receiverStmt->bind_param('i', $receiverId);
-$receiverStmt->execute();
-$receiverExists = $receiverStmt->get_result()->num_rows === 1;
-$receiverStmt->close();
-if (!$receiverExists) {
+// Uploads can be up to 25 MB each, so they get their own, tighter flood cap
+// than text messages; without one a script could fill the upload volume.
+$mediaLimit = consume_rate_limit(
+    scoped_rate_limit_key('chat_media', $senderId),
+    CHAT_MEDIA_MAX_PER_WINDOW,
+    CHAT_MESSAGE_WINDOW_MINUTES,
+    CHAT_MESSAGE_LOCKOUT_MINUTES
+);
+if ($mediaLimit['blocked']) {
+    $retryAfterSeconds = max(1, (int)$mediaLimit['retry_after_seconds']);
+    if (!headers_sent()) {
+        header('Retry-After: ' . $retryAfterSeconds);
+    }
+    json_response([
+        'success' => false,
+        'error' => 'You are sending photos and videos too quickly. Please wait a moment and try again.',
+    ], 429);
+}
+
+if (!chat_user_exists($conn, $receiverId)) {
     json_response(['success' => false, 'error' => 'Receiver not found'], 404);
+}
+if (moderation_user_is_banned($conn, $receiverId)) {
+    json_response(['success' => false, 'error' => 'This user is no longer available'], 403);
 }
 
 $content = $contentRaw;
@@ -205,10 +234,10 @@ try {
 
     $filteredContent = filter_profanity($conn, $content);
 
-    chat_release_lock($conn, $lockKey);
-
+    // Commit before releasing so the next lock holder sees this transaction's rows.
     $conn->commit();
     $committed = true;
+    chat_release_lock($conn, $lockKey);
 
     if ($createdIso === null) {
         $createdIso = gmdate('Y-m-d\TH:i:s\Z');

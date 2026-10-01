@@ -7,6 +7,7 @@ import {
 } from "../utils/listingFormConfig";
 import ListingActions from "./ListingActions";
 import SafetyTips from "./SafetyTips";
+import { withFirstFrame } from "../../../utils/videoSrc";
 
 const errorBorder = (error) =>
   error
@@ -26,22 +27,22 @@ function FieldError({ error, className = "" }) {
 
 function ToggleOption({ checked, description, label, onChange }) {
   return (
-    <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-900/30">
-      <div>
-        <label className="text-lg font-medium text-gray-900 dark:text-gray-100">
+    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg bg-gray-50 p-4 dark:bg-gray-900/30">
+      <span>
+        <span className="block text-lg font-medium text-gray-900 dark:text-gray-100">
           {label}
-        </label>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        </span>
+        <span className="block text-sm text-gray-600 dark:text-gray-400">
           {description}
-        </p>
-      </div>
+        </span>
+      </span>
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        className="h-5 w-5 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
       />
-    </div>
+    </label>
   );
 }
 
@@ -267,7 +268,7 @@ export default function ListingForm({
                           type="button"
                           aria-label={`remove ${c}`}
                           onClick={() => removeCategory(c)}
-                          className="text-blue-600 dark:text-blue-200 hover:text-blue-800 dark:hover:text-white"
+                          className="-my-1 -mr-2 px-2 py-1 coarse:-my-2 coarse:py-2 text-blue-600 dark:text-blue-200 hover:text-blue-800 dark:hover:text-white"
                         >
                           ✕
                         </button>
@@ -305,7 +306,7 @@ export default function ListingForm({
                 }
                 rows={6}
                 className={inputClass(errors.description, "resize-none")}
-                placeholder="Describe the item — condition, usage, and history."
+                placeholder="Describe the item: condition, usage, and history."
                 maxLength={LIMITS.description}
               />
               <div className="flex justify-end items-center mt-2">
@@ -412,9 +413,10 @@ export default function ListingForm({
                     <div key={i} className="relative group">
                       {img.type === "video" ? (
                         <video
-                          src={img.url}
+                          src={withFirstFrame(img.url)}
                           aria-label={`video preview-${i}`}
                           controls
+                          playsInline
                           preload="metadata"
                           className="w-full h-24 object-contain rounded-lg bg-black"
                         />
@@ -427,7 +429,7 @@ export default function ListingForm({
                       )}
                       <button
                         onClick={() => removeImage(i)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 coarse:w-8 coarse:h-8 flex items-center justify-center text-xs mouse:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
                         aria-label="remove media"
                       >
                         ✕

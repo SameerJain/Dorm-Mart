@@ -14,11 +14,7 @@ try {
     auth_boot_session();
     $userId = require_login();
 
-    // Validate product_id
-    $productId = strict_integer_value($_GET['product_id'] ?? null);
-    if ($productId === null || $productId <= 0) {
-        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
-    }
+    $productId = require_product_id($_GET);
 
     $conn = db();
     $conn->set_charset('utf8mb4');

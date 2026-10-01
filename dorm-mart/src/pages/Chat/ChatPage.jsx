@@ -1,12 +1,4 @@
-import {
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ChatContext } from "../../context/ChatContext";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
@@ -25,6 +17,8 @@ import {
   buildDisplayMessages,
   parseChatMetadata,
 } from "./utils/chatPageUtils";
+import useAutoGrowTextarea from "./hooks/useAutoGrowTextarea";
+import useChatAutoScroll from "./hooks/useChatAutoScroll";
 
 /** Root Chat page: wires context, sidebar, messages, and composer together */
 export default function ChatPage() {
@@ -38,18 +32,19 @@ export default function ChatPage() {
     typingStatusByConv,
     convError,
     chatByConvError,
+    sendMsgError,
     unreadMsgByConv,
     myId,
     fetchConversation,
     createMessage,
     editMessage,
+    deleteMessage,
     createImageMessage,
     clearActiveConversation,
     removeConversationLocal,
   } = ctx;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const MAX_LEN = 500;
   const scrollRef = useRef(null);
   const [draft, setDraft] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -59,34 +54,12 @@ export default function ChatPage() {
   const [attachOpen, setAttachOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
 
-  useBodyScrollLock(deleteConfirmOpen || paymentOpen);
+  // The hide-conversation dialog locks scroll itself (components/Dialog).
+  useBodyScrollLock(paymentOpen);
   const [attachedImage, setAttachedImage] = useState(null);
 
-  const taRef = useRef(null);
-  const autoGrow = useCallback(() => {
-    const el = taRef.current;
-    if (!el) return;
-    const minLine =
-      typeof window !== "undefined" &&
-      window.matchMedia("(min-width: 768px)").matches
-        ? 44
-        : 48;
-    const trimmed = (el.value || "").trim();
-    if (!trimmed) {
-      el.style.height = `${minLine}px`;
-      el.style.overflowY = "hidden";
-      return;
-    }
-    el.style.height = "auto";
-    const next = Math.max(minLine, el.scrollHeight);
-    el.style.height = `${next}px`;
-    el.style.overflowY = el.scrollHeight > el.clientHeight ? "auto" : "hidden";
-  }, []);
-
   /** Sync textarea height before paint so composer row stays aligned with attach/send */
-  useLayoutEffect(() => {
-    autoGrow();
-  }, [draft, autoGrow]);
+  const { taRef, autoGrow } = useAutoGrowTextarea(draft);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -98,26 +71,9 @@ export default function ChatPage() {
     (c) => c.conv_id === activeConvId,
   );
 
-  /** Clear draft when item is deleted and prevent any input */
+  // A closed chat replaces the textarea with a notice, so only the draft needs clearing.
   useEffect(() => {
-    if (activeConversation?.item_deleted) {
-      // Clear draft immediately
-      setDraft("");
-      // Clear textarea value and remove focus
-      if (taRef.current) {
-        taRef.current.value = "";
-        taRef.current.blur();
-        // Force the textarea to be disabled
-        taRef.current.disabled = true;
-        taRef.current.readOnly = true;
-      }
-    } else {
-      // Re-enable if item is not deleted
-      if (taRef.current) {
-        taRef.current.disabled = false;
-        taRef.current.readOnly = false;
-      }
-    }
+    if (activeConversation?.item_deleted) setDraft("");
   }, [activeConversation?.item_deleted]);
 
   /** Compute header label for the active chat */
@@ -187,54 +143,26 @@ export default function ChatPage() {
   const isOtherPersonTyping = typingStatus?.is_typing || false;
   const typingUserName = typingStatus?.typing_user_first_name || null;
 
-  /** Auto-scroll to bottom when active conversation or messages change - optimized with requestAnimationFrame */
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
+  useChatAutoScroll(scrollRef, {
+    activeConvId,
+    messageCount: messages.length,
+    isOtherPersonTyping,
+  });
 
-    // Use requestAnimationFrame for smoother scrolling
-    const rafId = requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
-    });
-
-    return () => cancelAnimationFrame(rafId);
-    // Note: Removed automatic hiding of typing indicator on messages.length change
-    // The backend already handles typing status expiration, and this was causing
-    // race conditions where the indicator would disappear when messages were being fetched
-  }, [activeConvId, messages.length]);
-
-  /** Auto-scroll to bottom when typing indicator appears - optimized with requestAnimationFrame */
-  useEffect(() => {
-    if (isOtherPersonTyping) {
-      // Use requestAnimationFrame for smoother scrolling
-      const rafId = requestAnimationFrame(() => {
-        const el = scrollRef.current;
-        if (el) {
-          el.scrollTop = el.scrollHeight;
-        }
-      });
-      return () => cancelAnimationFrame(rafId);
-    }
-  }, [isOtherPersonTyping]);
-
-  /** Wrapper to prevent message creation when item is deleted */
+  /** Wrapper to prevent message creation when item is deleted. Resolves true on success. */
   const handleCreateMessage = useCallback(
-    (content) => {
-      if (activeConversation?.item_deleted) {
-        return;
-      }
-      createMessage(content);
+    async (content) => {
+      if (activeConversation?.item_deleted) return false;
+      return createMessage(content);
     },
     [activeConversation?.item_deleted, createMessage],
   );
 
-  /** Wrapper to prevent image message creation when item is deleted */
+  /** Wrapper to prevent image message creation when item is deleted. Resolves true on success. */
   const handleCreateImageMessage = useCallback(
-    (content, file) => {
-      if (activeConversation?.item_deleted) {
-        return;
-      }
-      createImageMessage(content, file);
+    async (content, file) => {
+      if (activeConversation?.item_deleted) return false;
+      return createImageMessage(content, file);
     },
     [activeConversation?.item_deleted, createImageMessage],
   );
@@ -246,21 +174,40 @@ export default function ChatPage() {
     taRef,
   });
 
-  /** Send text and/or attached image (Enter key or Send button) */
-  const submitComposer = useCallback(() => {
+  const [isSending, setIsSending] = useState(false);
+  const sendingRef = useRef(false);
+
+  /**
+   * Send text and/or attached media (Enter key or Send button). The composer
+   * clears immediately so sending feels instant; if the send fails, the text
+   * and attachment are put back (unless the user already started typing
+   * something new) and the context's sendMsgError explains why.
+   */
+  const submitComposer = useCallback(async (fileOverride) => {
     if (activeConversation?.item_deleted || !activeConvId) return;
-    if (attachedImage) {
-      handleCreateImageMessage(draft, attachedImage);
-      setDraft("");
-      setAttachedImage(null);
-      flushTypingOnSend();
-      return;
-    }
-    if (!draft.trim()) return;
-    handleCreateMessage(draft);
+    if (sendingRef.current) return;
+    const sentDraft = draft;
+    // Phones send a picked file straight away; the Send button passes a click event.
+    const sentImage = fileOverride instanceof Blob ? fileOverride : attachedImage;
+    if (!sentImage && !sentDraft.trim()) return;
+
+    sendingRef.current = true;
+    setIsSending(true);
     setDraft("");
     setAttachedImage(null);
     flushTypingOnSend();
+    try {
+      const ok = sentImage
+        ? await handleCreateImageMessage(sentDraft, sentImage)
+        : await handleCreateMessage(sentDraft);
+      if (!ok) {
+        setDraft((current) => (current === "" ? sentDraft : current));
+        if (sentImage) setAttachedImage((current) => current ?? sentImage);
+      }
+    } finally {
+      sendingRef.current = false;
+      setIsSending(false);
+    }
   }, [
     activeConvId,
     activeConversation?.item_deleted,
@@ -299,18 +246,11 @@ export default function ChatPage() {
     setDeleteError("");
   }
 
-  /** Confirm deletion: call API, clear active if needed, then reload page */
+  /** Confirm hiding: call the API, then remove the row once the server agrees. */
   async function handleDeleteConfirm() {
     if (!pendingDeleteConvId || isDeleting) return;
 
     const convId = pendingDeleteConvId; // keep a local copy
-    const wasActive = convId === activeConvId; // was this the open chat?
-
-    // Immediately update local UI and stop polling for this conversation
-    removeConversationLocal(convId);
-    if (wasActive) {
-      clearActiveConversation();
-    }
 
     setIsDeleting(true);
     setDeleteError("");
@@ -336,16 +276,17 @@ export default function ChatPage() {
         throw new Error(result.error || "Failed to delete conversation");
       }
 
+      // Only now drop the row and stop polling it; on failure it stays listed.
+      removeConversationLocal(convId);
+      if (convId === activeConvId) {
+        clearActiveConversation();
+      }
       setDeleteConfirmOpen(false);
       setPendingDeleteConvId(null);
-
-      // Optional: you probably don't need this anymore, but you can keep it as a safety net.
-      // window.location.reload();
     } catch (error) {
       setDeleteError(
-        error.message || "Failed to delete conversation. Please try again.",
+        error.message || "Couldn't remove this conversation. Please try again.",
       );
-      // If you want to "undo" the local removal on error, you could reload or refetch here.
     } finally {
       setIsDeleting(false);
     }
@@ -483,10 +424,9 @@ export default function ChatPage() {
 
   return (
     <div
-      className={`${isMobileList ? "h-[calc(100dvh-64px)]" : "h-[100dvh]"} md:h-[calc(100dvh-var(--nav-h))] w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100`}
-      style={{ "--nav-h": "64px" }}
+      className={`${isMobileList ? "h-[calc(100dvh-var(--nav-h,64px))]" : "h-[100dvh] max-md:pt-[env(safe-area-inset-top,0px)]"} md:h-[calc(100dvh-var(--nav-h,64px))] w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100`}
     >
-      <div className="mx-auto h-full max-w-[1200px] px-4 py-6">
+      <div className={`mx-auto h-full max-w-[1200px] ${isMobileList ? "px-4 py-6" : "px-2 py-2 md:px-4 md:py-6"} short:!py-2`}>
         <div className="grid h-full grid-cols-12 gap-4">
           <ChatSidebar
             activeConvId={activeConvId}
@@ -541,12 +481,12 @@ export default function ChatPage() {
               messages={messages}
               messagesByConv={messagesByConv}
               editMessage={editMessage}
+              deleteMessage={deleteMessage}
               scrollRef={scrollRef}
               typingUserName={typingUserName}
             />
 
             <ChatComposer
-              MAX_LEN={MAX_LEN}
               activeConversation={activeConversation}
               attachOpen={attachOpen}
               attachedImage={attachedImage}
@@ -557,15 +497,15 @@ export default function ChatPage() {
               confirmState={confirmState}
               draft={draft}
               handleConfirmPurchase={handleConfirmPurchase}
-              handleCreateImageMessage={handleCreateImageMessage}
               handleDraftChange={handleDraftChange}
+              isSending={isSending}
+              sendError={sendMsgError}
               handleKeyDown={handleKeyDown}
               handleSchedulePurchase={handleSchedulePurchase}
               hasActiveScheduledPurchase={hasActiveScheduledPurchase}
               isSellerPerspective={isSellerPerspective}
               setAttachOpen={setAttachOpen}
               setAttachedImage={setAttachedImage}
-              setDraft={setDraft}
               submitComposer={submitComposer}
               taRef={taRef}
             />

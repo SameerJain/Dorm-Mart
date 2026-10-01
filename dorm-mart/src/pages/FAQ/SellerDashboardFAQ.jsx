@@ -1,3 +1,5 @@
+import FAQSectionList from "./FAQSectionList";
+
 const SELLER_DASHBOARD_SECTIONS = [
   {
     title: "Managing Listings",
@@ -25,7 +27,7 @@ const SELLER_DASHBOARD_SECTIONS = [
     items: [
       {
         question: "What do the stats at the top show?",
-        answer: `Active Listings — items currently published. Pending Sales — sales in progress. Items Sold — your total completed sales.`,
+        answer: `Active Listings: items currently published. Pending Sales: sales in progress. Items Sold: your total completed sales.`,
       },
     ],
   },
@@ -34,7 +36,7 @@ const SELLER_DASHBOARD_SECTIONS = [
     items: [
       {
         question: "What do the different statuses mean?",
-        answer: `Active — visible to buyers. Pending — a scheduled purchase is in progress. Sold — item has been sold. Removed — taken off the marketplace.`,
+        answer: `Active: visible to buyers. Pending: a scheduled purchase is in progress. Sold: item has been sold. Removed: taken off the marketplace.`,
       },
       {
         question: "How does the status change?",
@@ -62,29 +64,7 @@ const SELLER_DASHBOARD_SECTIONS = [
 ];
 
 function SellerDashboardFAQ() {
-  return (
-    <div className="space-y-5 text-sm text-gray-700 dark:text-gray-300">
-      {SELLER_DASHBOARD_SECTIONS.map((section) => (
-        <section key={section.title} className="space-y-2.5">
-          <h2 className="inline-block pl-2 pr-3 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-sm font-semibold tracking-wide uppercase text-gray-900 dark:text-gray-100">
-            {section.title}
-          </h2>
-
-          {section.items.map((item) => (
-            <div
-              key={item.question}
-              className="pb-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
-            >
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                {item.question}
-              </h3>
-              <p className="mt-0.5 whitespace-pre-line">{item.answer}</p>
-            </div>
-          ))}
-        </section>
-      ))}
-    </div>
-  );
+  return <FAQSectionList sections={SELLER_DASHBOARD_SECTIONS} />;
 }
 
 export default SellerDashboardFAQ;

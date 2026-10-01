@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../helpers/response.php';
+require_once __DIR__ . '/../helpers/inventory.php';
 init_security();
 
 // Handle preflight OPTIONS request
@@ -22,6 +23,7 @@ try {
         AND item_status = 'Active'
         AND categories IS NOT NULL
         AND categories != ''
+        AND " . inventory_seller_visible_sql('seller_id') . "
     ";
     
     $result = $conn->query($sql);

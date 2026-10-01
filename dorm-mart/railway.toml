@@ -1,2 +1,11 @@
+[build]
+# Apache + PHP container (see Dockerfile). Replaces the Procfile's `php -S`,
+# PHP's single-purpose development server.
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
 [deploy]
 preDeployCommand = ["php api/database/migrate_schema.php"]
+# Traffic switches to a new deployment only once Apache serves the app shell.
+healthcheckPath = "/"
+healthcheckTimeout = 120

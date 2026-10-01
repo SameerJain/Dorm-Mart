@@ -25,9 +25,16 @@
   }
 }
 
-@media (min-width: 3200px) and (min-height: 1800px) {
+@media (min-width: 2560px) and (min-height: 1440px) {
   html {
     font-size: 125%;
+  }
+}
+
+/* 4K monitors run at 100% scaling */
+@media (min-width: 3200px) and (min-height: 1800px) {
+  html {
+    font-size: 150%;
   }
 }
 
@@ -44,11 +51,6 @@
     text-decoration: none !important;
     pointer-events: none !important;
     cursor: default !important;
-  }
-
-  .overflow-wrap-anywhere {
-    overflow-wrap: anywhere;
-    word-break: break-word;
   }
 
   /* Pre-login right side background - subtle blue gradient */
@@ -103,12 +105,25 @@
   }
 }
 
+/*
+ * Clip stray horizontal overflow without turning body/#root into scroll
+ * containers: overflow-y:auto on them silently broke every position:sticky
+ * element on the page. `clip` keeps the viewport as the scroller; browsers
+ * without it fall back to the html rule.
+ */
+html {
+  overflow-x: hidden;
+}
+
+body,
+#root {
+  overflow-x: clip;
+}
+
 html,
 body,
 #root {
   min-height: 100vh;
-  overflow-x: hidden;
-  overflow-y: auto; /* allow vertical scrolling */
   transition:
     background-color 0.3s ease,
     color 0.3s ease;
@@ -122,21 +137,34 @@ html.dark #root {
   color: #f3f4f6; /* gray-100 */
 }
 
-/* Ensure input fields are always visible */
-input,
-textarea,
-select {
+/*
+ * Form field defaults. :where() has zero specificity, so any Tailwind class on
+ * the element (bg-gray-100 for a disabled field, dark:bg-gray-700, ...) wins.
+ * These used to be !important, which silently overrode every component's own
+ * dark-mode input styling.
+ */
+:where(input, textarea, select) {
+  background-color: white;
+  color: #1f2937; /* gray-800 */
+  border-color: #d1d5db; /* gray-300 */
+}
+
+/*
+ * Dark mode: fields that declare their own dark background keep it. Fields
+ * that don't are forced to the light look, so a field styled only with
+ * bg-white never ends up with light text on a white box.
+ */
+html.dark :is(input, textarea, select):not([class*="dark:bg-"]) {
   background-color: white !important;
   color: #1f2937 !important; /* gray-800 */
   border-color: #d1d5db !important; /* gray-300 */
 }
 
-html.dark input,
-html.dark textarea,
-html.dark select {
-  background-color: white !important;
-  color: #1f2937 !important; /* gray-800 */
-  border-color: #d1d5db !important; /* gray-300 */
+/* iOS Safari zooms the page into any focused field under 16px. */
+@media (pointer: coarse) {
+  :is(input, select, textarea):is([class*="text-xs"], [class*="text-sm"]) {
+    font-size: 16px !important;
+  }
 }
 
 /*
@@ -149,16 +177,18 @@ html.dark .bg-blue-600 {
 html.dark .bg-blue-500 {
   background-color: rgb(30 64 175) !important;
 }
-html.dark .hover\:bg-blue-700:hover {
-  background-color: rgb(30 58 138) !important; /* blue-900 */
-}
-html.dark .hover\:bg-blue-600:hover {
-  background-color: rgb(30 58 138) !important;
+@media (hover: hover) and (pointer: fine) {
+  html.dark .hover\:bg-blue-700:hover {
+    background-color: rgb(30 58 138) !important; /* blue-900 */
+  }
+  html.dark .hover\:bg-blue-600:hover {
+    background-color: rgb(30 58 138) !important;
+  }
+  html.dark .hover\:bg-blue-500:hover {
+    background-color: rgb(30 58 138) !important;
+  }
 }
 html.dark .active\:bg-blue-700:active {
-  background-color: rgb(30 58 138) !important;
-}
-html.dark .hover\:bg-blue-500:hover {
   background-color: rgb(30 58 138) !important;
 }
 html.dark .border-blue-600 {
@@ -174,10 +204,17 @@ html.dark .ring-blue-600,
 html.dark .ring-blue-500 {
   --tw-ring-color: rgb(30 64 175) !important;
 }
+/*
+ * Focus rings must stay visible for keyboard users. blue-800 (the button
+ * color above) disappears against dark surfaces and dark buttons, so focus
+ * uses blue-400 instead.
+ */
 html.dark .focus\:ring-blue-500:focus,
-html.dark .focus-visible\:ring-blue-600:focus-visible {
+html.dark .focus-visible\:ring-blue-600:focus-visible,
+html.dark .focus-visible\:ring-blue-500:focus-visible,
+html.dark .focus\:ring-blue-600:focus {
   --tw-ring-opacity: 1;
-  --tw-ring-color: rgb(30 64 175 / var(--tw-ring-opacity, 1)) !important;
+  --tw-ring-color: rgb(96 165 250 / var(--tw-ring-opacity, 1)) !important; /* blue-400 */
 }
 
 :root {
@@ -240,6 +277,26 @@ html.dark .focus-visible\:ring-blue-600:focus-visible {
   }
 }
 
+/* Chat message action sheet (mobile long-press) */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.animate-sheet-up {
+  animation: sheet-up 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet-up {
+    animation: none;
+  }
+}
+
 @keyframes fade-up {
   0% {
     opacity: 0;
@@ -295,6 +352,8 @@ html.dark .focus-visible\:ring-blue-600:focus-visible {
 }
 
 /* Apply the animation only while the element is hovered */
-.qna-bounce-z:hover {
-  animation: qna-bounce-z 220ms ease-out; /* short pop animation */
+@media (hover: hover) and (pointer: fine) {
+  .qna-bounce-z:hover {
+    animation: qna-bounce-z 220ms ease-out; /* short pop animation */
+  }
 }

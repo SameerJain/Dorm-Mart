@@ -45,6 +45,8 @@ function payment_user(mysqli $conn, int $userId): ?array
 
 function payment_account(mysqli $conn, int $userId, string $mode, bool $forUpdate = false): ?array
 {
+    if (!dm_payments_enabled()) return null;
+
     $sql = 'SELECT * FROM connected_payment_accounts WHERE user_id = ? AND payment_mode = ? LIMIT 1';
     if ($forUpdate) $sql .= ' FOR UPDATE';
     $stmt = $conn->prepare($sql);
@@ -153,7 +155,8 @@ function payment_schedule_eligibility(mysqli $conn, int $sellerId, int $buyerId)
 
 function payment_schedule(mysqli $conn, int $requestId, bool $forUpdate = false): ?array
 {
-    $sql = '
+    if (dm_payments_enabled()) {
+        $sql = '
         SELECT spr.*, inv.title AS item_title, inv.listing_price, inv.sold,
                seller.is_protected AS seller_is_protected,
                buyer.is_protected AS buyer_is_protected,
@@ -171,6 +174,18 @@ function payment_schedule(mysqli $conn, int $requestId, bool $forUpdate = false)
            AND cpa.payment_mode = spr.payment_mode
          WHERE spr.request_id = ?
          LIMIT 1';
+    } else {
+        $sql = '
+        SELECT spr.*, inv.title AS item_title, inv.listing_price, inv.sold,
+               seller.is_protected AS seller_is_protected,
+               buyer.is_protected AS buyer_is_protected
+          FROM scheduled_purchase_requests spr
+          INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
+          INNER JOIN user_accounts seller ON seller.user_id = spr.seller_user_id
+          INNER JOIN user_accounts buyer ON buyer.user_id = spr.buyer_user_id
+         WHERE spr.request_id = ?
+         LIMIT 1';
+    }
     if ($forUpdate) $sql .= ' FOR UPDATE';
     $stmt = $conn->prepare($sql);
     if (!$stmt) throw new RuntimeException('Failed to prepare payment schedule lookup');
@@ -218,7 +233,7 @@ function payment_insert_fallback_message(mysqli $conn, array $schedule, string $
     $sellerId = (int)($schedule['seller_user_id'] ?? 0);
     if ($conversationId <= 0 || $buyerId <= 0 || $sellerId <= 0) return;
 
-    insert_confirm_chat_message(
+    chat_insert_system_message(
         $conn,
         $conversationId,
         $buyerId,
@@ -268,6 +283,10 @@ function payment_apply_fallback(mysqli $conn, array $schedule, string $reason): 
     $changed = $stmt->affected_rows > 0;
     $stmt->close();
     if (!$changed) return false;
+
+    // A cancelled schedule posts its own chat message; a "returned to manual
+    // confirmation" card there would describe a purchase that no longer exists.
+    if ($reason === 'schedule_cancelled') return true;
 
     payment_insert_fallback_message($conn, $schedule, $reason);
     $notified = $conn->prepare(
@@ -345,6 +364,12 @@ function payment_can_apply_refund_status(string $currentStatus, string $nextStat
     return in_array($nextStatus, ['refund_pending', 'refund_failed', 'refunded'], true);
 }
 
+/** Dispute outcomes where the seller keeps the funds. */
+function payment_dispute_resolved_for_seller(string $disputeStatus): bool
+{
+    return in_array($disputeStatus, ['won', 'prevented', 'warning_closed'], true);
+}
+
 function payment_can_apply_dispute_status(?string $currentStatus, string $nextStatus): bool
 {
     $terminal = ['won', 'lost', 'prevented', 'warning_closed'];
@@ -417,7 +442,7 @@ function payment_finalize_refund_transaction(
             ['late_payment', 'completion_conflict', 'fallback_payment', 'schedule_inactive'],
             true
         );
-        insert_confirm_chat_message(
+        chat_insert_system_message(
             $conn,
             $conversationId,
             $isLateRefund ? $buyerId : $sellerId,

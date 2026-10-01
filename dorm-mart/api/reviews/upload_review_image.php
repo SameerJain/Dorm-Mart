@@ -4,9 +4,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
-init_json_endpoint();
+init_json_endpoint('POST');
 
 auth_boot_session();
 
@@ -16,6 +16,7 @@ require_csrf_token($_POST['csrf_token'] ?? null);
 
 // This endpoint expects multipart/form-data with an image file
 require_multipart_formdata();
+require_upload_quota($userId, 'review_image');
 
 // Validate presence of the uploaded image
 if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {

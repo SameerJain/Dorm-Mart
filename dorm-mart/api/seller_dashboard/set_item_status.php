@@ -1,18 +1,16 @@
 <?php
 declare(strict_types=1);
 
-/** Must match product_listing.php */
-const MAX_ACTIVE_LISTINGS_PER_SELLER = 25;
-
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('POST');
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
 require_once __DIR__ . '/../scheduled_purchases/helpers.php';
+require_once __DIR__ . '/listing_cap.php';
 
 try {
     $userId = require_login();
@@ -32,7 +30,14 @@ try {
         json_response(['success' => false, 'error' => 'Invalid id or status'], 400);
     }
 
-    $checkStmt = $conn->prepare('SELECT sold, item_status, title, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
+    // Every check below runs under locks so it still holds when the UPDATE lands:
+    // the seller row (taken first, same order as product_listing.php) serializes
+    // the active-listing cap, and the listing row serializes against a buyer
+    // accepting a schedule for it at the same moment.
+    $conn->begin_transaction();
+    $activeCount = listing_cap_locked_active_count($conn, $userId, $id);
+
+    $checkStmt = $conn->prepare('SELECT sold, item_status, title, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1 FOR UPDATE');
     if (!$checkStmt) {
         throw new RuntimeException('Failed to prepare sold-state check');
     }
@@ -48,33 +53,22 @@ try {
     if ($soldFlag === 1 || $statusStr === 'Sold') {
         json_response(['success' => false, 'error' => 'Sold listings cannot be edited.'], 403);
     }
-    if ($status === 'Draft' && scheduled_purchase_has_active_accepted($conn, $id, 0)) {
+    // While a buyer holds an accepted schedule, the schedule owns the listing's
+    // state: Confirm Purchase or payment marks it sold, cancelling relists it.
+    // Relisting or selling it by hand here would let a second sale or a Stripe
+    // payment land on an item that is already spoken for.
+    if ($status !== 'Pending' && scheduled_purchase_has_active_accepted($conn, $id, 0)) {
+        $action = ['Draft' => 'saving this listing as a draft', 'Active' => 'relisting this item', 'Sold' => 'marking this item as sold'][$status];
         json_response([
             'success' => false,
-            'error' => 'Cancel or complete the accepted scheduled purchase before saving this listing as a draft.'
+            'error' => "Cancel or complete the accepted scheduled purchase before {$action}."
         ], 409);
     }
 
-    // Enforce cap on active listings per seller when activating
-    if ($status === 'Active') {
-        $capStmt = $conn->prepare(
-            'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ? AND product_id != ?'
-        );
-        $activeLabel = 'Active';
-        $capStmt->bind_param('isi', $userId, $activeLabel, $id);
-        $capStmt->execute();
-        $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
-        $capStmt->close();
-
-        if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
-            json_response([
-                'success' => false,
-                'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . ' active listings. Please deactivate or remove an existing listing before activating this one.'
-            ], 403);
-        }
+    if ($status === 'Active' && $activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+        json_response(['success' => false, 'error' => listing_cap_error('activating this one')], 403);
     }
 
-    $conn->begin_transaction();
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare(
         'UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND seller_id = ?'
@@ -99,6 +93,8 @@ try {
         $type = 'item_sold'; $message = $existing['title'] . ' has been sold.'; $severity = 'warning';
     }
     if ($type) {
+        // Toggling a listing back and forth should leave only its current state.
+        notification_supersede_unread($conn, $id, ['item_pending', 'item_back_on_sale', 'item_sold']);
         notification_for_wishlist($conn, $id, [
             'type' => $type, 'title' => (string)$existing['title'], 'message' => $message,
             'image_url' => notification_first_image($existing['photos'] ?? null), 'severity' => $severity,
@@ -122,8 +118,6 @@ try {
 
     json_response(['success' => true, 'id' => $id, 'status' => $status]);
 } catch (Throwable $e) {
-    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
-    error_log('set_item_status error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+    api_fail($e, 'set_item_status', $conn ?? null);
 }
 

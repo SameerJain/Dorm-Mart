@@ -1,6 +1,3 @@
-import keyboard from "../../../assets/product-images/keyboard.jpg";
-import carpet from "../../../assets/product-images/smallcarpet.png";
-import mouse from "../../../assets/product-images/wireless-mouse.jpg";
 import { API_BASE, PUBLIC_BASE } from "../../../utils/apiConfig";
 import { coerceNumber, dateTimestamp, parseListField } from "../../../utils/formatters";
 import {
@@ -10,51 +7,6 @@ import {
 
 export const MIN_EXPLORE_ITEMS = 30;
 export const HOME_FEED_TAB_SESSION_KEY = "dm_home_feed_tab";
-
-export const FALLBACK_ITEMS = [
-  {
-    id: 1,
-    title: "Wireless Keyboard",
-    price: 40,
-    img: keyboard,
-    tags: ["Electronics", "Accessories"],
-    seller: "Ava P.",
-    sellerUsername: "ava",
-    sellerEmail: "ava@example.com",
-    rating: 4.8,
-    location: "North Campus",
-    status: "JUST POSTED",
-    category: "Electronics",
-  },
-  {
-    id: 2,
-    title: "Small Carpet (5x7)",
-    price: 25,
-    img: carpet,
-    tags: ["Furniture", "Decor"],
-    seller: "Mark D.",
-    sellerUsername: "markd",
-    sellerEmail: "mark@example.com",
-    rating: 4.4,
-    location: "Ellicott",
-    status: "AVAILABLE",
-    category: "Home & Dorm",
-  },
-  {
-    id: 3,
-    title: "Wireless Mouse",
-    price: 30,
-    img: mouse,
-    tags: ["Electronics", "Accessories"],
-    seller: "Sara T.",
-    sellerUsername: "sarat",
-    sellerEmail: "sara@example.com",
-    rating: 4.9,
-    location: "South Campus",
-    status: "PRICE DROP",
-    category: "Electronics",
-  },
-];
 
 export function readStoredFeedTab() {
   try {
@@ -86,7 +38,7 @@ export function computeExploreLimit() {
   return MIN_EXPLORE_ITEMS;
 }
 
-function shuffleArray(items) {
+export function shuffleArray(items) {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -156,75 +108,30 @@ export function getQuickFilterCategories(allCategories, allItems) {
     : ["Electronics", "Kitchen", "Furniture", "Dorm Essentials"];
 }
 
-export function buildHomeFeed(allItems, interests, exploreLimit) {
+/**
+ * Build the two home feeds from the landing listings.
+ *
+ * - forYouItems: ranked by the server's recommendation score, newest first on ties.
+ * - exploreItems: a random mix of every listing. Pass `exploreOrder` (a shuffled
+ *   copy made once per load) so resizing the window, which changes
+ *   `exploreLimit`, does not reshuffle what the user is looking at.
+ *
+ * Explore used to skip listings matching the user's interests because they were
+ * meant to appear in per-interest rows that were never rendered, so those
+ * listings silently disappeared from Explore.
+ */
+export function buildHomeFeed(allItems, exploreLimit, exploreOrder = null) {
   const maxTotalItems = 50;
   const exploreCap = Math.min(
     maxTotalItems,
     Math.max(MIN_EXPLORE_ITEMS, exploreLimit),
   );
-
-  if (!interests.length) {
-    return {
-      itemsByInterest: {},
-      forYouItems: [...allItems]
-        .sort(
-          (a, b) =>
-            (b.recommendationScore || 0) - (a.recommendationScore || 0) ||
-            (b.createdAtTs || 0) - (a.createdAtTs || 0),
-        )
-        .slice(0, maxTotalItems),
-      exploreItems: shuffleArray(allItems).slice(0, exploreCap),
-    };
-  }
-
-  const byInterest = {};
-  interests.forEach((category) => {
-    byInterest[category] = [];
-  });
-
-  allItems.forEach((item) => {
-    const itemCategory = (item.category || "").toLowerCase();
-    const itemTags = Array.isArray(item.tags)
-      ? item.tags.map((tag) => tag.toLowerCase())
-      : [];
-    let best = null;
-
-    for (const interest of interests) {
-      const interestLower = interest.toLowerCase();
-      const tagIndex = itemTags.indexOf(interestLower);
-      if (tagIndex !== -1) {
-        if (!best || best.kind !== "tag" || tagIndex < best.tagIndex) {
-          best = { interest, kind: "tag", tagIndex };
-        }
-      } else if (itemCategory === interestLower && !best) {
-        best = { interest, kind: "category" };
-      }
-    }
-
-    if (best) byInterest[best.interest].push(item);
-  });
-
-  const used = new Set();
-  Object.keys(byInterest).forEach((category) => {
-    const categoryLower = category.toLowerCase();
-    const visible = byInterest[category]
-      .sort((a, b) => {
-        const aPrimary = Array.isArray(a.tags)
-          ? String(a.tags[0] || "").toLowerCase() === categoryLower
-          : false;
-        const bPrimary = Array.isArray(b.tags)
-          ? String(b.tags[0] || "").toLowerCase() === categoryLower
-          : false;
-        if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
-        return (b.createdAtTs || 0) - (a.createdAtTs || 0);
-      })
-      .slice(0, 10);
-    byInterest[category] = visible;
-    visible.forEach((item) => used.add(item.id));
-  });
+  const order =
+    Array.isArray(exploreOrder) && exploreOrder.length === allItems.length
+      ? exploreOrder
+      : shuffleArray(allItems);
 
   return {
-    itemsByInterest: byInterest,
     forYouItems: [...allItems]
       .sort(
         (a, b) =>
@@ -232,9 +139,6 @@ export function buildHomeFeed(allItems, interests, exploreLimit) {
           (b.createdAtTs || 0) - (a.createdAtTs || 0),
       )
       .slice(0, maxTotalItems),
-    exploreItems: shuffleArray(allItems.filter((item) => !used.has(item.id))).slice(
-      0,
-      exploreCap,
-    ),
+    exploreItems: order.slice(0, exploreCap),
   };
 }

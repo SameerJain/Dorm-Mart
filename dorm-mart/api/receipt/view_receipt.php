@@ -87,16 +87,22 @@ try {
 /**
  * Fetches the relevant confirm_purchase_requests row for the user.
  *
- * @return array{0: ?array, 1: int} Returns the row and resolved product id.
+ * With only a product id, picks the newest request the viewer took part in: a
+ * listing can have several (an unsuccessful exchange, then another buyer).
+ *
+ * @return array{0: ?array, 1: int, 2: bool} The row, resolved product id, and whether the viewer is a party to it.
  */
 function fetch_confirm_row(mysqli $conn, int $userId, int $productId, int $confirmId): array
 {
+    $confirmSelect = dm_payments_enabled()
+        ? 'SELECT cpr.*, ep.status AS payment_status, ep.payment_mode, ep.amount_cents AS payment_amount_cents,
+                  ep.electronic_payment_id, ep.stripe_refund_id, ep.refunded_at, ep.dispute_status
+             FROM confirm_purchase_requests cpr
+             LEFT JOIN electronic_payments ep ON ep.electronic_payment_id = cpr.electronic_payment_id'
+        : 'SELECT cpr.* FROM confirm_purchase_requests cpr';
+
     if ($confirmId > 0) {
-        $sql = 'SELECT cpr.*, ep.status AS payment_status, ep.payment_mode, ep.amount_cents AS payment_amount_cents,
-                       ep.electronic_payment_id, ep.stripe_refund_id, ep.refunded_at, ep.dispute_status
-                  FROM confirm_purchase_requests cpr
-                  LEFT JOIN electronic_payments ep ON ep.electronic_payment_id = cpr.electronic_payment_id
-                 WHERE cpr.confirm_request_id = ?';
+        $sql = $confirmSelect . ' WHERE cpr.confirm_request_id = ?';
         $params = [$confirmId];
         $types = 'i';
         if ($productId > 0) {
@@ -114,16 +120,14 @@ function fetch_confirm_row(mysqli $conn, int $userId, int $productId, int $confi
         if ($productId <= 0) {
             throw new InvalidArgumentException('product_id is required when confirm_request_id is not provided');
         }
-        $stmt = $conn->prepare('SELECT cpr.*, ep.status AS payment_status, ep.payment_mode, ep.amount_cents AS payment_amount_cents,
-                                      ep.electronic_payment_id, ep.stripe_refund_id, ep.refunded_at, ep.dispute_status
-                                 FROM confirm_purchase_requests cpr
-                                 LEFT JOIN electronic_payments ep ON ep.electronic_payment_id = cpr.electronic_payment_id
+        $stmt = $conn->prepare($confirmSelect . '
                                 WHERE cpr.inventory_product_id = ?
+                                  AND (cpr.buyer_user_id = ? OR cpr.seller_user_id = ?)
                                 ORDER BY cpr.confirm_request_id DESC LIMIT 1');
         if (!$stmt) {
             throw new RuntimeException('Failed to prepare confirm lookup');
         }
-        $stmt->bind_param('i', $productId);
+        $stmt->bind_param('iii', $productId, $userId, $userId);
     }
 
     $stmt->execute();
@@ -262,8 +266,6 @@ function build_receipt_payload(array $confirmRow, array $scheduledRow, array $sn
         'seller_user_id' => (int)$confirmRow['seller_user_id'],
         'buyer_name' => $buyerName,
         'seller_name' => $sellerName,
-        'buyer_email' => $scheduledRow['buyer_email'] ?? '',
-        'seller_email' => $scheduledRow['seller_email'] ?? '',
         'snapshot' => $snapshot,
     ];
 }

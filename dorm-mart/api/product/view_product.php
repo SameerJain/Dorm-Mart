@@ -30,7 +30,7 @@ try {
     $mysqli->set_charset('utf8mb4');
 
     $sql = "
-        SELECT 
+        SELECT
             i.product_id,
             i.title,
             i.categories,
@@ -50,7 +50,8 @@ try {
             i.sold_to,
             ua.first_name,
             ua.last_name,
-            ua.email
+            ua.email,
+            ua.is_banned AS seller_is_banned
         FROM INVENTORY AS i
         LEFT JOIN user_accounts AS ua ON i.seller_id = ua.user_id
         WHERE i.product_id = ?
@@ -76,32 +77,66 @@ try {
         json_response(['ok' => false, 'error' => 'Product not found'], 404);
     }
 
+    // A banned seller's listings are hidden; the buyer of a completed purchase
+    // still sees theirs so the receipt keeps working.
+    if ((int)($row['seller_is_banned'] ?? 0) === 1
+        && (int)$row['seller_id'] !== $userId && (int)($row['sold_to'] ?? 0) !== $userId) {
+        json_response(['ok' => false, 'error' => 'Product not found'], 404);
+    }
+
     // Drafts are private to their seller, including direct product URLs.
     if (($row['item_status'] ?? '') === 'Draft' && (int)$row['seller_id'] !== $userId) {
         json_response(['ok' => false, 'error' => 'Product not found'], 404);
     }
 
-    // Count successful views of published listings by users other than the seller.
-    // View tracking is best-effort and must not prevent the product from loading.
-    $viewStmt = $mysqli->prepare(
-        "UPDATE INVENTORY
-         SET view_count = view_count + 1
-         WHERE product_id = ?
-           AND seller_id <> ?
-           AND item_status IN ('Active', 'Pending', 'Sold')"
-    );
-    if ($viewStmt) {
-        $viewStmt->bind_param('ii', $productId, $userId);
-        if (!$viewStmt->execute()) {
-            error_log('view_product view count update failed: ' . $viewStmt->error);
+    // Pending items (an accepted-but-unconfirmed sale) are only visible to the
+    // seller and the buyer who accepted the purchase, not the general public.
+    if (($row['item_status'] ?? '') === 'Pending' && (int)$row['seller_id'] !== $userId) {
+        $buyerStmt = $mysqli->prepare(
+            "SELECT buyer_user_id FROM scheduled_purchase_requests
+             WHERE inventory_product_id = ? AND status = 'accepted'
+             ORDER BY COALESCE(updated_at, buyer_response_at) DESC, request_id DESC
+             LIMIT 1"
+        );
+        if (!$buyerStmt) {
+            throw new Exception('DB prepare failed: ' . $mysqli->error);
         }
-        $viewStmt->close();
-    } else {
-        error_log('view_product view count prepare failed: ' . $mysqli->error);
+        $buyerStmt->bind_param('i', $productId);
+        $buyerStmt->execute();
+        $buyerRow = $buyerStmt->get_result()->fetch_assoc();
+        $buyerStmt->close();
+
+        $isAcceptedBuyer = $buyerRow && (int)$buyerRow['buyer_user_id'] === $userId;
+        if (!$isAcceptedBuyer) {
+            json_response(['ok' => false, 'error' => 'Product not found'], 404);
+        }
     }
 
-    if ((int)$row['seller_id'] !== $userId && ($row['item_status'] ?? '') !== 'Draft') {
-        recommendation_record_behavior($mysqli, $userId, $productId, 'view');
+    // Views and recommendation signals only count when the app itself loads the
+    // product; a cross-site link carries the session cookie but isn't a real view.
+    if (request_is_same_origin_fetch()) {
+        // Count successful views of published listings by users other than the seller.
+        // View tracking is best-effort and must not prevent the product from loading.
+        $viewStmt = $mysqli->prepare(
+            "UPDATE INVENTORY
+             SET view_count = view_count + 1
+             WHERE product_id = ?
+               AND seller_id <> ?
+               AND item_status IN ('Active', 'Pending', 'Sold')"
+        );
+        if ($viewStmt) {
+            $viewStmt->bind_param('ii', $productId, $userId);
+            if (!$viewStmt->execute()) {
+                error_log('view_product view count update failed: ' . $viewStmt->error);
+            }
+            $viewStmt->close();
+        } else {
+            error_log('view_product view count prepare failed: ' . $mysqli->error);
+        }
+
+        if ((int)$row['seller_id'] !== $userId && ($row['item_status'] ?? '') !== 'Draft') {
+            recommendation_record_behavior($mysqli, $userId, $productId, 'view');
+        }
     }
 
     json_response(inventory_product_payload($row), 200, JSON_UNESCAPED_SLASHES);

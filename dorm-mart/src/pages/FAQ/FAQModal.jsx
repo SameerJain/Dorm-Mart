@@ -1,22 +1,12 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { TABS } from "./faqUtils";
 import { FAQ_CONTENT } from "./faqContent";
 
 function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const prevBody = document.body.style.overflow;
-    const prevHtml = document.documentElement.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prevBody;
-      document.documentElement.style.overflow = prevHtml;
-    };
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) {
     return null;
@@ -32,7 +22,7 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
       className="
         fixed inset-0 z-50
         flex items-center justify-center
-        overscroll-none
+        overscroll-none p-4
       "
       onClick={onClose}
     >
@@ -40,11 +30,13 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
         className="
           bg-white dark:bg-gray-800
           rounded-lg shadow-lg
-          p-5
+          p-4 sm:p-5
           w-full max-w-6xl
-          h-[70vh]
+          h-[85dvh] sm:h-[70vh]
+          max-h-[calc(100dvh-2rem)]
           border-2 border-gray-300 dark:border-gray-600
           flex flex-col
+          min-w-0
         "
         onClick={(e) => e.stopPropagation()}
       >
@@ -57,8 +49,8 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
         </style>
 
         {/* header */}
-        <div className="flex items-center justify-between mb-5 flex-none">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5 flex-none">
+          <h2 className="min-w-0 truncate text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">
             Frequently Asked Questions
           </h2>
           <button
@@ -66,6 +58,7 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
             onClick={onClose}
             aria-label="Close QnA modal"
             className="
+              flex-none
               text-gray-500 hover:text-gray-700
               dark:text-gray-400 dark:hover:text-gray-200
               text-2xl leading-none
@@ -76,16 +69,17 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
         </div>
 
         {/* body */}
-        <div className="flex gap-6 flex-1 min-h-0">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 flex-1 min-h-0 min-w-0">
           {/* sidebar */}
           <div
             className="
-              flex flex-col gap-2
-              w-44
-              border-r border-gray-200 dark:border-gray-700
-              pr-4
+              flex flex-row sm:flex-col gap-2
+              w-full sm:w-44
+              border-b sm:border-b-0 sm:border-r border-gray-200 dark:border-gray-700
+              pb-3 sm:pb-0 sm:pr-4
               flex-none
-              overflow-y-auto
+              overflow-x-auto sm:overflow-y-auto
+              min-w-0
             "
           >
             {TABS.map((tab) => (
@@ -94,7 +88,7 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
                 type="button"
                 onClick={() => onTabChange(tab.id)}
                 className={`
-                  w-full text-left px-4 py-2 text-base rounded-lg border
+                  flex-none sm:w-full text-left whitespace-nowrap sm:whitespace-normal px-4 py-2 text-sm sm:text-base rounded-lg border
                   ${
                     activeView === tab.id
                       ? "bg-blue-600 text-white border-blue-600"
@@ -108,7 +102,7 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
           </div>
 
           {/* content */}
-          <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 min-w-0 flex flex-col">
             <div className="flex justify-end mb-3 flex-none">
               <button
                 type="button"
@@ -132,6 +126,7 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
                 flex-1
                 h-full
                 overflow-y-auto overscroll-y-contain
+                break-words
                 px-4
                 pt-4
                 pb-2

@@ -14,7 +14,24 @@ if (!$rebuild && !$wipe) {
     exit(2);
 }
 
-require __DIR__ . '/db_connect.php';
+require_once __DIR__ . '/db_connect.php';
+
+// Same rule as migrate_data.php: never empty a shared or production database
+// by accident (for example with a Railway .env loaded). Wiping a remote host
+// on purpose requires naming it: --allow-remote-host=<the DB_HOST value>.
+$dbHost = strtolower(trim((string)getenv('DB_HOST')));
+$allowedRemote = '';
+foreach ($argv as $arg) {
+    if (str_starts_with($arg, '--allow-remote-host=')) {
+        $allowedRemote = strtolower(trim(substr($arg, strlen('--allow-remote-host='))));
+    }
+}
+$isLocal = in_array($dbHost, ['127.0.0.1', 'localhost', '::1'], true);
+if (!$isLocal && ($allowedRemote === '' || $allowedRemote !== $dbHost)) {
+    fwrite(STDERR, "Refusing to wipe non-local database host '{$dbHost}'. "
+        . "If you really mean it, add --allow-remote-host={$dbHost}\n");
+    exit(2);
+}
 
 $conn = db();
 $excludeMigrationLedger = $rebuild ? '' : "AND TABLE_NAME <> 'schema_migrations'";
@@ -38,6 +55,12 @@ try {
         $command = $rebuild ? 'DROP TABLE' : 'TRUNCATE TABLE';
         $conn->query("$command $identifier");
         $changed[] = $table;
+    }
+
+    // profanity_words was just emptied, but the ledger still says the word list
+    // was seeded, so migrate_schema.php would never refill it. Forget the seed.
+    if (!$rebuild) {
+        $conn->query("DELETE FROM schema_migrations WHERE filename LIKE 'seed_profanity_wordlist%'");
     }
 } finally {
     $conn->query('SET FOREIGN_KEY_CHECKS = 1');

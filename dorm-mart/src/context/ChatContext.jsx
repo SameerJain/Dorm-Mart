@@ -11,6 +11,7 @@ import logger from "../utils/logger";
 import {
   createImageMessageApi,
   createMessageApi,
+  deleteMessageApi,
   editLastMessageApi,
   envBool,
   fetchConversationApi,
@@ -19,17 +20,28 @@ import {
   tickFetchNewMessages,
   tickFetchUnreadMessages,
   tickFetchUnreadNotifications,
+  upsertMessage,
 } from "./chatContextUtils";
 
 export const ChatContext = createContext(null);
 
-const NEW_MSG_POLL_MS = 250;
-const UNREAD_MSG_POLL_MS = 1500;
-const UNREAD_NOTIFICATION_POLL_MS = 3000;
+// A poll that takes longer than its interval is left to finish; the next tick
+// is skipped instead of aborting it (at 250 ms with aborts, slow responses
+// meant no poll ever completed while the server still did every one).
+const NEW_MSG_POLL_MS = 1500;
+const UNREAD_MSG_POLL_MS = 3000;
+const UNREAD_NOTIFICATION_POLL_MS = 5000;
 
-function startVisiblePolling(tick, intervalMs) {
-  const run = () => {
-    if (document.visibilityState === "visible") tick();
+export function startVisiblePolling(tick, intervalMs) {
+  let running = false;
+  const run = async () => {
+    if (running || document.visibilityState !== "visible") return;
+    running = true;
+    try {
+      await tick();
+    } finally {
+      running = false;
+    }
   };
   run();
   const intervalId = setInterval(run, intervalMs);
@@ -157,6 +169,7 @@ export function ChatProvider({ children }) {
 
   const lastNavConvRef = useRef(null);
   const refreshInFlightRef = useRef(false);
+  const reloadAttemptedForRef = useRef(new Set()); // conv ids already reloaded for
   const pendingConvFetchesRef = useRef(new Set()); // Track conversations waiting for myId
 
   // chat
@@ -166,7 +179,8 @@ export function ChatProvider({ children }) {
   const [typingStatusByConv, setTypingStatusByConv] = useState({}); // { convId -> { is_typing, typing_user_first_name } }
   const [convError, setConvError] = useState(false);
   const [chatByConvError, setChatByConvError] = useState({});
-  const [sendMsgError, setSendMsgError] = useState(false);
+  // "" when the last send succeeded; otherwise a sentence to show the user.
+  const [sendMsgError, setSendMsgError] = useState("");
 
   function clearActiveConversation() {
     setActiveConvId(null); // stops new-message polling because the effect below bails when no activeConvId
@@ -178,6 +192,16 @@ export function ChatProvider({ children }) {
   const [unreadNotificationsByProduct, setUnreadNotificationsByProduct] =
     useState([]);
   const [unreadNotificationTotal, setUnreadNotificationTotal] = useState(0);
+  // "loading" until the first fetch returns, then "ready"; "error" only when
+  // nothing has ever loaded (a failed poll keeps the last good list).
+  const [notificationsStatus, setNotificationsStatus] = useState("loading");
+
+  function markAllNotificationsReadLocal() {
+    setUnreadNotificationsByProduct((prev) =>
+      (prev || []).map((item) => ({ ...item, is_read: true })),
+    );
+    setUnreadNotificationTotal(0);
+  }
 
   function markNotificationReadLocal(notificationId) {
     const id = Number(notificationId);
@@ -286,7 +310,8 @@ export function ChatProvider({ children }) {
               image_url: m.image_url,
               ts: Date.parse(m.created_at),
               editedAt: m.edited_at ? Date.parse(m.edited_at) : null,
-              activityTs: Date.parse(m.edited_at || m.created_at),
+              deletedAt: m.deleted_at ? Date.parse(m.deleted_at) : null,
+              activityTs: Date.parse(m.deleted_at || m.edited_at || m.created_at),
               metadata,
             };
           }
@@ -294,10 +319,13 @@ export function ChatProvider({ children }) {
             message_id: m.message_id,
             sender: senderIdNum === myIdNum ? "me" : "them",
             content: m.content,
+            // Uncensored text of the viewer's own messages, used to edit them.
+            rawContent: typeof m.raw_content === "string" ? m.raw_content : undefined,
             image_url: m.image_url,
             ts: Date.parse(m.created_at),
             editedAt: m.edited_at ? Date.parse(m.edited_at) : null,
-            activityTs: Date.parse(m.edited_at || m.created_at),
+            deletedAt: m.deleted_at ? Date.parse(m.deleted_at) : null,
+            activityTs: Date.parse(m.deleted_at || m.edited_at || m.created_at),
             metadata,
           };
         });
@@ -309,6 +337,12 @@ export function ChatProvider({ children }) {
 
         clearUnreadMsgFor(convId);
         pendingConvFetchesRef.current.delete(convId);
+
+        // Opening a conversation the user had hidden restores it server-side;
+        // reload the list so the composer has a conversation row to send to.
+        if (!conversationsRef.current.some((c) => c.conv_id === convId)) {
+          loadConversations();
+        }
       } catch (err) {
         if (err.name !== "AbortError") {
           setChatByConvError((m) => ({ ...m, [convId]: true }));
@@ -318,7 +352,7 @@ export function ChatProvider({ children }) {
         controller.abort();
       }
     },
-    [clearUnreadMsgFor],
+    [clearUnreadMsgFor, loadConversations],
   );
 
   // on context load, fetch all conversations
@@ -415,21 +449,31 @@ export function ChatProvider({ children }) {
     }
   }, [location, conversations, myId, fetchConversation]);
 
-  // allow a second arg with an image File
+  const UNAVAILABLE_CONVERSATION_ERROR =
+    "This conversation isn't available right now. Reopen it from your chat list and try again.";
+
+  /**
+   * Send a text message. Resolves to true when the server saved it and false
+   * otherwise, with sendMsgError set to a sentence for the user; callers keep
+   * the draft until this reports success.
+   */
   async function createMessage(draft) {
-    setSendMsgError(false);
+    setSendMsgError("");
 
     const content = (draft ?? "").trim();
-    if (!content || !activeConvId || !myIdRef.current) return;
+    if (!content || !activeConvId || !myIdRef.current) return false;
 
-    const convo = conversations.find((c) => c.conv_id === activeConvId);
-    if (!convo) return;
+    const convId = activeConvId;
+    const convo = conversationsRef.current.find((c) => c.conv_id === convId);
+    if (!convo) {
+      setSendMsgError(UNAVAILABLE_CONVERSATION_ERROR);
+      return false;
+    }
 
     try {
       const res = await createMessageApi({
-        senderId: myIdRef.current,
         receiverId: convo.receiverId,
-        convId: activeConvId,
+        convId,
         content, // text only
         signal: undefined,
       });
@@ -439,17 +483,20 @@ export function ChatProvider({ children }) {
         message_id: saved.message_id,
         sender: "me",
         content: saved.content,
+        rawContent: content,
         ts: Date.parse(saved.created_at),
+        activityTs: Date.parse(saved.created_at),
       };
 
-      setMessagesByConv((prev) => {
-        const list = prev[activeConvId]
-          ? [...prev[activeConvId], newMsg]
-          : [newMsg];
-        return { ...prev, [activeConvId]: list };
-      });
+      setMessagesByConv((prev) => ({
+        ...prev,
+        [convId]: upsertMessage(prev[convId], newMsg),
+      }));
+      return true;
     } catch (err) {
-      setSendMsgError(true);
+      logger.warn("createMessage failed:", err);
+      setSendMsgError(err?.message || "Your message couldn't be sent. Please try again.");
+      return false;
     }
   }
 
@@ -460,7 +507,13 @@ export function ChatProvider({ children }) {
       ...prev,
       [activeConvId]: (prev[activeConvId] || []).map((message) =>
         Number(message.message_id) === Number(messageId)
-          ? { ...message, content: saved.content, editedAt, activityTs: editedAt }
+          ? {
+              ...message,
+              content: saved.content,
+              rawContent: content,
+              editedAt,
+              activityTs: editedAt,
+            }
           : message,
       ),
     }));
@@ -471,20 +524,49 @@ export function ChatProvider({ children }) {
     return saved;
   }
 
-  async function createImageMessage(draft, file) {
-    setSendMsgError(false);
+  async function deleteMessage(messageId) {
+    const saved = await deleteMessageApi(messageId);
+    const deletedAt = Date.parse(saved.deleted_at) || Date.now();
+    // Mirror what fetch_conversation.php returns for a deleted row.
+    setMessagesByConv((prev) => ({
+      ...prev,
+      [activeConvId]: (prev[activeConvId] || []).map((message) =>
+        Number(message.message_id) === Number(messageId)
+          ? {
+              ...message,
+              content: "This message was deleted",
+              image_url: undefined,
+              metadata: null,
+              deletedAt,
+              activityTs: deletedAt,
+            }
+          : message,
+      ),
+    }));
+    lastTsRefByConv.current[activeConvId] = Math.max(
+      lastTsRefByConv.current[activeConvId] || 0,
+      deletedAt,
+    );
+  }
 
-    if (!file || !activeConvId || !myIdRef.current) return;
+  /** Send a photo or video with an optional caption. Resolves like createMessage. */
+  async function createImageMessage(draft, file) {
+    setSendMsgError("");
+
+    if (!file || !activeConvId || !myIdRef.current) return false;
 
     const caption = (draft ?? "").trim(); // optional; backend can allow empty caption
-
-    const convo = conversations.find((c) => c.conv_id === activeConvId);
-    if (!convo) return;
+    const convId = activeConvId;
+    const convo = conversationsRef.current.find((c) => c.conv_id === convId);
+    if (!convo) {
+      setSendMsgError(UNAVAILABLE_CONVERSATION_ERROR);
+      return false;
+    }
 
     try {
       const res = await createImageMessageApi({
         receiverId: convo.receiverId,
-        convId: activeConvId,
+        convId,
         content: caption, // caption (can be empty string)
         image: file, // native File object
         signal: undefined,
@@ -496,17 +578,19 @@ export function ChatProvider({ children }) {
         sender: "me",
         content: saved.content ?? "", // caption if any
         ts: Date.parse(saved.created_at),
+        activityTs: Date.parse(saved.created_at),
         image_url: saved.image_url, // backend should return this
       };
 
-      setMessagesByConv((prev) => {
-        const list = prev[activeConvId]
-          ? [...prev[activeConvId], newMsg]
-          : [newMsg];
-        return { ...prev, [activeConvId]: list };
-      });
+      setMessagesByConv((prev) => ({
+        ...prev,
+        [convId]: upsertMessage(prev[convId], newMsg),
+      }));
+      return true;
     } catch (err) {
-      setSendMsgError(true);
+      logger.warn("createImageMessage failed:", err);
+      setSendMsgError(err?.message || "Your message couldn't be sent. Please try again.");
+      return false;
     }
   }
 
@@ -516,15 +600,13 @@ export function ChatProvider({ children }) {
       return;
     }
 
+    // Only aborted on cleanup (conversation change/unmount). startVisiblePolling
+    // never overlaps ticks, so an in-flight poll is allowed to finish.
     const inFlightRef = { ctrl: null }; // { ctrl: AbortController | null }
 
     const tick = async () => {
       const currentMyId = myIdRef.current;
       if (!currentMyId) return;
-
-      if (inFlightRef.ctrl) {
-        inFlightRef.ctrl.abort();
-      }
 
       const controller = new AbortController();
       inFlightRef.ctrl = controller;
@@ -639,11 +721,16 @@ export function ChatProvider({ children }) {
 
         const currentConvs = conversationsRef.current;
         const convIds = new Set(currentConvs.map((c) => c.conv_id));
+        // Reload the list once per unknown conversation. If a reload still
+        // doesn't return it (e.g. it is hidden), don't retry on every tick.
         const missing = Object.keys(unreads || {})
           .map((id) => Number(id))
-          .filter((id) => id && !convIds.has(id));
+          .filter(
+            (id) => id && !convIds.has(id) && !reloadAttemptedForRef.current.has(id),
+          );
 
         if (missing.length && !refreshInFlightRef.current) {
+          missing.forEach((id) => reloadAttemptedForRef.current.add(id));
           refreshInFlightRef.current = true;
           try {
             await loadConversations();
@@ -661,6 +748,25 @@ export function ChatProvider({ children }) {
     return startVisiblePolling(tick, UNREAD_MSG_POLL_MS);
   }, [loadConversations, myId]);
 
+  /**
+   * Fetch notifications once. The background poll uses it, and the
+   * Notifications page calls it on mount so it works (and shows real
+   * loading/error states) even when background polling is turned off.
+   */
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const { notifications, total } = await tickFetchUnreadNotifications();
+      setUnreadNotificationsByProduct(notifications || []);
+      setUnreadNotificationTotal(Number(total) || 0);
+      setNotificationsStatus("ready");
+    } catch (e) {
+      if (e.name === "AbortError") return;
+      logger.error("tickFetchUnreadNotifications error:", e);
+      // Keep showing the last good list; only report an error if there is none.
+      setNotificationsStatus((current) => (current === "ready" ? current : "error"));
+    }
+  }, []);
+
   useEffect(() => {
     const notificationOn = envBool(
       process.env.REACT_APP_CHAT_NOTIFICATION_ON,
@@ -670,23 +776,8 @@ export function ChatProvider({ children }) {
     if (!notificationOn) return;
     if (!myId) return;
 
-    const tick = async () => {
-      const controller = new AbortController();
-      try {
-        const { notifications, total } = await tickFetchUnreadNotifications(
-          controller.signal,
-        );
-        setUnreadNotificationsByProduct(notifications || []);
-        setUnreadNotificationTotal(Number(total) || 0);
-      } catch (e) {
-        if (e.name !== "AbortError") logger.error("tickFetchUnreadNotifications error:", e);
-      } finally {
-        controller.abort();
-      }
-    };
-
-    return startVisiblePolling(tick, UNREAD_NOTIFICATION_POLL_MS);
-  }, [myId]);
+    return startVisiblePolling(refreshNotifications, UNREAD_NOTIFICATION_POLL_MS);
+  }, [myId, refreshNotifications]);
 
   const messages = useMemo(
     () => messagesByConv[activeConvId] || [],
@@ -708,16 +799,20 @@ export function ChatProvider({ children }) {
     unreadMsgTotal,
     unreadNotificationTotal,
     unreadNotificationsByProduct,
+    notificationsStatus,
     // user info
     myId,
     // actions
     fetchConversation,
     createMessage,
     editMessage,
+    deleteMessage,
     createImageMessage,
     clearActiveConversation,
     registerConversation: upsertConversationRow,
     markNotificationReadLocal,
+    markAllNotificationsReadLocal,
+    refreshNotifications,
     removeNotificationLocal,
     clearNotificationsLocal,
     removeConversationLocal,

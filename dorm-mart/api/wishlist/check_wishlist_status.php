@@ -6,8 +6,8 @@ require_once __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('GET');
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 try {
     $userId = require_login();
@@ -15,10 +15,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    $productId = request_int($_GET, 'product_id');
-    if ($productId <= 0) {
-        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
-    }
+    $productId = require_product_id($_GET);
 
     $stmt = $conn->prepare('SELECT wishlist_id FROM wishlist WHERE user_id = ? AND product_id = ?');
     if (!$stmt) {
@@ -32,6 +29,5 @@ try {
 
     json_response(['success' => true, 'in_wishlist' => $isInWishlist]);
 } catch (Throwable $e) {
-    error_log('check_wishlist_status error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+    api_fail($e, 'check_wishlist_status');
 }

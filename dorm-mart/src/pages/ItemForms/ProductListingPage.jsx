@@ -12,12 +12,13 @@ import {
   resolveProductPhotoUrl,
 } from "../../utils/imageFallback";
 import logger from "../../utils/logger";
-import { containsMemePrice } from "../../utils/priceValidation";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 import ListingForm from "./components/ListingForm";
 import ImageCropperModal from "./components/ImageCropperModal";
 import ListingStatusBanners from "./components/ListingStatusBanners";
 import ListingSuccessModal from "./components/ListingSuccessModal";
-import useListingCategories from "./hooks/useListingCategories";
+import useCategories from "../../hooks/useCategories";
 import {
   CATEGORIES_MAX,
   DEFAULT_FORM,
@@ -30,6 +31,7 @@ import {
   MAX_VIDEO_BYTES,
   PRICE_INPUT_PATTERN,
 } from "./utils/listingFormConfig";
+import { validateDraft, validateListing } from "./utils/listingValidation";
 
 function ProductListingPage() {
   const { id } = useParams();
@@ -62,11 +64,12 @@ function ProductListingPage() {
   const scrollPositionRef = useRef(0);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const runExclusive = useSubmitLock();
   const [serverMsg, setServerMsg] = useState(null);
   const [loadingExisting, setLoadingExisting] = useState(false);
   const [showTopErrorBanner, setShowTopErrorBanner] = useState(false);
   const [loadError, setLoadError] = useState(null);
-  const [isSold, setIsSold] = useState(false);
+  const [isEditBlocked, setIsEditBlocked] = useState(false);
   const [listingStatus, setListingStatus] = useState(null);
 
   const [atListingCap, setAtListingCap] = useState(false);
@@ -74,8 +77,11 @@ function ProductListingPage() {
 
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const { availableCategories, catFetchError, catLoading } =
-    useListingCategories();
+  const {
+    categories: availableCategories,
+    error: catFetchError,
+    loading: catLoading,
+  } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState("");
 
   const [showCropper, setShowCropper] = useState(false);
@@ -93,33 +99,7 @@ function ProductListingPage() {
   }, []);
 
   // Prevent body scroll when cropper modal is open
-  useEffect(() => {
-    if (showCropper) {
-      scrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
-      document.documentElement.style.overflow = "hidden";
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollPositionRef.current}px`;
-      document.body.style.width = "100%";
-    } else {
-      const scrollY = scrollPositionRef.current;
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-      requestAnimationFrame(() => {
-        window.scrollTo(0, scrollY);
-      });
-    }
-    return () => {
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-    };
-  }, [showCropper]);
+  useBodyScrollLock(showCropper);
 
   // Mirror crop geometry in refs so dragging reads the latest values.
   const displayInfoRef = useRef({
@@ -227,12 +207,12 @@ function ProductListingPage() {
 
         if (ignore) return;
 
-        // Prevent editing sold items
-        if (data.sold === true) {
-          setIsSold(true);
-          setLoadError("Cannot edit sold items.");
+        // Pending and sold listings must not enter the edit form.
+        if (Number(data.sold) === 1 || ["pending", "sold"].includes(String(data.item_status || "").toLowerCase())) {
+          setIsEditBlocked(true);
+          setLoadError("Cannot edit pending or sold items.");
           setServerMsg(
-            "Cannot edit sold items. Please return to the seller dashboard.",
+            "Cannot edit pending or sold items. Please return to the seller dashboard.",
           );
           setLoadingExisting(false);
           // Redirect to seller dashboard after a short delay
@@ -242,7 +222,7 @@ function ProductListingPage() {
           return;
         }
 
-        setIsSold(false);
+        setIsEditBlocked(false);
         setListingStatus(data.item_status || "Active");
 
         // Populate form fields
@@ -335,7 +315,6 @@ function ProductListingPage() {
       resetFormFields();
       setServerMsg(null);
       setLoadError(null);
-      setIsSold(false);
       setListingStatus(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -398,51 +377,15 @@ function ProductListingPage() {
   };
 
   const validateAll = () => {
-    const newErrors = {};
-
-    if (!title.trim()) {
-      newErrors.title = "Title is required";
-    } else if (title.length > LIMITS.title) {
-      newErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
-    }
-
-    if (!description.trim()) {
-      newErrors.description = "Description is required";
-    } else if (description.length > LIMITS.description) {
-      newErrors.description = `Description must be ${LIMITS.description} characters or fewer`;
-    }
-
-    if (price === "") {
-      newErrors.price = "Price is required";
-    } else if (containsMemePrice(price)) {
-      newErrors.price =
-        "The price has a meme input in it. Please try a different price.";
-    } else if (!Number.isFinite(Number(price))) {
-      newErrors.price = "Please enter a valid price";
-    } else if (Number(price) < LIMITS.priceMin) {
-      newErrors.price = `Minimum price is $${LIMITS.priceMin.toFixed(2)}`;
-    } else if (Number(price) > LIMITS.price) {
-      newErrors.price = `Price must be $${LIMITS.price} or less`;
-    }
-
-    if (!categories || categories.length === 0) {
-      newErrors.categories = "Select at least one category";
-    } else if (categories.length > CATEGORIES_MAX) {
-      newErrors.categories = `Select at most ${CATEGORIES_MAX} categories`;
-    }
-
-    if (!itemLocation) {
-      newErrors.itemLocation = "Select an item location";
-    }
-    if (!condition || condition === "") {
-      newErrors.condition = "Select an item condition";
-    }
-
-    if (!hasListingPhoto(images)) {
-      newErrors.images =
-        "At least one photo is required. Videos are optional and count toward the 6-media limit.";
-    }
-
+    const newErrors = validateListing({
+      title,
+      description,
+      price,
+      categories,
+      itemLocation,
+      condition,
+      images,
+    });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -719,41 +662,35 @@ function ProductListingPage() {
     resetCropper();
   }
 
+  const scrollToFormTop = () => {
+    formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   async function submitListing(e, status) {
     e.preventDefault();
     setServerMsg(null);
     const savingDraft = status === "Draft";
 
-    if (isEdit && isSold) {
-      setServerMsg("Cannot edit sold items.");
-      formTopRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+    if (isEdit && isEditBlocked) {
+      setServerMsg("Cannot edit pending or sold items.");
+      scrollToFormTop();
       return;
     }
 
     if (savingDraft) {
-      const draftErrors = {};
-      if (!title.trim()) {
-        draftErrors.title = "Title is required";
-      } else if (title.length > LIMITS.title) {
-        draftErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
-      }
+      // Price is optional while drafting, but the backend still rejects a
+      // non-empty value that isn't a real, in-range price — validate it here
+      // too so an incomplete value like "." doesn't round-trip to the server
+      // just to come back as an error.
+      const draftErrors = validateDraft({ title, price, images });
       setErrors(draftErrors);
       if (Object.keys(draftErrors).length > 0) {
-        formTopRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+        scrollToFormTop();
         setShowTopErrorBanner(true);
         return;
       }
     } else if (!validateAll()) {
-      formTopRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      scrollToFormTop();
       setShowTopErrorBanner(true);
       return;
     }
@@ -816,6 +753,14 @@ function ProductListingPage() {
 
       if (!data?.ok) {
         setServerMsg(data?.message || data?.error || "Submission failed.");
+        if (data?.errors && typeof data.errors === "object") {
+          setErrors((current) => ({ ...current, ...data.errors }));
+          formTopRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+          setShowTopErrorBanner(true);
+        }
         return;
       }
 
@@ -892,13 +837,19 @@ function ProductListingPage() {
             onFileChange={onFileChange}
             price={price}
             priceNegotiable={priceNegotiable}
-            publishListing={(e) => submitListing(e, "Active")}
+            publishListing={(e) => {
+              e?.preventDefault?.();
+              runExclusive(() => submitListing(e, "Active"));
+            }}
             removeCategory={removeCategory}
             removeImage={removeImage}
             scrollPositionRef={scrollPositionRef}
             selectableOptions={selectableOptions}
             selectedCategory={selectedCategory}
-            saveDraft={(e) => submitListing(e, "Draft")}
+            saveDraft={(e) => {
+              e?.preventDefault?.();
+              runExclusive(() => submitListing(e, "Draft"));
+            }}
             setAcceptTrades={setAcceptTrades}
             setCategories={setCategories}
             setCondition={setCondition}

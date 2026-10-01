@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 
 export default function ListingSuccessModal({
   isEdit,
@@ -7,19 +7,7 @@ export default function ListingSuccessModal({
   setShowSuccess,
   showSuccess,
 }) {
-  useEffect(() => {
-    if (showSuccess && !isEdit) {
-      document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    };
-  }, [showSuccess, isEdit]);
+  useBodyScrollLock(showSuccess && !isEdit);
 
   if (!showSuccess || isEdit) return null;
 
@@ -30,7 +18,7 @@ export default function ListingSuccessModal({
       aria-modal="true"
       aria-labelledby="success-title"
     >
-      <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
+      <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
         <div className="px-6 pt-6">
           <h2
             id="success-title"

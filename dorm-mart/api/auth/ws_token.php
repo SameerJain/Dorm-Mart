@@ -7,7 +7,7 @@ this resolves the problem when ws handshake request doesn't include user's cooki
 declare(strict_types=1);
 
 require_once __DIR__ . '/../security/security.php';
-require __DIR__ . '/../utility/load_env.php';
+require_once __DIR__ . '/../utility/load_env.php';
 
 load_env(); // must set getenv/$_ENV
 dm_enforce_https();

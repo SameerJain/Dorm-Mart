@@ -90,8 +90,12 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('School', 'Stationary'),
   'North Campus',
   'Like New',
-  'Classic marble composition notebook. Perfect for taking notes in class. Barely used, in excellent condition.',
-  JSON_ARRAY('/images/marble-notebook.jpg'),
+  'marble comp notebook, only a couple pages filled in near the front. cover is the normal school notebook look with no tears, water stains or bent corners. it''s just the one notebook, not a multipack, and i haven''t checked the ruling so ask if you need something specific for class. would rather it get filled with actual notes than sit half used on my shelf again. $5 firm, it''s already cheap. meet on campus between classes or i can leave it somewhere easy',
+  JSON_ARRAY(
+    '/images/marble-notebook.jpg',
+    '/images/marble-notebook-2.jpg',
+    '/images/marble-notebook-3.jpg'
+  ),
   5.00,
   'Sold',
   0,
@@ -319,18 +323,17 @@ INSERT INTO purchased_items (
 
 -- Update purchase_history table for buyer
 -- Insert or update the purchase_history record with the product_id in the JSON array
+-- Record the purchase in the entry shape confirm_purchases writes and that
+-- Purchase History and review submission read: {product_id, recorded_at, confirm_payload}.
+SET @purchase_entry = JSON_OBJECT(
+  'product_id', @product_id,
+  'recorded_at', DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%s+00:00'),
+  'confirm_payload', JSON_OBJECT('is_successful', TRUE)
+);
 INSERT INTO purchase_history (user_id, items)
-VALUES (@buyer_id, JSON_ARRAY(@product_id))
+VALUES (@buyer_id, JSON_ARRAY(JSON_EXTRACT(@purchase_entry, '$')))
 ON DUPLICATE KEY UPDATE
-  items = JSON_ARRAY_APPEND(
-    CASE 
-      WHEN JSON_SEARCH(items, 'one', CAST(@product_id AS CHAR)) IS NULL 
-      THEN items 
-      ELSE JSON_REMOVE(items, JSON_UNQUOTE(JSON_SEARCH(items, 'one', CAST(@product_id AS CHAR))))
-    END,
-    '$',
-    @product_id
-  ),
+  items = JSON_ARRAY_APPEND(COALESCE(items, JSON_ARRAY()), '$', JSON_EXTRACT(@purchase_entry, '$')),
   updated_at = NOW();
 
 -- Note: Review should be manually submitted by tester (testuser@buffalo.edu)

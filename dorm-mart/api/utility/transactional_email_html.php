@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Shared HTML + plain text for transactional mail (SendGrid + PHPMailer).
+ * Shared HTML + plain text for transactional mail (Resend + PHPMailer).
  * Table layout and inline styles for broad client support.
  */
 
@@ -63,7 +63,7 @@ function dm_transactional_welcome_package(string $firstName, string $tempPasswor
     $preheader = 'Your temporary password and next steps for Dorm Mart.';
 
     $inner = '<p style="margin:0 0 16px;color:#f1f5f9;font-size:17px;">Dear ' . $f . ',</p>'
-        . '<p style="margin:0 0 16px;color:#cbd5e1;">Welcome to <strong style="color:#ffffff;">Dorm Mart</strong> &mdash; the student marketplace for UB.</p>'
+        . '<p style="margin:0 0 16px;color:#cbd5e1;">Welcome to <strong style="color:#ffffff;">Dorm Mart</strong>, the student marketplace for UB.</p>'
         . '<p style="margin:0 0 18px;color:#cbd5e1;">Below is your temporary password. <strong style="color:#fca5a5;">Do not share it</strong> with anyone.</p>'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 26px;border-collapse:collapse;border:1px solid #334155;border-radius:8px;overflow:hidden;">'
         . '<tr><td style="padding:22px 20px;background-color:#0f172a;text-align:center;">'
@@ -108,7 +108,7 @@ function dm_transactional_password_reset_package(string $firstName, string $rese
         . '<p style="margin:0 0 22px;color:#93c5fd;font-size:13px;line-height:1.5;word-break:break-all;overflow-wrap:anywhere;">'
         . '<a href="' . $href . '" target="_blank" style="color:#38bdf8;text-decoration:underline;word-break:break-all;overflow-wrap:anywhere;">' . $href . '</a></p>'
         . '<p style="margin:0 0 12px;color:#94a3b8;font-size:14px;">This link expires in <strong style="color:#e2e8f0;">1 hour</strong> for your security.</p>'
-        . '<p style="margin:0 0 22px;color:#64748b;font-size:13px;line-height:1.5;">If you did not ask for a reset, you can ignore this email &mdash; your password will stay the same.</p>'
+        . '<p style="margin:0 0 22px;color:#64748b;font-size:13px;line-height:1.5;">If you did not ask for a reset, you can ignore this email. Your password will stay the same.</p>'
         . '<p style="margin:0;color:#e2e8f0;">Best regards,<br><span style="color:#38bdf8;font-weight:600;">The Dorm Mart Team</span></p>';
 
     $html = dm_transactional_shell($subject, $preheader, $inner);
@@ -184,7 +184,7 @@ function dm_transactional_promo_welcome_package(string $firstName): array
         . '<p style="margin:0 0 8px;color:#cbd5e1;font-size:15px;">&#8226;&nbsp; Your notifications tab and important alerts</p>'
         . '<p style="margin:0;color:#cbd5e1;font-size:15px;">&#8226;&nbsp; New site features and marketplace news</p>'
         . '</td></tr></table>'
-        . '<p style="margin:0 0 22px;color:#94a3b8;font-size:14px;line-height:1.55;">We will keep messages relevant and easy to turn off &mdash; you can change this anytime in your account settings.</p>'
+        . '<p style="margin:0 0 22px;color:#94a3b8;font-size:14px;line-height:1.55;">We will keep messages relevant and easy to turn off. You can change this anytime in your account settings.</p>'
         . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;border-collapse:collapse;"><tr><td style="padding:12px 20px;background-color:#172554;border:1px solid #3b82f6;border-radius:8px;">'
         . '<span style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#93c5fd;">Subscribed successfully</span>'
         . '</td></tr></table>'
@@ -206,8 +206,11 @@ function dm_transactional_promo_welcome_package(string $firstName): array
     return ['subject' => $subject, 'html' => $html, 'text' => $text];
 }
 
-/** @param array<int,array{title:string,price:float,url:string}> $items */
-function dm_promotional_items_package(string $firstName, array $items): array
+/**
+ * @param array<int,array{title:string,price:float,url:string,image_url?:?string}> $items
+ * @param ?string $unsubscribeUrl one-click unsubscribe link (see helpers/promo_unsubscribe.php)
+ */
+function dm_promotional_items_package(string $firstName, array $items, ?string $unsubscribeUrl = null): array
 {
     $name = $firstName !== '' ? $firstName : 'Student';
     $rows = '';
@@ -215,21 +218,35 @@ function dm_promotional_items_package(string $firstName, array $items): array
     foreach ($items as $item) {
         $title = escape_html((string)$item['title']);
         $url = escape_html((string)$item['url']);
-        $price = '$' . number_format((float)$item['price'], 2);
-        $image = !empty($item['image_cid']) ? '<a href="' . $url . '"><img src="cid:' . escape_html((string)$item['image_cid']) . '" alt="' . $title . '" width="120" style="display:block;width:120px;height:90px;object-fit:cover;border-radius:8px;border:0;"></a>' : '';
+        $price = (float)$item['price'] <= 0 ? 'Free' : '$' . number_format((float)$item['price'], 2);
+        // Outlook and Gmail ignore object-fit, so a fixed 120x90 box stretched
+        // photos. Fix the width and let the height follow the photo instead.
+        $image = !empty($item['image_url']) ? '<a href="' . $url . '"><img src="' . escape_html((string)$item['image_url']) . '" alt="' . $title . '" width="120" style="display:block;width:120px;height:auto;max-height:120px;border-radius:8px;border:0;"></a>' : '';
         $rows .= '<tr><td width="136" valign="middle" style="padding:14px 16px 14px 0;border-bottom:1px solid #334155;">' . $image . '</td><td valign="middle" style="padding:14px 0;border-bottom:1px solid #334155;"><a href="' . $url . '" style="color:#38bdf8;font-weight:700;text-decoration:underline;">' . $title . '</a><br><span style="color:#cbd5e1;">' . $price . '</span></td></tr>';
         $textRows[] = $item['title'] . ' - ' . $price . "\n" . $item['url'];
     }
     $settingsUrl = dm_frontend_url('app/setting/user-preferences');
     $inner = '<p style="margin:0 0 6px;color:#38bdf8;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Fresh finds from Dorm Mart</p>'
         . '<p style="margin:0 0 12px;color:#f1f5f9;font-size:24px;font-weight:700;">Items picked for you &#10024;</p>'
-        . '<p style="color:#cbd5e1;">Hey ' . escape_html($name) . '! We spotted a few marketplace finds you might love. Take a peek before another Bull grabs them!</p>'
+        . '<p style="color:#cbd5e1;">Hey ' . escape_html($name) . '! We spotted a few marketplace finds you might love. Take a peek before another student grabs them!</p>'
         . '<table role="presentation" width="100%" style="border-collapse:collapse;">' . $rows . '</table>'
-        . '<p style="margin:24px 0;color:#94a3b8;font-size:13px;">Change the frequency or turn these emails off in <a href="' . escape_html($settingsUrl) . '" style="color:#38bdf8;">User Preferences</a>.</p>';
-    return [
+        . '<p style="margin:24px 0;color:#94a3b8;font-size:13px;">Change the frequency or turn these emails off in <a href="' . escape_html($settingsUrl) . '" style="color:#38bdf8;">User Preferences</a>.'
+        . ($unsubscribeUrl !== null
+            ? ' Or <a href="' . escape_html($unsubscribeUrl) . '" style="color:#38bdf8;">unsubscribe with one click</a>.'
+            : '')
+        . '</p>';
+    $package = [
         'subject' => 'Items picked for you - Dorm Mart',
         'html' => dm_transactional_shell('Items picked for you - Dorm Mart', 'Fresh marketplace finds picked for you.', $inner),
-        'text' => "Items picked for you - Dorm Mart\n\nHey {$name}! We spotted a few marketplace finds you might love. Take a peek before another Bull grabs them!\n\n" . implode("\n\n", $textRows) . "\n\nManage promotional emails: {$settingsUrl}",
-        'inline_images' => array_values(array_filter(array_map(static fn($item) => $item['inline_image'] ?? null, $items))),
+        'text' => "Items picked for you - Dorm Mart\n\nHey {$name}! We spotted a few marketplace finds you might love. Take a peek before another student grabs them!\n\n" . implode("\n\n", $textRows) . "\n\nManage promotional emails: {$settingsUrl}"
+            . ($unsubscribeUrl !== null ? "\nUnsubscribe: {$unsubscribeUrl}" : ''),
     ];
+    if ($unsubscribeUrl !== null) {
+        // RFC 2369 / RFC 8058: lets mail apps show their own Unsubscribe button.
+        $package['headers'] = [
+            'List-Unsubscribe' => '<' . $unsubscribeUrl . '>',
+            'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
+        ];
+    }
+    return $package;
 }

@@ -2,9 +2,12 @@
 // Session + persistent login helpers
 
 require_once __DIR__ . '/device_history.php';
+require_once __DIR__ . '/../security/transport.php';
+require_once __DIR__ . '/../helpers/response.php';
 
 const REMEMBER_COOKIE = 'remember_token';
 const REMEMBER_TTL_DAYS = 7; // persistent login length
+const DEVICE_HISTORY_REFRESH_SECONDS = 300;
 
 function auth_boot_session(): void
 {
@@ -14,12 +17,10 @@ function auth_boot_session(): void
   ini_set('session.use_strict_mode', '1');
   ini_set('session.cookie_httponly', '1');
 
-  $secure = auth_is_https_request();
-
   session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'secure'   => $secure,
+    'secure'   => is_https_request(),
     'httponly' => true,
     'samesite' => 'Lax', // if your frontend is cross-site XHR, set 'None' + secure=true
   ]);
@@ -32,15 +33,28 @@ function regenerate_session_on_login(): void
 {
   auth_boot_session();
   session_regenerate_id(true);
-}
-
-function auth_is_https_request(): bool
-{
-  return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-    || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+  // regenerate_id keeps session data, so drop the pre-login CSRF token too.
+  unset($_SESSION['csrf_token']);
 }
 
 /* ---------- Persistent login ("remember me") ---------- */
+
+/** The one place the remember-me cookie's flags are set. Pass an expiry in the past to clear it. */
+function set_remember_cookie(string $value, int $expires): void
+{
+  setcookie(REMEMBER_COOKIE, $value, [
+    'expires'  => $expires,
+    'path'     => '/',
+    'secure'   => is_https_request(),
+    'httponly' => true,
+    'samesite' => 'Lax', // see comment in auth_boot_session
+  ]);
+}
+
+function remember_cookie_expiry(): int
+{
+  return time() + REMEMBER_TTL_DAYS * 24 * 60 * 60;
+}
 
 function issue_remember_cookie(int $userId): void
 {
@@ -55,14 +69,7 @@ function issue_remember_cookie(int $userId): void
   $stmt->close();
   $conn->close();
 
-  $secure = auth_is_https_request();
-  setcookie(REMEMBER_COOKIE, $userId . ':' . $token, [
-    'expires'  => time() + REMEMBER_TTL_DAYS * 24 * 60 * 60,
-    'path'     => '/',
-    'secure'   => $secure,
-    'httponly' => true,
-    'samesite' => 'Lax', // see comment above
-  ]);
+  set_remember_cookie($userId . ':' . $token, remember_cookie_expiry());
 }
 
 function clear_remember_cookie(?int $userId = null): void
@@ -78,13 +85,7 @@ function clear_remember_cookie(?int $userId = null): void
     $conn->close();
   }
   // clear client cookie
-  setcookie(REMEMBER_COOKIE, '', [
-    'expires'  => time() - 3600,
-    'path'     => '/',
-    'secure'   => auth_is_https_request(),
-    'httponly' => true,
-    'samesite' => 'Lax',
-  ]);
+  set_remember_cookie('', time() - 3600);
 }
 
 /**
@@ -125,26 +126,35 @@ function ensure_session(): void
 
   // success → hydrate session and rotate token
   session_regenerate_id(true);
+  unset($_SESSION['csrf_token']);
   $_SESSION['user_id'] = $uid;
   $_SESSION['auth_version'] = (int)$row['auth_version'];
-  record_login_device($uid);
+  claim_or_record_login_device($uid);
 
   $newToken = bin2hex(random_bytes(32));
   $newHash  = password_hash($newToken, PASSWORD_DEFAULT);
-  $upd = $conn->prepare('UPDATE user_accounts SET hash_auth = ? WHERE user_id = ?');
-  $upd->bind_param('si', $newHash, $uid);
+  // Rotate only if nobody else has since the verify above. A concurrent restore
+  // that already rotated keeps its cookie; this request still gets its session
+  // but must not send a token whose hash is about to be overwritten.
+  $upd = $conn->prepare('UPDATE user_accounts SET hash_auth = ? WHERE user_id = ? AND hash_auth = ?');
+  $upd->bind_param('sis', $newHash, $uid, $hash);
   $upd->execute();
+  $rotated = $upd->affected_rows === 1;
   $upd->close();
   $conn->close();
+  if (!$rotated) return;
 
-  $secure = auth_is_https_request();
-  setcookie(REMEMBER_COOKIE, $uid . ':' . $newToken, [
-    'expires'  => time() + REMEMBER_TTL_DAYS * 24 * 60 * 60,
-    'path'     => '/',
-    'secure'   => $secure,
-    'httponly' => true,
-    'samesite' => 'Lax',
-  ]);
+  set_remember_cookie($uid . ':' . $newToken, remember_cookie_expiry());
+}
+
+/**
+ * Send an auth failure in the shape clients expect, then stop.
+ *
+ * @return never
+ */
+function auth_reject(int $status, string $error, array $extra = []): void
+{
+  json_response(['ok' => false, 'success' => false, 'error' => $error] + $extra, $status);
 }
 
 /** Require auth (calls ensure_session) */
@@ -152,30 +162,21 @@ function require_login(): int
 {
   ensure_session();
   if (empty($_SESSION['user_id'])) {
-    header('Content-Type: application/json; charset=utf-8');
-    http_response_code(401);
-    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Not authenticated']);
-    exit;
+    auth_reject(401, 'Not authenticated');
   }
   $userId = (int) $_SESSION['user_id'];
   $account = auth_account($userId);
   if (!$account || !isset($_SESSION['auth_version'])
       || (int)$_SESSION['auth_version'] !== (int)$account['auth_version']) {
     logout_destroy_session();
-    header('Content-Type: application/json; charset=utf-8');
-    http_response_code(401);
-    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Not authenticated']);
-    exit;
+    auth_reject(401, 'Not authenticated');
   }
   if ((int)$account['is_banned'] === 1) {
     logout_destroy_session();
-    header('Content-Type: application/json; charset=utf-8');
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Account suspended']);
-    exit;
+    auth_reject(403, 'Account suspended');
   }
   $lastTouched = (int)($_SESSION['device_history_touched_at'] ?? 0);
-  if (time() - $lastTouched >= 300) {
+  if (time() - $lastTouched >= DEVICE_HISTORY_REFRESH_SECONDS) {
     record_login_device($userId);
   }
   return $userId;
@@ -203,10 +204,7 @@ function require_moderator(): int
   $userId = require_login();
   $account = auth_account($userId);
   if (($account['role'] ?? 'user') !== 'moderator') {
-    header('Content-Type: application/json; charset=utf-8');
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'success' => false, 'error' => 'Moderator access required']);
-    exit;
+    auth_reject(403, 'Moderator access required');
   }
   return $userId;
 }
@@ -268,9 +266,6 @@ function validate_csrf_token(string $token): bool {
 
 function require_csrf_token($token): void {
   if (!is_string($token) || $token === '' || !validate_csrf_token($token)) {
-    header('Content-Type: application/json; charset=utf-8');
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'success' => false, 'error' => 'CSRF token validation failed']);
-    exit;
+    auth_reject(403, 'CSRF token validation failed', ['code' => 'csrf_invalid']);
   }
 }

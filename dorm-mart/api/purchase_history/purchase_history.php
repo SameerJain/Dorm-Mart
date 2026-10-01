@@ -218,7 +218,7 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
 
     $rows = [];
     $paymentStatuses = [];
-    if ($paymentIds) {
+    if (dm_payments_enabled() && $paymentIds) {
         $ids = array_values($paymentIds);
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $paymentStmt = $conn->prepare("SELECT electronic_payment_id, status, payment_mode, refunded_at, dispute_status FROM electronic_payments WHERE electronic_payment_id IN ($placeholders)");
@@ -440,7 +440,10 @@ function qualify_purchase_history_url(string $path): string
     if (preg_match('#^https?://#i', $path) || strpos($path, 'data:') === 0) {
         return $path;
     }
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    // Behind Railway's TLS-terminating proxy $_SERVER['HTTPS'] is unset, so trust
+    // X-Forwarded-Proto too. Emitting http:// on an https:// page gets the image
+    // blocked as mixed content by the CSP.
+    $scheme = is_https_request() ? 'https://' : 'http://';
     $host = $_SERVER['HTTP_HOST'] ?? '';
     if ($host === '') {
         return $path;

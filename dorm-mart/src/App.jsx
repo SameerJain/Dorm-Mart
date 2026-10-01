@@ -25,7 +25,6 @@ import AccountInfoPage from "./pages/Settings/AccountInfoPage.jsx";
 import LoggedDevicesPage from "./pages/Settings/LoggedDevicesPage.jsx";
 import DeleteAccountPage from "./pages/Settings/DeleteAccount.jsx";
 import TwoFactorAuthentication from "./pages/Settings/TwoFactorAuthentication.jsx";
-import PaymentsPage from "./pages/Settings/PaymentsPage.jsx";
 import AboutUs from "./pages/Settings/AboutUs.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.jsx";
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
@@ -47,6 +46,7 @@ import NotificationPage from "./pages/Notification/NotificationPage.jsx";
 import FAQPage from "./pages/FAQ/FAQPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import LegalDocumentPage from "./pages/Legal/LegalDocumentPage.jsx";
+import SafetySummaryPage from "./pages/Legal/SafetySummaryPage.jsx";
 import ModeratorDashboard from "./pages/Moderator/ModeratorDashboard.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 
@@ -103,6 +103,8 @@ export const router = createHashRouter([
         path: "/terms-of-service",
         element: <LegalDocumentPage documentKey="terms" />,
       },
+      // Public, anonymous moderation numbers (no login needed).
+      { path: "/safety", element: <SafetySummaryPage /> },
       {
         path: "/forgot-password/confirmation",
         element: <ForgotPasswordConfirmation />,
@@ -206,7 +208,6 @@ export const router = createHashRouter([
           { path: "personal-information", element: <AccountInfoPage /> },
           { path: "security-options", element: <LoggedDevicesPage /> },
           { path: "two-factor-authentication", element: <TwoFactorAuthentication /> },
-          { path: "payments", element: <PaymentsPage /> },
           { path: "about-us", element: <AboutUs /> },
           { path: "delete-account", element: <DeleteAccountPage /> },
         ],

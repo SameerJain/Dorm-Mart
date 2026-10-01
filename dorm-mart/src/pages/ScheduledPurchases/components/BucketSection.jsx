@@ -39,7 +39,7 @@ function ItemGroup({ itemGroup, bucketKey, purchaseCardProps }) {
         onError={onProductImageError}
         className="w-8 h-8 rounded object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
       />
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 break-words overflow-wrap-anywhere group-hover:underline">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 break-words group-hover:underline">
         {itemTitle}
       </h3>
     </>

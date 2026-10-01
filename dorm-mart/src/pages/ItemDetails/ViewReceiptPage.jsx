@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { formatCurrency } from "../../utils/formatters";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import ItemDetailHeader from "./components/ItemDetailHeader";
 import ItemFactsPanel from "./components/ItemFactsPanel";
 import ProductImageGallery from "./components/ProductImageGallery";
@@ -31,6 +32,8 @@ export default function ViewReceipt() {
   const { loading, error, receiptData, normalized } =
     useReceiptDetail(productId);
 
+  useBodyScrollLock(refundOpen);
+
   const isSellerViewingOwnProduct =
     myId &&
     normalized?.sellerId &&
@@ -57,7 +60,7 @@ export default function ViewReceipt() {
     displayedPrice != null
       ? (formatCurrency(displayedPrice) ??
         `$${Number(displayedPrice).toFixed(2)}`)
-      : "\u2014";
+      : "N/A";
 
   const isSuccessful = !purchaseDetails?.failureReason;
   const transactionStatus = isSuccessful ? "Successful" : "Failed";
@@ -205,7 +208,7 @@ export default function ViewReceipt() {
       </div>
       {refundOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="refund-title">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800">
+          <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800">
             <h2 id="refund-title" className="text-xl font-bold text-gray-900 dark:text-gray-100">Issue a Full Refund</h2>
             <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Stripe will return the full buyer payment. Stripe’s original processing fee may not be returned and remains your responsibility.</p>
             <fieldset className="mt-5 space-y-3">

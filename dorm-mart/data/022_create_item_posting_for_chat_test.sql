@@ -31,8 +31,19 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Decor'),
   'North Campus',
   'Like New',
-  'Nice Wallpaper',
-  JSON_ARRAY('/images/nightmoon-wallpaper-image.jpg'),
+  'Nightmoon wallpaper with the moon design shown in the listing photo.
+
+Includes: just the wallpaper, no adhesive or mounting supplies
+Size: no exact dimensions listed, so measure your wall before buying
+Application: depends on the material, so ask if you''re not sure whether it needs paste or peels on
+Housing: if you rent or live in a dorm, check whether this type of material is allowed
+
+Colors will look a little different under your room lighting, so treat the photo as a guide. $20, flexible on price. Can meet on campus whenever works.',
+  JSON_ARRAY(
+    '/images/nightmoon-wallpaper-image.jpg',
+    '/images/nightmoon-wallpaper-image-2.jpg',
+    '/images/nightmoon-wallpaper-image-3.jpg'
+  ),
   20.00,
   'Active',
   0,

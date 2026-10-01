@@ -6,8 +6,8 @@ require_once __DIR__ . '/../helpers/request.php';
 
 init_json_endpoint('POST');
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 try {
     $userId = require_login();
@@ -24,7 +24,7 @@ try {
         json_response(['success' => false, 'error' => 'Invalid notification_id'], 400);
     }
 
-    // Reset unread_count to 0 for this seller + product
+    // Mark one of the caller's own notifications read.
     $stmt = $conn->prepare(
         'UPDATE notifications SET is_read = 1
          WHERE recipient_user_id = ? AND notification_id = ?'
@@ -36,6 +36,17 @@ try {
     $stmt->bind_param('ii', $userId, $notificationId);
     $stmt->execute();
     $stmt->close();
+
+    // affected_rows is 0 for an already-read notification too, so confirm the
+    // row exists and belongs to the caller before reporting success.
+    $check = $conn->prepare('SELECT 1 FROM notifications WHERE recipient_user_id = ? AND notification_id = ?');
+    $check->bind_param('ii', $userId, $notificationId);
+    $check->execute();
+    $exists = $check->get_result()->num_rows > 0;
+    $check->close();
+    if (!$exists) {
+        json_response(['success' => false, 'error' => 'Notification not found'], 404);
+    }
 
     json_response([
         'success'    => true,

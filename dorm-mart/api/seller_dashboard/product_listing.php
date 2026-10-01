@@ -1,32 +1,11 @@
 <?php
 declare(strict_types=1);
 
-/** Max simultaneous Active listings per seller (create + activate paths must match). */
-const MAX_ACTIVE_LISTINGS_PER_SELLER = 25;
-
-// Keep diagnostics in server logs; never display PHP errors from this API.
-ini_set('display_errors', '0');
-ini_set('display_startup_errors', '0');
-
-// Always return JSON
-header('Content-Type: application/json; charset=utf-8');
+$API_ROOT = dirname(__DIR__);
+require_once $API_ROOT . '/helpers/api_bootstrap.php';
+init_json_endpoint('POST', ['ok' => false, 'error' => 'Method Not Allowed']);
 
 try {
-  // Resolve API root (this file: /api/seller_dashboard/product_listing.php)
-  $API_ROOT = dirname(__DIR__); // => /api
-
-  // Security
-  require $API_ROOT . '/security/security.php';
-  init_security();
-
-  // CORS / method
-  if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
-  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']);
-    exit;
-  }
-
   // Auth + DB
   require $API_ROOT . '/auth/auth_handle.php';
   require $API_ROOT . '/database/db_connect.php';
@@ -34,6 +13,7 @@ try {
   require $API_ROOT . '/helpers/request.php';
   require_once $API_ROOT . '/helpers/notifications.php';
   require_once $API_ROOT . '/scheduled_purchases/helpers.php';
+  require_once __DIR__ . '/listing_cap.php';
   require_multipart_formdata();
 
   auth_boot_session();
@@ -52,9 +32,7 @@ try {
   $savingDraft = $status === 'Draft';
 
   if (!in_array($mode, ['create', 'update'], true) || !in_array($status, ['Active', 'Draft'], true)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid listing mode.']);
-    exit;
+    json_response(['ok' => false, 'error' => 'Invalid listing mode.'], 400);
   }
 
   $titleRaw = is_string($_POST['title'] ?? null) ? trim($_POST['title']) : '';
@@ -113,11 +91,8 @@ try {
     $errors['price'] = 'Price must be at least $0.01.';
   } elseif ($price !== null && $price > 9999.99) {
     $errors['price'] = 'Price must be $9999.99 or less.';
-  } elseif ($price !== null) {
-    $priceDigitsOnly = preg_replace('/[^0-9]/', '', $priceStr);
-    foreach (['80085','8008','5318008','42069','66666','6969','42042','1488','420','666','69','67'] as $_m) {
-      if (strpos($priceDigitsOnly, $_m) !== false) { $errors['price'] = 'Invalid price value.'; break; }
-    }
+  } elseif ($price !== null && price_has_blocked_digits($priceStr)) {
+    $errors['price'] = 'Invalid price value.';
   }
 
   if (!$savingDraft && empty($catsArr)) {
@@ -148,9 +123,7 @@ try {
   }
 
   if (!empty($errors)) {
-    http_response_code(400);
-    echo json_encode(['ok'=>false, 'error'=>'Validation failed', 'errors'=>$errors]);
-    exit;
+    json_response(['ok' => false, 'error' => 'Validation failed', 'errors' => $errors], 400);
   }
 
   // Reject unauthorized updates and active-listing cap violations before saving uploads.
@@ -159,9 +132,7 @@ try {
   $activatingListing = 0;
   if ($mode === 'update') {
     if ($itemId <= 0) {
-      http_response_code(400);
-      echo json_encode(['ok' => false, 'error' => 'Invalid product ID. A valid product ID is required for updates.']);
-      exit;
+      json_response(['ok' => false, 'error' => 'Invalid product ID. A valid product ID is required for updates.'], 400);
     }
 
     $checkStmt = $conn->prepare('SELECT sold, item_status, title, listing_price, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
@@ -170,17 +141,13 @@ try {
     $existing = $checkStmt->get_result()->fetch_assoc();
     $checkStmt->close();
     if (!$existing) {
-      http_response_code(404);
-      echo json_encode(['ok' => false, 'error' => 'Product not found or you do not have permission to edit this product.']);
-      exit;
+      json_response(['ok' => false, 'error' => 'Product not found or you do not have permission to edit this product.'], 404);
     }
 
     $soldFlag = (int)($existing['sold'] ?? 0);
     $statusStr = (string)($existing['item_status'] ?? '');
-    if ($soldFlag === 1 || $statusStr === 'Sold') {
-      http_response_code(403);
-      echo json_encode(['ok' => false, 'error' => 'Sold listings cannot be edited.']);
-      exit;
+    if ($soldFlag === 1 || in_array($statusStr, ['Pending', 'Sold'], true)) {
+      json_response(['ok' => false, 'error' => 'Pending or sold listings cannot be edited.'], 403);
     }
 
     if ($status === 'Draft' && scheduled_purchase_has_active_accepted($conn, $itemId, 0)) {
@@ -194,29 +161,10 @@ try {
     $activatingListing = (int)($statusStr !== 'Active' && $status === 'Active');
   }
 
-  if ($status === 'Active' && ($mode === 'create' || $activatingListing === 1)) {
-    $capSql = 'SELECT COUNT(*) AS cnt FROM INVENTORY WHERE seller_id = ? AND item_status = ?';
-    if ($mode === 'update') $capSql .= ' AND product_id != ?';
-    $capStmt = $conn->prepare($capSql);
-    $activeStatus = 'Active';
-    if ($mode === 'update') {
-      $capStmt->bind_param('isi', $userId, $activeStatus, $itemId);
-    } else {
-      $capStmt->bind_param('is', $userId, $activeStatus);
-    }
-    $capStmt->execute();
-    $activeCount = (int)$capStmt->get_result()->fetch_assoc()['cnt'];
-    $capStmt->close();
-
-    if ($activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
-      $action = $mode === 'update' ? 'publishing this draft' : 'creating a new one';
-      http_response_code(403);
-      echo json_encode([
-        'ok' => false,
-        'error' => 'You have reached the maximum of ' . MAX_ACTIVE_LISTINGS_PER_SELLER . " active listings. Please deactivate or remove an existing listing before {$action}."
-      ]);
-      exit;
-    }
+  $capAction = $mode === 'update' ? 'publishing this draft' : 'creating a new one';
+  if ($status === 'Active' && ($mode === 'create' || $activatingListing === 1)
+      && listing_cap_active_count($conn, $userId, $mode === 'update' ? $itemId : 0) >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+    json_response(['ok' => false, 'error' => listing_cap_error($capAction)], 403);
   }
 
   // --- Save listing media with MIME validation ---
@@ -319,7 +267,7 @@ try {
     $validatedUploads,
     static fn(array $upload): bool => $upload['is_photo']
   ));
-  if (!$savingDraft && $existingPhotoCount + $newPhotoCount < 1) {
+  if ($existingPhotoCount + $newPhotoCount < 1) {
     $photoError = 'At least one photo is required. Videos are optional and count toward the 6-media limit.';
     json_response([
       'ok' => false,
@@ -354,9 +302,42 @@ try {
   $categoriesJson = !empty($catsArr)   ? json_encode($catsArr, JSON_UNESCAPED_SLASHES)   : null;
   $photosJson     = !empty($imageUrls) ? json_encode($imageUrls, JSON_UNESCAPED_SLASHES) : null;
 
+  // The checks above ran before the uploads were saved so a doomed request fails
+  // fast, but a concurrent request can change the answer since. Re-check under
+  // locks now; on failure, discard this request's freshly saved media.
+  $rejectLocked = static function (int $code, string $error) use ($conn, &$newImagePaths): void {
+    $conn->rollback();
+    foreach ($newImagePaths as $path) {
+      if (is_file($path)) @unlink($path);
+    }
+    json_response(['ok' => false, 'error' => $error], $code);
+  };
+
   // --- Create / Update ---
   if ($mode === 'update') {
     $conn->begin_transaction();
+    // Seller row first, then the listing row: the same lock order as set_item_status.php.
+    $activeCount = listing_cap_locked_active_count($conn, $userId, $itemId);
+    $lockStmt = $conn->prepare('SELECT item_status, sold FROM INVENTORY WHERE product_id = ? AND seller_id = ? FOR UPDATE');
+    $lockStmt->bind_param('ii', $itemId, $userId);
+    $lockStmt->execute();
+    $lockedRow = $lockStmt->get_result()->fetch_assoc();
+    $lockStmt->close();
+    // The listing may have sold or been deleted since the early check; the UPDATE
+    // below would then match nothing while we still notified and deleted media.
+    if (!$lockedRow) {
+      $rejectLocked(404, 'Product not found or you do not have permission to edit this product.');
+    }
+    $lockedStatus = (string)($lockedRow['item_status'] ?? '');
+    if ((int)($lockedRow['sold'] ?? 0) === 1 || in_array($lockedStatus, ['Pending', 'Sold'], true)) {
+      $rejectLocked(403, 'Pending or sold listings cannot be edited.');
+    }
+    if ($status === 'Active' && $lockedStatus !== 'Active' && $activeCount >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+      $rejectLocked(403, listing_cap_error($capAction));
+    }
+    if ($status === 'Draft' && scheduled_purchase_has_active_accepted($conn, $itemId, 0)) {
+      $rejectLocked(409, 'Cancel or complete the accepted scheduled purchase before saving this listing as a draft.');
+    }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $sql = "UPDATE INVENTORY
@@ -373,7 +354,7 @@ try {
                    date_listed=IF(? = 1, CURRENT_DATE, date_listed)
              WHERE product_id=? AND seller_id=?
                AND (sold IS NULL OR sold = 0)
-               AND (item_status IS NULL OR item_status <> 'Sold')";
+               AND (item_status IS NULL OR item_status NOT IN ('Pending', 'Sold'))";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param(
       'ssssssdiisiii',
@@ -397,6 +378,7 @@ try {
     $firstImage = notification_first_image($photosJson);
     if ($status === 'Active' && abs($oldPrice - (float)$price) >= 0.005) {
       $reduced = (float)$price < $oldPrice;
+      notification_supersede_unread($conn, $itemId, ['price_reduced', 'price_increased']);
       notification_for_wishlist($conn, $itemId, [
         'type' => $reduced ? 'price_reduced' : 'price_increased',
         'title' => $title,
@@ -408,6 +390,7 @@ try {
       ]);
     }
     if ($status === 'Active' && !empty($newImageUrls)) {
+      notification_supersede_unread($conn, $itemId, ['images_added']);
       notification_for_wishlist($conn, $itemId, [
         'type' => 'images_added', 'title' => $title,
         'message' => 'New media was added to this listing.', 'image_url' => $firstImage,
@@ -417,17 +400,21 @@ try {
     }
     $conn->commit();
 
-    echo json_encode([
-      'ok'         => true,
-      'prod_id' => $itemId,
-      'status' => $status,
-      'image_urls' => $imageUrls
-    ]);
-    exit;
+    // Media the seller dropped from the listing is no longer referenced by any
+    // row, so remove their uploads instead of orphaning the files on disk.
+    delete_owned_listing_media(
+      array_diff($storedExistingPhotos ?? [], $existingPhotos),
+      $userId
+    );
+
+    json_response(['ok' => true, 'prod_id' => $itemId, 'status' => $status, 'image_urls' => $imageUrls]);
   }
 
   // INSERT
   $conn->begin_transaction();
+  if ($status === 'Active' && listing_cap_locked_active_count($conn, $userId) >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
+    $rejectLocked(403, listing_cap_error($capAction));
+  }
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
   $sql = "INSERT INTO INVENTORY
             (title, categories, item_location, item_condition, description, photos, listing_price, item_status, trades, price_nego, seller_id)
@@ -450,23 +437,10 @@ try {
   );
   $stmt->execute();
 
-  // Create wishlist_notification row for this new listing
   $newProductId = (int)$conn->insert_id;
-  $firstImageUrl = notification_first_image($photosJson);
-  $wnSql = "INSERT INTO wishlist_notification (seller_id, product_id, title, image_url, unread_count)
-            VALUES (?, ?, ?, ?, 0)";
-  $wnStmt = $conn->prepare($wnSql);
-  $wnStmt->bind_param('iiss', $userId, $newProductId, $title, $firstImageUrl);
-  $wnStmt->execute();
-  $wnStmt->close();
   $conn->commit();
 
-  echo json_encode([
-    'ok'         => true,
-    'product_id' => $newProductId,
-    'status' => $status,
-    'image_urls' => $imageUrls
-  ]);
+  json_response(['ok' => true, 'product_id' => $newProductId, 'status' => $status, 'image_urls' => $imageUrls]);
 
 } catch (Throwable $e) {
   if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
@@ -474,11 +448,5 @@ try {
     if (is_file($newImagePath)) @unlink($newImagePath);
   }
   error_log('[product_listing] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-  http_response_code(500);
-  // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
-  // SECURITY: In production, consider removing detailed error fields to prevent information disclosure
-  echo json_encode([
-    'ok'    => false,
-    'error' => 'Internal Server Error',
-  ]);
+  json_response(['ok' => false, 'error' => 'Internal Server Error'], 500);
 }

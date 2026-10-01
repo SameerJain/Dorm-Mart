@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../chat/helpers.php';
+
 /**
  * Lazy expiry: marks pending scheduled purchase requests as 'expired'
  * if the meeting time has passed or 3 days have elapsed since creation.
@@ -37,21 +40,34 @@ function expire_stale_requests(mysqli $conn): void
     }
     $result->free();
 
-    $updateSql = <<<SQL
-        UPDATE scheduled_purchase_requests
-        SET status = 'expired', buyer_response_at = NOW()
-        WHERE status = 'pending'
-          AND (meeting_at < NOW() OR created_at < NOW() - INTERVAL 3 DAY)
-    SQL;
-    $conn->query($updateSql);
+    // Claim each row individually. Several requests (both parties' list polls,
+    // respond.php) run this concurrently; only the one whose UPDATE actually flips
+    // the row may announce it, so the expiry message is posted exactly once and
+    // never for a request that was accepted between the SELECT and the UPDATE.
+    $claimStmt = $conn->prepare(
+        "UPDATE scheduled_purchase_requests
+         SET status = 'expired', buyer_response_at = NOW()
+         WHERE request_id = ? AND status = 'pending'
+           AND (meeting_at < NOW() OR created_at < NOW() - INTERVAL 3 DAY)"
+    );
+    if (!$claimStmt) {
+        return;
+    }
 
     foreach ($rows as $row) {
+        $requestId = (int)$row['request_id'];
+        $claimStmt->bind_param('i', $requestId);
+        $claimStmt->execute();
+        if ($claimStmt->affected_rows !== 1) {
+            continue;
+        }
+        notification_clear_prompt($conn, $requestId, 'schedule_request');
+
         $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
         if ($conversationId <= 0) {
             continue;
         }
 
-        $requestId = (int)$row['request_id'];
         $sellerId = (int)$row['seller_user_id'];
         $buyerId = (int)$row['buyer_user_id'];
         $itemTitle = $row['item_title'] ?? 'an item';
@@ -96,6 +112,8 @@ function expire_stale_requests(mysqli $conn): void
         $msgStmt->close();
 
         if ($msgId > 0) {
+            chat_unhide_for_user($conn, $conversationId, $sellerId);
+            chat_unhide_for_user($conn, $conversationId, $buyerId);
             $updateUnread = $conn->prepare(
                 'UPDATE conversation_participants
                    SET unread_count = unread_count + 1,
@@ -112,4 +130,5 @@ function expire_stale_requests(mysqli $conn): void
             }
         }
     }
+    $claimStmt->close();
 }

@@ -6,8 +6,8 @@ require_once __DIR__ . '/../helpers/inventory.php';
 
 init_json_endpoint('GET');
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 function wishlist_seller_name(array $row): string
 {
@@ -68,6 +68,7 @@ try {
             'tags' => $categories, // For compatibility with ItemCardNew
             'seller' => wishlist_seller_name($row),
             'seller_id' => (int)$row['seller_id'],
+            'seller_username' => inventory_username_from_email($row['email'] ?? null),
             'item_location' => $row['item_location'] ?? '',
             'item_condition' => $row['item_condition'] ?? '',
             'status' => $row['item_status'] ?? 'Active',

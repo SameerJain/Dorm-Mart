@@ -203,9 +203,6 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     originalMeetLocation &&
     meetLocation.trim() !== originalMeetLocation.trim();
 
-  // Format price for display
-  const formatPrice = (price) => formatCurrency(price);
-
   // Conditionally format message content for seller perspective
   const getDisplayMessage = () => {
     let content = message.content || "";
@@ -329,10 +326,10 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
                     className={`text-sm font-semibold ${isPriceHigher ? "text-orange-600 dark:text-orange-300" : isPriceLower ? "text-green-600 dark:text-green-300" : config.textColor}`}
                   >
                     <span className="font-bold">Cost:</span>{" "}
-                    {formatPrice(displayPrice)}
+                    {formatCurrency(displayPrice)}
                     {hasPriceChange && listingPrice !== null && (
                       <span className="text-xs ml-1 opacity-75">
-                        (was {formatPrice(listingPrice)})
+                        (was {formatCurrency(listingPrice)})
                       </span>
                     )}
                     {!hasPriceChange &&
@@ -348,11 +345,10 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
             )}
             {isTrade && metadata.trade_item_description && (
               <p
-                className={`text-sm font-semibold ${config.textColor} mt-1 min-w-0 break-words break-all overflow-wrap-anywhere`}
-                style={{ wordBreak: "break-all", overflowWrap: "anywhere" }}
+                className={`text-sm font-semibold ${config.textColor} mt-1 min-w-0 break-words`}
               >
                 <span className="font-bold">Trade:</span>{" "}
-                <span className="break-all">
+                <span className="break-words">
                   {metadata.trade_item_description}
                 </span>
               </p>
@@ -362,9 +358,9 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
 
         {messageType === "schedule_request" && usesBuiltInPayment && paymentAmount !== null && (
           <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-100">
-            <p className="font-bold">Built-in payment · {formatPrice(paymentAmount)} USD</p>
+            <p className="font-bold">Built-in payment · {formatCurrency(paymentAmount)} USD</p>
             <p className="mt-1 text-xs leading-5">Accepting locks this amount. Payment opens at the scheduled time for 30 minutes and a successful Stripe payment completes the purchase automatically.</p>
-            {metadata.payment_mode === "test" && <p className="mt-1 text-xs font-bold uppercase tracking-wide">Test Mode — no real money</p>}
+            {metadata.payment_mode === "test" && <p className="mt-1 text-xs font-bold uppercase tracking-wide">Test Mode: no real money</p>}
           </div>
         )}
 
@@ -401,9 +397,9 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
                     className={`text-sm ${hasLocationChange ? "text-orange-600 dark:text-orange-300" : config.textColor} min-w-0 flex-1 break-words`}
                   >
                     <span className="font-semibold">Location:</span>{" "}
-                    <span className="break-all">{meetLocation}</span>
+                    <span className="break-words">{meetLocation}</span>
                     {hasLocationChange && originalMeetLocation && (
-                      <span className="text-xs ml-1 opacity-75 break-all">
+                      <span className="text-xs ml-1 opacity-75 break-words">
                         (was {originalMeetLocation})
                       </span>
                     )}
@@ -416,7 +412,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
                 className={`text-sm ${config.textColor} break-words overflow-hidden`}
               >
                 <span className="font-semibold">Description:</span>{" "}
-                <span className="break-all">{description}</span>
+                <span className="break-words">{description}</span>
               </p>
             )}
             {verificationCode && (

@@ -4,10 +4,8 @@ import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandler
 import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
-import {
-  formatCurrency as formatSharedCurrency,
-  formatDateTime as formatSharedDateTime,
-} from "../../utils/formatters";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
+import { formatCurrency, formatDateTime } from "../../utils/formatters";
 import { MAX_LISTING_PRICE } from "../../utils/priceValidation";
 // Price limits - max matches ProductListingPage and SchedulePurchasePage exactly
 const PRICE_LIMITS = {
@@ -20,13 +18,13 @@ const DEFAULT_FAILURE_REASONS = [
   { value: "other", label: "Other (describe)" },
 ];
 
-function formatDateTime(iso) {
+function formatMeetingTime(iso) {
   if (!iso) return "TBD";
-  return formatSharedDateTime(iso);
+  return formatDateTime(iso);
 }
 
-function formatCurrency(value) {
-  return formatSharedCurrency(value) ?? "—";
+function formatPriceOrNA(value) {
+  return formatCurrency(value) ?? "N/A";
 }
 
 export default function ConfirmPurchasePage() {
@@ -122,6 +120,7 @@ export default function ConfirmPurchasePage() {
   }, [prefill]);
 
   const disableForm = loading || !prefill;
+  const runExclusive = useSubmitLock();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -271,7 +270,7 @@ export default function ConfirmPurchasePage() {
               <div className="min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Item</p>
                 <p className="text-base font-semibold text-gray-900 dark:text-gray-100 break-words overflow-hidden">
-                  {prefill?.item_title || "—"}
+                  {prefill?.item_title || "N/A"}
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -280,7 +279,7 @@ export default function ConfirmPurchasePage() {
                     Buyer
                   </p>
                   <p className="font-medium text-gray-900 dark:text-gray-100 break-words overflow-hidden">
-                    {prefill?.buyer_name || "—"}
+                    {prefill?.buyer_name || "N/A"}
                   </p>
                 </div>
                 <div className="min-w-0">
@@ -288,7 +287,7 @@ export default function ConfirmPurchasePage() {
                     Meeting
                   </p>
                   <p className="font-medium text-gray-900 dark:text-gray-100 break-words overflow-hidden">
-                    {formatDateTime(prefill?.meeting_at)}
+                    {formatMeetingTime(prefill?.meeting_at)}
                   </p>
                 </div>
               </div>
@@ -296,8 +295,8 @@ export default function ConfirmPurchasePage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Pickup Location
                 </p>
-                <p className="font-medium text-gray-900 dark:text-gray-100 break-words break-all overflow-hidden">
-                  {prefill?.meet_location || "—"}
+                <p className="font-medium text-gray-900 dark:text-gray-100 break-words overflow-hidden">
+                  {prefill?.meet_location || "N/A"}
                 </p>
               </div>
               {prefill?.description && (
@@ -305,14 +304,20 @@ export default function ConfirmPurchasePage() {
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Notes from scheduling
                   </p>
-                  <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words overflow-wrap-anywhere overflow-hidden">
+                  <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words overflow-hidden">
                     {prefill.description}
                   </p>
                 </div>
               )}
             </section>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                runExclusive(() => handleSubmit(event));
+              }}
+              className="space-y-6"
+            >
               <div className="space-y-3">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   How did the meet-up go?
@@ -379,7 +384,7 @@ export default function ConfirmPurchasePage() {
                 <div className="text-sm text-gray-500 dark:text-gray-300">
                   Previously agreed price:{" "}
                   <span className="font-medium text-gray-900 dark:text-gray-100">
-                    {formatCurrency(
+                    {formatPriceOrNA(
                       prefill?.negotiated_price ?? prefill?.default_final_price,
                     )}
                   </span>

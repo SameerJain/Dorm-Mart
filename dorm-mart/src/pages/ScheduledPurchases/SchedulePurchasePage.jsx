@@ -26,7 +26,7 @@ function SchedulePurchasePage() {
           </p>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <form onSubmit={form.handleSubmit} className="space-y-5">
             <MeetLocationField
               customMeetLocation={form.customMeetLocation}
@@ -37,14 +37,12 @@ function SchedulePurchasePage() {
             />
 
             <ScheduleDateTimeFields
-              dayInputRef={form.dayInputRef}
               meetingAmPm={form.meetingAmPm}
               meetingDay={form.meetingDay}
               meetingHour={form.meetingHour}
               meetingMinute={form.meetingMinute}
               meetingMonth={form.meetingMonth}
               meetingYear={form.meetingYear}
-              monthInputRef={form.monthInputRef}
               setDateTimeError={form.setDateTimeError}
               setMeetingAmPm={form.setMeetingAmPm}
               setMeetingDay={form.setMeetingDay}
@@ -52,7 +50,6 @@ function SchedulePurchasePage() {
               setMeetingMinute={form.setMeetingMinute}
               setMeetingMonth={form.setMeetingMonth}
               setMeetingYear={form.setMeetingYear}
-              yearInputRef={form.yearInputRef}
             />
 
             <NegotiationFields

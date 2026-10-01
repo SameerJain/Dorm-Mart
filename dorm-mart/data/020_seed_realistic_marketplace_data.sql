@@ -62,8 +62,12 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Utility'),
   'North Campus',
   'Fair',
-  'Used fabric storage bin for a dorm room, closet, or apartment. The outside has some light wear from being stored and moved, which is why I marked it fair, but the bin still holds its shape and works as it should. It has a roomy interior for folded clothes, towels, blankets, shoes, books, or the pile of things that never seems to find a home. The two handles make it easy to pull from a shelf or carry across the room. When you do not need it, the sides fold down so it can slide beside a dresser or under a bed. I used it for extra linens and winter clothes, and it kept my closet from turning into a heap. The neutral fabric is easy to place with other furniture, and the open top means you can see what is inside without digging through a box. There may be small marks on the fabric, but there are no major tears or broken handles. A practical choice for anyone who needs more storage without giving up floor space.',
-  JSON_ARRAY('/images/storage-bin-product-image.jpg'),
+  'Fabric storage bin that held my winter clothes and extra towels for a whole semester with no rips or broken seams. Folds flat when empty, handy if you don''t want a rigid box in the way between semesters. Some light wear and marks on the outside from being moved around, which is why it''s priced where it is. Both handles are solid, and the top is open so it won''t keep dust out like a lidded bin would. Bin only, nothing inside. $15.99, open to offers. Bring a bag to carry it since it doesn''t fold small enough for a backpack.',
+  JSON_ARRAY(
+    '/images/storage-bin-product-image.jpg',
+    '/images/storage-bin-product-image-2.jpg',
+    '/images/storage-bin-product-image-3.jpg'
+  ),
   15.99,
   'Active',
   0,
@@ -95,8 +99,15 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Clothing'),
   'South Campus',
   'Like New',
-  'Pack of suit hangers in like new condition. I bought them for a closet refresh and ended up using only a few, so most have spent their time hanging in the closet. They are sturdy enough for jackets, dress shirts, blazers, and heavier coats, with shaped shoulders that keep clothing from collapsing at the top. The lower bars are useful for pants and skirts, and the textured sections help keep smoother fabrics from sliding onto the floor. Their slim shape leaves more room between garments than bulky plastic hangers, which matters in a small dorm closet. They are clean, straight, and ready to use. I am selling the full pack together rather than separating them. They would be useful for someone moving into a first apartment, preparing for interviews, or simply trying to make a crowded closet easier to manage. There are no cracked pieces, bent arms, or loose parts. Bring a bag if you are picking them up because the pack is easier to carry together.',
-  JSON_ARRAY('/images/suit-hangers-product-image.jpg'),
+  'Pack of suit hangers with shaped shoulders so jackets and dress shirts don''t collapse at the top, plus a lower bar for pants. No cracked pieces, bent arms, or loose joints in the set. I bought more than I needed during a closet clean out, so most of them have just been hanging there unused. Handy if your interview clothes are draped over a chair right now, or you''re moving soon and want your shirts to arrive with fewer wrinkles. Selling the whole pack together.
+
+Open to a trade instead of cash. Can meet on campus, bring a bag since loose hangers catch on everything.',
+  JSON_ARRAY(
+    '/images/suit-hangers-product-image.jpg',
+    '/images/suit-hangers-product-image-2.jpg',
+    '/images/suit-hangers-product-image-3.jpg',
+    '/images/suit-hangers-product-image-4.jpg'
+  ),
   18.00,
   'Active',
   1,
@@ -128,8 +139,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Bed', 'Utility'),
   'Ellicott',
   'Excellent',
-  'Small tabletop mirror in excellent condition. I kept it on my desk for getting ready in the morning, checking makeup, fixing my hair, and making sure I did not leave the room with a crooked collar. The base is steady, and the mirror tilts so you can find a comfortable angle instead of leaning over the desk. Its size works well on a nightstand, vanity, shelf, or a narrow bathroom counter without crowding everything around it. The glass gives a clear view and has no cracks or cloudy spots. It is light enough to move when you need the desk for studying, but it does not feel flimsy when you adjust it. I am selling it because I have started using a larger wall mirror. It has been kept indoors, away from moisture, and the frame has only minor signs of handling. The neutral frame looks fine with a simple room setup, and the mirror is small enough to pack safely when you move between semesters. A useful little mirror for a dorm room, shared apartment, or anyone who wants a quick view close to their desk.',
-  JSON_ARRAY('/images/desk-mirror-product-image.webp'),
+  'Tabletop mirror that tilts to whatever angle you need so you''re not leaning over your desk. Glass is clear with no cracks or fog, and the base stays put when you adjust it. No built in light or magnification, just a plain mirror. Switched to a wall mirror so it doesn''t have a spot in my room anymore. $35, open to offers or a trade. Wrap it in something soft if it''s riding in a bag with books.',
+  JSON_ARRAY(
+    '/images/desk-mirror-product-image.webp',
+    '/images/desk-mirror-product-image-2.jpg',
+    '/images/desk-mirror-product-image-3.jpg',
+    '/images/desk-mirror-product-image-4.jpg'
+  ),
   35.00,
   'Active',
   1,
@@ -193,8 +209,17 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Decor', 'Misc.'),
   'Other',
   'Like New',
-  'Bob Marley poster in like new condition. I bought it for a music themed wall and ended up changing the room before I had a chance to frame it, so it has spent most of its time stored flat. The image has warm colors, a clear portrait, and the kind of relaxed presence that makes a blank wall feel less bare without taking over the whole room. The paper is clean, with no tears, folds, water marks, or writing across the picture. It can be framed, hung with clips, or attached with removable strips if you are decorating a dorm and do not want to make holes. The poster is light enough to carry across campus and easy to roll for transport, although I would keep it flat once you get home. It would fit well above a desk, beside a record shelf, or in a bedroom with other music art. The darker colors should work with a room that already has wood, black, or warm neutral furniture, and the simple portrait leaves room for other decorations around it. I am letting it go because I no longer have space for the wall display I planned.',
-  JSON_ARRAY('/images/bob-marley-poster-product-image.jpg'),
+  'Was going to build a whole wall of music posters, bought this one, then changed my mind about the room before I ever framed it. It''s been stored flat since, so the paper is in good shape: no tears, folds, water marks, or writing on the image.
+
+The portrait and warm color palette are why I picked it, so look closely at the photo if the exact tone matters for your room.
+
+Poster only, no frame or hanging clips. Rolling it for the walk home is fine, just flatten it again once you''re back to avoid new creases. $24.99, or I''d consider trading for another piece of wall art. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/bob-marley-poster-product-image.jpg',
+    '/images/bob-marley-poster-product-image-2.jpg',
+    '/images/bob-marley-poster-product-image-3.jpg',
+    '/images/bob-marley-poster-product-image-4.jpg'
+  ),
   24.99,
   'Active',
   1,
@@ -226,8 +251,21 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Gaming', 'Games'),
   'Other',
   'Fair',
-  'Used PlayStation 2 in fair condition. The console has the usual marks from years of use, but the body is intact and the disc door opens and closes normally. The photos show the console, controller, power cable, and video cable included with the listing, so please check them before arranging pickup. This is a good starter setup for someone who wants to revisit older games without paying collector prices for a perfect display piece. The PS2 library has racing games, sports titles, role playing games, action games, and plenty of couch multiplayer favorites. It also plays DVDs, which is handy if you want one small system for an older television. I would give the cables a quick test with your own setup before buying because television connections are different from one room to another. Expect cosmetic wear, not a pristine collector item. I am selling it because it has been sitting in a closet while newer systems get all the use. Bring a tote or backpack for the cables and console.',
-  JSON_ARRAY('/images/playstation-2-product-image.jpg'),
+  'PS2 with the scuffs and scratches you''d expect from years of actual use, but it powers on every time and the disc door opens and closes fine.
+
+Includes:
+- Console
+- One controller
+- Power cable
+- Video cable
+(all shown in the photos, no games)
+
+Heads up that a lot of newer TVs are HDMI only, so you may need an adapter for a console this old. I haven''t tested every port repeatedly, so try it with your own setup soon after buying. Cheap way to revisit old games without paying collector prices. $50, open to offers. Bring a tote or backpack big enough for the cables.',
+  JSON_ARRAY(
+    '/images/playstation-2-product-image.jpg',
+    '/images/playstation-2-product-image-2.jpg',
+    '/images/playstation-2-product-image-3.jpg'
+  ),
   50.00,
   'Active',
   0,
@@ -259,8 +297,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Electronics', 'Gaming', 'Games'),
   'South Campus',
   'Like New',
-  'Mini LED monitor in like new condition. I used it as a second screen for schoolwork and gaming, then packed it away when I changed my desk setup. The picture is bright and clear, and the screen is large enough to keep notes, a browser window, or a game visible without taking over a small desk. The included cables are shown in the photos. It accepts HDMI and USB C connections, so it can work with a laptop, desktop, game console, or another device that supports those outputs. Please check your own ports before buying, especially if your computer needs an adapter. The stand folds away for storage and gives you a comfortable viewing angle when it is open. The frame and screen are clean, with no cracks or dead areas that I have noticed. It is light enough to move between a dorm room and an apartment. A useful option for a student who wants more screen space but does not want a large permanent monitor taking up the whole desk. I am selling it because I no longer need the extra display.',
-  JSON_ARRAY('/images/mini-led-monitor-product-image.jpg'),
+  'Selling because I moved to a single larger monitor and don''t need a second screen eating desk space. It''s a mini LED monitor with a bright, clear picture, and I haven''t noticed any dead pixels or cracks. Takes both HDMI and USB C, but check what your laptop or console actually outputs first since a matching port doesn''t always mean it supports video. The stand folds away for storage or carrying, the cables in the photos are included, and the frame and screen are both clean with no visible damage. Good pick for extra screen space for notes, a second window, or gaming without committing to a big permanent monitor on a small desk. Flexible on the $80. Can meet on campus and I''m happy to plug it in so you can see it power on before you buy.',
+  JSON_ARRAY(
+    '/images/mini-led-monitor-product-image.jpg',
+    '/images/mini-led-monitor-product-image-2.jpg',
+    '/images/mini-led-monitor-product-image-3.jpg',
+    '/images/mini-led-monitor-product-image-4.jpg'
+  ),
   80.00,
   'Active',
   0,
@@ -324,8 +367,12 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Kitchen', 'Food'),
   'Ellicott',
   'Fair',
-  'Used frying pan in fair condition. I cooked with it throughout the semester, so the inside has visible signs of use and the outside is not spotless, but it is still a useful pan for a dorm kitchen. The base sits flat on the stove, the handle is secure, and the cooking surface releases food well when you use a little oil or butter. I used it for eggs, grilled cheese, vegetables, reheating leftovers, and quick dinners when I did not feel like washing a larger pot. It is a practical size for one or two people and easy to rinse in a small sink. The pan is not being sold as new or decorative, and there are marks from regular cooking, which is reflected in the price. There are no loose screws or cracks in the handle. Please look closely at the photos if appearance matters to you. It would suit a student moving into a first kitchen, someone who needs a spare pan, or a cook who wants an inexpensive option for daily meals without worrying about adding more cookware to a small cabinet.',
-  JSON_ARRAY('/images/frying-pan-product-image.jpg'),
+  'Frying pan that got me through a semester of eggs, grilled cheese, and reheated leftovers, so it''s definitely used, not display worthy. Cooking surface has marks and the outside isn''t spotless, which is reflected in the price. Base sits flat, handle''s secure with no cracks or loose screws, and a little oil or butter helps stuff release. Good size for one or two people. No lid or utensils, and I haven''t tried it on every stovetop type so check yours. $20 or I''d trade for a kitchen item I''d actually use. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/frying-pan-product-image.jpg',
+    '/images/frying-pan-product-image-2.jpg',
+    '/images/frying-pan-product-image-3.jpg'
+  ),
   20.00,
   'Active',
   1,
@@ -357,8 +404,15 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Misc.', 'Utility'),
   'Other',
   'Excellent',
-  'Desk lamp in excellent condition with a stable base, adjustable arm, and shade that turns so you can aim the light where you need it. I used it beside my bed for reading and at my desk during late study sessions, and it gave me enough light to see notes without lighting up the entire room. The controls are simple, the lamp does not take much space, and the base feels steady when the arm is moved. It fits on a desk, nightstand, side table, or a small shelf beside a chair. The finish is clean with only minor handling marks, and there are no cracks or loose joints. I am including the bulb shown with it. You can use a softer bulb for a warmer room or a brighter one for schoolwork, depending on what you prefer. This is a good choice for a dorm because it is easy to move when you need the desk clear and easy to store during a room change. I am selling it after rearranging my room and switching to a wall light, so it has plenty of use left.',
-  JSON_ARRAY('/images/desk-lamp-product-image.jpg'),
+  'Desk lamp with an adjustable arm and a rotating shade, so you can aim the light where you need it instead of lighting the whole room. I used it next to my bed for reading and at my desk for late study sessions, and it was bright enough to see notes clearly without keeping my roommate awake. No cracks or loose joints and the base stays steady with the arm fully extended. The bulb in it is included but you can swap in a different brightness or color temperature. Switched to a wall mounted light so it''s just been sitting in a corner. Leave room to adjust the arm so you don''t knock into a monitor.
+
+Open to a lower offer or a trade instead of the full $50. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/desk-lamp-product-image.jpg',
+    '/images/desk-lamp-product-image-2.jpg',
+    '/images/desk-lamp-product-image-3.jpg',
+    '/images/desk-lamp-product-image-4.jpg'
+  ),
   50.00,
   'Active',
   1,
@@ -390,8 +444,18 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Utility', 'Dorm Essentials'),
   'North Campus',
   'Excellent',
-  'Three bottle Lysol air sanitizer pack in excellent condition. I bought it for a move and ended up with more cleaning supplies than I could use, so I am passing this set along. The bottles are clean and the labels are easy to read, with one purple, one orange, and one blue bottle in the pack shown in the photo. This is handy for a dorm, apartment, or shared house where the kitchen and bathroom seem to need attention every day. The spray is useful for refreshing rooms and following the directions on the label when you want to treat the air after cooking, cleaning, or dealing with a stale smell. Keep the bottles away from children and pets, and use them only as directed on the packaging. The bottles take up less space than a large box of supplies and can be stored together under a sink or in a closet. Nothing is leaking, cracked, or missing from the set. A simple pickup for someone who wants household supplies without buying three separate bottles.',
-  JSON_ARRAY('/images/lysol-pack-product-image.jpeg'),
+  'Three pack of Lysol air sanitizer spray:
+purple, orange, and blue, all shown in the photo.
+Nothing leaking or cracked and the labels are readable so you can check scents.
+Got way more cleaning supplies than I needed after moving so I''m passing them on. Selling all three together, not split up.
+Use per the directions on the packaging, including ventilation.
+$15 for all three, open to offers. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/lysol-pack-product-image.jpeg',
+    '/images/lysol-pack-product-image-3.jpg',
+    '/images/lysol-pack-product-image-4.jpg',
+    '/images/lysol-pack-product-image-5.jpg'
+  ),
   15.00,
   'Active',
   0,
@@ -454,8 +518,14 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('School'),
   'North Campus',
   'Like New',
-  'Freedom on My Mind textbook in like new condition. The pages are clean, the cover has very little wear, and I did not write or highlight inside the book. It gives a broad history of African American life and the United States, with chapters that connect major events to the people, movements, and ideas behind them. The readings include primary sources, maps, photographs, and questions that make it useful for class discussion or independent study. I found the chapter organization easy to follow when I needed to review a period quickly before an exam, and the index made it less annoying to find a person or event later. Please compare the edition, authors, and ISBN with your course syllabus before buying because instructors sometimes assign a different version. This copy is a good fit for a student who wants a clean book without paying full bookstore price. I am selling it because I finished the class and no longer need it on my shelf. It has been stored indoors and is ready for another semester.',
-  JSON_ARRAY('/images/african-american-history-textbook-product-image.jpg'),
+  'Finished this class, so my copy of Freedom on My Mind has been sitting on a shelf since the semester ended. Pages are clean with no writing or highlighting from me and the cover has very little wear. The book mixes readings, primary sources, maps, and photographs, and the index was really useful for finding a specific person or event before an exam.
+
+Match the exact edition and ISBN to your syllabus first, professors sometimes assign a different printing. Physical book only, no access code or online login. $30, but I''m open to a trade or a lower price, especially if you''re also grabbing another book from my listings. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/african-american-history-textbook-product-image.jpg',
+    '/images/african-american-history-textbook-product-image-2.jpg',
+    '/images/african-american-history-textbook-product-image-3.jpg'
+  ),
   30.00,
   'Active',
   1,
@@ -487,8 +557,19 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Clothing', 'Electronics'),
   'South Campus',
   'Excellent',
-  'Steam iron in excellent condition. I used it for dress shirts, pants, curtains, and the occasional shirt that stayed in the dryer too long. It heats quickly and the steam makes stubborn wrinkles easier to smooth without pressing the same spot forever. The soleplate moves evenly across fabric, the handle is comfortable, and the controls are clear enough to adjust while you are working. The spray function helps when a crease refuses to disappear, and the water tank is large enough for a normal laundry session without constant refills. I always emptied the tank after use and stored the iron upright, so there is no standing water inside and no damage to the cord that I can see. Please check the fabric label on your clothes and use the proper setting, especially for delicate materials. It would be useful in a dorm, apartment, or first home for someone who wants to look presentable without paying for a new appliance.',
-  JSON_ARRAY('/images/steam-iron-product-image.webp'),
+  'Steam iron, mostly used for dress shirts and the occasional thing I left in the dryer too long.
+
+Works: heats up quickly, steam and spray both work, no cord damage
+Soleplate: glides smoothly without catching
+Storage: always emptied the tank and stored it upright, so no mineral buildup that I know of
+Not included: ironing board
+
+Match the heat setting to the fabric label instead of guessing. $45, or I''d consider a trade. Can meet up on campus.',
+  JSON_ARRAY(
+    '/images/steam-iron-product-image.webp',
+    '/images/steam-iron-product-image-2.jpg',
+    '/images/steam-iron-product-image-3.jpg'
+  ),
   45.00,
   'Active',
   1,
@@ -520,8 +601,12 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Misc.'),
   'North Campus',
   'Like New',
-  'Swiffer sweeper in like new condition. I bought it for a dorm room, used it a few times, and then moved into a place with a vacuum, so it has been sitting in the closet. The handle is light, the cleaning head turns easily, and it reaches under a bed or desk without making you kneel on the floor. Dry pads are useful for dust, crumbs, hair, and the mystery grit that appears near the door, while wet pads help with marks that need more than a quick pass. The pad holder is easy to use and the narrow shape makes the whole thing simple to store beside a cabinet. It works well on the hard floors found in most dorms and apartments. The sweeper has been kept indoors and is clean, with no cracked handle or bent cleaning head. I am including the box shown in the photo, but please bring your own replacement pads if you want to clean immediately after pickup. This is a practical choice for someone who wants a quick floor cleanup without storing a bucket, mop, and large vacuum in a small room.',
-  JSON_ARRAY('/images/swiffer-product-image.jpg'),
+  'Swiffer sweeper, handle and head both work fine with no cracks or loose joints. Used it a handful of times in my dorm before moving somewhere with a real vacuum. Hard floors only, and the box is included but no replacement pads. $15 or a trade, can meet on campus.',
+  JSON_ARRAY(
+    '/images/swiffer-product-image.jpg',
+    '/images/swiffer-product-image-2.jpg',
+    '/images/swiffer-product-image-3.jpg'
+  ),
   15.00,
   'Active',
   1,

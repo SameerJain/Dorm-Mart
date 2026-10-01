@@ -5,62 +5,81 @@ import NextStepsMessageCard from "./NextStepsMessageCard";
 import ConfirmMessageCard from "./ConfirmMessageCard";
 import ReviewPromptMessageCard from "./ReviewPromptMessageCard";
 import BuyerRatingPromptMessageCard from "./BuyerRatingPromptMessageCard";
+import MessageActions from "./MessageActions";
 import TypingIndicatorMessage from "./TypingIndicatorMessage";
 import PaymentSystemMessageCard from "./PaymentSystemMessageCard";
 import { API_BASE } from "../../../utils/apiConfig";
-import { csrfFetch } from "../../../utils/csrfFetch";
 import { isVideoMediaUrl } from "../../../utils/imageFallback";
 import { useMemo, useState } from "react";
+import { withFirstFrame } from "../../../utils/videoSrc";
+import { CHAT_MAX_LENGTH, chatCharCount } from "../utils/chatConstants";
+import { formatDateTime } from "../../../utils/formatters";
+import useMessageActionState from "../hooks/useMessageActionState";
 
-function ReportButton({ messageId }) {
-  const [reported, setReported] = useState(false);
-  const [reporting, setReporting] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  async function report() {
-    setReporting(true);
-    setFailed(false);
-    try {
-      const response = await csrfFetch(`${API_BASE}/moderation/report_message.php`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message_id: messageId }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.success) throw new Error(data.error || "Unable to report message");
-      setReported(true);
-    } catch (_) {
-      setFailed(true);
-    } finally {
-      setReporting(false);
-    }
-  }
-
+function DeletedMessage({ mine }) {
   return (
-    <button
-      type="button"
-      onClick={report}
-      disabled={reported || reporting}
-      title={failed ? "The report could not be sent. Try again." : undefined}
-      className="mt-1 text-[10px] font-semibold text-red-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-red-400"
+    <div
+      className={
+        "flex max-w-[80%] items-center gap-1.5 rounded-2xl border border-dashed px-4 py-2 text-sm italic " +
+        (mine
+          ? "border-indigo-300 text-indigo-500 dark:border-indigo-700 dark:text-indigo-300"
+          : "border-gray-300 text-gray-500 dark:border-gray-600 dark:text-gray-400")
+      }
     >
-      {reported ? "Reported" : reporting ? "Reporting..." : failed ? "Retry report" : "Report"}
-    </button>
+      <svg className="h-3.5 w-3.5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 7h16M10 11v6m4-6v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+      </svg>
+      {mine ? "You deleted this message" : "This message was deleted"}
+    </div>
   );
 }
 
-function TextMessage({ message, canEdit, onEdit }) {
+function MessageStatus({ status, isError, align }) {
+  return (
+    <p
+      aria-live="polite"
+      className={
+        "min-h-0 text-[10px] " +
+        (status ? "mt-1 " : "") +
+        (align === "end" ? "text-right " : "") +
+        (isError ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400")
+      }
+    >
+      {status}
+    </p>
+  );
+}
+
+function triggerDownload(url) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+const charCount = chatCharCount;
+const MAX_MESSAGE_CHARS = CHAT_MAX_LENGTH;
+
+function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
+  // The sender edits what they actually typed; message.content may have
+  // profanity replaced with asterisks, and saving that would store the stars.
+  const editableText = message.rawContent ?? message.content;
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(message.content);
+  const [draft, setDraft] = useState(editableText);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const mine = message.sender === "me";
+  const { copy, reportAction, deleteAction, status, statusIsError, modal } = useMessageActionState(
+    message.message_id,
+    canDelete ? onDelete : null,
+  );
 
   async function save() {
     const content = draft.trim();
-    if (!content || content.length > 500 || content === message.content) {
-      if (content === message.content) setEditing(false);
+    if (!content || charCount(content) > MAX_MESSAGE_CHARS || content === editableText) {
+      if (content === editableText) setEditing(false);
       else setError(!content ? "Message cannot be empty." : "Message cannot exceed 500 characters.");
       return;
     }
@@ -76,30 +95,145 @@ function TextMessage({ message, canEdit, onEdit }) {
     }
   }
 
+  const actions = editing
+    ? []
+    : [
+        { key: "copy", label: "Copy text", icon: "copy", quick: true, onSelect: () => copy(message.content) },
+        canEdit && {
+          key: "edit",
+          label: "Edit message",
+          icon: "edit",
+          quick: true,
+          onSelect: () => { setDraft(editableText); setEditing(true); },
+        },
+        mine ? deleteAction : reportAction,
+      ];
+
   return (
-    <div className={"group max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " + (mine ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100")}>
-      {editing ? (
-        <div className="w-64 max-w-full space-y-2">
-          <textarea autoFocus value={draft} maxLength={500} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") { setDraft(message.content); setEditing(false); setError(""); } else if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); } }} className="min-h-20 w-full resize-none rounded-lg border border-indigo-300 bg-white p-2 text-gray-900 outline-none focus:ring-2 focus:ring-indigo-300" />
-          {error && <p className="text-xs text-red-100" role="alert">{error}</p>}
-          <div className="flex justify-end gap-2">
-            <button type="button" disabled={saving} onClick={() => { setDraft(message.content); setEditing(false); setError(""); }} className="rounded px-2 py-1 text-xs hover:bg-white/15">Cancel</button>
-            <button type="button" disabled={saving} onClick={save} className="rounded bg-white px-2 py-1 text-xs font-semibold text-indigo-700 disabled:opacity-60">{saving ? "Saving..." : "Save"}</button>
+    <MessageActions actions={actions} align={mine ? "end" : "start"} preview={message.content}>
+      <div className={"rounded-2xl px-4 py-2 text-sm shadow " + (mine ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100")}>
+        {editing ? (
+          <div className="w-72 max-w-full animate-[fade-in_0.12s_ease-out] space-y-2">
+            <div className="rounded-xl border border-white/40 bg-white/95 p-2.5 shadow-inner focus-within:border-white focus-within:ring-2 focus-within:ring-white/50">
+              <textarea
+                autoFocus
+                value={draft}
+                aria-label="Edit message"
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") { setDraft(editableText); setEditing(false); setError(""); }
+                  else if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); }
+                }}
+                className="min-h-16 w-full resize-none rounded-md border-0 bg-transparent p-0 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+                placeholder="Edit your message..."
+              />
+              <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
+                <span>Enter to save · Esc to cancel</span>
+                <span className={charCount(draft) > MAX_MESSAGE_CHARS ? "font-semibold text-red-500" : ""}>{charCount(draft)}/{MAX_MESSAGE_CHARS}</span>
+              </div>
+            </div>
+            {error && (
+              <p className="rounded-md bg-red-500/20 px-2 py-1 text-xs text-red-50" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => { setDraft(editableText); setEditing(false); setError(""); }}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-indigo-100 transition-colors hover:bg-white/15 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={saving || !draft.trim() || draft.trim() === editableText}
+                onClick={save}
+                className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition-colors hover:bg-indigo-50 disabled:opacity-50 disabled:hover:bg-white"
+              >
+                {saving && (
+                  <svg className="h-3 w-3 animate-spin text-indigo-700" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z" />
+                  </svg>
+                )}
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
           </div>
+        ) : (
+          <>
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            <div className={"mt-1 text-[10px] " + (mine ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
+              {fmtTime(message.ts)}
+              {message.editedAt ? (
+                <span title={`Edited ${formatDateTime(message.editedAt)}`}> · Edited</span>
+              ) : null}
+            </div>
+          </>
+        )}
+      </div>
+      <MessageStatus status={status} isError={statusIsError} align={mine ? "end" : "start"} />
+      {modal}
+    </MessageActions>
+  );
+}
+
+function MediaMessage({ message, canDelete, onDelete }) {
+  const mine = message.sender === "me";
+  const { copy, reportAction, deleteAction, status, statusIsError, modal } = useMessageActionState(
+    message.message_id,
+    canDelete ? onDelete : null,
+  );
+  const mediaSrc = `${API_BASE}/chat/serve_chat_image.php?message_id=${message.message_id}`;
+  const dlSrc = `${mediaSrc}&download=1`;
+  const isVideo = isVideoMediaUrl(message.image_url);
+
+  const actions = [
+    { key: "download", label: isVideo ? "Download video" : "Download image", icon: "download", quick: true, onSelect: () => triggerDownload(dlSrc) },
+    message.content && { key: "copy", label: "Copy caption", icon: "copy", onSelect: () => copy(message.content) },
+    mine ? deleteAction : reportAction,
+  ];
+
+  return (
+    <MessageActions actions={actions} align={mine ? "end" : "start"} preview={message.content || (isVideo ? "Video" : "Photo")}>
+      <div
+        className={
+          "rounded-2xl px-3 py-2 text-sm shadow " +
+          (mine ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100")
+        }
+      >
+        {isVideo ? (
+          <video
+            src={withFirstFrame(mediaSrc)}
+            controls
+            playsInline
+            preload="metadata"
+            aria-label="Chat video attachment"
+            className={"max-h-72 w-full rounded-lg object-contain " + (mine ? "bg-white/10" : "bg-black/5")}
+          />
+        ) : (
+          <a href={mediaSrc} target="_blank" rel="noopener noreferrer" className="block" title="Chat Image - Click to view full size">
+            <img
+              src={mediaSrc}
+              alt="Chat attachment"
+              className={"max-h-72 w-full object-contain rounded-lg " + (mine ? "bg-white/10" : "bg-black/5")}
+              loading="lazy"
+            />
+          </a>
+        )}
+        {message.content && (
+          <p className="mt-2 whitespace-pre-wrap break-words">{message.content}</p>
+        )}
+        <div className={"mt-1 text-[10px] " + (mine ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
+          {fmtTime(message.ts)}
         </div>
-      ) : (
-        <>
-          <div className="flex items-start gap-2">
-            <p className="min-w-0 flex-1 whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.content}</p>
-            {canEdit && <button type="button" aria-label="Edit last message" title="Edit message" onClick={() => { setDraft(message.content); setEditing(true); }} className="rounded p-1 text-indigo-100 opacity-100 hover:bg-white/15 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100">✎</button>}
-          </div>
-          <div className={"mt-1 text-[10px] " + (mine ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
-            {fmtTime(message.ts)}{message.editedAt ? " · Edited" : ""}
-          </div>
-          {!mine && <ReportButton messageId={message.message_id} />}
-        </>
-      )}
-    </div>
+      </div>
+      <MessageStatus status={status} isError={statusIsError} align={mine ? "end" : "start"} />
+      {modal}
+    </MessageActions>
   );
 }
 
@@ -118,15 +252,31 @@ export default function MessageList({
   messages,
   messagesByConv,
   editMessage,
+  deleteMessage,
   scrollRef,
   typingUserName,
 }) {
-  const lastEditableId = useMemo(() => {
-    const latest = [...filteredMessages].reverse().find((message) =>
-      message.sender === "me" && !message.image_url && !message.metadata && Number(message.message_id) > 0,
-    );
-    return latest ? Number(latest.message_id) : null;
-  }, [filteredMessages]);
+  const { lastEditableId, lastDeletableId } = useMemo(() => {
+    const live = [...filteredMessages]
+      .reverse()
+      .filter((message) => message.sender === "me" && !message.deletedAt && Number(message.message_id) > 0);
+    const editable = live.find((message) => !message.image_url && !message.metadata);
+    // delete_message.php accepts your newest non-card message (system cards are
+    // ignored). Match it against the full list so hidden cards can't shift it.
+    const deletable = [...(messages || [])]
+      .reverse()
+      .find(
+        (message) =>
+          message.sender === "me" &&
+          !message.deletedAt &&
+          !message.metadata &&
+          Number(message.message_id) > 0,
+      );
+    return {
+      lastEditableId: editable ? Number(editable.message_id) : null,
+      lastDeletableId: deletable ? Number(deletable.message_id) : null,
+    };
+  }, [filteredMessages, messages]);
   return (
     <div
       ref={scrollRef}
@@ -302,90 +452,22 @@ export default function MessageList({
                         }
                       }}
                     />
+                  ) : m.deletedAt ? (
+                    <DeletedMessage mine={m.sender === "me"} />
                   ) : messageWithMetadata.image_url ? (
-                    <div
-                      className={
-                        "max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow " +
-                        (m.sender === "me"
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-100 text-gray-900")
-                      }
-                    >
-                      {(() => {
-                        const mediaSrc = `${API_BASE}/chat/serve_chat_image.php?message_id=${m.message_id}`;
-                        const dlSrc = `${mediaSrc}&download=1`;
-                        const isVideo = isVideoMediaUrl(
-                          messageWithMetadata.image_url,
-                        );
-                        return (
-                          <>
-                            {isVideo ? (
-                              <video
-                                src={mediaSrc}
-                                controls
-                                preload="metadata"
-                                aria-label="Chat video attachment"
-                                className={
-                                  "max-h-72 w-full rounded-lg object-contain " +
-                                  (m.sender === "me"
-                                    ? "bg-white/10"
-                                    : "bg-black/5")
-                                }
-                              />
-                            ) : (
-                              <a
-                                href={mediaSrc}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block"
-                                title="Chat Image - Click to view full size"
-                              >
-                                <img
-                                  src={mediaSrc}
-                                  alt="Chat attachment"
-                                  className={
-                                    "max-h-72 w-full object-contain rounded-lg " +
-                                    (m.sender === "me"
-                                      ? "bg-white/10"
-                                      : "bg-black/5")
-                                  }
-                                  loading="lazy"
-                                />
-                              </a>
-                            )}
-                            {m.content && (
-                              <p className="mt-2 whitespace-pre-wrap break-words overflow-wrap-anywhere">
-                                {m.content}
-                              </p>
-                            )}
-                            <div
-                              className={
-                                "mt-1 flex items-center justify-between text-[10px] " +
-                                (m.sender === "me"
-                                  ? "text-indigo-100"
-                                  : "text-gray-500 dark:text-gray-400")
-                              }
-                            >
-                              <span>{fmtTime(m.ts)}</span>
-                              <a
-                                href={dlSrc}
-                                className={
-                                  "ml-3 underline hover:no-underline " +
-                                  (m.sender === "me"
-                                    ? "text-indigo-100"
-                                    : "text-gray-600 dark:text-gray-400")
-                                }
-                              >
-                                Download
-                              </a>
-                            </div>
-                            {m.sender !== "me" && <ReportButton messageId={m.message_id} />}
-                          </>
-                        );
-                      })()}
-                    </div>
+                    <MediaMessage
+                      message={messageWithMetadata}
+                      canDelete={Number(m.message_id) === lastDeletableId}
+                      onDelete={deleteMessage}
+                    />
                   ) : (
-                    <TextMessage message={m} canEdit={Number(m.message_id) === lastEditableId} onEdit={editMessage} />
+                    <TextMessage
+                      message={m}
+                      canEdit={Number(m.message_id) === lastEditableId}
+                      onEdit={editMessage}
+                      canDelete={Number(m.message_id) === lastDeletableId}
+                      onDelete={deleteMessage}
+                    />
                   )}
                 </div>
               )}

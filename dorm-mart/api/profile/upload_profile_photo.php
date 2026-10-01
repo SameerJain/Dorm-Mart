@@ -10,6 +10,7 @@ init_json_endpoint('POST');
 try {
     $userId = require_login();
     require_csrf_token($_POST['csrf_token'] ?? null);
+    require_upload_quota($userId, 'profile_photo');
 
     $file = extract_upload();
     if ($file === null) {

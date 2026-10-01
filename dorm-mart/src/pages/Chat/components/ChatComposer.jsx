@@ -1,7 +1,7 @@
 import ImageModal from "./ImageModal";
+import { CHAT_MAX_LENGTH } from "../utils/chatConstants";
 
 export default function ChatComposer({
-  MAX_LEN,
   activeConversation,
   attachOpen,
   attachedImage,
@@ -12,17 +12,17 @@ export default function ChatComposer({
   confirmState,
   draft,
   handleConfirmPurchase,
-  handleCreateImageMessage,
   handleDraftChange,
   handleKeyDown,
   handleSchedulePurchase,
   hasActiveScheduledPurchase,
   isSellerPerspective,
+  isSending = false,
+  sendError = "",
   onElectronicPayment,
   paymentStatus,
   setAttachOpen,
   setAttachedImage,
-  setDraft,
   submitComposer,
   taRef,
 }) {
@@ -30,7 +30,7 @@ export default function ChatComposer({
 
   return (
     <div
-      className={`sticky bottom-0 z-10 max-w-full overflow-x-hidden border-t border-gray-200 p-4 dark:border-gray-700 relative ${activeConversation?.item_deleted ? "bg-gray-100 dark:bg-gray-700" : "bg-white dark:bg-gray-800"}`}
+      className={`sticky bottom-0 z-10 max-w-full overflow-x-hidden border-t border-gray-200 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-gray-700 relative ${activeConversation?.item_deleted ? "bg-gray-100 dark:bg-gray-700" : "bg-white dark:bg-gray-800"}`}
     >
       {activeConversation?.item_deleted && (
         <div
@@ -38,7 +38,6 @@ export default function ChatComposer({
           onClick={(e) => e.preventDefault()}
           onMouseDown={(e) => e.preventDefault()}
           onKeyDown={(e) => e.preventDefault()}
-          style={{ pointerEvents: "all" }}
           aria-label="Chat is closed"
         ></div>
       )}
@@ -107,6 +106,23 @@ export default function ChatComposer({
               </p>
             )}
         </div>
+      )}
+
+      {sendError && !activeConversation?.item_deleted && (
+        <p
+          role="alert"
+          className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
+        >
+          {sendError}
+        </p>
+      )}
+      {isSending && (
+        <p
+          aria-live="polite"
+          className="mb-1 text-xs text-gray-500 dark:text-gray-400"
+        >
+          Sending…
+        </p>
       )}
 
       {attachedImage && (
@@ -204,7 +220,7 @@ export default function ChatComposer({
                 onKeyDown={handleKeyDown}
                 placeholder="Type a message."
                 rows={1}
-                maxLength={MAX_LEN}
+                maxLength={CHAT_MAX_LENGTH}
                 aria-describedby="message-char-remaining"
                 wrap="soft"
                 className="m-0 box-border block min-h-[44px] max-h-[28vh] w-full resize-none overflow-y-hidden whitespace-pre-wrap break-words rounded-xl border-2 border-gray-300 bg-white px-3 py-2.5 pr-11 text-base leading-5 text-gray-900 focus:ring-2 focus:ring-indigo-500 md:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
@@ -214,7 +230,7 @@ export default function ChatComposer({
                 id="message-char-remaining"
                 className="pointer-events-none absolute right-2.5 bottom-2 text-xs text-gray-500 dark:text-gray-400"
               >
-                {MAX_LEN - draft.length}
+                {CHAT_MAX_LENGTH - draft.length}
               </span>
             </div>
           )}
@@ -228,14 +244,13 @@ export default function ChatComposer({
                 return;
               }
               const isMobile = window.innerWidth < 768;
+              setAttachOpen(false);
               if (isMobile) {
-                handleCreateImageMessage(draft, file);
-                setDraft("");
-                setAttachedImage(null);
+                // Same path as the Send button, so a failed upload keeps the file.
+                submitComposer(file);
               } else {
                 setAttachedImage(file);
               }
-              setAttachOpen(false);
             }}
           />
         </div>
@@ -243,7 +258,7 @@ export default function ChatComposer({
         <button
           type="button"
           onClick={submitComposer}
-          disabled={!canSendMessage}
+          disabled={!canSendMessage || isSending}
           aria-label="Send message"
           className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 md:h-11 md:w-11 dark:bg-blue-800 dark:hover:bg-blue-900 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800"
           title="Send"

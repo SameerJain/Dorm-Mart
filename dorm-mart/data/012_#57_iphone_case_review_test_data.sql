@@ -86,8 +86,14 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Electronics'),
   'North Campus',
   'Like New',
-  'Protective iPhone case with excellent grip and drop protection. Barely used, in excellent condition.',
-  JSON_ARRAY('/images/iphone-case-product-image.jpg'),
+  'Barely worn iPhone case, the grip and edges look almost new since it spent most of its time in a drawer. Please check your exact iPhone model against it before buying, similar looking phones don''t always share the same camera cutout or button placement.
+
+Case only, no phone, cable, or screen protector. It won''t make your phone drop proof but it adds real grip and some corner protection over going bare. $15, not really negotiating on something this small, but ask if you want to compare it against your phone in person. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/iphone-case-product-image.jpg',
+    '/images/iphone-case-product-image-2.jpg',
+    '/images/iphone-case-product-image-3.jpg'
+  ),
   15.00,
   'Sold',
   0,
@@ -315,18 +321,17 @@ INSERT INTO purchased_items (
 
 -- Update purchase_history table for buyer
 -- Insert or update the purchase_history record with the product_id in the JSON array
+-- Record the purchase in the entry shape confirm_purchases writes and that
+-- Purchase History and review submission read: {product_id, recorded_at, confirm_payload}.
+SET @purchase_entry = JSON_OBJECT(
+  'product_id', @product_id,
+  'recorded_at', DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%s+00:00'),
+  'confirm_payload', JSON_OBJECT('is_successful', TRUE)
+);
 INSERT INTO purchase_history (user_id, items)
-VALUES (@buyer_id, JSON_ARRAY(@product_id))
+VALUES (@buyer_id, JSON_ARRAY(JSON_EXTRACT(@purchase_entry, '$')))
 ON DUPLICATE KEY UPDATE
-  items = JSON_ARRAY_APPEND(
-    CASE 
-      WHEN JSON_SEARCH(items, 'one', CAST(@product_id AS CHAR)) IS NULL 
-      THEN items 
-      ELSE JSON_REMOVE(items, JSON_UNQUOTE(JSON_SEARCH(items, 'one', CAST(@product_id AS CHAR))))
-    END,
-    '$',
-    @product_id
-  ),
+  items = JSON_ARRAY_APPEND(COALESCE(items, JSON_ARRAY()), '$', JSON_EXTRACT(@purchase_entry, '$')),
   updated_at = NOW();
 
 -- Note: Review should be manually submitted by tester (testuser@buffalo.edu)

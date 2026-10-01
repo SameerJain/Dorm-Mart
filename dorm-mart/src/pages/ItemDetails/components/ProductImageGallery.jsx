@@ -1,11 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   isVideoMediaUrl,
   onProductImageError,
 } from "../../../utils/imageFallback";
+import GalleryVideoPlayer from "./GalleryVideoPlayer";
+import { withFirstFrame } from "../../../utils/videoSrc";
 
 export default function ProductImageGallery({ photoUrls = [], title }) {
   const [activeIdx, setActiveIdx] = useState(0);
+  const touchStart = useRef(null);
+  // iPadOS can identify itself as a Mac. Touch support alone also matches PCs.
+  const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+  function handleTouchEnd(event) {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start) return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < 50 || Math.abs(dx) <= Math.abs(dy)) return;
+    setActiveIdx((idx) => Math.max(0, Math.min(photoUrls.length - 1, idx + (dx < 0 ? 1 : -1))));
+  }
 
   useEffect(() => {
     setActiveIdx(0);
@@ -17,8 +34,8 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
   const hasNext = activeIdx < photoUrls.length - 1;
 
   return (
-    <section className="flex gap-3 items-start justify-center lg:sticky lg:top-20">
-      {hasMultiplePhotos ? (
+    <section className={`flex gap-3 items-start justify-center lg:sticky lg:top-20 ${isMobileDevice ? "flex-col" : ""}`}>
+      {hasMultiplePhotos && !isMobileDevice ? (
         <div className="hidden md:flex md:flex-col gap-2 md:max-h-[32rem] overflow-y-auto pr-1">
           {photoUrls.map((url, idx) => (
             <GalleryThumb
@@ -32,7 +49,17 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
         </div>
       ) : null}
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm w-full max-w-[28rem] md:max-w-[32rem] aspect-square mx-auto overflow-hidden relative">
+      <div
+        className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm w-full max-w-[28rem] md:max-w-[32rem] aspect-square mx-auto overflow-hidden relative"
+        style={isMobileDevice && hasMultiplePhotos ? { touchAction: "pan-y pinch-zoom" } : undefined}
+        onTouchStart={(event) => {
+          touchStart.current = isMobileDevice && hasMultiplePhotos && event.touches.length === 1
+            ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
+            : null;
+        }}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={() => { touchStart.current = null; }}
+      >
         {hasPhotos ? (
           <GalleryMedia url={photoUrls[activeIdx]} alt={title} controls />
         ) : (
@@ -41,7 +68,7 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
           </div>
         )}
 
-        {hasMultiplePhotos ? (
+        {hasMultiplePhotos && !isMobileDevice ? (
           <>
             <GalleryArrowButton
               direction="previous"
@@ -62,7 +89,22 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
         ) : null}
       </div>
 
-      {hasMultiplePhotos ? (
+      {hasMultiplePhotos && isMobileDevice ? (
+        <div className="flex flex-wrap justify-center w-full" aria-label="Media navigation">
+          {photoUrls.map((url, idx) => (
+            <button
+              key={`dot-${idx}`}
+              type="button"
+              aria-label={`Show media ${idx + 1}`}
+              aria-current={idx === activeIdx ? "true" : undefined}
+              onClick={() => setActiveIdx(idx)}
+              className="h-11 w-11 flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <span className={`h-3 w-3 rounded-full ${idx === activeIdx ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"}`} />
+            </button>
+          ))}
+        </div>
+      ) : hasMultiplePhotos ? (
         <div className="md:hidden absolute -bottom-12 left-0 right-0 flex gap-2 justify-center">
           {photoUrls.map((url, idx) => (
             <GalleryThumb
@@ -81,14 +123,14 @@ export default function ProductImageGallery({ photoUrls = [], title }) {
 }
 
 function GalleryArrowButton({ direction, onClick, disabled }) {
+  if (disabled) return null;
   const isPrevious = direction === "previous";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
-      className={`absolute ${isPrevious ? "left-2" : "right-2"} top-1/2 -translate-y-1/2 h-12 w-12 p-0 rounded-full flex items-center justify-center bg-gray-950/75 hover:bg-blue-600 text-white shadow-lg backdrop-blur-sm transition duration-150 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/70 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-gray-950/75`}
+      className={`absolute ${isPrevious ? "left-2" : "right-2"} top-1/2 -translate-y-1/2 h-12 w-12 p-0 rounded-full flex items-center justify-center bg-gray-950/75 hover:bg-blue-600 text-white shadow-lg backdrop-blur-sm transition duration-150 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/70`}
       aria-label={`${isPrevious ? "Previous" : "Next"} media`}
     >
       <svg
@@ -126,15 +168,29 @@ function GalleryThumb({ url, idx, activeIdx, onSelect, small = false }) {
 
 function GalleryMedia({ url, alt, controls = false }) {
   if (isVideoMediaUrl(url)) {
+    if (controls) {
+      // Keyed by url so switching slides resets playback state.
+      return <GalleryVideoPlayer key={url} src={url} label={alt} />;
+    }
+
     return (
-      <video
-        src={url}
-        aria-label={alt}
-        controls={controls}
-        muted={!controls}
-        preload="metadata"
-        className="h-full w-full object-contain"
-      />
+      <span className="relative block h-full w-full bg-gray-100 dark:bg-gray-900">
+        <video
+          src={withFirstFrame(url)}
+          aria-label={alt}
+          muted
+          playsInline
+          preload="metadata"
+          className="h-full w-full object-cover"
+        />
+        <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+          <span className="h-6 w-6 rounded-full bg-blue-600/90 text-white shadow flex items-center justify-center">
+            <svg className="h-3 w-3 translate-x-px" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5.5v13a1 1 0 0 0 1.52.85l10.5-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5Z" />
+            </svg>
+          </span>
+        </span>
+      </span>
     );
   }
 

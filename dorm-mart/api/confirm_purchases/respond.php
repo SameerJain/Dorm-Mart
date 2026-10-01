@@ -59,12 +59,17 @@ try {
     if (!$schedule) {
         json_response(['success' => false, 'error' => 'Scheduled purchase not found'], 404);
     }
+    if (($schedule['status'] ?? '') !== 'accepted') {
+        json_response(['success' => false, 'error' => 'This scheduled purchase is no longer active'], 409);
+    }
     if (($schedule['payment_option'] ?? 'manual') === 'stripe' && empty($schedule['payment_fallback_at'])) {
         json_response(['success' => false, 'error' => 'This purchase is waiting for built-in payment'], 409);
     }
 
     $row = auto_finalize_confirm_request($conn, $row) ?? $row;
     if (($row['status'] ?? '') !== 'pending') {
+        // Keep an auto-accept that just ran; exiting would roll it back.
+        $conn->commit();
         json_response(['success' => false, 'error' => 'This confirmation has already been processed'], 409);
     }
 
@@ -103,12 +108,15 @@ try {
         release_inventory_after_unsuccessful_confirm($conn, $row);
     }
 
+    notify_seller_confirm_outcome($conn, $row, $nextStatus);
+    notification_clear_prompt($conn, (int)$row['scheduled_request_id'], 'confirm_request');
+
     $conversationId = (int)$row['conversation_id'];
     $metadataType = $action === 'accept' ? 'confirm_accepted' : 'confirm_denied';
     $metadata = build_confirm_response_metadata($row, $metadataType);
 
     if ($conversationId > 0) {
-        $names = get_user_display_names($conn, [$buyerId]);
+        $names = chat_display_names($conn, [$buyerId]);
         $buyerName = $names[$buyerId] ?? ('User ' . $buyerId);
         $actionText = $action === 'accept' ? 'accepted' : 'denied';
         $messageContent = $buyerName . ' has ' . $actionText . ' the Confirm Purchase form.';
@@ -116,7 +124,7 @@ try {
         $receiverId = get_conversation_receiver_id($conn, $conversationId, $buyerId);
         if ($receiverId !== null) {
             delete_confirm_request_message($conn, $conversationId, $confirmRequestId);
-            insert_confirm_chat_message($conn, $conversationId, $buyerId, $receiverId, $messageContent, $metadata);
+            chat_insert_system_message($conn, $conversationId, $buyerId, $receiverId, $messageContent, $metadata);
         }
     }
 
@@ -141,7 +149,5 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
-    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
-    error_log('confirm-purchase respond error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Internal server error'], 500);
+    api_fail($e, 'confirm-purchase respond', $conn ?? null);
 }

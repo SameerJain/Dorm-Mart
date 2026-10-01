@@ -32,16 +32,7 @@ try {
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $selectSql = <<<SQL
         SELECT
-            spr.request_id,
-            spr.status,
-            spr.seller_user_id,
-            spr.buyer_user_id,
-            spr.conversation_id,
-            spr.inventory_product_id,
-            spr.payment_option,
-            spr.payment_mode,
-            spr.payment_amount_cents,
-            spr.payment_fallback_at,
+            spr.*,
             inv.title AS item_title,
             inv.photos AS item_photos
         FROM scheduled_purchase_requests spr
@@ -79,14 +70,24 @@ try {
         json_response(['success' => false, 'error' => 'Request is already cancelled'], 409);
     }
 
-    // Cannot cancel a declined request (buyer already rejected it)
-    if ($currentStatus === 'declined') {
-        json_response(['success' => false, 'error' => 'Cannot cancel a declined request'], 409);
+    // Declined and expired requests are already closed.
+    if ($currentStatus !== 'pending' && $currentStatus !== 'accepted') {
+        json_response(['success' => false, 'error' => 'This request can no longer be cancelled'], 409);
+    }
+
+    // A purchase the buyer confirmed (or that auto-accepted or was paid) is closed.
+    if ($currentStatus === 'accepted') {
+        $confirmStatus = scheduled_purchase_latest_confirm_status($conn, $requestId);
+        if (in_array($confirmStatus, ['buyer_accepted', 'auto_accepted', 'payment_completed'], true)) {
+            $conn->rollback();
+            json_response(['success' => false, 'error' => 'This purchase has already been completed'], 409);
+        }
     }
 
     $intentToCancel = null;
     if (
         $currentStatus === 'accepted'
+        && dm_payments_enabled()
         && ($row['payment_option'] ?? 'manual') === 'stripe'
         && empty($row['payment_fallback_at'])
     ) {
@@ -119,6 +120,21 @@ try {
     $updateStmt->execute();
     $updateStmt->close();
     notification_cancel_schedule($conn, $requestId);
+
+    // Void a Confirm Purchase form still waiting on the buyer, as account
+    // deletion does. Left pending, the buyer could accept it (or it would
+    // auto-accept) and mark the relisted item sold.
+    $voidConfirm = $conn->prepare(
+        "UPDATE confirm_purchase_requests SET status = 'seller_cancelled'
+          WHERE scheduled_request_id = ? AND status = 'pending'"
+    );
+    if (!$voidConfirm) {
+        throw new RuntimeException('Failed to prepare confirm void');
+    }
+    $voidConfirm->bind_param('i', $requestId);
+    $voidConfirm->execute();
+    $voidConfirm->close();
+    notification_clear_prompt($conn, $requestId, 'confirm_request');
     
     // Revert item status to "Active" when cancelled, but only if no other accepted purchases exist
     // This ensures item becomes available again only when truly free of all accepted scheduled purchases
@@ -149,6 +165,25 @@ try {
         }
     }
     
+    // Tell whoever did not cancel, so nobody travels to a meetup that is off.
+    notification_clear_prompt($conn, $requestId, 'schedule_request');
+    if (in_array($currentStatus, ['pending', 'accepted'], true)) {
+        $cancelledConvId = (int)($row['conversation_id'] ?? 0);
+        notification_insert($conn, [
+            'recipient_user_id' => $userId === $sellerId ? $buyerId : $sellerId,
+            'type' => 'schedule_cancelled',
+            'product_id' => $inventoryProductId > 0 ? $inventoryProductId : null,
+            'scheduled_request_id' => $requestId,
+            'title' => (string)($row['item_title'] ?? 'Scheduled purchase'),
+            'message' => scheduled_purchase_user_display_name($conn, $userId)
+                . ' cancelled the scheduled meetup at ' . $row['meet_location'] . '.',
+            'image_url' => notification_first_image($row['item_photos'] ?? null),
+            'severity' => 'urgent',
+            'destination' => $cancelledConvId > 0 ? '/app/chat?conv=' . $cancelledConvId : '/app/seller-dashboard/ongoing-purchases',
+            'idempotency_key' => 'schedule-cancelled-' . $requestId,
+        ]);
+    }
+
     // Create special message in chat
     $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
     if ($conversationId > 0) {
@@ -160,7 +195,7 @@ try {
             $msgSenderId = $userId;
             $msgReceiverId = ($convRow['user1_id'] == $userId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
 
-            scheduled_purchase_insert_chat_message($conn, $conversationId, $msgSenderId, $msgReceiverId, $messageContent, [
+            chat_insert_system_message($conn, $conversationId, $msgSenderId, $msgReceiverId, $messageContent, [
                 'type' => 'schedule_cancelled',
                 'request_id' => $requestId,
             ]);

@@ -13,11 +13,7 @@ try {
     auth_boot_session();
     $userId = require_login();
 
-    // Validate product_id
-    $productId = strict_integer_value($_GET['product_id'] ?? null);
-    if ($productId === null || $productId <= 0) {
-        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
-    }
+    $productId = require_product_id($_GET);
 
     $conn = db();
     $conn->set_charset('utf8mb4');
@@ -26,7 +22,7 @@ try {
     $stmt = $conn->prepare(
         'SELECT pr.review_id, pr.product_id, pr.buyer_user_id, pr.seller_user_id, 
                 pr.rating, pr.product_rating, pr.review_text, pr.image1_url, pr.image2_url, pr.image3_url,
-                pr.created_at, pr.updated_at,
+                pr.video_url, pr.created_at, pr.updated_at,
                 ua.first_name, ua.last_name, ua.email
          FROM product_reviews pr
          LEFT JOIN user_accounts ua ON pr.buyer_user_id = ua.user_id
@@ -64,10 +60,11 @@ try {
         'image1_url' => $review['image1_url'] ?? null,
         'image2_url' => $review['image2_url'] ?? null,
         'image3_url' => $review['image3_url'] ?? null,
+        'video_url' => $review['video_url'] ?? null,
         'created_at' => $review['created_at'],
         'updated_at' => $review['updated_at'],
         'buyer_name' => $buyerName,
-        'buyer_email' => $review['email'] ?? ''
+        'buyer_username' => strstr((string)($review['email'] ?? ''), '@', true) ?: ''
     ];
 
     json_response([

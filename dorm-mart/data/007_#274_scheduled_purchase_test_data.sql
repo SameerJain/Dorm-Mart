@@ -55,7 +55,7 @@ WHERE email IN (
   'testuserscheduleyellow@buffalo.edu'
 );
 
--- Seller account (Luke Skywalker) – able to create listings
+-- Seller account (Luke Skywalker) - able to create listings
 INSERT INTO user_accounts (
   first_name,
   last_name,
@@ -96,7 +96,7 @@ INSERT INTO user_accounts (
   NULL
 );
 
--- Buyer account (Han Solo) – standard user
+-- Buyer account (Han Solo) - standard user
 INSERT INTO user_accounts (
   first_name,
   last_name,
@@ -172,8 +172,12 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Kitchen', 'Utility'),
   'North Campus',
   'Like New',
-  'A fun and effective cleaning sponge that changes texture based on water temperature. Perfect for scrubbing dishes, countertops, and more. Great condition, barely used.',
-  JSON_ARRAY('/images/scrub-daddy.jpg'),
+  'Scrub Daddy sponge, barely used since I bought a pack and only needed one at a time. Firms up in cold water for baked on messes and softens in warm water for regular dishes. Just the sponge in the photo, no spray or other supplies. $10 firm, happy to meet on campus.',
+  JSON_ARRAY(
+    '/images/scrub-daddy.jpg',
+    '/images/scrub-daddy-2.jpg',
+    '/images/scrub-daddy-3.jpg'
+  ),
   10.00,
   'Active',
   0,
@@ -203,8 +207,19 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Kitchen', 'Utility'),
   'North Campus',
   'Good',
-  'Compact air fryer perfect for dorm cooking. Makes crispy fries, chicken, and more with less oil. Works great, some minor wear on the exterior but fully functional.',
-  JSON_ARRAY('/images/air-fryer.jpg'),
+  'Air fryer that handled most of my between-class meals (fries, chicken, reheating stuff I didn''t feel like microwaving). Still heats up fast, no weird noises or slow starts.
+
+- Basket, tray, and base unit included
+- Some scuffs and marks on the outside from regular use, doesn''t affect how it works
+- Compact, so smaller batches only. Not ideal if you cook for a group
+- No extra racks or attachments beyond what came in the box
+
+Selling because I''m downsizing my kitchen stuff before moving out at the end of the semester. $50 but open to reasonable offers. Can meet on campus and show you the controls when you pick it up.',
+  JSON_ARRAY(
+    '/images/air-fryer.jpg',
+    '/images/air-fryer-2.jpg',
+    '/images/air-fryer-3.jpg'
+  ),
   50.00,
   'Active',
   0,
@@ -234,8 +249,18 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Decor', 'Games'),
   'North Campus',
   'Like New',
-  'Adorable Pim plushie from Smiling Friends. Soft, cuddly, and in excellent condition. Perfect for decoration or as a gift.',
-  JSON_ARRAY('/images/pim-plushie.jpg'),
+  'Pim plushie from Smiling Friends
+looks unimpressed no matter how you pose him on a shelf
+no rips, flat spots, or loose stitching and the color hasn''t faded
+plush only, no stand or other characters
+$20 or trade me something a Smiling Friends fan would like
+can meet on campus whenever, no rush',
+  JSON_ARRAY(
+    '/images/pim-plushie.jpg',
+    '/images/pim-plushie-2.jpg',
+    '/images/pim-plushie-3.jpg',
+    '/images/pim-plushie-4.jpg'
+  ),
   20.00,
   'Active',
   1,

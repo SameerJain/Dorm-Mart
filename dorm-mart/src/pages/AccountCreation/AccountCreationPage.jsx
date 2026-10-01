@@ -4,6 +4,7 @@ import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import PreLoginBranding from "../../components/PreLoginBranding";
 import PreLoginNavLinks from "../../components/PreLoginNavLinks";
 import { useEmailPolicy } from "../../hooks/useEmailPolicy";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 import {
   ACCOUNT_REQUEST_RATE_LIMIT_MESSAGE,
   applyAccountRequestLockout,
@@ -67,6 +68,7 @@ function CreateAccountPage() {
     () => getAccountRequestRateLimit().blockedUntil,
   );
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
+  const runExclusive = useSubmitLock();
   const rateLimited = rateLimitBlockedUntil > Date.now();
   const today = new Date();
   const currentYear = today.getFullYear();
@@ -216,8 +218,7 @@ function CreateAccountPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!validate()) return;
 
     const clientRateLimit = consumeAccountRequestAttempt();
@@ -256,7 +257,7 @@ function CreateAccountPage() {
       <PreLoginBranding />
 
       {/* Right side - Create Account form (full width on mobile/tablet, 50% on desktop) */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-6 lg:px-8 xl:px-8 pt-6 sm:pt-8 md:pt-16 md:pb-8 lg:py-6 xl:py-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] h-dvh min-h-0 overflow-y-auto lg:overflow-y-hidden pre-login-bg relative">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center md:[justify-content:safe_center] p-4 sm:p-6 md:p-6 lg:px-8 xl:px-8 pt-[max(1.5rem,env(safe-area-inset-top))] sm:pt-8 md:pt-16 md:pb-8 lg:py-6 xl:py-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] h-dvh min-h-0 overflow-y-auto overscroll-contain pre-login-bg relative">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="lg:hidden mb-4 sm:mb-6 md:mb-8 text-center w-full relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
@@ -288,7 +289,10 @@ function CreateAccountPage() {
 
               {/* Form - Improved spacing and touch targets */}
               <form
-                onSubmit={handleSubmit}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  runExclusive(handleSubmit);
+                }}
                 className={
                   Object.keys(errors).length > 0
                     ? "space-y-1.5 sm:space-y-2 md:space-y-2 lg:space-y-1 xl:space-y-1.5"
@@ -402,7 +406,7 @@ function CreateAccountPage() {
                           });
                         }}
                       >
-                        Terms & Conditions
+                        Terms of Service
                       </button>{" "}
                       and{" "}
                       <button

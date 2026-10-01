@@ -5,7 +5,11 @@ import PreLoginBranding from "../components/PreLoginBranding";
 import PreLoginNavLinks from "../components/PreLoginNavLinks";
 import { THEME_CACHE_KEY, THEME_PENDING_KEY } from "../utils/loadTheme.js";
 import { API_BASE } from "../utils/apiConfig";
+import { clearCsrfToken } from "../utils/csrfFetch";
+import { fetchMe } from "../utils/handleAuth";
 import { useEmailPolicy } from "../hooks/useEmailPolicy";
+import { useSubmitLock } from "../hooks/useSubmitLock";
+import TurnstileWidget from "../components/TurnstileWidget";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -18,7 +22,12 @@ function LoginPage() {
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationEmail, setVerificationEmail] = useState("");
+  // Set once the server asks for a human check; stays until the page reloads.
+  const [captchaSiteKey, setCaptchaSiteKey] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
+  const runExclusive = useSubmitLock();
 
   // Handle URL parameters
   useEffect(() => {
@@ -40,8 +49,7 @@ function LoginPage() {
     }
   }, [searchParams]);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setError(""); // Clear previous errors
     setLoading(true);
 
@@ -94,6 +102,19 @@ function LoginPage() {
       return;
     }
 
+    if (captchaSiteKey && !turnstileToken) {
+      setError("Please complete the verification check.");
+      setLoading(false);
+      return;
+    }
+
+    // Turnstile tokens are single-use: send this one and render a fresh widget.
+    const submittedToken = turnstileToken;
+    if (captchaSiteKey) {
+      setTurnstileToken("");
+      setCaptchaResetKey((key) => key + 1);
+    }
+
     try {
       // Call backend login API
       const response = await fetch(`${API_BASE}/auth/login.php`, {
@@ -105,6 +126,7 @@ function LoginPage() {
         body: JSON.stringify({
           email: email.trim(),
           password: password,
+          ...(submittedToken ? { turnstile_token: submittedToken } : {}),
         }),
       });
 
@@ -115,6 +137,9 @@ function LoginPage() {
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorData.message || errorMessage;
+          if (errorData.requires_captcha && errorData.captcha_site_key) {
+            setCaptchaSiteKey(errorData.captcha_site_key);
+          }
         } catch (e) {
           // Response isn't JSON, use status text
           errorMessage = `Server error (${response.status}): ${response.statusText}`;
@@ -148,24 +173,16 @@ function LoginPage() {
           } catch (_) {}
 
           try {
-            const meRes = await fetch(`${API_BASE}/auth/me.php`, {
-              method: "GET",
-              credentials: "include",
-            });
-            if (meRes.ok) {
-              const meJson = await meRes.json();
-              const userId = meJson.user_id;
-              if (userId) {
-                const userThemeKey = `userTheme_${userId}`;
-                localStorage.setItem(userThemeKey, data.theme);
-              }
-            }
+            const { user_id: userId } = await fetchMe();
+            if (userId) localStorage.setItem(`userTheme_${userId}`, data.theme);
           } catch (e) {
             // User not authenticated or error - continue anyway
           }
         }
 
         // Navigate to the main app
+        // Login issued a new session, so any cached CSRF token is stale.
+        clearCsrfToken();
         navigate(data.role === "moderator" ? "/app/moderation" : "/app", {
           state: { loginSuccess: true },
         });
@@ -195,8 +212,7 @@ function LoginPage() {
     }
   };
 
-  const handleTwoFactorVerification = async (e) => {
-    e.preventDefault();
+  const handleTwoFactorVerification = async () => {
     setError("");
     if (!/^\d{6}$/.test(verificationCode)) {
       setError("Enter the 6-digit verification code.");
@@ -214,6 +230,15 @@ function LoginPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) {
         setError(data.error || "Unable to verify the code. Please try again.");
+        // Anything other than a plain wrong-code answer means the server has
+        // already invalidated the pending challenge (too many attempts, expired,
+        // 2FA disabled mid-flow, etc.) — bounce back to the login form instead of
+        // leaving a dead code box up that just keeps returning "session expired".
+        if (!data.retryable) {
+          setRequiresTwoFactor(false);
+          setVerificationCode("");
+          setVerificationEmail("");
+        }
         return;
       }
 
@@ -224,6 +249,8 @@ function LoginPage() {
           if (data.user_id) localStorage.setItem(`userTheme_${data.user_id}`, data.theme);
         } catch (_) {}
       }
+      // Login issued a new session, so any cached CSRF token is stale.
+      clearCsrfToken();
       navigate(data.role === "moderator" ? "/app/moderation" : "/app", {
         state: { loginSuccess: true },
       });
@@ -307,7 +334,7 @@ function LoginPage() {
 
               {/* Error message display */}
               {error && (
-                <div className="mb-4 p-3 sm:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <div role="alert" className="mb-4 p-3 sm:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
                   <p className="text-sm sm:text-base leading-relaxed">
                     {error}
                   </p>
@@ -317,7 +344,12 @@ function LoginPage() {
               {/* Login form - Improved spacing for mobile */}
               {/* scheme-light: keep native inputs light when html gets color-scheme:dark right before navigate */}
               <form
-                onSubmit={requiresTwoFactor ? handleTwoFactorVerification : handleLogin}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  runExclusive(
+                    requiresTwoFactor ? handleTwoFactorVerification : handleLogin,
+                  );
+                }}
                 noValidate
                 className="space-y-3 sm:space-y-4 md:space-y-6"
               >
@@ -339,18 +371,37 @@ function LoginPage() {
                       maxLength={6}
                       autoFocus
                       required
-                      className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-center tracking-[0.35em] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm text-xl md:text-2xl"
+                      disabled={loading}
+                      className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-center tracking-[0.35em] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm text-xl md:text-2xl disabled:opacity-60 disabled:cursor-not-allowed"
                     />
+                    {/* A way out of the code step: wrong account, or the email never
+                        arrived. Signing in again sends a fresh code (and passes the
+                        server's Turnstile check when it asks for one). */}
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => {
+                        setRequiresTwoFactor(false);
+                        setVerificationCode("");
+                        setVerificationEmail("");
+                        setError("");
+                      }}
+                      className="mt-3 text-sm font-semibold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60"
+                    >
+                      Didn't get a code? Sign in again or use a different account
+                    </button>
                   </div>
                 ) : (
                   <>
                 {/* Email input */}
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
+                  <label htmlFor="login-email" className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     University Email Address
                   </label>
                   <input
+                    id="login-email"
                     type="email"
+                    autoComplete="username"
                     value={email}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -363,24 +414,41 @@ function LoginPage() {
                     }}
                     maxLength={255}
                     required
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
+                    disabled={loading}
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
 
                 {/* Password input */}
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
+                  <label htmlFor="login-password" className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     Password
                   </label>
                   <input
+                    id="login-password"
                     type="password"
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     maxLength={64}
                     required
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
+                    disabled={loading}
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
+
+                {captchaSiteKey && (
+                  <TurnstileWidget
+                    siteKey={captchaSiteKey}
+                    resetKey={captchaResetKey}
+                    onToken={setTurnstileToken}
+                    onLoadError={() =>
+                      setError(
+                        "Could not load the verification check. Please disable any content blockers and reload the page.",
+                      )
+                    }
+                  />
+                )}
                   </>
                 )}
 

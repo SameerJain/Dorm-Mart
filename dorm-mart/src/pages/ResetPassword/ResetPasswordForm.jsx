@@ -12,6 +12,7 @@ import {
   hasUpper,
   MAX_PASSWORD_LEN,
 } from "../../utils/passwordPolicy";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 
 const MAX_LEN = MAX_PASSWORD_LEN;
 
@@ -62,6 +63,7 @@ function Field({
 function ResetPasswordForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const runExclusive = useSubmitLock();
   const token = searchParams.get("token");
   const uid = searchParams.get("uid");
 
@@ -203,20 +205,22 @@ function ResetPasswordForm() {
     }
   }, [token, uid, navigate, newPassword, confirmPassword]);
 
+  // Key auto-repeat fires this for as long as Enter is held, so it has to go
+  // through the same lock as the button.
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Enter") handleSubmit();
+      if (e.key === "Enter") runExclusive(handleSubmit);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleSubmit]);
+  }, [handleSubmit, runExclusive]);
 
   return (
     <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
       {/* Form: full width below lg (matches mobile when left branding is hidden); half width on lg+ with image panel */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-hidden">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center [justify-content:safe_center] p-4 pt-[max(1rem,env(safe-area-inset-top))] sm:p-6 lg:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-y-auto overscroll-contain">
         {/* Branding header: same as mobile through tablet; hidden on lg+ where PreLoginBranding shows */}
         <div className="lg:hidden mb-6 sm:mb-8 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
@@ -381,7 +385,7 @@ function ResetPasswordForm() {
 
                   <button
                     type="button"
-                    onClick={handleSubmit}
+                    onClick={() => runExclusive(handleSubmit)}
                     disabled={isLoading || !isTokenValid || isVerifyingToken}
                     className="mt-6 min-h-[44px] w-full xl:w-48 bg-sky-500 hover:bg-sky-600 disabled:bg-sky-300 disabled:cursor-not-allowed text-white rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium disabled:hover:scale-100 text-base sm:text-lg active:scale-95"
                   >

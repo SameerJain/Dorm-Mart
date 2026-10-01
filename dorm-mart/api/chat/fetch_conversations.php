@@ -4,25 +4,16 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
 
 $conn = db();
+$conn->set_charset('utf8mb4');
 
-/*
-login.php
-- creates a new session file and updates the cookie
-- PHP sends Set-Cookie
-- Subsequent API calls send the cookie automatically
-session_start();
-if ($okPassword) {
-  session_regenerate_id(true); // prevent fixation; gives a fresh session id
-  $_SESSION['user_id'] = $user['user_id'];
-  echo json_encode(['success' => true]);
-}
-*/
 $userId = require_login();
+// Read-only; release the session lock so parallel requests aren't queued.
+session_write_close();
 
 $sql = "
   SELECT
@@ -44,7 +35,10 @@ $sql = "
   LEFT JOIN user_accounts seller ON seller.user_id = inv.seller_id
   WHERE (c.user1_id = ? AND c.user1_deleted = 0)
      OR (c.user2_id = ? AND c.user2_deleted = 0)
-  ORDER BY c.created_at DESC
+  -- Most recent activity first (message ids only grow), so a conversation
+  -- that gets a new message, or comes back after being hidden, moves to the top.
+  ORDER BY COALESCE((SELECT MAX(m.message_id) FROM messages m WHERE m.conv_id = c.conv_id), 0) DESC,
+           c.created_at DESC
 ";
 
 $stmt = $conn->prepare($sql);

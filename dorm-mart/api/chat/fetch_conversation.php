@@ -5,11 +5,12 @@ require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../helpers/profanity.php';
 require_once __DIR__ . '/../helpers/request.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
 
 $conn = db();
+$conn->set_charset('utf8mb4');
 
 $userId = require_login();
 
@@ -99,24 +100,46 @@ while ($row = $res->fetch_assoc()) {
             $confirmStatusStmt->close();
         }
     }
-    $row['content'] = filter_profanity($conn, (string)$row['content']);
+    $rawContent = (string)$row['content'];
+    // System cards (schedule, intro, ...) carry names and titles, not chat text.
+    $row['content'] = $row['metadata'] === null ? filter_profanity($conn, $rawContent) : $rawContent;
+    // The sender may see their own words uncensored, so editing a message
+    // starts from what they typed instead of saving literal asterisks.
+    if ((int)$row['sender_id'] === $userId && $row['deleted_at'] === null && $row['metadata'] === null) {
+        $row['raw_content'] = $rawContent;
+    }
     $row['is_flagged'] = (bool)$row['is_flagged'];
     $row['is_deleted'] = $row['deleted_at'] !== null;
     $messages[] = $row;
 }
 $stmt->close();
 
-// --- mark as read for the caller (sets "no unread") ---
-$stmt = $conn->prepare(
-    'UPDATE conversation_participants
-        SET unread_count = 0,
-            first_unread_msg_id = 0
-      WHERE conv_id = ? AND user_id = ?'
-);
+// --- mark as read for the caller (sets "no unread"); skipped for cross-site links ---
+if (request_is_same_origin_fetch()) {
+    $stmt = $conn->prepare(
+        'UPDATE conversation_participants
+            SET unread_count = 0,
+                first_unread_msg_id = 0
+          WHERE conv_id = ? AND user_id = ?'
+    );
 
-$stmt->bind_param('ii', $convId, $userId);
-$stmt->execute();
-$stmt->close();
+    $stmt->bind_param('ii', $convId, $userId);
+    $stmt->execute();
+    $stmt->close();
+
+    // Opening a conversation you hid (for example from a notification link)
+    // restores it to your own list, so replies have somewhere to show up.
+    // The other participant's flag is untouched.
+    $stmt = $conn->prepare(
+        'UPDATE conversations
+            SET user1_deleted = CASE WHEN user1_id = ? THEN 0 ELSE user1_deleted END,
+                user2_deleted = CASE WHEN user2_id = ? THEN 0 ELSE user2_deleted END
+          WHERE conv_id = ?'
+    );
+    $stmt->bind_param('iii', $userId, $userId, $convId);
+    $stmt->execute();
+    $stmt->close();
+}
 
 // --- fetch item_deleted status from conversations table ---
 $itemDeleted = false;

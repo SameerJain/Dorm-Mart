@@ -6,9 +6,18 @@ import {
   resolveStoredImageUrl,
 } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
-import { useState, useEffect } from "react";
+import { apiGetJson } from "../../utils/apiClient";
+import { useState, useEffect, useCallback, useRef } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
 import { formatDateTime } from "../../utils/formatters";
+
+// Resolves to the buyer's review for this product, or null when there is none.
+async function fetchExistingReview(productId) {
+  const result = await apiGetJson(
+    `${API_BASE}/reviews/get_review.php?product_id=${encodeURIComponent(productId)}`,
+  );
+  return result?.success && result.has_review ? result.review : null;
+}
 
 function PurchasedItem({
   id,
@@ -33,37 +42,34 @@ function PurchasedItem({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoadingReview, setIsLoadingReview] = useState(true);
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const loadReview = useCallback(async () => {
+    try {
+      const review = await fetchExistingReview(id);
+      if (mountedRef.current && review) {
+        setHasReview(true);
+        setExistingReview(review);
+      }
+    } catch (error) {
+      logger.error("Error fetching review status:", error);
+    }
+  }, [id]);
 
   // Fetch review status on mount
   useEffect(() => {
     if (!id) return;
-
-    const fetchReviewStatus = async () => {
-      try {
-        const response = await fetch(
-          `${API_BASE}/reviews/get_review.php?product_id=${id}`,
-          {
-            method: "GET",
-            credentials: "include",
-          },
-        );
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.has_review) {
-            setHasReview(true);
-            setExistingReview(result.review);
-          }
-        }
-      } catch (error) {
-        logger.error("Error fetching review status:", error);
-      } finally {
-        setIsLoadingReview(false);
-      }
-    };
-
-    fetchReviewStatus();
-  }, [id]);
+    loadReview().finally(() => {
+      if (mountedRef.current) setIsLoadingReview(false);
+    });
+  }, [id, loadReview]);
 
   // Auto-open review modal if autoOpenReview prop is true and review status is loaded
   useEffect(() => {
@@ -79,29 +85,8 @@ function PurchasedItem({
 
   const handleReviewSubmitted = () => {
     setHasReview(true);
-    // Optionally refetch the review to get the latest data
-    fetchReviewAfterSubmit();
-  };
-
-  const fetchReviewAfterSubmit = async () => {
-    try {
-      const response = await fetch(
-        `${API_BASE}/reviews/get_review.php?product_id=${id}`,
-        {
-          method: "GET",
-          credentials: "include",
-        },
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.has_review) {
-          setExistingReview(result.review);
-        }
-      }
-    } catch (error) {
-      logger.error("Error fetching review after submit:", error);
-    }
+    // Refetch so the view mode shows the saved review.
+    loadReview();
   };
 
   return (
@@ -121,11 +106,11 @@ function PurchasedItem({
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           {/* Top: title + seller */}
           <div className="mt-2 sm:mt-0 overflow-hidden">
-            <h3 className="text-base sm:text-lg font-semibold line-clamp-2 break-words break-all overflow-hidden text-gray-900 dark:text-gray-100">
+            <h3 className="text-base sm:text-lg font-semibold line-clamp-2 break-words overflow-hidden text-gray-900 dark:text-gray-100">
               <Link
                 to={detailPath}
                 state={detailState}
-                className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-sm break-words break-all"
+                className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-sm break-words"
               >
                 {title}
               </Link>

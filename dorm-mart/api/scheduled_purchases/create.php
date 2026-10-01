@@ -8,6 +8,8 @@ require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/../payments/helpers.php';
+require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../helpers/moderation.php';
 
 init_json_endpoint('POST');
 
@@ -33,6 +35,7 @@ try {
     // New fields for price negotiation and trades
     $negotiatedPriceRaw = $payload['negotiated_price'] ?? null;
     $negotiatedPrice = null;
+    $negotiatedPriceString = '';
     if ($negotiatedPriceRaw !== null && $negotiatedPriceRaw !== '') {
         $negotiatedPriceString = is_string($negotiatedPriceRaw)
             ? trim($negotiatedPriceRaw)
@@ -54,6 +57,9 @@ try {
         : 'manual';
     if (!in_array($paymentOption, ['manual', 'stripe'], true)) {
         json_response(['success' => false, 'error' => 'Invalid payment option'], 400);
+    }
+    if ($paymentOption === 'stripe' && !dm_payments_enabled()) {
+        json_response(['success' => false, 'error' => 'Built-in payment is temporarily unavailable'], 409);
     }
     $paymentAmountCents = $paymentOption === 'stripe'
         ? payment_amount_cents_from_value($payload['payment_amount'] ?? null)
@@ -132,7 +138,7 @@ try {
     $conn->set_charset('utf8mb4');
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $itemStmt = $conn->prepare('SELECT product_id, title, seller_id, price_nego, trades, item_location, listing_price FROM INVENTORY WHERE product_id = ? LIMIT 1');
+    $itemStmt = $conn->prepare('SELECT product_id, title, seller_id, price_nego, trades, item_location, listing_price, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
     if (!$itemStmt) {
         throw new RuntimeException('Failed to prepare inventory query');
     }
@@ -154,7 +160,7 @@ try {
     $snapshotMeetLocation = isset($itemRow['item_location']) ? trim((string)$itemRow['item_location']) : null;
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $convStmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
+    $convStmt = $conn->prepare('SELECT conv_id, product_id, user1_id, user2_id, user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
     if (!$convStmt) {
         throw new RuntimeException('Failed to prepare conversation query');
     }
@@ -166,6 +172,11 @@ try {
 
     if (!$convRow) {
         json_response(['success' => false, 'error' => 'Conversation not found'], 404);
+    }
+    // Confirm Purchase looks the schedule up through the chat's own listing, so a
+    // schedule filed under another listing's chat could never be completed.
+    if ((int)($convRow['product_id'] ?? 0) !== $inventoryId) {
+        json_response(['success' => false, 'error' => 'This conversation is about a different listing'], 400);
     }
 
     $buyerId = 0;
@@ -190,6 +201,9 @@ try {
     // Ensure buyer is not the seller
     if ($buyerId === $sellerId) {
         json_response(['success' => false, 'error' => 'Cannot schedule with yourself'], 400);
+    }
+    if (moderation_user_is_banned($conn, $buyerId)) {
+        json_response(['success' => false, 'error' => 'This user is no longer available'], 403);
     }
 
     $paymentMode = null;
@@ -235,16 +249,43 @@ try {
         if ($negotiatedPrice > 9999.99) {
             json_response(['success' => false, 'error' => 'Negotiated price must be $9999.99 or less'], 400);
         }
-        $priceDigitsOnly = preg_replace('/[^0-9]/', '', (string)$negotiatedPrice);
-        foreach (['80085','8008','5318008','42069','66666','6969','42042','1488','420','666','69','67'] as $_m) {
-            if (strpos($priceDigitsOnly, $_m) !== false) {
-                json_response(['success' => false, 'error' => 'Invalid price value'], 400);
-            }
+        if (price_has_blocked_digits($negotiatedPriceString)) {
+            json_response(['success' => false, 'error' => 'Invalid price value'], 400);
         }
     }
 
+    // The chat UI hides the schedule button while a request is open, but only
+    // this locked check makes that rule hold: a double-clicked submit or a second
+    // tab would otherwise create duplicate requests and duplicate chat cards.
+    // respond.php takes the same INVENTORY row lock before accepting.
+    $conn->begin_transaction();
+    $inventoryLock = $conn->prepare('SELECT item_status, sold FROM INVENTORY WHERE product_id = ? LIMIT 1 FOR UPDATE');
+    if (!$inventoryLock) {
+        throw new RuntimeException('Failed to prepare inventory lock');
+    }
+    $inventoryLock->bind_param('i', $inventoryId);
+    $inventoryLock->execute();
+    $lockedItem = $inventoryLock->get_result()->fetch_assoc();
+    $inventoryLock->close();
+    if (!$lockedItem || (int)$lockedItem['sold'] === 1 || $lockedItem['item_status'] === 'Sold') {
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'This item has already been sold'], 409);
+    }
+    if ($lockedItem['item_status'] === 'Draft') {
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'Publish this listing before scheduling a purchase'], 409);
+    }
+    if (scheduled_purchase_has_open_request($conn, $inventoryId)) {
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'This item already has an active scheduled purchase'], 409);
+    }
+
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location, payment_option, payment_amount_cents, payment_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    if (dm_payments_enabled()) {
+        $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location, payment_option, payment_amount_cents, payment_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    } else {
+        $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    }
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare insert');
     }
@@ -271,25 +312,44 @@ try {
     // For nullable integer (conversation_id), we pass null directly
     // For nullable strings, mysqli will handle NULL correctly
     // For nullable decimal, mysqli will handle NULL correctly
-    $stmt->bind_param('iiiissssdisiissis',
-        $inventoryId,
-        $sellerId,
-        $buyerId,
-        $convId,
-        $meetLocation,
-        $meetingAtDb,
-        $verificationCode,
-        $desc,
-        $price,
-        $isTradeInt,
-        $tradeDesc,
-        $snapshotPriceNegoInt,
-        $snapshotTradesInt,
-        $snapLoc,
-        $paymentOption,
-        $paymentAmountCents,
-        $paymentMode
-    );
+    if (dm_payments_enabled()) {
+        $stmt->bind_param('iiiissssdisiissis',
+            $inventoryId,
+            $sellerId,
+            $buyerId,
+            $convId,
+            $meetLocation,
+            $meetingAtDb,
+            $verificationCode,
+            $desc,
+            $price,
+            $isTradeInt,
+            $tradeDesc,
+            $snapshotPriceNegoInt,
+            $snapshotTradesInt,
+            $snapLoc,
+            $paymentOption,
+            $paymentAmountCents,
+            $paymentMode
+        );
+    } else {
+        $stmt->bind_param('iiiissssdisiis',
+            $inventoryId,
+            $sellerId,
+            $buyerId,
+            $convId,
+            $meetLocation,
+            $meetingAtDb,
+            $verificationCode,
+            $desc,
+            $price,
+            $isTradeInt,
+            $tradeDesc,
+            $snapshotPriceNegoInt,
+            $snapshotTradesInt,
+            $snapLoc
+        );
+    }
     
     if (!$stmt->execute()) {
         $error = $stmt->error;
@@ -306,7 +366,7 @@ try {
         $messageContent = $sellerDisplayName . ' has scheduled a purchase. Please Accept or Deny.';
         $listingPrice = isset($itemRow['listing_price']) ? (float)$itemRow['listing_price'] : null;
 
-        scheduled_purchase_insert_chat_message($conn, $conversationId, $sellerId, $buyerId, $messageContent, [
+        chat_insert_system_message($conn, $conversationId, $sellerId, $buyerId, $messageContent, [
             'type' => 'schedule_request',
             'request_id' => $requestId,
             'inventory_product_id' => $inventoryId,
@@ -326,6 +386,21 @@ try {
             'payment_mode' => $paymentMode,
         ]);
     }
+
+    // The request quietly expires if the buyer never answers, and the chat card
+    // alone is easy to miss, so prompt them in notifications too.
+    notification_insert($conn, [
+        'recipient_user_id' => $buyerId, 'type' => 'schedule_request',
+        'product_id' => $inventoryId, 'scheduled_request_id' => $requestId,
+        'title' => (string)($itemRow['title'] ?? 'Scheduled purchase'),
+        'message' => scheduled_purchase_user_display_name($conn, $sellerId)
+            . ' scheduled a meetup at ' . $meetLocation . '. Accept or decline it in chat before it expires.',
+        'image_url' => notification_first_image($itemRow['photos'] ?? null), 'severity' => 'warning',
+        'destination' => '/app/chat?conv=' . $conversationId,
+        'idempotency_key' => 'schedule-request-' . $requestId,
+    ]);
+
+    $conn->commit();
 
     // XSS PROTECTION: Escape user-generated content before returning in JSON
     $response = [
@@ -348,6 +423,7 @@ try {
 
     json_response($response);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
     error_log('scheduled-purchase create error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Internal server error'], 500);
 }

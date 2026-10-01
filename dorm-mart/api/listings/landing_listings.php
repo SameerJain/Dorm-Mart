@@ -46,6 +46,7 @@ try {
         WHERE (i.sold = 0 OR i.sold IS NULL)
           AND i.item_status = 'Active'
           AND i.seller_id <> ?
+          AND " . inventory_seller_visible_sql('i.seller_id') . "
         ORDER BY i.date_listed DESC, i.product_id DESC
         LIMIT 120
     ";
@@ -100,7 +101,7 @@ try {
             'id'         => (int)$row['product_id'],
             'title'      => $row['title'] ?? 'Untitled',
             'price'      => $row['listing_price'] !== null ? (float)$row['listing_price'] : 0,
-            'image'      => $image,      // <-- "/data/images/xxxx.png"
+            'image'      => $image,
             'image_url'  => $image,
             'tags'       => $tags,
             'category'   => !empty($tags) ? $tags[0] : null,
@@ -109,6 +110,7 @@ try {
             'created_at' => $createdAt,
             'seller'     => $seller,
             'sold_by'    => $seller,
+            'seller_username' => inventory_username_from_email($row['email'] ?? null),
             'status'     => $status,
             'trades'     => (bool)$row['trades'],
             'price_nego' => (bool)$row['price_nego'],

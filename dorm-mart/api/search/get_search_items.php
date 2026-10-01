@@ -183,6 +183,9 @@ try {
     $relevanceTypes = '';
 
     // If searching and sort is empty or explicitly set to best, prioritize similarity
+    // LIKE treats % and _ as wildcards; escape them so "50%" or "_" in a
+    // query match literally instead of matching every listing.
+    $qLike = addcslashes($q, '%_\\');
     $useRelevance = ($q !== '') && in_array($sort, ['', 'best', 'best_match', 'relevance'], true);
     if ($useRelevance) {
         // Weighted matches: exact > prefix > contains (title), optional description contains
@@ -191,12 +194,12 @@ try {
             " (CASE WHEN i.title LIKE ? THEN 50 ELSE 0 END) +".
             " (CASE WHEN i.title LIKE ? THEN 20 ELSE 0 END) ";
         $relevanceParams[] = $q;                 // exact
-        $relevanceParams[] = $q . '%';           // prefix
-        $relevanceParams[] = '%' . $q . '%';     // title contains
+        $relevanceParams[] = $qLike . '%';       // prefix
+        $relevanceParams[] = '%' . $qLike . '%'; // title contains
         $relevanceTypes   .= 'sss';
         if ($includeDesc) {
             $relevanceSql .= "+ (CASE WHEN i.description LIKE ? THEN 10 ELSE 0 END) ";
-            $relevanceParams[] = '%' . $q . '%'; // desc contains
+            $relevanceParams[] = '%' . $qLike . '%'; // desc contains
             $relevanceTypes   .= 's';
         }
         $relevanceSql .= ") AS relevance ";
@@ -215,6 +218,7 @@ try {
     $params[] = 'Active';
     $types   .= 's';
     $where[] = '(i.sold IS NULL OR i.sold = 0)';
+    $where[] = inventory_seller_visible_sql('i.seller_id');
 
     // Category is stored as JSON array (column: categories)
     if ($category !== '') {
@@ -282,12 +286,12 @@ try {
     if ($q !== '') {
         if ($includeDesc) {
             $where[] = '(i.title LIKE ? OR i.description LIKE ?)';
-            $params[] = '%' . $q . '%';
-            $params[] = '%' . $q . '%';
+            $params[] = '%' . $qLike . '%';
+            $params[] = '%' . $qLike . '%';
             $types   .= 'ss';
         } else {
             $where[] = 'i.title LIKE ?';
-            $params[] = '%' . $q . '%';
+            $params[] = '%' . $qLike . '%';
             $types   .= 's';
         }
     }
@@ -381,6 +385,7 @@ try {
             'created_at' => $createdAt,
             'seller'     => $seller,
             'sold_by'    => $seller,
+            'seller_username' => inventory_username_from_email($row['email'] ?? null),
             'status'     => $statusOut,
             'trades'     => (bool)$row['trades'],
             'price_nego' => (bool)$row['price_nego'],

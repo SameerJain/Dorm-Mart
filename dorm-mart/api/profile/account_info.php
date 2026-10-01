@@ -4,8 +4,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 init_json_endpoint('GET');
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 try {
     $userId = require_login();
@@ -13,7 +13,7 @@ try {
     $conn->set_charset('utf8mb4');
 
     $stmt = $conn->prepare(
-        'SELECT first_name, last_name, email, grad_month, grad_year, join_date
+        'SELECT first_name, last_name, email, grad_month, grad_year, join_date, phone_number
          FROM user_accounts WHERE user_id = ? LIMIT 1'
     );
     if (!$stmt) throw new RuntimeException('Failed to prepare account lookup');
@@ -33,6 +33,7 @@ try {
             'grad_month' => (int)$row['grad_month'],
             'grad_year' => (int)$row['grad_year'],
             'join_date' => $row['join_date'],
+            'phone_number' => $row['phone_number'] !== null ? (string)$row['phone_number'] : null,
         ],
     ]);
 } catch (Throwable $e) {

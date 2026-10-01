@@ -8,6 +8,7 @@ require_once __DIR__ . '/../helpers/notifications.php';
 require_once __DIR__ . '/completion.php';
 require_once __DIR__ . '/stripe.php';
 
+/** @return never */
 function payment_webhook_json(int $status, array $payload): void
 {
     http_response_code($status);
@@ -353,25 +354,37 @@ function payment_handle_dispute(mysqli $conn, string $mode, \Stripe\Event $event
         return;
     }
     $paymentId = (int)$payment['electronic_payment_id'];
+    // A dispute closed in the seller's favor keeps the money, so the payment is
+    // an ordinary succeeded payment again (and can still be refunded normally).
+    // A lost dispute stays 'disputed'; dispute_status records the outcome.
+    $sellerKeptFunds = payment_dispute_resolved_for_seller($disputeStatus);
     $update = $conn->prepare(
         "UPDATE electronic_payments
-            SET status = 'disputed', stripe_dispute_id = ?, dispute_status = ?
+            SET status = CASE WHEN ? = 1 THEN IF(status = 'disputed', 'succeeded', status) ELSE 'disputed' END,
+                stripe_dispute_id = ?, dispute_status = ?
           WHERE electronic_payment_id = ?
             AND (dispute_status IS NULL OR dispute_status NOT IN ('won','lost','prevented','warning_closed') OR dispute_status = ?)"
     );
-    $update->bind_param('ssis', $disputeId, $disputeStatus, $paymentId, $disputeStatus);
+    if (!$update) throw new RuntimeException('Failed to prepare dispute update');
+    $keptFlag = $sellerKeptFunds ? 1 : 0;
+    $update->bind_param('issis', $keptFlag, $disputeId, $disputeStatus, $paymentId, $disputeStatus);
     $update->execute();
     $update->close();
 
     $sellerId = (int)$payment['seller_user_id'];
     if ($sellerId > 0) {
+        $message = match (true) {
+            $sellerKeptFunds => 'A disputed electronic payment was resolved in your favor. You keep the payment.',
+            $disputeStatus === 'lost' => 'A disputed electronic payment was decided for the buyer, and the funds were returned to them.',
+            default => 'A buyer disputed an electronic payment. Review the case in Stripe Dashboard.',
+        };
         notification_insert($conn, [
             'recipient_user_id' => $sellerId,
             'type' => 'payment_dispute',
             'product_id' => null,
             'scheduled_request_id' => (int)$payment['scheduled_request_id'],
             'title' => 'Stripe payment dispute',
-            'message' => 'A buyer disputed an electronic payment. Review the case in Stripe Dashboard.',
+            'message' => $message,
             'severity' => 'urgent',
             'destination' => '/app/setting/payments',
             'idempotency_key' => 'stripe-dispute-' . $disputeId . '-' . $disputeStatus,
@@ -380,22 +393,40 @@ function payment_handle_dispute(mysqli $conn, string $mode, \Stripe\Event $event
     $conn->commit();
 }
 
-function handle_payment_webhook(string $mode): void
+function payment_webhook_preamble(string $mode, string $secret): array
 {
     payment_assert_mode($mode);
     dm_enforce_https();
     set_security_headers();
+    if (!dm_payments_enabled()) {
+        payment_webhook_json(503, ['success' => false, 'error' => 'Electronic payments are disabled']);
+    }
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         payment_webhook_json(405, ['success' => false, 'error' => 'Method Not Allowed']);
     }
 
-    $secret = dm_stripe_webhook_secret($mode);
     if ($secret === '') payment_webhook_json(503, ['success' => false, 'error' => 'Webhook is not configured']);
     $payload = file_get_contents('php://input');
     $signature = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
     if (!is_string($payload) || $payload === '' || $signature === '') {
         payment_webhook_json(400, ['success' => false, 'error' => 'Invalid webhook request']);
     }
+    return [$payload, $signature];
+}
+
+function payment_webhook_fail($conn, string $mode, string $logPrefix, Throwable $e): void
+{
+    if (isset($conn)) {
+        try { $conn->rollback(); } catch (Throwable $ignored) {}
+    }
+    error_log($logPrefix . ': mode=' . $mode . ' error=' . $e->getMessage());
+    payment_webhook_json(500, ['success' => false, 'error' => 'Webhook processing failed']);
+}
+
+function handle_payment_webhook(string $mode): void
+{
+    $secret = dm_stripe_webhook_secret($mode);
+    [$payload, $signature] = payment_webhook_preamble($mode, $secret);
 
     try {
         $event = \Stripe\Webhook::constructEvent($payload, $signature, $secret);
@@ -420,30 +451,14 @@ function handle_payment_webhook(string $mode): void
     } catch (\Stripe\Exception\SignatureVerificationException $e) {
         payment_webhook_json(400, ['success' => false, 'error' => 'Invalid webhook signature']);
     } catch (Throwable $e) {
-        if (isset($conn)) {
-            try { $conn->rollback(); } catch (Throwable $ignored) {}
-        }
-        error_log('Stripe webhook error: mode=' . $mode . ' error=' . $e->getMessage());
-        payment_webhook_json(500, ['success' => false, 'error' => 'Webhook processing failed']);
+        payment_webhook_fail($conn ?? null, $mode, 'Stripe webhook error', $e);
     }
 }
 
 function handle_payment_account_webhook(string $mode): void
 {
-    payment_assert_mode($mode);
-    dm_enforce_https();
-    set_security_headers();
-    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-        payment_webhook_json(405, ['success' => false, 'error' => 'Method Not Allowed']);
-    }
-
     $secret = dm_stripe_account_webhook_secret($mode);
-    if ($secret === '') payment_webhook_json(503, ['success' => false, 'error' => 'Webhook is not configured']);
-    $payload = file_get_contents('php://input');
-    $signature = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
-    if (!is_string($payload) || $payload === '' || $signature === '') {
-        payment_webhook_json(400, ['success' => false, 'error' => 'Invalid webhook request']);
-    }
+    [$payload, $signature] = payment_webhook_preamble($mode, $secret);
 
     try {
         $stripe = payment_stripe_client($mode);
@@ -458,8 +473,9 @@ function handle_payment_account_webhook(string $mode): void
             payment_webhook_json(200, ['received' => true]);
         }
 
-        $related = $event->fetchRelatedObject();
-        $accountId = (string)($related->id ?? '');
+        // The notification names the account; it is retrieved once below with
+        // the fields we need, so there is no need to fetchRelatedObject() too.
+        $accountId = (string)($event->related_object->id ?? '');
         if ($accountId === '') throw new RuntimeException('Stripe account event has no related account');
         $remote = $stripe->v2->core->accounts->retrieve(
             $accountId,
@@ -510,10 +526,6 @@ function handle_payment_account_webhook(string $mode): void
     } catch (\Stripe\Exception\SignatureVerificationException $e) {
         payment_webhook_json(400, ['success' => false, 'error' => 'Invalid webhook signature']);
     } catch (Throwable $e) {
-        if (isset($conn)) {
-            try { $conn->rollback(); } catch (Throwable $ignored) {}
-        }
-        error_log('Stripe Accounts v2 webhook error: mode=' . $mode . ' error=' . $e->getMessage());
-        payment_webhook_json(500, ['success' => false, 'error' => 'Webhook processing failed']);
+        payment_webhook_fail($conn ?? null, $mode, 'Stripe Accounts v2 webhook error', $e);
     }
 }

@@ -86,8 +86,12 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Books'),
   'North Campus',
   'Like New',
-  'This is a classmate notebook.',
-  JSON_ARRAY('/images/marble-notebook.jpg'),
+  'Unused Classmate notebook, the spare I never touched after buying a couple extra at the start of the semester. Cover has no creases or writing. Not sure of the exact ruling so ask if your class needs something specific. $3, can meet on campus.',
+  JSON_ARRAY(
+    '/images/marble-notebook.jpg',
+    '/images/marble-notebook-2.jpg',
+    '/images/marble-notebook-3.jpg'
+  ),
   3.00,
   'Sold',
   0,

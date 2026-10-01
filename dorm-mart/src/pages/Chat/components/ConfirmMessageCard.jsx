@@ -28,6 +28,8 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     )
       return "accepted";
     if (enrichedStatus === "buyer_declined") return "declined";
+    // The scheduled purchase was cancelled (or an account deleted) first.
+    if (enrichedStatus === "seller_cancelled") return "cancelled";
     // Fall back to message type if no enriched status
     if (
       messageType === "confirm_accepted" ||
@@ -78,7 +80,9 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     enrichedStatus &&
     (enrichedStatus === "buyer_accepted" ||
       enrichedStatus === "buyer_declined" ||
-      enrichedStatus === "auto_accepted");
+      enrichedStatus === "auto_accepted" ||
+      enrichedStatus === "seller_cancelled");
+  const isCancelled = localStatus === "cancelled";
   const isActionableRequest =
     messageType === "confirm_request" &&
     !isMine &&
@@ -93,6 +97,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
       return { label: "Auto accepted", tone: "success" };
     if (messageType === "confirm_denied")
       return { label: "Buyer denied", tone: "danger" };
+    if (localStatus === "cancelled") return { label: "Cancelled", tone: "info" };
     if (messageType === "confirm_request" && localStatus === "accepted")
       return { label: "Response sent", tone: "success" };
     if (messageType === "confirm_request" && localStatus === "declined")
@@ -108,6 +113,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
   // Determine title text based on buyer response and seller's success marking
   const titleText = useMemo(() => {
     const enrichedStatus = metadata.confirm_purchase_status;
+    if (localStatus === "cancelled") return "Confirm Purchase: Cancelled";
     // Check if buyer denied first
     if (
       enrichedStatus === "buyer_declined" ||
@@ -175,7 +181,8 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     label: "Update",
     tone: "info",
   };
-  const visualTone = isSuccessful ? safeStatusDescriptor.tone : "danger";
+  const visualTone =
+    isSuccessful || isCancelled ? safeStatusDescriptor.tone : "danger";
   const visual = toneClasses[visualTone] || toneClasses.info;
 
   // Get icon based on status
@@ -378,7 +385,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
                 className={`text-sm ${visual.textColor} break-words overflow-hidden min-w-0`}
               >
                 <span className="font-semibold">Location:</span>{" "}
-                <span className="break-all">{meetLocation}</span>
+                <span className="break-words">{meetLocation}</span>
               </p>
             )}
             {sellerNotes && (
@@ -389,7 +396,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
                   Notes
                 </p>
                 <p
-                  className={`text-sm whitespace-pre-wrap break-words break-all overflow-hidden ${visual.textColor} opacity-90`}
+                  className={`text-sm whitespace-pre-wrap break-words overflow-hidden ${visual.textColor} opacity-90`}
                 >
                   {sellerNotes}
                 </p>
@@ -407,7 +414,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
                 </p>
                 {failureReasonNotes && (
                   <p
-                    className={`text-sm whitespace-pre-wrap break-words break-all overflow-hidden ${visual.textColor} opacity-90 mt-0.5`}
+                    className={`text-sm whitespace-pre-wrap break-words overflow-hidden ${visual.textColor} opacity-90 mt-0.5`}
                   >
                     {failureReasonNotes}
                   </p>
@@ -416,7 +423,14 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
             )}
           </div>
 
-          {messageType === "confirm_request" && (
+          {isCancelled && (
+            <p className={`text-xs ${visual.textColor} opacity-75`}>
+              The scheduled purchase was cancelled, so this form no longer
+              needs a response.
+            </p>
+          )}
+
+          {messageType === "confirm_request" && !isCancelled && (
             <p className={`text-xs ${visual.textColor} opacity-75`}>
               Buyer has 24 hours to respond
               {formattedExpires ? ` (expires ${formattedExpires})` : ""}.

@@ -69,14 +69,18 @@ export default function MeetLocationField({
         (meetLocationChoice === selectedListing.meet_location ||
         (meetLocationChoice === MEET_LOCATION_OTHER_VALUE &&
           customMeetLocation.trim() === selectedListing.meet_location) ? (
-          <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
-            This location matches the one listed on your item form
+          <p className="mt-1 truncate text-xs text-blue-600 dark:text-blue-400 font-medium">
+            Matches your listing&apos;s location
           </p>
         ) : (
           meetLocationChoice && (
-            <div className="mt-1 flex items-start gap-2">
+            // Single line: the listing's location truncates rather than wrapping the warning.
+            <div
+              className="mt-1 flex min-w-0 items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400"
+              title={`Different from the location on your listing (${selectedListing.meet_location})`}
+            >
               <svg
-                className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5"
+                className="w-4 h-4 flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -88,10 +92,8 @@ export default function MeetLocationField({
                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
               </svg>
-              <p className="text-sm text-orange-600 dark:text-orange-400 break-words">
-                Please note that this location is different from the one listed
-                on your item form ({selectedListing.meet_location})
-              </p>
+              <span className="ml-0.5 shrink-0 whitespace-nowrap">Differs from listing:</span>
+              <span className="min-w-0 truncate">{selectedListing.meet_location}</span>
             </div>
           )
         ))}

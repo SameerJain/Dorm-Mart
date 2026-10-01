@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/moderation.php';
 require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint('POST');
@@ -59,6 +60,10 @@ try {
         json_response(['success' => false, 'error' => 'Cannot message your own listing'], 400);
     }
 
+    if (moderation_user_is_banned($conn, $sellerId)) {
+        json_response(['success' => false, 'error' => 'This user is no longer available'], 403);
+    }
+
     $orderedA = min($buyerId, $sellerId);
     $orderedB = max($buyerId, $sellerId);
     $lockKey = sprintf('conv:%d:%d', $orderedA, $orderedB);
@@ -95,6 +100,9 @@ try {
             // Ensure conversation participants exist even for existing conversations
             $convId = (int) $conversationRow['conv_id'];
             chat_ensure_participants($conn, $convId, $orderedA, $orderedB);
+            // "Message seller" on a conversation the buyer had hidden brings it
+            // back to their list; otherwise the next list refresh drops it again.
+            chat_unhide_for_user($conn, $convId, $buyerId);
         }
 
         if (!$conversationRow) {
@@ -128,9 +136,10 @@ try {
             chat_ensure_participants($conn, $convId, $orderedA, $orderedB);
         }
 
-        chat_release_lock($conn, $lockKey);
-
+        // Commit before releasing: a waiter that acquires the lock earlier would
+        // not see the uncommitted row and would insert a duplicate conversation.
         $conn->commit();
+        chat_release_lock($conn, $lockKey);
     } catch (Throwable $inner) {
         $conn->rollback();
         if (isset($lockKey)) chat_release_lock($conn, $lockKey);
