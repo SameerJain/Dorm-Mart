@@ -7,21 +7,21 @@ const REVIEWS_SECTIONS = [
       {
         question: "How do I leave a review?",
         answer:
-          'Go to Purchase History and click "Leave a Review" on the item. You can also use the link sent in chat after a purchase is confirmed.',
+          'Find the item in Purchase History and click "Leave a Review". You can also use the review link in chat after the purchase is completed.',
       },
       {
-        question: "What ratings do I give?",
+        question: "What do I rate?",
         answer:
-          "You rate the seller (communication, reliability) and the product (accuracy, condition). Both use a 5-star scale.",
+          "You'll give separate ratings for the seller and the item, each out of 5 stars. Think about the seller's communication and reliability, and whether the item matched its description and condition.",
       },
       {
         question: "Can I edit or delete a review?",
-        answer: "No. Reviews are final once submitted.",
+        answer: "No. Once you submit a review, you can't edit or delete it.",
       },
       {
         question: "When does the review option appear?",
         answer:
-          "After the purchase is confirmed by the buyer, or auto-confirmed 24 hours after the seller's request.",
+          "You can leave a review once the purchase is completed. This happens when the buyer accepts the seller's confirmation request, the app accepts it after 24 hours without a response, or a built-in payment succeeds.",
       },
     ],
   },
@@ -31,17 +31,17 @@ const REVIEWS_SECTIONS = [
       {
         question: "When can I rate a buyer?",
         answer:
-          'After the item is marked Sold, use "Rate Buyer" on that listing in your Seller Dashboard.',
+          'Once the item is marked Sold, click "Rate Buyer" on the listing in your Seller Dashboard.',
       },
       {
         question: "What are seller and product ratings?",
         answer:
-          "The seller rating is how the buyer rated you. The product rating is how they rated the item. Both show as stars on sold listings that have reviews.",
+          "The seller rating is the buyer's rating of you. The product rating is their rating of the item. You'll see both as stars on sold listings once the buyer leaves a review.",
       },
       {
         question: "Can sellers rate buyers?",
         answer:
-          'Yes. From the Seller Dashboard, use "Rate Buyer" on sold items once the sale is complete.',
+          'Yes. After the sale is complete, click "Rate Buyer" on the sold listing in your Seller Dashboard.',
       },
     ],
   },

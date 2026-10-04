@@ -96,6 +96,42 @@ A bug, security, and performance review ran after the quick wins. PHPStan (level
 - `composer.json` allows PHP 8.0, where mysqli errors are silent by default, but the code assumes exceptions. Raise the floor to 8.1, or set the report mode in `db()`. Three endpoints deliberately switch reporting off and would need review.
 - The system chat messages in `delete_account`, `expire_stale`, and `ensure_conversation` use fixed sender names and bulk `INSERT … SELECT`, so they don't fit `chat_insert_system_message()`.
 
+## Refactor and testing pass (2026-10-01)
+
+This pass started from the commit hot spots (`git log` since 2026-08-15). `scheduled_purchases/create.php` led with eight changes.
+
+### Done
+
+- **`scheduled_purchases/create.php`, 460 → 276 lines.** The request rules were 120 lines of checks mixed with database calls and early exits, so the time-window edges could not be tested. They now live in `scheduled_purchases/proposal.php` as two functions. `scheduled_purchase_read_proposal($payload, $now, $paymentsEnabled)` takes the clock as an argument. `scheduled_purchase_terms_error($proposal, $negotiable, $trades)` checks the listing's terms. `api/tests/schedule_proposal_test.php` tests them directly (48 checks). Also:
+  - The listing-term checks now run before the payment-eligibility and verification-code lookups, which used to happen even for a doomed request.
+  - Three re-checks that could never fire are gone.
+  - The insert is one statement whose payment columns are added only when payments are enabled.
+- **Bug: meet-location length counted bytes.** The form allows 30 characters, but the server's `strlen` counted bytes, so an accented 30-character place was refused. It now uses `mb_strlen`, and a test reproduces the old failure.
+- **Seed fixtures `012`, `014` and `017`** wrote purchase history as bare ids. Purchase History and review submission read `{product_id, recorded_at, confirm_payload}` objects, so the seeded buyers could neither see nor review their items. They now write the same entry shape as `confirm_purchases`. `JSON_EXTRACT` keeps the entry an object rather than a quoted string on MariaDB.
+- **One HTTP integration harness** (`api/tests/support/integration_harness.php`) replaces the setup, teardown and four hand-built cURL blocks in the lifecycle suite, and runs the new card acceptance suite.
+- **Dead code that Stryker surfaced:**
+  - `getStatusLabel` special cases
+  - `getScheduleBucket` repeated conditions
+  - unreachable price guards
+  - a sort tie-break that stable sorting already provides
+  - a breakpoint that returned the minimum
+
+  Details are in [TESTING_AND_RELIABILITY.md](TESTING_AND_RELIABILITY.md).
+
+### Open: payment columns are missing from the schema
+
+When `migrations/` became declarative `schema/*.sql` files, the columns that migration `002` added to existing tables were not carried over:
+
+- `scheduled_purchase_requests`: `payment_option`, `payment_amount_cents`, `payment_mode`, `payment_fallback_at`, `payment_fallback_reason`, `payment_fallback_notified_at`, plus `idx_scheduled_payment_window` and `chk_scheduled_stripe_payment`.
+- `confirm_purchase_requests`: `completion_source`, `electronic_payment_id`, `successful_schedule_id`, plus `fk_confirm_electronic_payment`.
+
+Payments are disabled today, so nothing fails. Once `dm_payments_enabled()` returns true, scheduling, confirmation and the payment helpers will query columns that no schema creates. `@feature payments` currently gates whole tables only, so there are two fixes:
+
+1. Teach `schema_sync.php` to gate individual columns.
+2. Declare the columns unconditionally. They default to `manual`/`NULL`, but the foreign key would then point at a table that may not exist.
+
+This needs a decision before payments are re-enabled.
+
 ## Major and infrastructure work (strategic)
 
 Ranked with effort ignored:

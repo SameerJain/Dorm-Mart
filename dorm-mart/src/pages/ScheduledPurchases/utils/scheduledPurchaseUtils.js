@@ -22,23 +22,11 @@ export function getScheduleBucket(req, nowMs) {
     return "past";
   }
   const meetingMs = parseMeetingAtMs(req);
-  if (meetingMs != null && nowMs >= meetingMs + ACTIVE_AFTER_MEETING_MS) {
-    return "past";
+  if (meetingMs == null) {
+    return req.status === "pending" ? "needsResponse" : "upcoming";
   }
-  if (
-    meetingMs != null &&
-    nowMs >= meetingMs &&
-    nowMs < meetingMs + ACTIVE_AFTER_MEETING_MS
-  ) {
-    return "active";
-  }
-  if (req.status === "pending" && meetingMs == null) {
-    return "needsResponse";
-  }
-  if (meetingMs != null && nowMs < meetingMs) {
-    return "upcoming";
-  }
-  return "upcoming";
+  if (nowMs >= meetingMs + ACTIVE_AFTER_MEETING_MS) return "past";
+  return nowMs >= meetingMs ? "active" : "upcoming";
 }
 
 export function partitionAndSortPurchases(purchases, nowMs) {

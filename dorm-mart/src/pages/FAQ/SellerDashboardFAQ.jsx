@@ -2,23 +2,23 @@ import FAQSectionList from "./FAQSectionList";
 
 const SELLER_DASHBOARD_SECTIONS = [
   {
-    title: "Managing Listings",
+    title: "Managing listings",
     items: [
       {
         question: "How do I create a new listing?",
-        answer: `Click "Create New Listing" in the blue statistics strip at the top of the dashboard.`,
+        answer: `Click "Create New Listing" in the blue Statistics section at the top of the dashboard.`,
       },
       {
         question: "How do I edit or delete a listing?",
-        answer: `Use the Edit or Delete buttons next to a listing. Editing and deleting are disabled while a scheduled purchase is active. Sold items cannot be deleted.`,
+        answer: `Use Edit or Delete next to the listing. These options aren't available while an accepted scheduled purchase is active, or after the item is sold.`,
       },
       {
         question: "Is deleting a listing permanent?",
-        answer: `Yes. Deleted listings are permanently removed and cannot be recovered.`,
+        answer: `Yes. Once you delete a listing, you can't recover it.`,
       },
       {
         question: "How do I see my listing the way buyers see it?",
-        answer: `Click the listing title or image to open the public product page.`,
+        answer: `Click the listing's title or image to open the page buyers see.`,
       },
     ],
   },
@@ -27,37 +27,37 @@ const SELLER_DASHBOARD_SECTIONS = [
     items: [
       {
         question: "What do the stats at the top show?",
-        answer: `Active Listings: items currently published. Pending Sales: sales in progress. Items Sold: your total completed sales.`,
+        answer: `Active Listings counts published items, Pending Sales counts sales in progress, and Items Sold counts completed sales. The other stats show posts, views, wishlist saves, earnings, your seller rating, upcoming meetups, and average time to sell.`,
       },
     ],
   },
   {
-    title: "Listing Status",
+    title: "Listing status",
     items: [
       {
         question: "What do the different statuses mean?",
-        answer: `Active: visible to buyers. Pending: a scheduled purchase is in progress. Sold: item has been sold. Removed: taken off the marketplace.`,
+        answer: `Active listings are visible to buyers. Drafts aren't published yet. Pending means a scheduled purchase is in progress. Sold means the sale is complete. Removed listings are off the marketplace.`,
       },
       {
         question: "How does the status change?",
-        answer: `Status updates automatically. It becomes Pending when a buyer accepts a scheduled purchase, and Sold when the purchase is confirmed.`,
+        answer: `The app updates the status for you. A listing becomes Pending when a buyer accepts a scheduled purchase and Sold when the purchase is completed.`,
       },
       {
         question: "Why can't I edit or delete some listings?",
-        answer: `Sold items can't be deleted. Items with an active scheduled purchase can't be edited or deleted until the purchase is completed or cancelled. For how scheduling works, see the Chat and Purchases FAQs.`,
+        answer: `Sold listings can't be edited or deleted. An accepted scheduled purchase also blocks these options while it's active. See the Chat and Purchases FAQs for help with scheduling or cancelling.`,
       },
     ],
   },
   {
-    title: "Filtering & Sorting",
+    title: "Filtering and sorting",
     items: [
       {
         question: "How do I filter my listings?",
-        answer: `Use the dropdown menus above the dashboard to filter by status or category, and to sort by date, price, or review status.`,
+        answer: `Use the menus above your listings to filter by status or category, or sort by date and price. Select Sold to also sort by whether an item has a review.`,
       },
       {
         question: "A listing isn't showing up. What should I do?",
-        answer: `Check your status and category filters, refresh the page, and make sure you're logged into the correct account.`,
+        answer: `Check the status and category filters first. If the listing is still missing, refresh the page and check that you're logged into the right account.`,
       },
     ],
   },

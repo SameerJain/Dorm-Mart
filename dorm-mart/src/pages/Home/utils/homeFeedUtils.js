@@ -34,7 +34,6 @@ export function computeExploreLimit() {
   if (width >= 1536) return 42;
   if (width >= 1280) return 36;
   if (width >= 1024) return 32;
-  if (width >= 768) return 30;
   return MIN_EXPLORE_ITEMS;
 }
 

@@ -4,17 +4,17 @@ const NOTIFICATIONS_FAQ_ITEMS = [
   {
     question: "What notifications does the app send?",
     answer:
-      "You receive notifications for wishlist activity and new chat messages. No other notification types exist.",
+      "You'll get wishlist updates, purchase and payment updates, review notifications, reminders, and updates on reports. Unread chat messages have a separate badge on the chat icon.",
   },
   {
-    question: "Why does the red badge appear on the chat icon as well as the bell?",
+    question: "What do the red badges on the chat and bell icons mean?",
     answer:
-      "Chat message notifications show up on both the bell icon and the chat icon in the navbar, so you won't miss a message regardless of where you're looking.",
+      "The chat badge counts unread messages. The bell badge counts unread notifications. They track different things, so the numbers can differ.",
   },
   {
     question: "How do I mark a notification as read?",
     answer:
-      "Click on the notification to open the related content. It is marked read automatically.",
+      'Click a notification to mark it as read and open any linked page. You can also click "Mark all read" to mark them all at once.',
   },
 ];
 

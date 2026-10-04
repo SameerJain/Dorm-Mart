@@ -37,17 +37,14 @@ export function validateNegotiatedPrice(
     };
   }
 
+  // The pattern above admits only digits, so this is always a finite, non-negative number.
   const value = parseFloat(trimmed);
-  if (Number.isNaN(value) || !Number.isFinite(value)) {
-    return { value: null, error: "Please enter a valid price." };
-  }
   if (containsMemePrice(negotiatedPrice, { digitsOnly: false })) {
     return {
       value: null,
       error: "The price has a meme input in it. Please try a different price.",
     };
   }
-  if (value < 0) return { value: null, error: "Price cannot be negative." };
   if (value > max) {
     return { value: null, error: `Price must be $${max.toFixed(2)} or less` };
   }

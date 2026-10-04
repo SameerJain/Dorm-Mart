@@ -41,7 +41,7 @@
     "/data",
     "/images",
     "/media",
-    "/migrations",
+    "/schema",
     "/phpmyadmin",
     "/public",
     "/reports",

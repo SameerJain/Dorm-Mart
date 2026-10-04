@@ -16,6 +16,9 @@ Run with `npm run test:backend`, or individually:
 - `profanity_test.php` — the chat profanity filter: look-alike characters, stretched
   letters, separators, word endings, no false positives inside other words, and
   large word lists split across several regexes.
+- `schedule_proposal_test.php` — the Scheduled Purchase proposal rules in
+  `scheduled_purchases/proposal.php` (meeting window, price, trade, meet location)
+  at their exact edges, with a fixed clock.
 - `db_connection_test.php` — one-off manual check that the configured database is
   reachable (`php api/tests/db_connection_test.php`).
 - `xss_encoding_test.php` — manual browser check that output encoding is applied;
@@ -24,8 +27,15 @@ Run with `npm run test:backend`, or individually:
 
 ## Needs a local database
 
-- `purchase_lifecycle_test.php` — schedule/confirm/relist flow against a local MySQL
-  database. Run with `npm run test:backend:integration`; it refuses non-local hosts.
+Run both with `npm run test:backend:integration`. Each creates and drops its own
+randomly named database, starts a private `php -S`, never sends email, and refuses
+non-local hosts. The shared setup is `support/integration_harness.php`; set
+`HARNESS_KEEP_LOG=1` to keep the server's PHP error log after a failure.
+
+- `purchase_lifecycle_test.php` — schedule/confirm/relist/cancel, reviews, listing
+  edits, account deletion and bans.
+- `card_acceptance_test.php` — the acceptance tests from the closed Scrum Board
+  cards, turned into adversarial API checks (one block per card number).
 
 ## `integration/` (needs a running server + real credentials)
 

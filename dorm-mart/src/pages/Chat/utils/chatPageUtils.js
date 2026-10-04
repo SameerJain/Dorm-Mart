@@ -69,10 +69,6 @@ export function parseChatMetadata(metadata) {
   }
 }
 
-const isVirtualPrompt = (message) =>
-  String(message.message_id || "").startsWith("review_prompt_") ||
-  String(message.message_id || "").startsWith("buyer_rating_prompt_");
-
 /**
  * Merge raw messages with virtual review prompts for display.
  * Superseded confirm requests/responses are hidden so only the latest
@@ -163,9 +159,6 @@ export function buildDisplayMessages({
     });
   }
 
-  return [...filtered, ...prompts].sort((a, b) => {
-    const timeDifference = (a.ts || 0) - (b.ts || 0);
-    if (timeDifference) return timeDifference;
-    return Number(isVirtualPrompt(a)) - Number(isVirtualPrompt(b));
-  });
+  // sort() is stable, so a prompt stays after any real message sharing its timestamp.
+  return [...filtered, ...prompts].sort((a, b) => (a.ts || 0) - (b.ts || 0));
 }

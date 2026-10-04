@@ -1,5 +1,7 @@
 import { formatDateTime } from "../../../utils/formatters";
 
+// Stryker disable StringLiteral,ObjectLiteral: Tailwind class tables. Tests pin which
+// entry a request gets; pinning the class text itself would only restate it.
 export const BADGE_BASE = "px-2 py-1 text-xs font-semibold rounded";
 
 const STATUS_BADGE_CLASSES = {
@@ -99,6 +101,7 @@ export const INFO_BOX_CLASSES = {
     detail: "text-gray-600 dark:text-gray-400",
   },
 };
+// Stryker restore StringLiteral,ObjectLiteral
 
 export function getRequestState(req) {
   if (req.has_unsuccessful_confirm === true) return "unsuccessful";
@@ -108,8 +111,6 @@ export function getRequestState(req) {
 
 export function getStatusLabel(req) {
   const state = getRequestState(req);
-  if (state === "unsuccessful") return "Unsuccessful";
-  if (state === "completed") return "Completed";
   return state.charAt(0).toUpperCase() + state.slice(1);
 }
 

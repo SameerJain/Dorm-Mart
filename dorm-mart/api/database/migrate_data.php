@@ -21,7 +21,7 @@ function reset_local_data(mysqli $conn): array
         throw new RuntimeException('Refusing to reset data on a non-local database');
     }
 
-    $preserved = ['schema_migrations', 'profanity_words'];
+    $preserved = ['profanity_words'];
     $tables = [];
     $result = $conn->query(
         "SELECT TABLE_NAME
@@ -49,13 +49,6 @@ function reset_local_data(mysqli $conn): array
 
 try {
     $conn = db();
-    $conn->query(
-        'CREATE TABLE IF NOT EXISTS data_migrations (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            filename VARCHAR(255) NOT NULL UNIQUE,
-            applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB'
-    );
     $reset = reset_local_data($conn);
 
     $dataDir = dirname(__DIR__, 2) . '/data';
@@ -95,13 +88,6 @@ try {
                 $conn->next_result();
             } while (true);
 
-            $stmt = $conn->prepare(
-                'INSERT INTO data_migrations (filename) VALUES (?)
-                 ON DUPLICATE KEY UPDATE applied_at = CURRENT_TIMESTAMP'
-            );
-            $stmt->bind_param('s', $name);
-            $stmt->execute();
-            $stmt->close();
             $conn->commit();
             $ran[] = $name;
         } catch (Throwable $e) {
