@@ -194,7 +194,10 @@ function schema_parse_create(string $ddl): array
         }
         if ($line[0] === '`') {
             preg_match('/^`((?:[^`]|``)+)`/', $line, $m);
-            $parsed['columns'][$m[1]] = $line;
+            // MySQL prints "CHARACTER SET utf8mb4 COLLATE utf8mb4_x" for a column
+            // added by ALTER but only "COLLATE utf8mb4_x" for the same column
+            // from CREATE; the collation already names the charset.
+            $parsed['columns'][$m[1]] = preg_replace('/ CHARACTER SET (\w+) (COLLATE \1_\w+)/', ' $2', $line, 1) ?? $line;
         } elseif (str_starts_with($line, 'PRIMARY KEY')) {
             $parsed['primary'] = $line;
         } elseif (preg_match('/^(?:UNIQUE |FULLTEXT |SPATIAL )?KEY `((?:[^`]|``)+)`/', $line, $m)) {
@@ -331,9 +334,16 @@ function schema_shadow_name(string $database): string
 function schema_build_shadow(mysqli $conn, string $database, array $ordered): string
 {
     $shadow = schema_shadow_name($database);
+    // Same defaults as the live database, so a table file that names no
+    // collation gets the same one in both (MySQL 8+ defaults to utf8mb4_0900_ai_ci).
+    $stmt = $conn->prepare('SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?');
+    $stmt->bind_param('s', $database);
+    $stmt->execute();
+    [$charset, $collation] = $stmt->get_result()->fetch_row() ?? ['utf8mb4', 'utf8mb4_unicode_ci'];
+    $stmt->close();
     try {
         $conn->query('DROP DATABASE IF EXISTS ' . schema_ident($shadow));
-        $conn->query('CREATE DATABASE ' . schema_ident($shadow) . ' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+        $conn->query('CREATE DATABASE ' . schema_ident($shadow) . ' CHARACTER SET ' . schema_ident($charset) . ' COLLATE ' . schema_ident($collation));
     } catch (mysqli_sql_exception $e) {
         throw new RuntimeException('Schema sync needs permission to create a scratch database: ' . $e->getMessage(), 0, $e);
     }
