@@ -192,6 +192,7 @@ export default function ImageModal({
                 src={withFirstFrame(previewUrl)}
                 controls
                 playsInline
+                disablePictureInPicture
                 preload="metadata"
                 aria-label="Selected video preview"
                 className="h-full w-full object-contain"

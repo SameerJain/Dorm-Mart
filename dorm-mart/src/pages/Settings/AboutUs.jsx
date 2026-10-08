@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
-import PageBackButton from "../../components/PageBackButton";
 import sameerPhoto from "../../assets/team/sameer-jain.png";
 import anishPhoto from "../../assets/team/anish-banerjee.png";
 import chrisPhoto from "../../assets/team/chris-kim.jpg";
@@ -111,13 +109,9 @@ function DeveloperPhoto({ developer }) {
 }
 
 function AboutUs() {
-  const navigate = useNavigate();
   return (
     <SettingsLayout>
       <div className="mx-auto max-w-6xl">
-        <div className="mb-4 flex justify-end">
-          <PageBackButton onClick={() => navigate(-1)} />
-        </div>
         <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 px-6 py-10 text-center text-white sm:px-10">
           <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-100">
             Behind Dorm Mart

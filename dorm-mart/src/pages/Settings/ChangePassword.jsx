@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SettingsLayout from "./SettingsLayout";
-import PageBackButton from "../../components/PageBackButton";
 import PasswordRequirementRow from "../../components/forms/PasswordRequirementRow";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
@@ -139,7 +138,6 @@ function ChangePasswordPage() {
         <h1 className="text-2xl font-serif font-semibold text-blue-600">
           Change Password
         </h1>
-        <PageBackButton onClick={() => navigate(-1)} />
       </div>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">

@@ -41,6 +41,11 @@ const HOME_FAQ_ITEMS = [
     answer:
       "The seller may accept another item instead of money. Message them with what you'd like to trade.",
   },
+  {
+    question: "How do I report a listing?",
+    answer:
+      'Open the listing and click "Report". Pick a reason and add details if you need to. A moderator will review it.',
+  },
 ];
 
 function HomeFAQ() {

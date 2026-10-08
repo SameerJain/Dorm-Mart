@@ -42,8 +42,6 @@ try {
             inv.listing_price AS item_listing_price,
             seller.first_name AS seller_first_name,
             seller.last_name AS seller_last_name,
-            seller.reveal_contact_info AS seller_reveal_contact_info,
-            seller.phone_number AS seller_phone_number,
             canceler.first_name AS canceled_by_first_name,
             canceler.last_name AS canceled_by_last_name,
             CASE 
@@ -143,11 +141,6 @@ try {
         $hasUnsuccessfulConfirm = isset($row['has_unsuccessful_confirm']) && ($row['has_unsuccessful_confirm'] === 1 || $row['has_unsuccessful_confirm'] === '1');
         $hasReview = isset($row['has_review']) && ($row['has_review'] === 1 || $row['has_review'] === '1');
 
-        $sellerSharesContact = !empty($row['seller_reveal_contact_info']);
-        $sellerPhone = $sellerSharesContact && !empty($row['seller_phone_number'])
-            ? (string)$row['seller_phone_number']
-            : null;
-
         $records[] = [
             'request_id' => (int)$row['request_id'],
             'inventory_product_id' => $row['inventory_product_id'] !== null ? (int)$row['inventory_product_id'] : null,
@@ -177,7 +170,6 @@ try {
             'seller' => [
                 'first_name' => $row['seller_first_name'] ?? 'Deleted User',
                 'last_name' => $row['seller_last_name'] ?? '',
-                'phone' => $sellerPhone,
             ],
         ];
     }

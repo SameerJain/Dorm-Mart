@@ -1,4 +1,10 @@
 # Use this configuration only for the separate promotional digest service.
+[build]
+# Same image as the web service; without this Railway auto-detects a build
+# from package.json and the PHP script has no runtime or mysqli to run on.
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
 [deploy]
 startCommand = "php scripts/send_promotional_digests.php"
 # Railway schedules use UTC. The script selects 5 p.m. Eastern in either season.

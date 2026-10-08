@@ -67,9 +67,7 @@ Unknown routes use `NotFoundPage`. The December raw-loader behavior for unfinish
 - User Preferences now includes:
   - up to three interested categories;
   - light/dark theme;
-  - promotional email frequency (`off`, `daily`, or `weekly`);
-  - optional seller phone number; and
-  - a switch controlling whether buyers in the seller's chats can see the seller's email/phone.
+  - promotional email frequency (`off`, `daily`, or `weekly`).
 - `scripts/send_promotional_digests.php` is a CLI job for due daily/weekly interest-matched listing emails. On Railway it runs from the cron service defined in `dorm-mart/railway.promotional.toml` (21:00 and 22:00 UTC; the script only sends in the 5 p.m. Eastern hour). Digests include only listings posted since the user's last digest, skip banned sellers, and carry a signed one-click unsubscribe link and `List-Unsubscribe` header when `PROMO_UNSUBSCRIBE_SECRET` is set. The script refuses to send if `FRONTEND_BASE_URL` is not absolute.
 - The About Us page is implemented at `/app/setting/about-us` with the current team and contact links.
 - Account deletion is implemented and requires both the exact confirmation phrase and current password. It removes the user's owned/private data and listings, closes affected chats, notifies users who wishlisted removed items, anonymizes retained counterpart-facing chat/history records, deletes owned uploads, and signs the user out.
@@ -125,7 +123,6 @@ Unknown routes use `NotFoundPage`. The December raw-loader behavior for unfinish
 - Chat polls every 1.5 s and skips a tick while the previous poll is still running. Read-only chat/media endpoints release the PHP session lock early. Hiding a conversation clears its unread count; any message or system card that adds to a user's unread count un-hides it for that user (`chat_unhide_for_user()`).
 - Deleted messages are retained as records and rendered as “This message was deleted”; their content/media no longer count toward unread badges.
 - Profanity matches are stored as flagged raw messages for moderators, while normal chat readers receive filtered text.
-- Seller contact information appears in buyer chats only when the seller enabled contact sharing.
 - Item or account deletion closes the affected chat and shows a system message. Private chat media is served only through `serve_chat_image.php` after participant authorization.
 - Scheduled-purchase, confirmation, review, and buyer-rating cards are integrated into the message stream.
 

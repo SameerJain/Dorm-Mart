@@ -23,7 +23,6 @@ export const legalDocuments = {
               "Your password, stored as a one-way hash. We can't read it or recover it, which is why a reset replaces it instead of retrieving it.",
               "Your graduation month and year.",
               "A profile photo, if you upload one.",
-              "A phone number, only if you add one and switch on contact sharing in Settings.",
             ],
           },
           {
@@ -105,7 +104,7 @@ export const legalDocuments = {
           "Reviews you've written, and the average rating you've earned.",
         ],
         after: [
-          "Your email address and phone number stay hidden unless you turn on contact sharing in Settings. When it's on, only buyers who message you about one of your listings see them, inside that chat. Your messages go to the person you sent them to and nobody else.",
+          "Your messages go to the person you sent them to and nobody else.",
           "Moderators can read a reported conversation, but only the reported thread and only while they're looking into a report. They can't browse your messages for fun.",
         ],
       },
@@ -169,7 +168,6 @@ export const legalDocuments = {
         items: [
           "Edit your profile photo, bio, and preferences in Settings.",
           "Turn promotional email on or off, and change how often it arrives.",
-          "Show or hide your phone number.",
           "Review your sign-in history, and sign out every other session by changing your password.",
           "Change your password, and turn two-factor authentication on or off.",
           "Delete your account from Settings. You'll confirm with your password and by typing your account email. Your listings come down, your uploaded photos are removed, and anyone who wishlisted your items is told the listing is gone.",

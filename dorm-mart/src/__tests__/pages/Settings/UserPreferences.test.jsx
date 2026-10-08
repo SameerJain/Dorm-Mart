@@ -48,8 +48,6 @@ const mockLoadedPreferences = (overrides = {}) => {
             data: {
               promoEmails: false,
               promoFrequency: "off",
-              revealContact: true,
-              contactPhone: "(716) 555-0123",
               interests: [],
               theme: "light",
               ...overrides,
@@ -65,41 +63,17 @@ beforeEach(() => {
   csrfFetch.mockResolvedValue(response({ ok: true }));
 });
 
-test("loads and persists the seller contact-sharing toggle", async () => {
-  render(<UserPreferences />);
-
-  const phoneInput = await screen.findByLabelText("Phone number (optional)");
-  await waitFor(() => expect(phoneInput.value).toBe("(716) 555-0123"));
-  const toggle = await screen.findByRole("checkbox", {
-    name: /share my email and phone number/i,
-  });
-  expect(toggle.checked).toBe(true);
-
-  fireEvent.click(toggle);
-
-  await waitForSave({ revealContact: false, contactPhone: "(716) 555-0123" });
-});
-
-test("edits and persists the phone number field", async () => {
-  render(<UserPreferences />);
-
-  const phoneInput = await screen.findByLabelText("Phone number (optional)");
-  fireEvent.change(phoneInput, { target: { value: "716-555-9999" } });
-
-  await waitForSave({ contactPhone: "716-555-9999" });
-});
-
 test("shows backend validation failures instead of silently losing changes", async () => {
   csrfFetch.mockResolvedValue({
     ok: false,
     json: async () => ({ ok: false, error: "Unable to save preferences" }),
   });
+  mockLoadedPreferences({ promoFrequency: "weekly", promoEmails: true });
   render(<UserPreferences />);
 
-  const toggle = await screen.findByRole("checkbox", {
-    name: /share my email and phone number/i,
-  });
-  fireEvent.click(toggle);
+  const frequency = await screen.findByLabelText("Promotional email frequency");
+  await waitFor(() => expect(frequency.value).toBe("weekly"));
+  fireEvent.change(frequency, { target: { value: "daily" } });
 
   expect(
     (await screen.findByRole("alert", {}, { timeout: SAVE_WAIT_MS })).textContent,
@@ -119,8 +93,9 @@ test.each([
   });
   render(<UserPreferences />);
 
-  await waitFor(() => expect(screen.getByRole("checkbox").checked).toBe(true));
-  fireEvent.change(screen.getByLabelText("Promotional email frequency"), {
+  const select = screen.getByLabelText("Promotional email frequency");
+  await waitFor(() => expect(select.value).toBe(loadedFrequency));
+  fireEvent.change(select, {
     target: { value: frequency },
   });
 

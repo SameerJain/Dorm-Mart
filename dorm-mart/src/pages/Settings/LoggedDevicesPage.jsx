@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
-import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
 import { formatLoginTimestamp } from "./loggedDevicesUtils";
 
@@ -88,15 +87,12 @@ export default function LoggedDevicesPage() {
   const [devices, setDevices] = useState(null);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
 
     (async () => {
       setError("");
-      setLoading(true);
       try {
         const response = await fetch(`${API_BASE}/auth/login_history.php`, {
           credentials: "include",
@@ -112,19 +108,11 @@ export default function LoggedDevicesPage() {
         if (err.name !== "AbortError") {
           setError(err.message || "Unable to load logged devices.");
         }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
       }
     })();
 
     return () => controller.abort();
   }, [reloadKey]);
-
-  const query = search.trim().toLowerCase();
-  const visibleDevices = (devices || []).filter((device) =>
-    [device.browser, device.operating_system, device.device_type, device.location, device.ip_address]
-      .some((value) => value?.toLowerCase().includes(query)),
-  );
 
   return (
     <SettingsLayout>
@@ -136,7 +124,6 @@ export default function LoggedDevicesPage() {
               Review your 50 most recent login sessions, with your current device first.
             </p>
           </div>
-          <PageBackButton onClick={() => navigate(-1)} />
         </header>
 
         <section className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
@@ -153,28 +140,6 @@ export default function LoggedDevicesPage() {
           </button>
         </section>
 
-        <div className="mt-6 flex flex-wrap items-end gap-3">
-          <label className="min-w-0 flex-1 text-sm font-medium text-slate-700 dark:text-gray-200">
-            Search login history
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Browser, device, location, or IP address"
-              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
-            />
-          </label>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => setReloadKey((key) => key + 1)}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? "Refreshing..." : "Refresh history"}
-          </button>
-        </div>
-        {devices && <p className="mt-3 text-sm text-slate-500 dark:text-gray-400" role="status">Showing {visibleDevices.length} of {devices.length} login sessions</p>}
-
         {error ? (
           <div role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             <p>{error}</p>
@@ -190,8 +155,7 @@ export default function LoggedDevicesPage() {
           </p>
         ) : (
           <ul className="mt-6 space-y-4" aria-label="Login history">
-            {visibleDevices.map((device) => <DeviceCard key={device.id} device={device} />)}
-            {visibleDevices.length === 0 && <li className="text-slate-600 dark:text-gray-300">No logins match your search.</li>}
+            {devices.map((device) => <DeviceCard key={device.id} device={device} />)}
           </ul>
         )}
 

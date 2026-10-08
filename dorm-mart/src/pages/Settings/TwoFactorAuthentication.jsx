@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
-import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
 import { useSubmitLock } from "../../hooks/useSubmitLock";
@@ -12,7 +10,6 @@ async function responseMessage(response) {
 }
 
 export default function TwoFactorAuthentication() {
-  const navigate = useNavigate();
   const [enabled, setEnabled] = useState(null);
   const [email, setEmail] = useState("");
   const [mode, setMode] = useState(null);
@@ -71,7 +68,6 @@ export default function TwoFactorAuthentication() {
         <h1 className="text-2xl font-serif font-semibold text-blue-600 dark:text-blue-400">
           Two-Factor Authentication
         </h1>
-        <PageBackButton onClick={() => navigate(-1)} />
       </div>
 
       <div className="max-w-2xl">

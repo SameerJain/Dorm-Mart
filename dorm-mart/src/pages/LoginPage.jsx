@@ -183,9 +183,7 @@ function LoginPage() {
         // Navigate to the main app
         // Login issued a new session, so any cached CSRF token is stale.
         clearCsrfToken();
-        navigate(data.role === "moderator" ? "/app/moderation" : "/app", {
-          state: { loginSuccess: true },
-        });
+        navigate(data.role === "moderator" ? "/app/moderation" : "/app");
       } else {
         // Show error from backend, with improved messaging
         const backendError = data.error || "Login failed";
@@ -251,9 +249,7 @@ function LoginPage() {
       }
       // Login issued a new session, so any cached CSRF token is stale.
       clearCsrfToken();
-      navigate(data.role === "moderator" ? "/app/moderation" : "/app", {
-        state: { loginSuccess: true },
-      });
+      navigate(data.role === "moderator" ? "/app/moderation" : "/app");
     } catch (requestError) {
       logger.error("Two-factor verification error:", requestError);
       setError(`Network error: ${requestError.message || "Please try again."}`);

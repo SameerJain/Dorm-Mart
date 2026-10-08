@@ -1,4 +1,4 @@
-import { formatAccountDate, formatGraduationDate, isValidPhoneNumber } from "../../../pages/Settings/accountInfoUtils";
+import { formatAccountDate, formatGraduationDate } from "../../../pages/Settings/accountInfoUtils";
 
 describe("account information formatting", () => {
   test("formats graduation month and year", () => {
@@ -48,32 +48,5 @@ describe("account information formatting", () => {
     for (const value of ["", null, undefined, "2025-8-20", "25-08-20", "x2025-08-20", " 2025-08-20", "08/20/2025"]) {
       expect(formatAccountDate(value)).toBe("Not available");
     }
-  });
-});
-
-describe("isValidPhoneNumber", () => {
-  test.each(["7165551234", "(716) 555-1234", "+1 716.555.1234", "  716-555-1234  ", "5"])("accepts %p", (value) => {
-    expect(isValidPhoneNumber(value)).toBe(true);
-  });
-
-  test.each([
-    "",
-    "   ",
-    "()",
-    "+ - .",
-    "call me",
-    "716-555-1234x",
-    "x716-555-1234",
-    "12345678901234567890123456",
-    null,
-    undefined,
-    7165551234,
-  ])("rejects %p", (value) => {
-    expect(isValidPhoneNumber(value)).toBe(false);
-  });
-
-  test("length is capped at 25 characters", () => {
-    expect(isValidPhoneNumber("1".repeat(25))).toBe(true);
-    expect(isValidPhoneNumber("1".repeat(26))).toBe(false);
   });
 });

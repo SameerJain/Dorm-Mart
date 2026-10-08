@@ -68,7 +68,6 @@ INSERT INTO user_accounts (
   reset_token_expires,
   last_reset_request,
   received_intro_promo_email,
-  reveal_contact_info,
   interested_category_1,
   interested_category_2,
   interested_category_3
@@ -86,7 +85,6 @@ INSERT INTO user_accounts (
   0,
   NULL,
   NULL,
-  0,
   0,
   NULL,
   NULL,
@@ -109,7 +107,6 @@ INSERT INTO user_accounts (
   reset_token_expires,
   last_reset_request,
   received_intro_promo_email,
-  reveal_contact_info,
   interested_category_1,
   interested_category_2,
   interested_category_3
@@ -127,7 +124,6 @@ INSERT INTO user_accounts (
   0,
   NULL,
   NULL,
-  0,
   0,
   NULL,
   NULL,

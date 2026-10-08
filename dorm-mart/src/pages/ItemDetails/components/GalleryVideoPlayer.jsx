@@ -75,6 +75,7 @@ export default function GalleryVideoPlayer({ src, label }) {
         aria-label={label}
         preload="metadata"
         playsInline
+        disablePictureInPicture
         onClick={togglePlay}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}

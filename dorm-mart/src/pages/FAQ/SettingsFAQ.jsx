@@ -26,6 +26,26 @@ const SETTINGS_FAQ_ITEMS = [
     answer:
       'Click "Forgot Password" on the login page, enter your email, and follow the reset link in your inbox.',
   },
+  {
+    question: "How do promotional emails work?",
+    answer:
+      "Open Settings, then User Preferences and set promotional emails to Daily or Weekly. You'll get new listings from your interest categories around 5 p.m. Eastern. If nothing new matches, there's no email that day. Set it to Off or use the unsubscribe link in any email to stop them.",
+  },
+  {
+    question: "How do I turn on two-factor authentication?",
+    answer:
+      "Open Settings, then Two-Factor Authentication. Once it's on, every login asks for a code we email you. Codes expire after 10 minutes.",
+  },
+  {
+    question: "How do I see where I'm logged in?",
+    answer:
+      "Open Settings, then Logged Devices to see your 50 most recent logins. If one isn't you, change your password. That signs out every other device.",
+  },
+  {
+    question: "How do I delete my account?",
+    answer:
+      "Open Settings, then Delete Account. Type your email and enter your password to confirm. This removes your profile and listings, and you can't undo it.",
+  },
 ];
 
 function SettingsFAQ() {

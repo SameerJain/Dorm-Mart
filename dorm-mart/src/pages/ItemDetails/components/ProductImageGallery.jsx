@@ -180,6 +180,7 @@ function GalleryMedia({ url, alt, controls = false }) {
           aria-label={alt}
           muted
           playsInline
+          disablePictureInPicture
           preload="metadata"
           className="h-full w-full object-cover"
         />

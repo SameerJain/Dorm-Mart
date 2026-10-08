@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import PageBackButton from "../../components/PageBackButton";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useSubmitLock } from "../../hooks/useSubmitLock";
 import { API_BASE } from "../../utils/apiConfig";
@@ -122,7 +121,6 @@ function DeleteAccountPage() {
         <h1 className="font-serif text-2xl font-semibold text-blue-600 dark:text-blue-400">
           Delete Account
         </h1>
-        <PageBackButton onClick={() => navigate(-1)} />
       </div>
 
       <section className="max-w-2xl rounded-xl border border-red-300 bg-red-50 p-6 dark:border-red-800 dark:bg-red-950/30">

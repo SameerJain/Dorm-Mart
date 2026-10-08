@@ -417,6 +417,7 @@ export default function ListingForm({
                           aria-label={`video preview-${i}`}
                           controls
                           playsInline
+                          disablePictureInPicture
                           preload="metadata"
                           className="w-full h-24 object-contain rounded-lg bg-black"
                         />

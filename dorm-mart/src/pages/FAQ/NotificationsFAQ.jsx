@@ -4,7 +4,7 @@ const NOTIFICATIONS_FAQ_ITEMS = [
   {
     question: "What notifications does the app send?",
     answer:
-      "You'll get wishlist updates, purchase and payment updates, review notifications, reminders, and updates on reports. Unread chat messages have a separate badge on the chat icon.",
+      "You'll get wishlist updates, scheduled purchase updates, review notifications, reminders, and updates on reports. You'll also hear about it when your account signs in from a new device. Unread chat messages have a separate badge on the chat icon.",
   },
   {
     question: "What do the red badges on the chat and bell icons mean?",
