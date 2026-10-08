@@ -43,7 +43,7 @@ function FAQPage() {
         {/* header */}
         <div className="flex items-center justify-between mb-4 sm:mb-5 gap-2">
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">
-            Frequently Asked Questions
+            Frequently asked questions
           </h2>
           <PageBackButton onClick={handleCloseFAQ} />
         </div>

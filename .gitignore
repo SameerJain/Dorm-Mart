@@ -18,7 +18,8 @@ dorm-mart/build
 # Environment files
 .env
 .env.*
-.env.example
+# The template holds only placeholders; it must stay trackable.
+!.env.example
 dorm-mart/.env.development.local
 dorm-mart/.env.test.local
 dorm-mart/.env.production.local

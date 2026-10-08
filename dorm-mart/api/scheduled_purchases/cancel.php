@@ -136,34 +136,9 @@ try {
     $voidConfirm->close();
     notification_clear_prompt($conn, $requestId, 'confirm_request');
     
-    // Revert item status to "Active" when cancelled, but only if no other accepted purchases exist
-    // This ensures item becomes available again only when truly free of all accepted scheduled purchases
+    // The listing goes back on sale unless another accepted purchase still holds it.
     $inventoryProductId = (int)$row['inventory_product_id'];
-    if ($inventoryProductId > 0) {
-        $hasOtherAccepted = scheduled_purchase_has_active_accepted($conn, $inventoryProductId, $requestId);
-
-        // Only set back to Active if no other accepted scheduled purchases exist
-        if (!$hasOtherAccepted) {
-            // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-            $itemStatusStmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND item_status = ?');
-            if ($itemStatusStmt) {
-                $activeStatus = 'Active';
-                $pendingStatus = 'Pending';
-                $itemStatusStmt->bind_param('sis', $activeStatus, $inventoryProductId, $pendingStatus);
-                $itemStatusStmt->execute();
-                if ($itemStatusStmt->affected_rows > 0) {
-                    notification_for_wishlist($conn, $inventoryProductId, [
-                        'type' => 'item_back_on_sale', 'title' => (string)$row['item_title'],
-                        'message' => $row['item_title'] . ' is back on sale.',
-                        'image_url' => notification_first_image($row['item_photos'] ?? null),
-                        'severity' => 'success', 'destination' => '/app/viewProduct/' . $inventoryProductId,
-                        'idempotency_key' => 'back-on-sale-cancel-' . $requestId,
-                    ]);
-                }
-                $itemStatusStmt->close();
-            }
-        }
-    }
+    scheduled_purchase_release_listing($conn, $inventoryProductId, $requestId, 'cancel');
     
     // Tell whoever did not cancel, so nobody travels to a meetup that is off.
     notification_clear_prompt($conn, $requestId, 'schedule_request');

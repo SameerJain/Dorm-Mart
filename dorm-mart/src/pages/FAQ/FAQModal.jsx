@@ -51,12 +51,12 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
         {/* header */}
         <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5 flex-none">
           <h2 className="min-w-0 truncate text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">
-            Frequently Asked Questions
+            Frequently asked questions
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close QnA modal"
+            aria-label="Close FAQ"
             className="
               flex-none
               text-gray-500 hover:text-gray-700
@@ -116,7 +116,7 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
                   dark:bg-blue-500 dark:hover:bg-blue-900
                 "
               >
-                Open FAQs Page
+                Open FAQ page
               </button>
             </div>
 

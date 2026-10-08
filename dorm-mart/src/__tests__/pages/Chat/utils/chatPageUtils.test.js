@@ -172,6 +172,19 @@ describe("buildDisplayMessages", () => {
       expect(ids(buildDisplayMessages({ ...base, shouldShowBuyerRatingPrompt: true }))).toEqual([1]);
     });
 
+    test("a real message sent in the same millisecond as a prompt stays above it", () => {
+      const sameTimeAsReview = { message_id: 2, ts: 11 };
+      const sameTimeAsRating = { message_id: 3, ts: 12 };
+      const result = buildDisplayMessages({
+        ...base,
+        messages: [accepted, sameTimeAsRating, sameTimeAsReview],
+        shouldShowReviewPrompt: true,
+        shouldShowBuyerRatingPrompt: true,
+        activeReceiverId: 5,
+      });
+      expect(ids(result)).toEqual([1, 2, "review_prompt_12", 3, "buyer_rating_prompt_12_5"]);
+    });
+
     test("no prompts when the flags are off", () => {
       expect(ids(buildDisplayMessages(base))).toEqual([1]);
     });

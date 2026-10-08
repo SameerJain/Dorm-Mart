@@ -37,6 +37,83 @@ function scheduled_purchase_has_active_accepted(mysqli $conn, int $productId, in
 }
 
 /**
+ * Hold a listing for an accepted Scheduled Purchase on the terms it had when the
+ * seller scheduled it: marked Pending, with the snapshot's negotiable, trades and
+ * meet-location settings, and the negotiated price if the listing was negotiable.
+ * A listing that has meanwhile sold is left alone.
+ */
+function scheduled_purchase_reserve_listing(mysqli $conn, array $request): void
+{
+    $negotiable = (int)$request['snapshot_price_nego'] === 1;
+    $set = [
+        'item_status' => ['s', 'Pending'],
+        'price_nego' => ['i', $negotiable ? 1 : 0],
+        'trades' => ['i', (int)$request['snapshot_trades'] === 1 ? 1 : 0],
+    ];
+    $location = trim((string)($request['snapshot_meet_location'] ?? ''));
+    if ($location !== '') {
+        $set['item_location'] = ['s', $location];
+    }
+    if ($negotiable && $request['negotiated_price'] !== null) {
+        $set['listing_price'] = ['d', (float)$request['negotiated_price']];
+    }
+
+    $assignments = implode(', ', array_map(static fn(string $column): string => "$column = ?", array_keys($set)));
+    $stmt = $conn->prepare("UPDATE INVENTORY SET $assignments WHERE product_id = ? AND item_status <> 'Sold'");
+    if (!$stmt) {
+        throw new RuntimeException('Failed to prepare listing reservation');
+    }
+    $values = array_column($set, 1);
+    $values[] = (int)$request['inventory_product_id'];
+    $stmt->bind_param(implode('', array_column($set, 0)) . 'i', ...$values);
+    $stmt->execute();
+    $stmt->close();
+}
+
+/**
+ * Put a listing back on sale once the schedule holding it has ended, unless
+ * another accepted schedule still holds it, and tell the people who wishlisted it.
+ * $reason names the ending for the notice's idempotency key ("cancel", "confirm",
+ * "decline"); $skipUserId is left out of the notice. Returns whether it was released.
+ */
+function scheduled_purchase_release_listing(mysqli $conn, int $productId, int $endedRequestId, string $reason, ?int $skipUserId = null): bool
+{
+    if ($productId <= 0 || scheduled_purchase_has_active_accepted($conn, $productId, $endedRequestId)) {
+        return false;
+    }
+
+    $stmt = $conn->prepare("UPDATE INVENTORY SET item_status = 'Active' WHERE product_id = ? AND item_status = 'Pending'");
+    if (!$stmt) {
+        throw new RuntimeException('Failed to prepare listing release');
+    }
+    $stmt->bind_param('i', $productId);
+    $stmt->execute();
+    $released = $stmt->affected_rows > 0;
+    $stmt->close();
+    if (!$released) {
+        return false;
+    }
+
+    $itemStmt = $conn->prepare('SELECT title, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
+    if (!$itemStmt) {
+        throw new RuntimeException('Failed to prepare released listing lookup');
+    }
+    $itemStmt->bind_param('i', $productId);
+    $itemStmt->execute();
+    $item = $itemStmt->get_result()->fetch_assoc() ?: [];
+    $itemStmt->close();
+
+    $title = (string)($item['title'] ?? 'Item');
+    notification_for_wishlist($conn, $productId, [
+        'type' => 'item_back_on_sale', 'title' => $title, 'message' => $title . ' is back on sale.',
+        'image_url' => notification_first_image($item['photos'] ?? null),
+        'severity' => 'success', 'destination' => '/app/viewProduct/' . $productId,
+        'idempotency_key' => 'back-on-sale-' . $reason . '-' . $endedRequestId,
+    ], $skipUserId);
+    return true;
+}
+
+/**
  * Whether the listing has a schedule still in play: one awaiting the buyer's
  * answer, or an accepted one whose latest confirmation has not ended it.
  */
@@ -157,10 +234,7 @@ function scheduled_purchase_cancel_all_for_user(mysqli $conn, int $userId, strin
         "UPDATE confirm_purchase_requests SET status = 'seller_cancelled'
           WHERE scheduled_request_id = ? AND status = 'pending'"
     );
-    $release = $conn->prepare(
-        "UPDATE INVENTORY SET item_status = 'Active' WHERE product_id = ? AND item_status = 'Pending'"
-    );
-    if (!$cancel || !$void || !$release) throw new RuntimeException('Failed to prepare schedule cancellation');
+    if (!$cancel || !$void) throw new RuntimeException('Failed to prepare schedule cancellation');
 
     $cancelled = 0;
     foreach ($schedules as $schedule) {
@@ -197,23 +271,13 @@ function scheduled_purchase_cancel_all_for_user(mysqli $conn, int $userId, strin
             ]);
         }
 
-        if ($schedule['status'] !== 'accepted' || $productId <= 0
-            || scheduled_purchase_has_active_accepted($conn, $productId, $requestId)) {
-            continue;
-        }
-        $release->bind_param('i', $productId);
-        $release->execute();
-        if ($release->affected_rows > 0) {
-            notification_for_wishlist($conn, $productId, [
-                'type' => 'item_back_on_sale', 'title' => $title, 'message' => $title . ' is back on sale.',
-                'image_url' => $image, 'severity' => 'success', 'destination' => '/app/viewProduct/' . $productId,
-                'idempotency_key' => 'back-on-sale-cancel-' . $requestId,
-            ], $userId);
+        // Only an accepted schedule was holding the listing.
+        if ($schedule['status'] === 'accepted') {
+            scheduled_purchase_release_listing($conn, $productId, $requestId, 'cancel', $userId);
         }
     }
     $cancel->close();
     $void->close();
-    $release->close();
 
     return $cancelled;
 }

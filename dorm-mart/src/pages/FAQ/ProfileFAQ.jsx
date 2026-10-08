@@ -4,22 +4,22 @@ const PROFILE_FAQ_ITEMS = [
   {
     question: "What information is shown on a public profile?",
     answer:
-      "Public profiles display a user's display name, avatar, active listings, and their average seller/buyer rating.",
+      "You'll see the person's name, username, picture, bio, active listings, and seller reviews, including their average seller rating.",
   },
   {
     question: "How do I view another user's profile?",
     answer:
-      "Click on a seller's name or avatar on any listing or in the chat to navigate to their public profile.",
+      "Click the seller's name or picture on a listing or in chat to open their public profile.",
   },
   {
     question: "Can I edit my public profile from this page?",
     answer:
-      "No. To edit your name, avatar, or bio go to Settings → My Profile.",
+      "Go to Settings, then My Profile to change your picture or bio. Your name comes from sign-up and can't be edited there.",
   },
   {
     question: "Why don't I see any listings on a profile?",
     answer:
-      "The user may not have any active listings, or all their listings may have been sold or removed.",
+      "They may not have any active listings. Their items may have sold or been removed from the marketplace.",
   },
 ];
 

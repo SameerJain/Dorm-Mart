@@ -11,6 +11,8 @@ declare(strict_types=1);
 //   harness_start('lifecycle', 4);   // users lifecycle1@ … lifecycle4@buffalo.edu
 //   check(ok(api(1, 'some/endpoint.php', ['field' => 1])), 'what the endpoint promises');
 //   harness_finish();
+//
+// Set HARNESS_KEEP_LOG=1 to keep the test server's PHP error log for a failed run.
 
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 
@@ -141,7 +143,11 @@ function harness_cleanup(): void
         $harness['database'] = null;
     }
     foreach ($cookies as $cookie) @unlink($cookie);
-    if ($harness['log']) @unlink($harness['log']);
+    if ($harness['log'] && getenv('HARNESS_KEEP_LOG')) {
+        fwrite(STDERR, 'Server log kept at ' . $harness['log'] . PHP_EOL);
+    } elseif ($harness['log']) {
+        @unlink($harness['log']);
+    }
 }
 
 /** Print the tally and exit nonzero on any failure. */

@@ -84,7 +84,7 @@ export default function Dialog({
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
-        className={`max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-lg bg-white shadow-xl outline-none dark:bg-gray-800 ${className}`}
+        className={`max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-lg bg-white shadow-xl outline-none dark:bg-gray-800 ${className}`}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="p-6">
@@ -146,13 +146,13 @@ export function ConfirmDialog({
           {error}
         </p>
       )}
-      <div className="flex justify-end gap-3">
+      <div className="flex flex-wrap justify-end gap-3">
         <button
           ref={cancelRef}
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          className="rounded-lg border border-gray-300 px-4 py-2 coarse:min-h-[44px] text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
         >
           {cancelLabel}
         </button>
@@ -160,7 +160,7 @@ export function ConfirmDialog({
           type="button"
           onClick={onConfirm}
           disabled={busy}
-          className={`rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 dark:focus-visible:ring-offset-gray-800 ${confirmClass}`}
+          className={`rounded-lg px-4 py-2 coarse:min-h-[44px] text-sm font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 dark:focus-visible:ring-offset-gray-800 ${confirmClass}`}
         >
           {busy ? busyLabel : confirmLabel}
         </button>

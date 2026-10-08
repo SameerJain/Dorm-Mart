@@ -13,50 +13,81 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
 require_once __DIR__ . '/db_connect.php';
+require_once __DIR__ . '/protect_test_accounts.php';
 
-function reset_local_data(mysqli $conn): array
+/*
+ * Rebuilds the test fixtures in data/*.sql. Local databases only.
+ *
+ *   php api/database/migrate_data.php
+ *
+ * Seed accounts are the emails written in data/*.sql. Each run deletes
+ * everything those accounts own (listings, chats, schedules, reviews, ...)
+ * and replays the files, so the fixtures always come back in their pristine
+ * state, including anything a tester added while logged in as one of them.
+ * Rows that belong to anyone else, moderators included, are never touched.
+ *
+ * Run migrate_schema.php first: this script fills tables, it does not create them.
+ */
+
+/**
+ * [table, columns that name a seed user]. A row is deleted when any listed
+ * column holds a seed user_id. The order matters only where a foreign key
+ * would otherwise just null a reference (ON DELETE SET NULL) and leave an
+ * orphaned fixture row behind: chats, schedules and listings go first and
+ * take their dependents with them, user_accounts goes last and cascades the rest.
+ */
+const SEED_OWNED_ROWS = [
+    ['conversations', ['user1_id', 'user2_id']],
+    ['scheduled_purchase_requests', ['buyer_user_id', 'seller_user_id']],
+    ['INVENTORY', ['seller_id']],
+    ['purchased_items', ['buyer_user_id', 'seller_user_id']],
+    ['listing_reports', ['reporter_id', 'seller_id']],
+    ['message_reports', ['reporter_id', 'reported_user_id']],
+    ['moderation_actions', ['target_user_id']],
+    ['user_accounts', ['user_id']],
+];
+
+function assert_local_database(): void
 {
     $host = strtolower(trim((string)getenv('DB_HOST')));
     if (!in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
-        throw new RuntimeException('Refusing to reset data on a non-local database');
+        throw new RuntimeException('Refusing to load test data into a non-local database');
+    }
+}
+
+/** Delete every row the seed accounts own. Returns [table => rows deleted]. */
+function reset_seed_data(mysqli $conn, array $emails): array
+{
+    if ($emails === []) {
+        return [];
     }
 
-    $preserved = ['schema_migrations', 'profanity_words'];
-    $tables = [];
-    $result = $conn->query(
-        "SELECT TABLE_NAME
-         FROM information_schema.TABLES
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'"
-    );
-    while ($row = $result->fetch_row()) {
-        if (!in_array(strtolower($row[0]), $preserved, true)) {
-            $tables[] = $row[0];
-        }
-    }
-    $result->free();
-
-    $conn->query('SET FOREIGN_KEY_CHECKS = 0');
-    try {
-        foreach ($tables as $table) {
-            $conn->query('TRUNCATE TABLE `' . str_replace('`', '``', $table) . '`');
-        }
-    } finally {
-        $conn->query('SET FOREIGN_KEY_CHECKS = 1');
+    // Moderators are provisioned by hand, never by a fixture.
+    $marks = implode(',', array_fill(0, count($emails), '?'));
+    $stmt = $conn->prepare("SELECT user_id FROM user_accounts WHERE role = 'user' AND email IN ({$marks})");
+    $stmt->bind_param(str_repeat('s', count($emails)), ...$emails);
+    $stmt->execute();
+    $ids = array_map('intval', array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'user_id'));
+    $stmt->close();
+    if ($ids === []) {
+        return [];
     }
 
-    return $tables;
+    // Integers read back from the database, so nothing to escape.
+    $idList = implode(',', $ids);
+    $deleted = [];
+    foreach (SEED_OWNED_ROWS as [$table, $columns]) {
+        $where = implode(' OR ', array_map(fn(string $c) => "`{$c}` IN ({$idList})", $columns));
+        $conn->query("DELETE FROM `{$table}` WHERE {$where}");
+        $deleted[$table] = $conn->affected_rows;
+    }
+    return $deleted;
 }
 
 try {
+    assert_local_database();
     $conn = db();
-    $conn->query(
-        'CREATE TABLE IF NOT EXISTS data_migrations (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            filename VARCHAR(255) NOT NULL UNIQUE,
-            applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB'
-    );
-    $reset = reset_local_data($conn);
+    $reset = reset_seed_data($conn, seed_account_emails());
 
     $dataDir = dirname(__DIR__, 2) . '/data';
     $testImagesDir = $dataDir . '/test-images';
@@ -73,7 +104,7 @@ try {
     natsort($files);
     $ran = [];
 
-    // Every run starts from an empty local data set, then rebuilds the test fixtures.
+    // The seed accounts' data is gone (reset_seed_data); replay the fixtures.
     foreach ($files as $path) {
         $name = basename($path);
         $sql = file_get_contents($path);
@@ -95,13 +126,6 @@ try {
                 $conn->next_result();
             } while (true);
 
-            $stmt = $conn->prepare(
-                'INSERT INTO data_migrations (filename) VALUES (?)
-                 ON DUPLICATE KEY UPDATE applied_at = CURRENT_TIMESTAMP'
-            );
-            $stmt->bind_param('s', $name);
-            $stmt->execute();
-            $stmt->close();
             $conn->commit();
             $ran[] = $name;
         } catch (Throwable $e) {
@@ -113,12 +137,11 @@ try {
         }
     }
 
-    require_once __DIR__ . '/protect_test_accounts.php';
     $protection = protect_test_accounts($conn, $dataDir);
     $conn->close();
     echo json_encode([
         'success' => true,
-        'reset' => array_map('escape_html', $reset),
+        'reset' => $reset,
         'applied' => array_map('escape_html', $ran),
         'test_accounts' => $protection,
     ]);

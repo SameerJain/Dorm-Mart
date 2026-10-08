@@ -30,12 +30,12 @@ export default function RemoveWishlistItemModal({
           </p>
           <p className="mt-1">from your wishlist?</p>
         </div>
-        <div className="flex gap-3 justify-end">
+        <div className="flex flex-wrap gap-3 justify-end">
           <button
             type="button"
             onClick={onCancel}
             disabled={removing}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 coarse:min-h-[44px] rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 disabled:opacity-50 transition-colors"
           >
             Cancel
           </button>
@@ -43,7 +43,7 @@ export default function RemoveWishlistItemModal({
             type="button"
             onClick={onConfirm}
             disabled={removing}
-            className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 coarse:min-h-[44px] rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {removing ? "Removing..." : "Remove"}
           </button>

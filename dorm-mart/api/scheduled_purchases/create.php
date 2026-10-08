@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/proposal.php';
 require_once __DIR__ . '/../payments/helpers.php';
 require_once __DIR__ . '/../helpers/notifications.php';
 require_once __DIR__ . '/../helpers/moderation.php';
@@ -19,119 +20,17 @@ try {
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $inventoryId = request_int($payload, 'inventory_product_id');
-    $conversationId = request_int($payload, 'conversation_id');
-    $meetingAtRaw = is_string($payload['meeting_at'] ?? null) ? trim($payload['meeting_at']) : '';
-    $descriptionValue = $payload['description'] ?? '';
-    $description = is_string($descriptionValue) ? trim($descriptionValue) : '';
-    if ($descriptionValue !== null && !is_string($descriptionValue)) {
-        json_response(['success' => false, 'error' => 'Invalid description'], 400);
+    $read = scheduled_purchase_read_proposal($payload, new DateTimeImmutable('now', new DateTimeZone('UTC')), dm_payments_enabled());
+    if (!$read['ok']) {
+        json_response(['success' => false, 'error' => $read['error']], $read['status']);
     }
-    
-    if (mb_strlen($description) > 1000) {
-        json_response(['success' => false, 'error' => 'Description cannot exceed 1000 characters'], 400);
-    }
-    
-    // New fields for price negotiation and trades
-    $negotiatedPriceRaw = $payload['negotiated_price'] ?? null;
-    $negotiatedPrice = null;
-    $negotiatedPriceString = '';
-    if ($negotiatedPriceRaw !== null && $negotiatedPriceRaw !== '') {
-        $negotiatedPriceString = is_string($negotiatedPriceRaw)
-            ? trim($negotiatedPriceRaw)
-            : (is_int($negotiatedPriceRaw) || is_float($negotiatedPriceRaw) ? (string)$negotiatedPriceRaw : '');
-        if (!preg_match('/^(?:\d{1,10}(?:\.\d{1,2})?|\.\d{1,2})$/', $negotiatedPriceString)) {
-            json_response(['success' => false, 'error' => 'Invalid negotiated price'], 400);
-        }
-        $negotiatedPrice = strict_decimal_value($negotiatedPriceString);
-        if ($negotiatedPrice === null) {
-            json_response(['success' => false, 'error' => 'Invalid negotiated price'], 400);
-        }
-    }
-    $isTrade = strict_boolean_value($payload['is_trade'] ?? false);
-    if ($isTrade === null) {
-        json_response(['success' => false, 'error' => 'Invalid trade selection'], 400);
-    }
-    $paymentOption = is_string($payload['payment_option'] ?? null)
-        ? strtolower(trim($payload['payment_option']))
-        : 'manual';
-    if (!in_array($paymentOption, ['manual', 'stripe'], true)) {
-        json_response(['success' => false, 'error' => 'Invalid payment option'], 400);
-    }
-    if ($paymentOption === 'stripe' && !dm_payments_enabled()) {
-        json_response(['success' => false, 'error' => 'Built-in payment is temporarily unavailable'], 409);
-    }
-    $paymentAmountCents = $paymentOption === 'stripe'
-        ? payment_amount_cents_from_value($payload['payment_amount'] ?? null)
-        : null;
-    if ($paymentOption === 'stripe' && $paymentAmountCents === null) {
-        json_response(['success' => false, 'error' => 'Built-in payment amount must be between $0.50 and $9,999.99'], 400);
-    }
-    $tradeItemDescription = isset($payload['trade_item_description']) && $payload['trade_item_description'] !== null
-        ? (is_string($payload['trade_item_description']) ? trim($payload['trade_item_description']) : null) : null;
-    if (isset($payload['trade_item_description']) && $payload['trade_item_description'] !== null
-        && !is_string($payload['trade_item_description'])) {
-        json_response(['success' => false, 'error' => 'Invalid trade item description'], 400);
-    }
-
-    if ($tradeItemDescription !== null && mb_strlen($tradeItemDescription) > 100) {
-        json_response(['success' => false, 'error' => 'Trade item description cannot exceed 100 characters'], 400);
-    }
-
-    $meetLocationChoice = isset($payload['meet_location_choice'])
-        ? (is_string($payload['meet_location_choice']) ? trim($payload['meet_location_choice']) : null)
-        : null;
-    $customMeetLocation = isset($payload['custom_meet_location'])
-        ? (is_string($payload['custom_meet_location']) ? trim($payload['custom_meet_location']) : '')
-        : '';
-    $meetLocation = isset($payload['meet_location'])
-        ? (is_string($payload['meet_location']) ? trim($payload['meet_location']) : '')
-        : '';
-
-    $allowedMeetLocationChoices = ['', 'North Campus', 'South Campus', 'Ellicott', 'Other'];
-
-    if ($meetLocationChoice !== null) {
-        if (!in_array($meetLocationChoice, $allowedMeetLocationChoices, true)) {
-            json_response(['success' => false, 'error' => 'Invalid meet location choice'], 400);
-        }
-
-        if ($meetLocationChoice === 'Other') {
-            if ($customMeetLocation === '') {
-                json_response(['success' => false, 'error' => 'Custom meet location is required'], 400);
-            }
-            $meetLocation = $customMeetLocation;
-        } elseif ($meetLocationChoice !== '') {
-            $meetLocation = $meetLocationChoice;
-        }
-    }
-
-    if ($inventoryId <= 0 || $conversationId <= 0 || $meetLocation === '' || $meetingAtRaw === '') {
-        json_response(['success' => false, 'error' => 'Missing required fields'], 400);
-    }
-
-    if (strlen($meetLocation) > 30) {
-        json_response(['success' => false, 'error' => 'Meet location is too long'], 400);
-    }
-
-    $meetingAt = strict_iso_datetime_value($meetingAtRaw);
-    if ($meetingAt === null) {
-        json_response(['success' => false, 'error' => 'Invalid meeting date/time'], 400);
-    }
-    
-    // Check if meeting is more than 3 months in the future
-    $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-    $threeMonthsFromNow = $now->modify('+3 months');
-    
-    if ($meetingAt > $threeMonthsFromNow) {
-        json_response(['success' => false, 'error' => 'Meeting date cannot be more than 3 months in advance'], 400);
-    }
-    
-    // Check if meeting is in the past
-    if ($meetingAt < $now) {
-        json_response(['success' => false, 'error' => 'Meeting date cannot be in the past'], 400);
-    }
-    
-    $meetingAt = $meetingAt->setTimezone(new DateTimeZone('UTC'));
+    $proposal = $read['proposal'];
+    [
+        'inventory_id' => $inventoryId, 'conversation_id' => $conversationId, 'meet_location' => $meetLocation,
+        'meeting_at' => $meetingAt, 'description' => $description, 'negotiated_price' => $negotiatedPrice,
+        'is_trade' => $isTrade, 'trade_item_description' => $tradeItemDescription,
+        'payment_option' => $paymentOption, 'payment_amount_cents' => $paymentAmountCents,
+    ] = $proposal;
     $meetingAtDb = $meetingAt->format('Y-m-d H:i:s');
 
     $conn = db();
@@ -206,11 +105,14 @@ try {
         json_response(['success' => false, 'error' => 'This user is no longer available'], 403);
     }
 
+    // Check the listing's terms before any further lookups.
+    $termsError = scheduled_purchase_terms_error($proposal, $snapshotPriceNego, $snapshotTrades);
+    if ($termsError !== null) {
+        json_response(['success' => false, 'error' => $termsError], 400);
+    }
+
     $paymentMode = null;
     if ($paymentOption === 'stripe') {
-        if ($isTrade) {
-            json_response(['success' => false, 'error' => 'Built-in payment is not available for trades'], 400);
-        }
         $eligibility = payment_schedule_eligibility($conn, $sellerId, $buyerId);
         if (empty($eligibility['eligible'])) {
             json_response(['success' => false, 'error' => $eligibility['reason'] ?? 'Built-in payment is unavailable'], 409);
@@ -220,39 +122,6 @@ try {
 
     // Generate unique 4-character verification code for buyer-seller meetup confirmation
     $verificationCode = generate_unique_code($conn);
-
-    // Validation: Ensure negotiated price is only allowed for price-negotiable items
-    if ($negotiatedPrice !== null && !$snapshotPriceNego) {
-        json_response(['success' => false, 'error' => 'This item is not marked as price negotiable'], 400);
-    }
-
-    // Validation: Ensure trade option is only allowed for items that accept trades
-    if ($isTrade && !$snapshotTrades) {
-        json_response(['success' => false, 'error' => 'This item does not accept trades'], 400);
-    }
-
-    // Validation: Price and trade are mutually exclusive
-    if ($isTrade && $negotiatedPrice !== null) {
-        json_response(['success' => false, 'error' => 'Cannot enter a price for a trade'], 400);
-    }
-
-    // Validate trade item description if trade is selected
-    if ($isTrade && ($tradeItemDescription === null || $tradeItemDescription === '')) {
-        json_response(['success' => false, 'error' => 'Trade item description is required when trade is selected'], 400);
-    }
-
-    // Validate negotiated price if provided
-    if ($negotiatedPrice !== null) {
-        if ($negotiatedPrice < 0 || !is_finite($negotiatedPrice)) {
-            json_response(['success' => false, 'error' => 'Invalid negotiated price'], 400);
-        }
-        if ($negotiatedPrice > 9999.99) {
-            json_response(['success' => false, 'error' => 'Negotiated price must be $9999.99 or less'], 400);
-        }
-        if (price_has_blocked_digits($negotiatedPriceString)) {
-            json_response(['success' => false, 'error' => 'Invalid price value'], 400);
-        }
-    }
 
     // The chat UI hides the schedule button while a request is open, but only
     // this locked check makes that rule hold: a double-clicked submit or a second
@@ -280,76 +149,31 @@ try {
         json_response(['success' => false, 'error' => 'This item already has an active scheduled purchase'], 409);
     }
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    if (dm_payments_enabled()) {
-        $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location, payment_option, payment_amount_cents, payment_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    } else {
-        $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    }
+    // Empty optional text is stored as NULL.
+    $columns = [
+        'inventory_product_id' => ['i', $inventoryId], 'seller_user_id' => ['i', $sellerId],
+        'buyer_user_id' => ['i', $buyerId], 'conversation_id' => ['i', $conversationId],
+        'meet_location' => ['s', $meetLocation], 'meeting_at' => ['s', $meetingAtDb],
+        'verification_code' => ['s', $verificationCode],
+        'description' => ['s', $description !== '' ? $description : null],
+        'negotiated_price' => ['d', $negotiatedPrice], 'is_trade' => ['i', $isTrade ? 1 : 0],
+        'trade_item_description' => ['s', ($tradeItemDescription ?? '') !== '' ? $tradeItemDescription : null],
+        'snapshot_price_nego' => ['i', $snapshotPriceNego ? 1 : 0], 'snapshot_trades' => ['i', $snapshotTrades ? 1 : 0],
+        'snapshot_meet_location' => ['s', ($snapshotMeetLocation ?? '') !== '' ? $snapshotMeetLocation : null],
+        // While payments are disabled the reader only allows 'manual', with no amount or mode.
+        'payment_option' => ['s', $paymentOption], 'payment_amount_cents' => ['i', $paymentAmountCents],
+        'payment_mode' => ['s', $paymentMode],
+    ];
+    $stmt = $conn->prepare(sprintf(
+        'INSERT INTO scheduled_purchase_requests (%s) VALUES (%s)',
+        implode(', ', array_keys($columns)),
+        implode(', ', array_fill(0, count($columns), '?'))
+    ));
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare insert');
     }
-    
-    // Prepare variables for binding - ensure proper NULL handling
-    // For nullable integers, use null if value is invalid
-    $convId = $conversationId > 0 ? $conversationId : null;
-    
-    // For nullable strings, convert empty strings to null
-    $desc = ($description !== null && $description !== '') ? $description : null;
-    $tradeDesc = ($tradeItemDescription !== null && $tradeItemDescription !== '') ? $tradeItemDescription : null;
-    $snapLoc = ($snapshotMeetLocation !== null && $snapshotMeetLocation !== '') ? $snapshotMeetLocation : null;
-    
-    // For nullable decimal, ensure null is passed correctly
-    // Allow 0 as a valid price (free item), but convert null/negative to null
-    $price = ($negotiatedPrice !== null && $negotiatedPrice >= 0 && is_finite($negotiatedPrice)) ? $negotiatedPrice : null;
-    
-    // Boolean fields as integers
-    $isTradeInt = $isTrade ? 1 : 0;
-    $snapshotPriceNegoInt = $snapshotPriceNego ? 1 : 0;
-    $snapshotTradesInt = $snapshotTrades ? 1 : 0;
-    
-    // mysqli bind_param handles NULL correctly, but we need to ensure variables are actually NULL
-    // For nullable integer (conversation_id), we pass null directly
-    // For nullable strings, mysqli will handle NULL correctly
-    // For nullable decimal, mysqli will handle NULL correctly
-    if (dm_payments_enabled()) {
-        $stmt->bind_param('iiiissssdisiissis',
-            $inventoryId,
-            $sellerId,
-            $buyerId,
-            $convId,
-            $meetLocation,
-            $meetingAtDb,
-            $verificationCode,
-            $desc,
-            $price,
-            $isTradeInt,
-            $tradeDesc,
-            $snapshotPriceNegoInt,
-            $snapshotTradesInt,
-            $snapLoc,
-            $paymentOption,
-            $paymentAmountCents,
-            $paymentMode
-        );
-    } else {
-        $stmt->bind_param('iiiissssdisiis',
-            $inventoryId,
-            $sellerId,
-            $buyerId,
-            $convId,
-            $meetLocation,
-            $meetingAtDb,
-            $verificationCode,
-            $desc,
-            $price,
-            $isTradeInt,
-            $tradeDesc,
-            $snapshotPriceNegoInt,
-            $snapshotTradesInt,
-            $snapLoc
-        );
-    }
+    $values = array_column($columns, 1);
+    $stmt->bind_param(implode('', array_column($columns, 0)), ...$values);
     
     if (!$stmt->execute()) {
         $error = $stmt->error;

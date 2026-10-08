@@ -132,7 +132,7 @@ The backend uses prepared SQL statements, CSRF checks, request validation, and o
 | `dorm-mart/api/security/` | Authentication, CSRF, and request validation helpers |
 | `dorm-mart/api/tests/` | Backend checks and integration scripts |
 | `dorm-mart/public/` | Static assets |
-| `dorm-mart/migrations/` | Database schema migrations |
+| `dorm-mart/schema/` | Database schema, one SQL file per table (synced by `migrate_schema.php`) |
 | `dorm-mart/data/` | Local demo data |
 | `dorm-mart/docs/` | Setup references and architecture notes |
 | `build-scripts-win/` | Windows development, build, and deployment scripts |

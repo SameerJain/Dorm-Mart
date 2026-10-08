@@ -104,165 +104,56 @@ try {
     $updateStmt->execute();
     $updateStmt->close();
     
-    // Update item status based on scheduled purchase status
-    if ($inventoryProductId > 0) {
-        if ($nextStatus === 'accepted') {
-            // When accepted, restore inventory to snapshot values captured at scheduling time
-            // This ensures buyer gets the item as it was when scheduled, even if seller changed settings
-            // Example: If item was price negotiable when scheduled but seller removed that later,
-            // the accepted purchase still honors the negotiated price
-            
-            // Get snapshot values with fallback to current inventory values if snapshots are missing
-            // (shouldn't happen, but provides safety)
-            $snapshotPriceNego = isset($row['snapshot_price_nego']) ? ((int)$row['snapshot_price_nego'] === 1) : null;
-            $snapshotTrades = isset($row['snapshot_trades']) ? ((int)$row['snapshot_trades'] === 1) : null;
-            $snapshotMeetLocation = isset($row['snapshot_meet_location']) ? trim((string)$row['snapshot_meet_location']) : null;
-            $negotiatedPrice = isset($row['negotiated_price']) && $row['negotiated_price'] !== null 
-                ? (float)$row['negotiated_price'] : null;
-            
-            // If snapshot values are missing, fetch current inventory values as fallback
-            // This should never happen, but provides safety
-            if ($snapshotPriceNego === null || $snapshotTrades === null) {
-                // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-                $fallbackStmt = $conn->prepare('SELECT price_nego, trades, item_location FROM INVENTORY WHERE product_id = ? LIMIT 1');
-                if ($fallbackStmt) {
-                    $fallbackStmt->bind_param('i', $inventoryProductId);
-                    $fallbackStmt->execute();
-                    $fallbackRes = $fallbackStmt->get_result();
-                    $fallbackRow = $fallbackRes ? $fallbackRes->fetch_assoc() : null;
-                    $fallbackStmt->close();
-                    
-                    if ($fallbackRow) {
-                        if ($snapshotPriceNego === null) {
-                            $snapshotPriceNego = isset($fallbackRow['price_nego']) ? ((int)$fallbackRow['price_nego'] === 1) : false;
-                        }
-                        if ($snapshotTrades === null) {
-                            $snapshotTrades = isset($fallbackRow['trades']) ? ((int)$fallbackRow['trades'] === 1) : false;
-                        }
-                        if ($snapshotMeetLocation === null) {
-                            $snapshotMeetLocation = isset($fallbackRow['item_location']) ? trim((string)$fallbackRow['item_location']) : null;
-                        }
-                        error_log('Warning: Using fallback inventory values for scheduled purchase ' . $requestId);
-                    }
-                }
-            }
-            
-            // Ensure we have boolean values (default to false if still null)
-            $snapshotPriceNego = $snapshotPriceNego !== null ? $snapshotPriceNego : false;
-            $snapshotTrades = $snapshotTrades !== null ? $snapshotTrades : false;
-            
-            // Build update query to forcefully set snapshot values
-            $updateFields = ['item_status = ?'];
-            $updateParams = ['Pending'];
-            $updateTypes = 's';
-            
-            // Forcefully update price_nego to snapshot value
-            $updateFields[] = 'price_nego = ?';
-            $updateParams[] = $snapshotPriceNego ? 1 : 0;
-            $updateTypes .= 'i';
-            
-            // Forcefully update trades to snapshot value
-            $updateFields[] = 'trades = ?';
-            $updateParams[] = $snapshotTrades ? 1 : 0;
-            $updateTypes .= 'i';
-            
-            // Forcefully update item_location to snapshot value if it exists
-            if ($snapshotMeetLocation !== null && $snapshotMeetLocation !== '') {
-                $updateFields[] = 'item_location = ?';
-                $updateParams[] = $snapshotMeetLocation;
-                $updateTypes .= 's';
-            }
-            
-            // Update listing_price if negotiated_price is provided AND item was price negotiable when scheduled
-            // This ensures we only update price for items that were negotiable at the time of scheduling
-            // Allow 0 as a valid price (free item)
-            if ($negotiatedPrice !== null && $negotiatedPrice >= 0 && $snapshotPriceNego) {
-                $updateFields[] = 'listing_price = ?';
-                $updateParams[] = $negotiatedPrice;
-                $updateTypes .= 'd';
-            }
-            
-            // Build WHERE clause parameters
-            $updateParams[] = $inventoryProductId;
-            $updateParams[] = 'Sold';
-            $updateTypes .= 'is';
-            
-            // Only update if item is not already 'Sold' (prevents overwriting completed transactions)
-            $updateSql = 'UPDATE INVENTORY SET ' . implode(', ', $updateFields) . ' WHERE product_id = ? AND item_status != ?';
-            // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-            $itemStatusStmt = $conn->prepare($updateSql);
-            if ($itemStatusStmt) {
-                $itemStatusStmt->bind_param($updateTypes, ...$updateParams);
-                if (!$itemStatusStmt->execute()) {
-                    $error = $itemStatusStmt->error;
-                    error_log('Failed to update inventory for scheduled purchase ' . $requestId . ': ' . $error);
-                    // Don't fail the acceptance, but log the error
-                }
-                $itemStatusStmt->close();
-            } else {
-                error_log('Failed to prepare inventory update statement for scheduled purchase ' . $requestId);
-            }
-            $title = (string)($row['item_title'] ?? 'Item');
-            $image = notification_first_image($row['item_photos'] ?? null);
-            notification_for_wishlist($conn, $inventoryProductId, [
-                'type' => 'item_pending', 'title' => $title,
-                'message' => $title . ' is not currently for sale because another purchase is scheduled.',
-                'image_url' => $image, 'severity' => 'warning', 'destination' => null,
-                'idempotency_key' => 'pending-schedule-' . $requestId,
-            ], $buyerId);
-            $meeting = new DateTimeImmutable((string)$row['meeting_at'], new DateTimeZone('UTC'));
-            $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-            foreach ([['24h', '-24 hours', 'info'], ['1h', '-1 hour', 'urgent']] as [$label, $offset, $severity]) {
-                $availableAt = $meeting->modify($offset);
-                if ($availableAt <= $now) continue;
+    // Update the listing to match the answer.
+    if ($nextStatus === 'accepted') {
+        // Hold the listing on the terms it had when the seller scheduled it.
+        scheduled_purchase_reserve_listing($conn, $row);
+        $title = (string)($row['item_title'] ?? 'Item');
+        $image = notification_first_image($row['item_photos'] ?? null);
+        notification_for_wishlist($conn, $inventoryProductId, [
+            'type' => 'item_pending', 'title' => $title,
+            'message' => $title . ' is not currently for sale because another purchase is scheduled.',
+            'image_url' => $image, 'severity' => 'warning', 'destination' => null,
+            'idempotency_key' => 'pending-schedule-' . $requestId,
+        ], $buyerId);
+        $meeting = new DateTimeImmutable((string)$row['meeting_at'], new DateTimeZone('UTC'));
+        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        foreach ([['24h', '-24 hours', 'info'], ['1h', '-1 hour', 'urgent']] as [$label, $offset, $severity]) {
+            $availableAt = $meeting->modify($offset);
+            if ($availableAt <= $now) continue;
 
-                notification_insert($conn, [
-                    'recipient_user_id' => $buyerId, 'type' => 'scheduled_purchase_' . $label,
-                    'product_id' => $inventoryProductId, 'scheduled_request_id' => $requestId,
-                    'title' => $title, 'message' => 'Your scheduled purchase is coming up in ' . ($label === '24h' ? '24 hours.' : '1 hour.'),
-                    'image_url' => $image, 'severity' => $severity, 'destination' => '/app/seller-dashboard/ongoing-purchases',
-                    'idempotency_key' => 'schedule-' . $label . '-' . $requestId,
-                    'available_at' => $availableAt->format('Y-m-d H:i:s'),
-                ]);
-            }
             notification_insert($conn, [
-                'recipient_user_id' => (int)$row['seller_user_id'], 'type' => 'confirm_purchase_reminder',
+                'recipient_user_id' => $buyerId, 'type' => 'scheduled_purchase_' . $label,
                 'product_id' => $inventoryProductId, 'scheduled_request_id' => $requestId,
-                'title' => $title, 'message' => 'Please complete the Confirm Purchase form for this scheduled purchase.',
-                'image_url' => $image, 'severity' => 'warning', 'destination' => '/app/chat?conv=' . (int)$row['conversation_id'],
-                'idempotency_key' => 'confirm-reminder-' . $requestId,
-                'available_at' => $meeting->modify('+8 hours')->format('Y-m-d H:i:s'),
+                'title' => $title, 'message' => 'Your scheduled purchase is coming up in ' . ($label === '24h' ? '24 hours.' : '1 hour.'),
+                'image_url' => $image, 'severity' => $severity, 'destination' => '/app/seller-dashboard/ongoing-purchases',
+                'idempotency_key' => 'schedule-' . $label . '-' . $requestId,
+                'available_at' => $availableAt->format('Y-m-d H:i:s'),
             ]);
+        }
+        notification_insert($conn, [
+            'recipient_user_id' => (int)$row['seller_user_id'], 'type' => 'confirm_purchase_reminder',
+            'product_id' => $inventoryProductId, 'scheduled_request_id' => $requestId,
+            'title' => $title, 'message' => 'Please complete the Confirm Purchase form for this scheduled purchase.',
+            'image_url' => $image, 'severity' => 'warning', 'destination' => '/app/chat?conv=' . (int)$row['conversation_id'],
+            'idempotency_key' => 'confirm-reminder-' . $requestId,
+            'available_at' => $meeting->modify('+8 hours')->format('Y-m-d H:i:s'),
+        ]);
 
-            if (($row['payment_option'] ?? 'manual') === 'stripe') {
-                $eligibility = payment_schedule_eligibility(
-                    $conn,
-                    (int)$row['seller_user_id'],
-                    $buyerId
-                );
-                if (empty($eligibility['eligible']) || ($eligibility['mode'] ?? null) !== ($row['payment_mode'] ?? null)) {
-                    payment_apply_fallback($conn, $row, 'seller_account_unavailable');
-                    $row['payment_fallback_at'] = gmdate('Y-m-d H:i:s');
-                }
-            }
-        } elseif ($nextStatus === 'declined') {
-            notification_cancel_schedule($conn, $requestId);
-            // When declined, revert item status to "Active" only if no other accepted purchases exist.
-            $hasOtherAccepted = scheduled_purchase_has_active_accepted($conn, $inventoryProductId, $requestId);
-
-            // Only set back to Active if no other accepted scheduled purchases exist
-            if (!$hasOtherAccepted) {
-                // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-                $itemStatusStmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND item_status = ?');
-                if ($itemStatusStmt) {
-                    $activeStatus = 'Active';
-                    $pendingStatus = 'Pending';
-                    $itemStatusStmt->bind_param('sis', $activeStatus, $inventoryProductId, $pendingStatus);
-                    $itemStatusStmt->execute();
-                    $itemStatusStmt->close();
-                }
+        if (($row['payment_option'] ?? 'manual') === 'stripe') {
+            $eligibility = payment_schedule_eligibility(
+                $conn,
+                (int)$row['seller_user_id'],
+                $buyerId
+            );
+            if (empty($eligibility['eligible']) || ($eligibility['mode'] ?? null) !== ($row['payment_mode'] ?? null)) {
+                payment_apply_fallback($conn, $row, 'seller_account_unavailable');
+                $row['payment_fallback_at'] = gmdate('Y-m-d H:i:s');
             }
         }
+    } elseif ($nextStatus === 'declined') {
+        notification_cancel_schedule($conn, $requestId);
+        scheduled_purchase_release_listing($conn, $inventoryProductId, $requestId, 'decline');
     }
     
     // The buyer has answered: drop their prompt, and tell the seller, who is

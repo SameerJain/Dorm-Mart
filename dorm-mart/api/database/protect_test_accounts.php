@@ -3,7 +3,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db_connect.php';
 
-function protect_test_accounts(mysqli $conn, ?string $dataDir = null): array
+/**
+ * Every email address that appears in data/*.sql: the seed accounts. This is
+ * the one definition of "test data" that separates it from real users.
+ *
+ * @return string[] lower-cased
+ */
+function seed_account_emails(?string $dataDir = null): array
 {
     $dataDir ??= dirname(__DIR__, 2) . '/data';
     $emails = [];
@@ -15,7 +21,12 @@ function protect_test_accounts(mysqli $conn, ?string $dataDir = null): array
         foreach ($matches[0] as $email) $emails[strtolower($email)] = true;
     }
 
-    $emails = array_keys($emails);
+    return array_keys($emails);
+}
+
+function protect_test_accounts(mysqli $conn, ?string $dataDir = null): array
+{
+    $emails = seed_account_emails($dataDir);
     if ($emails === []) return ['emails_found' => 0, 'accounts_protected' => 0];
 
     $placeholders = implode(',', array_fill(0, count($emails), '?'));

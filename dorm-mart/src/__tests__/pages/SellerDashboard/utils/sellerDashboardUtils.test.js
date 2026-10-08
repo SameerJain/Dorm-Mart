@@ -36,6 +36,12 @@ describe("listingStatusClass", () => {
     expect(listingStatusClass(null)).toBe(listingStatusClass("unknown"));
     expect(listingStatusClass(undefined)).toBe(listingStatusClass("something else"));
   });
+
+  test("an unknown status looks neutral, not like a known one", () => {
+    // Distinctness alone misses two styles trading places, so anchor the fallback.
+    expect(listingStatusClass("unknown")).toMatch(/\bbg-gray-/);
+    expect(listingStatusClass("sold")).not.toMatch(/\bbg-gray-/);
+  });
 });
 
 describe("normalizeSellerListing", () => {

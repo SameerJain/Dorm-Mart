@@ -9,9 +9,18 @@ For the complete first-party test-file source inventory, open [TEST_CATALOG.md](
 | Command (from `dorm-mart/`) | What it runs |
 | --- | --- |
 | `npm test -- --watchAll=false` | Jest (react-scripts 5 / Jest 27): frontend tests under `src/__tests__/`, including adversarial tests under `src/__tests__/adversarial/` |
-| `npm run test:backend` | Five CLI PHP scripts under `api/tests/` (no database, no network) |
-| `npm run test:backend:integration` | `api/tests/purchase_lifecycle_test.php` (needs a database) |
+| `npm run test:backend` | Six CLI PHP scripts under `api/tests/` (no database, no network) |
+| `npm run test:backend:integration` | `purchase_lifecycle_test.php` and `card_acceptance_test.php` over real HTTP (needs local MySQL) |
 | `npm run test:mutation` | Stryker mutation run over the pure frontend helpers (see below) |
+| `npm run lint:php` | `php -l` over every first-party PHP file |
+
+**Jest always runs in UTC.** `scripts/jest-global-setup.js`, wired as Jest's `globalSetup` in `package.json`, sets `TZ` before any worker starts, so it applies to `npm test`, IDE runners and Stryker alike. The team and the scheduling code both use Eastern time. On an Eastern machine, a date missing its offset is read as local time and happens to be right, which hid a broken daylight-time branch (see the 2026-10-01 log). Write expectations as UTC instants or Eastern wall-clock values. Setting `process.env.TZ` in a test file does nothing, because Jest gives each file its own copy of `process.env`.
+
+### HTTP integration suites
+
+Both integration suites share `api/tests/support/integration_harness.php`. It creates a randomly named local database, migrates it, adds fixture users and logs them in, and starts a private `php -S`. It blanks the mail credentials, so no test can send email, and it drops the database on exit, even after an exception. A suite calls `harness_start('name', $users)` and then uses `api()`, `api_multipart()`, `http_get()`, `check()`, `error_is()` and `row()`, ending with `harness_finish()`. Set `HARNESS_KEEP_LOG=1` to keep the test server's PHP error log after a failed run; a 500 in a check is explained there.
+
+`card_acceptance_test.php` turns the acceptance tests on the closed Scrum Board cards into API checks, one block per card. Where a card was written as a manual UI script, the check targets the API rule behind it and tries to break it: boundary values, other users' resources, forged CSRF tokens and origins, repeated requests. Two cards describe behavior that has since changed on purpose. `#60` expected an error for an unknown email, but forgot-password now answers every address the same way. `#37` expected deleting a chat on both sides to erase it, but messages are now kept for records. The suite pins the current contract and says so in a comment.
 
 The PHP scripts are plain CLI programs, not PHPUnit. Each one defines a small checker (`expect_same`, `expect_value`, `check_location`, ...) that prints `FAIL: <message>` and exits 1, or prints a `PASS` tally at the end.
 
@@ -41,6 +50,8 @@ The working tree here usually has uncommitted work, so don't restore with `git c
 | Only one side of a rule exercised | Every fixture sorts the same way under "Newest" and "Price", or every boolean input is truthy | Add an input where the two options disagree |
 | Crash standing in for a failure | A lookup stub that `throw`s: a regression kills the PHP script with an uncaught exception instead of printing `FAIL:` | Record the call and assert on it, so the checker reports which rule broke |
 | Mutation delivered to nothing | A green run because the edited file was never loaded (wrong path, a sandbox the runner can't see) | Check delivery: the mutant must change a file the runner imports |
+| Passes only in the developer's time zone | The daylight-time case of `combineScheduleDateTime` stayed green with its `-04:00` offset deleted, because a bare date read as local Eastern time landed on the same instant | Run tests in a zone the code does not convert to (now pinned to UTC) |
+| Survivor that is really dead code | A mutant survives because the line it changes can never change the outcome: a special case the fallback already handles, or a guard an earlier check makes unreachable | Apply the deletion test. Remove the code instead of recording an equivalent mutant |
 
 Negative UI checks (`queryBy…` → `toBeNull` / `not.toBeInTheDocument`) are safe only when another test shows the same query *does* match: same text, same accessible name. Otherwise a renamed label makes them pass forever.
 
@@ -54,6 +65,35 @@ Configuration: [`stryker.config.json`](../stryker.config.json). Run it with `npm
 - **Triage, not a defect list.** Classify every survivor as a **real gap** (fix the test), **equivalent** (the change isn't observable; record it and skip) or **covered elsewhere** (say where).
 
 ## Audit log
+
+### 2026-10-01: full Stryker run 3, triage, and card acceptance suite
+
+**Full run** (`reports/mutation/full-run-3.json`): 3,300 mutants, 812 tests in the dry run, 31 m 41 s. Killed 3,022, Survived 253, NoCoverage 13, Timeout 4, RuntimeError 8. Run 2 had 493 survivors and 136 NoCoverage. The reports were written before Stryker exited. Only its cleanup crashed afterwards, with `taskkill` on a worker that had already exited, so the numbers stand. If a run ends that way, check that the log says "Done in" and remove any leftover `stryker-tmp/sandbox-*`.
+
+**Triage, then a targeted rerun** of the seven modules changed (`reports/mutation/targeted-run-after-triage.json`, 172 tests):
+
+| Module | Before → after | What changed |
+| --- | --- | --- |
+| `ongoingPurchaseViewUtils.js` | 52.8% → 100% | 63 of 67 survivors were Tailwind class text in style tables, now fenced with a reasoned `// Stryker disable StringLiteral,ObjectLiteral` and `restore` pair. The other four came from two dead special cases in `getStatusLabel`, since the generic capitalization already produced "Unsuccessful" and "Completed". Removed |
+| `schedulePurchaseFormUtils.js` | 88.5% → 100% | Removed the NaN, infinity and negative guards that this log had recorded as equivalent: the digits-only pattern makes them unreachable |
+| `chatPageUtils.js` | 88.5% → 96.8% | The `isVirtualPrompt` tie-break could never change the order, because `sort()` is stable and prompts are appended last. Removed, and the intended rule ("a real message in the same millisecond stays above the prompt") pinned with a test seen to fail when prompts are appended first |
+| `scheduledPurchaseUtils.js` | 91.2% → 96.0% | `getScheduleBucket` had a condition the previous `return` already guaranteed, and a branch identical to its fallback. Rewritten to state each case once |
+| `homeFeedUtils.js` | 95.0% → 97.2% | `if (width >= 768) return 30` returned the minimum (30) anyway. Removed |
+| `scheduleDateTimeUtils.js` | 95.0% → 95.3% | Pinning Jest to UTC killed the daylight-time `-04:00` mutant, which had survived only because this machine runs Eastern time |
+| `sellerDashboardUtils.js` | 93.2% → 94.2% | An unknown status taking the "sold" color survived because distinctness checks cannot see two styles trading places. Added "an unknown status looks neutral" |
+
+**Recorded as equivalent** (checked, not tested):
+
+- `scheduleDateTimeUtils.js`: L52 (the en-US formatter always emits `MM/DD/YYYY, HH:MM`); L58–62 (the two offsets differ by one hour, so the hour comparison alone decides); L103 (`<= 1` and `>= 12` still return 31); L177/L180 (dropping the year comparison only matters if a month number repeats within the three-month window, which it cannot).
+- `accountCreationRequest.js` L51/L59 (`readRateLimit` has already reset the state at `now === blockedUntil`), and the L23 guards (the surrounding `try/catch` gives the same result).
+- `formatters.js` L19/L23/L39/L62/L124: early returns whose fall-through produces the same `null`.
+- `sellerDashboardUtils.js` `listingStatusClass` class text. It is not fenced off, because the same lines hold the status comparisons, which *are* behavior.
+
+**Card acceptance suite** (`api/tests/card_acceptance_test.php`, 105 checks across 25 closed cards). All 105 passed on the first run, which proves nothing yet, so each card's main rule was then broken in the source and the matching check watched: 16 of 16 mutations went red (`#64` lockout count and email case, `#34` length and character counting, `#48` review length, `#24` own-listing chat, `#37` outsider delete, `#25` typing expiry, `#72` origin check, `#60` timing floor, upload quota, `#93` terms, `#33` 2 MB image limit, `#47` own-item wishlist, `#55` single-use token, `#23` another buyer's response).
+
+**Schedule proposal rules** (`api/tests/schedule_proposal_test.php`, 48 checks). These cover the time-window, price, trade and meet-location rules that moved out of `scheduled_purchases/create.php` into `proposal.php`, at exact edges with a fixed clock. 8 of 8 mutations went red, including restoring the old byte count (`strlen`), which reproduced a real bug: a 30-character place name with an accent passed the form and was refused by the server.
+
+The 2026-09-30 backlog of untested functions below is superseded. Run 3 left 13 NoCoverage mutants, none of them a whole untested function. Seven were in code removed above. The other six are single branches inside tested functions: a server-side `window` guard (`listingFormConfig` L76), `bestBucketKey`'s unreachable empty fallback (`scheduledPurchaseUtils` L80), the `statusFilter` comparison (`sellerDashboardUtils` L75), the invalid-date label (`accountInfoUtils` L12), and a URL-parse `catch` (`imageFallback` L16–17).
 
 ### 2026-09-30: manual seen-to-fail audit
 

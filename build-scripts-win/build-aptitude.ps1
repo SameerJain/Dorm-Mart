@@ -39,9 +39,9 @@ Copy-Item -Path "$dormMartPath\api" -Destination $prodBuildPath -Recurse -Force
 Write-Host "Copying data folder..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\data" -Destination $prodBuildPath -Recurse -Force
 
-# Copy migrations folder
-Write-Host "Copying migrations folder..." -ForegroundColor Cyan
-Copy-Item -Path "$dormMartPath\migrations" -Destination $prodBuildPath -Recurse -Force
+# Copy schema folder (one SQL file per table)
+Write-Host "Copying schema folder..." -ForegroundColor Cyan
+Copy-Item -Path "$dormMartPath\schema" -Destination $prodBuildPath -Recurse -Force
 
 # Copy vendor folder
 Write-Host "Copying vendor folder..." -ForegroundColor Cyan
@@ -66,4 +66,4 @@ if (Test-Path $buildPath) {
 Write-Host "Aptitude Production Build completed!" -ForegroundColor Green
 Write-Host "All files are ready in: C:\xampp\htdocs\prod-build" -ForegroundColor Yellow
 Write-Host "You can now upload this entire folder to Aptitude using WinSCP" -ForegroundColor Cyan
-Write-Host "Don't forget to run migrations on the server after upload!" -ForegroundColor Red
+Write-Host "Don't forget to run: php api/database/migrate_schema.php on the server after upload!" -ForegroundColor Red

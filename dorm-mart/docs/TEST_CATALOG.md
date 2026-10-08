@@ -25,7 +25,7 @@ Excluded: vendor tests, SQL seed data, images, test support `api/tests/bootstrap
 
 ## Inventory
 
-### Frontend Jest tests (54 files)
+### Frontend Jest tests (56 files)
 
 <details>
 <summary>src/__tests__/adversarial/apiClient.adversarial.test.js</summary>
@@ -1539,6 +1539,88 @@ test("carries the sender's uncensored text for editing", async () => {
 </details>
 
 <details>
+<summary>src/__tests__/hooks/useBodyScrollLock.test.js</summary>
+
+[Open source](../src/__tests__/hooks/useBodyScrollLock.test.js)
+
+```javascript
+import { renderHook } from "@testing-library/react";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+
+let scrollTo;
+
+beforeEach(() => {
+  scrollTo = jest.spyOn(window, "scrollTo").mockImplementation(() => {});
+  Object.defineProperty(window, "scrollY", { configurable: true, value: 420 });
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
+  delete window.scrollY;
+});
+
+test("fixes the page in place while locked and puts it back on unlock", () => {
+  const { rerender } = renderHook(({ locked }) => useBodyScrollLock(locked), {
+    initialProps: { locked: true },
+  });
+
+  expect(document.documentElement.style.overflow).toBe("hidden");
+  expect(document.body.style.overflow).toBe("hidden");
+  expect(document.body.style.position).toBe("fixed");
+  expect(document.body.style.top).toBe("-420px");
+
+  rerender({ locked: false });
+
+  expect(document.documentElement.style.overflow).toBe("");
+  expect(document.body.style.overflow).toBe("");
+  expect(document.body.style.position).toBe("");
+  expect(document.body.style.top).toBe("");
+  expect(scrollTo).toHaveBeenCalledWith(0, 420);
+});
+
+test("does nothing while unlocked", () => {
+  renderHook(() => useBodyScrollLock(false));
+  expect(document.body.style.position).toBe("");
+  expect(scrollTo).not.toHaveBeenCalled();
+});
+
+test("stacked locks keep the original scroll position until the last one releases", () => {
+  const outer = renderHook(() => useBodyScrollLock(true));
+  // Once the body is fixed the window reports scrollY 0, as a real browser does.
+  Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
+  const inner = renderHook(() => useBodyScrollLock(true));
+
+  expect(document.body.style.top).toBe("-420px");
+
+  inner.unmount();
+  expect(document.body.style.position).toBe("fixed");
+  expect(scrollTo).not.toHaveBeenCalled();
+
+  outer.unmount();
+  expect(document.body.style.position).toBe("");
+  expect(document.body.style.top).toBe("");
+  expect(scrollTo).toHaveBeenCalledTimes(1);
+  expect(scrollTo).toHaveBeenCalledWith(0, 420);
+});
+
+test("restores whatever inline styles the page had before the lock", () => {
+  document.body.style.overflow = "scroll";
+  document.documentElement.style.overflow = "auto";
+
+  const { unmount } = renderHook(() => useBodyScrollLock(true));
+  unmount();
+
+  expect(document.body.style.overflow).toBe("scroll");
+  expect(document.documentElement.style.overflow).toBe("auto");
+
+  document.body.style.overflow = "";
+  document.documentElement.style.overflow = "";
+});
+```
+
+</details>
+
+<details>
 <summary>src/__tests__/hooks/useCategories.test.js</summary>
 
 [Open source](../src/__tests__/hooks/useCategories.test.js)
@@ -2013,6 +2095,82 @@ test("gives the seller an edit and publish shortcut for a draft", () => {
 </details>
 
 <details>
+<summary>src/__tests__/pages/Chat/components/MessageActions.test.jsx</summary>
+
+[Open source](../src/__tests__/pages/Chat/components/MessageActions.test.jsx)
+
+```jsx
+import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import MessageActions from "../../../../pages/Chat/components/MessageActions";
+
+// jsdom has no matchMedia, so the component treats this as a touch device and
+// opens the bottom sheet (rather than the pointer-device menu).
+const actions = [
+  { key: "copy", label: "Copy text", icon: "copy", onSelect: jest.fn() },
+  { key: "report", label: "Report message", icon: "report", danger: true, onSelect: jest.fn() },
+];
+
+beforeEach(() => jest.spyOn(window, "scrollTo").mockImplementation(() => {}));
+afterEach(() => jest.restoreAllMocks());
+
+test("the touch sheet blocks page scrolling while open and releases it on close", () => {
+  render(
+    <MessageActions actions={actions}>
+      <p>hello</p>
+    </MessageActions>,
+  );
+
+  fireEvent.contextMenu(screen.getByText("hello"));
+  expect(screen.getByRole("menu", { name: "Message actions" })).toBeInTheDocument();
+  expect(document.body.style.position).toBe("fixed");
+  expect(document.documentElement.style.overflow).toBe("hidden");
+
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  expect(document.body.style.position).toBe("");
+  expect(document.documentElement.style.overflow).toBe("");
+});
+
+test("the sheet is capped to the viewport and scrolls on short screens", () => {
+  render(
+    <MessageActions actions={actions}>
+      <p>hello</p>
+    </MessageActions>,
+  );
+  fireEvent.contextMenu(screen.getByText("hello"));
+
+  const sheet = screen.getByRole("menu", { name: "Message actions" });
+  expect(sheet).toHaveClass("max-h-[85dvh]", "overflow-y-auto", "overscroll-contain");
+});
+
+test("right-click or long-press inside a dialog rendered in the message does not open the menu", () => {
+  render(
+    <MessageActions actions={actions}>
+      <p>hello</p>
+      <div role="dialog">
+        <button type="button">Report</button>
+      </div>
+    </MessageActions>,
+  );
+
+  fireEvent.contextMenu(screen.getByRole("button", { name: "Report" }));
+  expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  expect(document.body.style.position).toBe("");
+
+  jest.useFakeTimers();
+  fireEvent.touchStart(screen.getByRole("button", { name: "Report" }), {
+    touches: [{ clientX: 10, clientY: 10 }],
+  });
+  jest.advanceTimersByTime(1000);
+  jest.useRealTimers();
+  expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+});
+```
+
+</details>
+
+<details>
 <summary>src/__tests__/pages/Chat/utils/chatPageUtils.test.js</summary>
 
 [Open source](../src/__tests__/pages/Chat/utils/chatPageUtils.test.js)
@@ -2190,6 +2348,19 @@ describe("buildDisplayMessages", () => {
       const onlyRating = buildDisplayMessages({ ...base, shouldShowBuyerRatingPrompt: true, activeReceiverId: 5 });
       expect(ids(onlyRating)).toEqual([1, "buyer_rating_prompt_12_5"]);
       expect(ids(buildDisplayMessages({ ...base, shouldShowBuyerRatingPrompt: true }))).toEqual([1]);
+    });
+
+    test("a real message sent in the same millisecond as a prompt stays above it", () => {
+      const sameTimeAsReview = { message_id: 2, ts: 11 };
+      const sameTimeAsRating = { message_id: 3, ts: 12 };
+      const result = buildDisplayMessages({
+        ...base,
+        messages: [accepted, sameTimeAsRating, sameTimeAsReview],
+        shouldShowReviewPrompt: true,
+        shouldShowBuyerRatingPrompt: true,
+        activeReceiverId: 5,
+      });
+      expect(ids(result)).toEqual([1, 2, "review_prompt_12", 3, "buyer_rating_prompt_12_5"]);
     });
 
     test("no prompts when the flags are off", () => {
@@ -4755,6 +4926,12 @@ describe("listingStatusClass", () => {
     expect(listingStatusClass(null)).toBe(listingStatusClass("unknown"));
     expect(listingStatusClass(undefined)).toBe(listingStatusClass("something else"));
   });
+
+  test("an unknown status looks neutral, not like a known one", () => {
+    // Distinctness alone misses two styles trading places, so anchor the fallback.
+    expect(listingStatusClass("unknown")).toMatch(/\bbg-gray-/);
+    expect(listingStatusClass("sold")).not.toMatch(/\bbg-gray-/);
+  });
 });
 
 describe("normalizeSellerListing", () => {
@@ -7008,7 +7185,7 @@ describe("normalizeProductDetail", () => {
 
 </details>
 
-### Backend CLI checks and manual demonstrations (8 files)
+### Backend CLI checks and manual demonstrations (13 files)
 
 <details>
 <summary>api/tests/adversarial_validation_test.php</summary>
@@ -7150,6 +7327,493 @@ expect_value($v2Account['charges_enabled'], true, 'Accounts v2 card capability w
 expect_value($v2Account['payouts_enabled'], true, 'Accounts v2 payout capability was not normalized');
 
 echo "Adversarial backend validation passed: {$checks} checks\n";
+```
+
+</details>
+
+<details>
+<summary>api/tests/card_acceptance_test.php</summary>
+
+[Open source](../api/tests/card_acceptance_test.php)
+
+```php
+<?php
+declare(strict_types=1);
+
+// Acceptance rules from the closed Dorm Mart Scrum Board cards, checked over real
+// HTTP. Each block names its card. Where a card was written as a manual UI script,
+// the check targets the API rule behind it and tries to break that rule: boundary
+// values, other users' resources, forged tokens, and repeated or racing requests.
+//
+// Users: 1 sells; 2 and 3 buy; 4 is unrelated; 5 is locked out; 6 changes and
+// resets its password. Mail is disabled by the harness.
+require __DIR__ . '/support/integration_harness.php';
+
+harness_start('cards', 6);
+
+function listing(int $seller, string $title = 'Card desk'): int
+{
+    global $conn;
+    $stmt = $conn->prepare("INSERT INTO INVENTORY (title, seller_id, listing_price, photos, item_location, categories, description)
+                            VALUES (?, ?, 25, '[\"/test.jpg\"]', 'North Campus', '[\"Furniture\"]', 'A sturdy desk')");
+    $stmt->bind_param('si', $title, $seller);
+    $stmt->execute();
+    return (int)$conn->insert_id;
+}
+
+function conversation(int $buyer, int $product): int
+{
+    $response = api($buyer, 'chat/ensure_conversation.php', ['product_id' => $product]);
+    if (!ok($response)) throw new RuntimeException('Fixture conversation failed: ' . json_encode($response));
+    return (int)$response['body']['conv_id'];
+}
+
+function login_as(string $email, string $userPassword): array
+{
+    return api(harness_guest('login-probe'), 'auth/login.php', ['email' => $email, 'password' => $userPassword]);
+}
+
+function timed(callable $request): array
+{
+    $started = microtime(true);
+    $response = $request();
+    return [$response, microtime(true) - $started];
+}
+
+// Upload fixtures are generated, never committed.
+$png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
+$tinyPng = tempnam(sys_get_temp_dir(), 'dm-png-');
+$bigPng = tempnam(sys_get_temp_dir(), 'dm-png-');
+$notImage = tempnam(sys_get_temp_dir(), 'dm-txt-');
+file_put_contents($tinyPng, $png);
+file_put_contents($bigPng, $png . str_repeat("\0", 2 * 1024 * 1024 + 1));
+file_put_contents($notImage, "this is plain text pretending to be a photo\n");
+harness_on_cleanup(static function () use ($tinyPng, $bigPng, $notImage): void {
+    foreach ([$tinyPng, $bigPng, $notImage] as $file) @unlink($file);
+});
+
+// --- #64 Enforce limits on login chances / #26 Block invalid usernames too ----
+$victim = harness_email(5);
+for ($attempt = 1; $attempt <= 4; $attempt++) {
+    $wrong = login_as($victim, 'Wrong-password-' . $attempt);
+    check(error_is($wrong, 401, 'Invalid credentials'), "#64 failed login $attempt of 4 is refused as invalid credentials");
+}
+$locked = login_as($victim, 'Wrong-password-5');
+check(error_is($locked, 429, 'Too many failed attempts. Please try again in 3 minutes.'), '#64 the fifth failure locks the account for 3 minutes');
+check(preg_match('/^Retry-After: 1[0-9]{2}\r?$/mi', $locked['headers']) === 1, '#64 the lockout says when to retry');
+check(login_as($victim, $password)['status'] === 429, '#64 the correct password is still refused during the lockout');
+check(login_as(strtoupper($victim), $password)['status'] === 429, '#64 changing the email case does not reach a fresh counter');
+check(ok(login_as(harness_email(3), $password)), '#64 one account\'s lockout does not lock out other accounts from the same network');
+
+$ghost = 'nobody-here@buffalo.edu';
+for ($attempt = 1; $attempt <= 4; $attempt++) {
+    login_as($ghost, 'Guess-' . $attempt);
+}
+check(login_as($ghost, 'Guess-5')['status'] === 429, '#26 repeated attempts on an unknown email are locked out too');
+
+// --- #92 Login input validation / #71 XSS through the login form -------------
+check(error_is(login_as('<script>alert(1)</script>@x.co', 'Anything1!'), 400, 'Invalid email format'), '#71 a script tag in the email is rejected as a malformed email');
+check(error_is(login_as(harness_email(3), ''), 400, 'Missing required fields'), '#92 an empty password is refused before any lookup');
+check(error_is(login_as(harness_email(3), str_repeat('a', 65)), 400, 'Invalid password format. Please check your password.'), '#92 an over-long password is refused');
+
+// --- #87 Change password backend ----------------------------------------------
+$changer = 6;
+$newPassword = 'Changed-Pass-2';
+check(error_is(api(harness_guest(), 'auth/change_password.php', ['currentPassword' => $password, 'newPassword' => $newPassword]), 401, 'Not authenticated'), '#87 changing a password requires a session');
+check(api($changer, 'auth/change_password.php', ['currentPassword' => $password, 'newPassword' => $newPassword, 'csrf_token' => str_repeat('0', 64)])['body']['code'] === 'csrf_invalid', '#87 a forged CSRF token is refused');
+check(error_is(api($changer, 'auth/change_password.php', ['currentPassword' => 'Not-the-password-1', 'newPassword' => $newPassword]), 401, 'Invalid current password'), '#87 the current password must match');
+check(error_is(api($changer, 'auth/change_password.php', ['currentPassword' => $password, 'newPassword' => 'short']), 400, 'Password does not meet policy'), '#87 a weak new password is refused');
+check(ok(api($changer, 'auth/change_password.php', ['currentPassword' => $password, 'newPassword' => $newPassword])), '#87 a valid change succeeds');
+check(api($changer, 'auth/me.php', null)['status'] === 401, '#87 the session that changed the password is signed out');
+check(login_as(harness_email($changer), $password)['status'] === 401, '#87 the old password stops working');
+check(ok(login_as(harness_email($changer), $newPassword)), '#87 the new password works');
+
+// --- #55 Reset password backend / #71 SQL injection in the token --------------
+$resetToken = bin2hex(random_bytes(32));
+$setResetToken = static function (string $token, string $expiresSql) use ($changer): void {
+    global $conn;
+    $hash = password_hash($token, PASSWORD_DEFAULT);
+    $conn->query("UPDATE user_accounts SET reset_token_hash = '$hash', reset_token_expires = $expiresSql WHERE user_id = $changer");
+};
+$reset = static fn(string $token, string $pass, int $uid = 6): array =>
+    api(harness_guest(), 'auth/reset_password.php', ['token' => $token, 'newPassword' => $pass, 'uid' => $uid]);
+
+check(error_is($reset("'; DROP TABLE user_accounts;--", 'Reset-Pass-3'), 400, 'Token, user ID, and new password are required'), '#71 an SQL payload in the reset token is refused as malformed');
+check((int)row('SELECT COUNT(*) AS c FROM user_accounts')['c'] === 6, '#71 the injection attempt leaves user_accounts intact');
+$setResetToken($resetToken, 'UTC_TIMESTAMP() - INTERVAL 1 MINUTE');
+check(($reset($resetToken, 'Reset-Pass-3')['body']['error'] ?? '') === 'Invalid or expired reset token', '#55 an expired reset token is refused');
+$setResetToken($resetToken, 'UTC_TIMESTAMP() + INTERVAL 1 HOUR');
+check(($reset(bin2hex(random_bytes(32)), 'Reset-Pass-3')['body']['error'] ?? '') === 'Invalid or expired reset token', '#55 a well-formed but wrong token is refused');
+check(($reset($resetToken, 'Reset-Pass-3', 3)['body']['error'] ?? '') === 'Invalid or expired reset token', '#55 a valid token cannot reset a different user');
+check(error_is($reset($resetToken, 'weakpass'), 400, 'Password does not meet policy requirements'), '#55 the new password must meet the policy');
+check(($reset($resetToken, 'Reset-Pass-3')['body']['success'] ?? false) === true, '#55 a valid token resets the password');
+check(($reset($resetToken, 'Other-Pass-4')['body']['error'] ?? '') === 'Invalid or expired reset token', '#55 a reset token works only once');
+check(ok(login_as(harness_email($changer), 'Reset-Pass-3')), '#55 the reset password works for login');
+
+// --- #60 Forgot password backend -------------------------------------------------
+// The card expected an error for unknown emails. The endpoint now answers every
+// address identically (202, same message, same ~2 s floor) so it cannot be used to
+// discover which emails have accounts; these checks pin that newer contract.
+[$unknown, $unknownSeconds] = timed(static fn() => api(harness_guest(), 'auth/forgot_password.php', ['email' => 'not-registered@buffalo.edu']));
+$conn->query("UPDATE user_accounts SET reset_token_hash = 'sentinel', last_reset_request = NOW() WHERE user_id = 4");
+[$known, $knownSeconds] = timed(static fn() => api(harness_guest(), 'auth/forgot_password.php', ['email' => harness_email(4)]));
+check($unknown['status'] === 202 && $known['status'] === 202 && $unknown['body'] === $known['body'], '#60 known and unknown emails get the same answer');
+check($unknownSeconds >= 1.9 && $knownSeconds >= 1.9, '#60 both answers take the same minimum time');
+check(row('SELECT reset_token_hash FROM user_accounts WHERE user_id = 4')['reset_token_hash'] === 'sentinel', '#60 a second request within 10 minutes does not issue a new link');
+
+// --- #93 / #100 Create account ----------------------------------------------------
+$signup = static fn(array $fields): array => api(harness_guest(), 'auth/create_account.php', $fields + [
+    'firstName' => 'Card', 'lastName' => 'Tester', 'email' => 'new-card-user@buffalo.edu',
+    'gradMonth' => 5, 'gradYear' => (int)date('Y') + 1, 'promos' => false, 'terms' => true,
+]);
+check(error_is($signup(['terms' => false]), 400, 'You must agree to the terms'), '#93 the terms must be accepted');
+check(error_is($signup(['gradMonth' => 1, 'gradYear' => (int)date('Y') - 1]), 400, 'Graduation date cannot be in the past'), '#93 a graduation date in the past is refused');
+check(error_is($signup(['firstName' => '']), 400, 'Invalid input format'), '#93 a first name is required');
+$duplicate = $signup(['email' => strtoupper(harness_email(1))]);
+check($duplicate['status'] === 202 && (int)row("SELECT COUNT(*) AS c FROM user_accounts WHERE email = '" . harness_email(1) . "'")['c'] === 1,
+    '#93 an existing email, in any case, gets the generic answer and no second account');
+check(error_is($signup([]), 429, 'Too many account requests. Please try again in a few minutes.'), '#93 account requests from one network are rate limited');
+
+// --- #72 CSRF protection and CORS -------------------------------------------------
+$freshToken = api(harness_guest(), 'auth/get_csrf_token.php', null)['body']['csrf_token'] ?? '';
+check(preg_match('/^[a-f0-9]{64}$/', $freshToken) === 1, '#72 a CSRF token is issued as 64 hex characters');
+$beforeListings = (int)row('SELECT COUNT(*) AS c FROM INVENTORY')['c'];
+$forged = api_multipart(1, 'seller_dashboard/product_listing.php', [
+    'csrf_token' => 'invalid', 'mode' => 'create', 'title' => 'Desk', 'description' => 'A nice desk', 'price' => '50',
+    'categories[0]' => 'Furniture', 'itemLocation' => 'North Campus', 'condition' => 'Good',
+]);
+check(($forged['body']['code'] ?? '') === 'csrf_invalid' && (int)row('SELECT COUNT(*) AS c FROM INVENTORY')['c'] === $beforeListings,
+    '#72 a listing post with a bad CSRF token is refused and creates nothing');
+global $tokens;
+check((api(1, 'wishlist/add_to_wishlist.php', ['product_id' => 1, 'csrf_token' => $tokens[2]])['body']['code'] ?? '') === 'csrf_invalid',
+    '#72 another session\'s CSRF token is refused');
+$crossSite = api(2, 'auth/me.php', null, ['Origin: https://evil.example']);
+check(error_is($crossSite, 403, 'Origin not allowed'), '#72 an untrusted origin is refused');
+check(api(2, 'auth/me.php', null, ['Origin: ' . $base . '.evil.example'])['status'] === 403, '#72 an origin that only starts with ours is refused');
+$sameSite = api(2, 'auth/me.php', null, ['Origin: ' . $base]);
+check(ok($sameSite) && stripos($sameSite['headers'], 'Access-Control-Allow-Origin: ' . $base) !== false, '#72 our own origin is allowed and echoed back');
+check(stripos($sameSite['headers'], 'X-Content-Type-Options: nosniff') !== false
+    && stripos($sameSite['headers'], 'Content-Security-Policy:') !== false, '#71 API responses carry the security headers');
+
+// --- #24 Message Seller starts a chat ----------------------------------------------
+$desk = listing(1);
+$intro = api(2, 'chat/ensure_conversation.php', ['product_id' => $desk]);
+$deskChat = (int)($intro['body']['conv_id'] ?? 0);
+check(ok($intro) && $deskChat > 0, '#24 a buyer can start a chat about a listing');
+$introMeta = json_decode((string)(row("SELECT metadata FROM messages WHERE conv_id = $deskChat ORDER BY message_id LIMIT 1")['metadata'] ?? ''), true);
+check(($introMeta['type'] ?? '') === 'listing_intro' && (int)($introMeta['product']['product_id'] ?? 0) === $desk, '#24 the chat opens with an intro card for that listing');
+check((int)(api(2, 'chat/ensure_conversation.php', ['product_id' => $desk])['body']['conv_id'] ?? 0) === $deskChat
+    && (int)row("SELECT COUNT(*) AS c FROM messages WHERE conv_id = $deskChat")['c'] === 1, '#24 pressing Message Seller again reuses the chat without a second intro');
+check(error_is(api(1, 'chat/ensure_conversation.php', ['product_id' => $desk]), 400, 'Cannot message your own listing'), '#24 a seller cannot message their own listing');
+
+// --- #34 Chat messages ---------------------------------------------------------------
+$send = static fn(int $sender, int $receiver, string $content, int $conv): array =>
+    api($sender, 'chat/create_message.php', ['receiver_id' => $receiver, 'conv_id' => $conv, 'content' => $content]);
+check(error_is($send(2, 1, '', $deskChat), 400, 'missing_fields'), '#34 an empty message is refused');
+check(error_is($send(2, 1, "   \n\t ", $deskChat), 400, 'missing_fields'), '#34 a whitespace-only message is refused');
+check(ok($send(2, 1, str_repeat('a', 500), $deskChat)), '#34 a 500-character message is accepted');
+check(error_is($send(2, 1, str_repeat('a', 501), $deskChat), 400, 'content_too_long'), '#34 a 501-character message is refused');
+check(ok($send(2, 1, str_repeat('😀', 500), $deskChat)), '#34 the limit counts characters, so 500 emoji are accepted');
+check(error_is($send(2, 1, str_repeat('😀', 501), $deskChat), 400, 'content_too_long'), '#34 501 emoji are refused');
+check(error_is($send(4, 1, 'Let me in', $deskChat), 403, 'Invalid conversation ID'), '#34 an outsider cannot post into someone else\'s chat');
+
+// --- #33 Chat image upload ------------------------------------------------------------
+$sendImage = static fn(string $path, string $type, string $name, string $caption = ''): array =>
+    api_multipart(2, 'chat/create_image_message.php', ['receiver_id' => '1', 'conv_id' => (string)$deskChat,
+        'content' => $caption, 'image' => new CURLFile($path, $type, $name)]);
+$photo = $sendImage($tinyPng, 'image/png', 'photo.png');
+check(ok($photo), '#33 a photo can be sent with no caption');
+$photoUrl = (string)($photo['body']['message']['image_url'] ?? '');
+harness_on_cleanup(static function () use ($photoUrl): void {
+    if ($photoUrl === '') return;
+    require_once __DIR__ . '/../helpers/image_upload.php';
+    @unlink(data_media_dir('chat-images') . '/' . basename($photoUrl));
+});
+check(error_is($sendImage($bigPng, 'image/png', 'huge.png'), 400, 'image_too_large'), '#33 a photo over 2 MB is refused');
+check(error_is($sendImage($notImage, 'image/jpeg', 'photo.jpg'), 400, 'unsupported_image_type'), '#33 a file that only claims to be a JPEG is refused');
+$photoMessage = (int)($photo['body']['message']['message_id'] ?? 0);
+$download = http_get(1, 'chat/serve_chat_image.php?message_id=' . $photoMessage . '&download=1');
+check($download['status'] === 200 && $download['raw'] === $png && stripos($download['headers'], 'Content-Disposition: attachment') !== false,
+    '#33 the receiver can download the exact photo');
+check(http_get(4, 'chat/serve_chat_image.php?message_id=' . $photoMessage)['status'] === 403, '#33 an outsider cannot download it');
+
+// --- #25 Typing indicator ---------------------------------------------------------------
+$typing = static fn(int $viewer): array => api($viewer, 'chat/typing_status.php?conversation_id=' . $deskChat, null);
+check(ok(api(2, 'chat/typing_status.php', ['conversation_id' => $deskChat, 'is_typing' => true])), '#25 a participant can report typing');
+$seen = $typing(1);
+check(($seen['body']['is_typing'] ?? false) === true && ($seen['body']['typing_user_first_name'] ?? '') === 'Harness', '#25 the other participant sees who is typing');
+check(($typing(2)['body']['is_typing'] ?? true) === false, '#25 the typist does not see their own indicator');
+$conn->query("UPDATE typing_status SET updated_at = NOW() - INTERVAL 9 SECOND WHERE conversation_id = $deskChat");
+check(($typing(1)['body']['is_typing'] ?? true) === false, '#25 the indicator expires when typing updates stop');
+check(error_is($typing(4), 403, 'Access denied'), '#25 an outsider cannot watch the typing status');
+
+// --- #37 Delete an entire conversation ---------------------------------------------------
+$listed = static fn(int $user): bool => in_array($deskChat,
+    array_map(static fn($c) => (int)($c['conv_id'] ?? 0), api($user, 'chat/fetch_conversations.php', null)['body']['conversations'] ?? []), true);
+$messagesBefore = (int)row("SELECT COUNT(*) AS c FROM messages WHERE conv_id = $deskChat")['c'];
+check(error_is(api(4, 'chat/delete_conversation.php', ['conv_id' => $deskChat]), 403, 'Not authorized to hide this conversation'), '#37 an outsider cannot delete the chat');
+check(ok(api(2, 'chat/delete_conversation.php', ['conv_id' => $deskChat])), '#37 the buyer can delete the chat');
+check(!$listed(2) && $listed(1), '#37 deleting hides the chat for the buyer only');
+check(ok($send(1, 2, 'Still interested?', $deskChat)) && $listed(2), '#37 a new message from the other side brings the chat back');
+api(2, 'chat/delete_conversation.php', ['conv_id' => $deskChat]);
+api(1, 'chat/delete_conversation.php', ['conv_id' => $deskChat]);
+// The card expected both deletions to erase the messages. They are kept now: purchase
+// records and moderation reports point at them. Pin that neither user sees the chat.
+check(!$listed(1) && !$listed(2) && (int)row("SELECT COUNT(*) AS c FROM messages WHERE conv_id = $deskChat")['c'] === $messagesBefore + 1,
+    '#37 once both delete, neither sees the chat and the history is kept for records');
+
+// --- #23 / #27 Schedule purchase ------------------------------------------------------------
+$lamp = listing(1, 'Card lamp');
+$lampChat = conversation(2, $lamp);
+$scheduleAt = static fn(string $when): array => api(1, 'scheduled_purchases/create.php', ['inventory_product_id' => $lamp,
+    'conversation_id' => $lampChat, 'meeting_at' => $when, 'meet_location' => 'North Campus']);
+check(rejected($scheduleAt(gmdate('c', time() - 3600))), '#27 a purchase cannot be scheduled in the past');
+check(error_is(api(2, 'scheduled_purchases/respond.php', ['request_id' => 999999, 'action' => 'accept']), 404, 'Request not found'), '#23 responding to a missing request is refused');
+$pending = (int)($scheduleAt(gmdate('c', time() + 86400))['body']['data']['request_id'] ?? 0);
+check($pending > 0, '#23 a seller can schedule a future meeting');
+check(error_is(api(2, 'scheduled_purchases/respond.php', ['request_id' => $pending, 'action' => 'maybe']), 400, 'Invalid request'), '#23 an unknown action is refused');
+check(error_is(api(3, 'scheduled_purchases/respond.php', ['request_id' => $pending, 'action' => 'accept']), 403, 'Not authorized to respond to this request'), '#23 another buyer cannot answer the request');
+check(ok(api(2, 'scheduled_purchases/respond.php', ['request_id' => $pending, 'action' => 'decline'])), '#27 the buyer can decline');
+check(row("SELECT status FROM scheduled_purchase_requests WHERE request_id = $pending")['status'] === 'declined', '#27 the decline is recorded');
+check(error_is(api(2, 'scheduled_purchases/respond.php', ['request_id' => $pending, 'action' => 'accept']), 409, 'Request has already been handled'), '#27 a declined request cannot then be accepted');
+
+// --- #27 Accepting holds the listing on the scheduled terms -----------------------------------
+$rug = listing(1, 'Card rug');
+$conn->query("UPDATE INVENTORY SET price_nego = 1 WHERE product_id = $rug");
+$rugChat = conversation(2, $rug);
+$offer = (int)(api(1, 'scheduled_purchases/create.php', ['inventory_product_id' => $rug, 'conversation_id' => $rugChat,
+    'meeting_at' => gmdate('c', time() + 86400), 'meet_location' => 'North Campus', 'negotiated_price' => '18.50'])['body']['data']['request_id'] ?? 0);
+// The seller edits the listing after scheduling; acceptance must honour what was agreed.
+$conn->query("UPDATE INVENTORY SET price_nego = 0, item_location = 'Ellicott' WHERE product_id = $rug");
+check($offer > 0 && ok(api(2, 'scheduled_purchases/respond.php', ['request_id' => $offer, 'action' => 'accept'])), '#27 the buyer can accept a negotiated offer');
+$held = row("SELECT item_status, price_nego, listing_price, item_location FROM INVENTORY WHERE product_id = $rug");
+check($held['item_status'] === 'Pending' && (int)$held['price_nego'] === 1
+    && (float)$held['listing_price'] === 18.5 && $held['item_location'] === 'North Campus',
+    '#27 accepting holds the listing at the scheduled terms and the agreed price');
+
+// --- #28 / #48 Reviews ---------------------------------------------------------------------
+$notebook = listing(1, 'Card notebook');
+$entry = json_encode([['product_id' => $notebook, 'recorded_at' => gmdate('c'), 'confirm_payload' => ['is_successful' => true]]]);
+$conn->query("INSERT INTO purchase_history (user_id, items) VALUES (2, '$entry')");
+$review = static fn(int $user, array $fields): array => api($user, 'reviews/submit_review.php', $fields + [
+    'product_id' => $notebook, 'rating' => 4, 'product_rating' => 4.5, 'review_text' => 'Solid notebook.',
+]);
+check(error_is($review(2, ['review_text' => '   ']), 400, 'Review text is required'), '#28 an empty review is refused');
+check(error_is($review(2, ['review_text' => str_repeat('b', 1001)]), 400, 'Review text must be 1000 characters or less'), '#48 a 1001-character review is refused');
+check(rejected($review(2, ['rating' => 5.5])) && rejected($review(2, ['rating' => 0])) && rejected($review(2, ['product_rating' => 3.3])),
+    '#28 ratings outside 0.5 to 5 in half steps are refused');
+check(error_is($review(3, []), 403, 'You can only review products you have purchased'), '#28 only the buyer can review');
+check(error_is($review(1, []), 403, 'You cannot review your own product'), '#28 a seller cannot review their own listing');
+check(ok($review(2, ['review_text' => str_repeat('c', 1000)])), '#48 a 1000-character review is accepted');
+check(error_is($review(2, []), 409, 'You have already reviewed this product'), '#28 a second review of the same item is refused');
+check(error_is(api(2, 'reviews/get_review.php', null), 400, 'Invalid product_id'), '#48 fetching a review needs a product id');
+check(mb_strlen((string)(api(2, 'reviews/get_review.php?product_id=' . $notebook, null)['body']['review']['review_text'] ?? '')) === 1000, '#48 the buyer gets their full review back');
+check(count(api(1, 'reviews/get_product_reviews.php?product_id=' . $notebook, null)['body']['reviews'] ?? []) === 1, '#49 the seller sees the review');
+check(error_is(api(3, 'reviews/get_product_reviews.php?product_id=' . $notebook, null), 403, 'You are not authorized to view reviews for this product'), '#49 other users cannot read the seller\'s review list');
+
+// --- #20 / #47 / #31 Wishlist -----------------------------------------------------------------
+$chair = listing(1, 'Card chair');
+check(ok(api(2, 'wishlist/add_to_wishlist.php', ['product_id' => $chair])) && ok(api(3, 'wishlist/add_to_wishlist.php', ['product_id' => $chair])),
+    '#20 two buyers can wishlist the same item');
+$chairRow = array_values(array_filter(api(1, 'seller_dashboard/manage_seller_listings.php', [])['body']['data'] ?? [], static fn($l) => (int)$l['id'] === $chair))[0] ?? [];
+check((int)($chairRow['wishlisted'] ?? -1) === 2, '#20 the seller dashboard counts both wishlists');
+check(error_is(api(1, 'wishlist/add_to_wishlist.php', ['product_id' => $chair]), 400, 'Cannot add your own listing to wishlist'), '#47 a seller cannot wishlist their own item');
+check(error_is(api(2, 'wishlist/add_to_wishlist.php', ['product_id' => 0]), 400, 'Invalid product_id'), '#47 an invalid product id is refused');
+check(api(2, 'wishlist/add_to_wishlist.php', ['product_id' => 999999])['status'] === 404, '#47 a missing product is refused');
+for ($toggle = 0; $toggle < 5; $toggle++) {
+    api(2, 'wishlist/remove_from_wishlist.php', ['product_id' => $chair]);
+    api(2, 'wishlist/add_to_wishlist.php', ['product_id' => $chair]);
+}
+check((int)row("SELECT wishlisted FROM INVENTORY WHERE product_id = $chair")['wishlisted'] === 2
+    && (int)row("SELECT COUNT(*) AS c FROM wishlist WHERE product_id = $chair")['c'] === 2, '#20 rapid toggling keeps the counter equal to the real wishlists');
+$sellerNotices = (int)row("SELECT COUNT(*) AS c FROM notifications WHERE recipient_user_id = 1 AND type = 'wishlist_added' AND product_id = $chair")['c'];
+check($sellerNotices === 2, '#31 the seller is notified once per buyer, not once per toggle');
+check(ok(api(1, 'wishlist/mark_all_items_read.php', [])) && (int)(api(1, 'wishlist/fetch_unread_notifications.php', null)['body']['unread_total'] ?? -1) === 0,
+    '#31 marking all notifications read clears the unread count');
+
+// --- #74 Seller dashboard backend --------------------------------------------------------------
+check(api(harness_guest(), 'seller_dashboard/manage_seller_listings.php', [])['status'] === 401, '#74 the seller dashboard requires a session');
+check(api(4, 'seller_dashboard/manage_seller_listings.php', [])['body'] === ['success' => true, 'data' => []], '#74 a user with no listings gets an empty list');
+$buyerView = api(2, 'seller_dashboard/manage_seller_listings.php', [])['body']['data'] ?? null;
+check($buyerView === [], '#74 a buyer never sees another seller\'s listings');
+
+// --- #65 Search backend / #71 SQL injection in search ---------------------------------------------
+$found = static fn(string $query): array => array_map(static fn($r) => (int)($r['id'] ?? 0),
+    (array)(api(2, 'search/get_search_items.php', ['q' => $query])['body'] ?? []));
+check(in_array($chair, $found('Card chair'), true), '#65 searching by title finds the listing');
+check($found("' OR '1'='1") === [] && $found('%') === [], '#71 injection or wildcard text matches nothing');
+
+// --- Upload quota (added for review videos after the uploads audit) ---------------------------------
+// Twenty uploads per ten minutes: prime nineteen, so the twentieth is the last one allowed.
+$quotaKey = hash('sha256', 'image_upload_review_video' . "\0" . '2');
+$conn->query("INSERT INTO login_rate_limits (session_id, failed_login_attempts, last_failed_attempt) VALUES ('$quotaKey', 19, UTC_TIMESTAMP())");
+$uploadVideo = static fn(): array => api_multipart(2, 'reviews/upload_review_video.php',
+    ['video' => new CURLFile(__DIR__ . '/fixtures/review-video.webm', 'video/webm', 'review.webm')]);
+$twentieth = $uploadVideo();
+harness_on_cleanup(static function () use ($twentieth): void {
+    $url = (string)($twentieth['body']['video_url'] ?? '');
+    if ($url === '') return;
+    require_once __DIR__ . '/../helpers/image_upload.php';
+    @unlink(data_media_dir('review-images') . '/' . basename($url));
+});
+check(ok($twentieth), 'upload quota: the twentieth video in the window is accepted');
+$twentyFirst = $uploadVideo();
+check($twentyFirst['status'] === 429 && preg_match('/^Retry-After: \d+\r?$/mi', $twentyFirst['headers']) === 1, 'upload quota: the twenty-first is refused with a retry time');
+
+harness_finish();
+```
+
+</details>
+
+<details>
+<summary>api/tests/database_migrations_test.php</summary>
+
+[Open source](../api/tests/database_migrations_test.php)
+
+```php
+<?php
+declare(strict_types=1);
+
+// The database workflow end to end, on a scratch database: schema/ builds from
+// nothing and then converges, and migrate_data.php resets the test fixtures
+// without touching real users' data. Skipped when no local database is reachable.
+
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
+require_once __DIR__ . '/../utility/load_env.php';
+load_env();
+
+$root = dirname(__DIR__, 2);
+$checks = 0;
+
+function expect_same($actual, $expected, string $message): void
+{
+    global $checks;
+    $checks++;
+    if ($actual !== $expected) {
+        fwrite(STDERR, "FAIL: {$message}\nExpected: " . var_export($expected, true)
+            . "\nActual: " . var_export($actual, true) . "\n");
+        exit(1);
+    }
+}
+
+$host = strtolower((string)getenv('DB_HOST'));
+if (!in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
+    echo "PASS: 0 database migration checks (skipped: DB_HOST is not local)\n";
+    exit(0);
+}
+mysqli_report(MYSQLI_REPORT_OFF);
+$conn = @new mysqli($host, (string)getenv('DB_USERNAME'), (string)getenv('DB_PASSWORD'));
+if ($conn->connect_errno) {
+    echo "PASS: 0 database migration checks (skipped: no local database)\n";
+    exit(0);
+}
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+$database = 'dm_migrations_test_' . bin2hex(random_bytes(6));
+// expect_same() calls exit(), which skips finally blocks; a shutdown function is
+// what guarantees the scratch databases go away after a failed check.
+register_shutdown_function(static function () use ($conn, $database): void {
+    $conn->query("DROP DATABASE IF EXISTS `{$database}`");
+    $conn->query("DROP DATABASE IF EXISTS `{$database}__schema`");
+});
+$conn->query("CREATE DATABASE `{$database}` CHARACTER SET utf8mb4");
+$conn->select_db($database);
+
+/** Run one of the CLI scripts against the scratch database. [exit code, stdout, stderr] */
+function run_script(string $script, array $args = []): array
+{
+    global $root, $database;
+    $process = proc_open(
+        [PHP_BINARY, $script, ...$args],
+        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+        $pipes,
+        $root,
+        // load_env() never overrides a variable that is already set.
+        array_merge(getenv(), ['DB_NAME' => $database])
+    );
+    $out = stream_get_contents($pipes[1]);
+    $err = stream_get_contents($pipes[2]);
+    return [proc_close($process), $out, $err];
+}
+
+function table_counts(mysqli $conn, string $database): array
+{
+    $counts = [];
+    $names = $conn->query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '{$database}' ORDER BY 1");
+    foreach (array_column($names->fetch_all(MYSQLI_NUM), 0) as $table) {
+        $counts[$table] = (int)$conn->query("SELECT COUNT(*) FROM `{$table}`")->fetch_row()[0];
+    }
+    return $counts;
+}
+
+function count_where(mysqli $conn, string $sql): int
+{
+    return (int)$conn->query($sql)->fetch_row()[0];
+}
+
+// --- schema/ builds from nothing and converges --------------------------------
+[$code, $out, $err] = run_script('api/database/migrate_schema.php');
+expect_same($code, 0, "migrate_schema.php succeeds on an empty database\n{$err}");
+$report = json_decode($out, true);
+expect_same($report['warnings'], [], 'a fresh sync leaves nothing still differing');
+$declared = array_map(fn($f) => strtolower(basename($f, '.sql')), glob($root . '/schema/*.sql'));
+$created = array_map('strtolower', $report['created']);
+sort($declared);
+sort($created);
+expect_same($created, $declared, 'every schema/<table>.sql becomes exactly one table');
+
+[$code, $out] = run_script('api/database/migrate_schema.php');
+$report = json_decode($out, true);
+expect_same([$code, $report['created'], $report['altered'], $report['plan']], [0, [], [], []], 'syncing again changes nothing');
+
+// --- real data survives a seed reset -----------------------------------------
+$conn->query(
+    "INSERT INTO user_accounts (first_name, last_name, grad_month, grad_year, email, promotional, hash_pass, hash_auth, seller, theme, role) VALUES
+       ('Real', 'One', 5, 2027, 'real.one@buffalo.edu', 0, 'x', 'y', 1, 'light', 'user'),
+       ('Real', 'Two', 5, 2027, 'real.two@buffalo.edu', 0, 'x', 'y', 1, 'light', 'user'),
+       ('Mod', 'Erator', 5, 2027, 'moderator@buffalo.edu', 0, 'x', 'y', 0, 'light', 'moderator')"
+);
+$one = (int)$conn->query("SELECT user_id FROM user_accounts WHERE email = 'real.one@buffalo.edu'")->fetch_row()[0];
+$two = (int)$conn->query("SELECT user_id FROM user_accounts WHERE email = 'real.two@buffalo.edu'")->fetch_row()[0];
+$conn->query("INSERT INTO INVENTORY (title, seller_id, item_status) VALUES ('REAL LISTING', {$one}, 'Active')");
+$listing = (int)$conn->insert_id;
+$conn->query("INSERT INTO wishlist (user_id, product_id) VALUES ({$two}, {$listing})");
+$conn->query("INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname, product_id) VALUES ({$one}, {$two}, 'Real', 'Real', {$listing})");
+$conversation = (int)$conn->insert_id;
+$conn->query("INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content) VALUES ({$conversation}, {$one}, {$two}, 'Real', 'Real', 'hello real')");
+
+[$code, $out, $err] = run_script('api/database/migrate_data.php');
+expect_same($code, 0, "migrate_data.php succeeds\n{$err}");
+$seedAccounts = count_where($conn, 'SELECT COUNT(*) FROM user_accounts WHERE is_protected = 1');
+expect_same($seedAccounts > 0, true, 'fixture accounts are created and protected');
+
+$before = table_counts($conn, $database);
+
+// A tester added a listing while logged in as a fixture account.
+$tester = (int)$conn->query("SELECT user_id FROM user_accounts WHERE email = 'testuser@buffalo.edu'")->fetch_row()[0];
+$conn->query("INSERT INTO INVENTORY (title, seller_id, item_status) VALUES ('TESTER LEFTOVER', {$tester}, 'Active')");
+
+[$code, $out, $err] = run_script('api/database/migrate_data.php');
+expect_same($code, 0, "migrate_data.php succeeds when rerun\n{$err}");
+$after = table_counts($conn, $database);
+
+expect_same(count_where($conn, "SELECT COUNT(*) FROM user_accounts WHERE email LIKE 'real.%'"), 2, 'real accounts survive a seed reset');
+expect_same(count_where($conn, "SELECT COUNT(*) FROM user_accounts WHERE role = 'moderator'"), 1, 'moderators survive a seed reset');
+expect_same(count_where($conn, "SELECT COUNT(*) FROM INVENTORY WHERE title = 'REAL LISTING'"), 1, 'real listings survive a seed reset');
+expect_same(count_where($conn, "SELECT COUNT(*) FROM wishlist WHERE user_id = {$two}"), 1, 'real wishlist rows survive a seed reset');
+expect_same(count_where($conn, "SELECT COUNT(*) FROM messages WHERE content = 'hello real'"), 1, 'real chats survive a seed reset');
+expect_same(count_where($conn, "SELECT COUNT(*) FROM INVENTORY WHERE title = 'TESTER LEFTOVER'"), 0, 'what a tester added to a fixture account is reset');
+expect_same($after, $before, 'rerunning the fixtures leaves every table the same size');
+
+// Fixtures only fill tables; they never change the schema.
+$report =json_decode(run_script('api/database/migrate_schema.php')[1], true);
+expect_same([$report['created'], $report['altered'], $report['warnings']], [[], [], []], 'schema is still in sync after the fixtures run');
+
+echo "PASS: {$checks} database migration checks\n";
 ```
 
 </details>
@@ -7499,55 +8163,11 @@ echo "PASS: Eastern send window, daily/weekly eligibility, DST, repeat preventio
 <?php
 declare(strict_types=1);
 
-// Real HTTP endpoints against a disposable local database. Never uses application data.
-if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
-require_once __DIR__ . '/../utility/load_env.php';
-load_env();
-if (!in_array(getenv('DB_HOST'), ['localhost', '127.0.0.1', '::1'], true)) {
-    throw new RuntimeException('Lifecycle tests require a local MySQL server.');
-}
-$database = 'dm_lifecycle_test_' . bin2hex(random_bytes(6));
-putenv('DB_NAME=' . $database);
-require_once __DIR__ . '/../database/db_connect.php';
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-$conn = db();
-$root = dirname(__DIR__, 2);
-$server = null;
-$cookies = [];
-$tokens = [];
-$failures = 0;
-$checks = 0;
-$log = tempnam(sys_get_temp_dir(), 'dm-lifecycle-');
-$uploadedVideo = null;
+// Purchase lifecycle over real HTTP endpoints: schedule, confirm, cancel, delete,
+// ban, and the review and listing-edit rules that depend on them.
+// User 1 sells; 2 and 3 buy; 4 is unrelated (and later a moderator).
+require __DIR__ . '/support/integration_harness.php';
 
-function check(bool $condition, string $message): void {
-    global $failures, $checks;
-    $checks++;
-    if (!$condition) $failures++;
-    echo ($condition ? 'PASS ' : 'FAIL ') . $message . PHP_EOL;
-}
-function api(int $user, string $path, ?array $body = []): array {
-    global $base, $cookies, $tokens;
-    $ch = curl_init($base . '/api/' . $path);
-    $headers = ['Content-Type: application/json'];
-    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10,
-        CURLOPT_COOKIEFILE => $cookies[$user], CURLOPT_COOKIEJAR => $cookies[$user]]);
-    if ($body !== null) {
-        $body['csrf_token'] = $tokens[$user] ?? '';
-        curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => json_encode($body)]);
-    }
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    $raw = curl_exec($ch);
-    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    return ['status' => $status, 'body' => json_decode((string)$raw, true)];
-}
-function ok(array $response): bool { return $response['status'] === 200; }
-function rejected(array $response): bool { return in_array($response['status'], [400, 403, 404, 409], true); }
-function row(string $sql): array {
-    global $conn;
-    return $conn->query($sql)->fetch_assoc() ?: [];
-}
 function fixture(int $buyer = 2): array {
     global $conn;
     $conn->query("INSERT INTO INVENTORY (title,seller_id,listing_price,price_nego,trades,photos,item_location) VALUES ('Lifecycle desk',1,25,1,1,'[\"/test.jpg\"]','North Campus')");
@@ -7575,235 +8195,743 @@ function confirm(int $product, int $conversation, int $schedule, bool $success =
         'failure_reason' => $success ? null : 'buyer_no_show']);
 }
 
-try {
+harness_start('lifecycle', 4);
+
+// Exercise the actual review fixture, including its purchase-history format.
+$conn->query("UPDATE user_accounts SET email='testuser@buffalo.edu' WHERE user_id=2");
+$conn->query("UPDATE user_accounts SET email='testuserschedulered@buffalo.edu' WHERE user_id=1");
+$conn->multi_query(file_get_contents($root . '/data/014_#294_review_test_data.sql'));
+do {
+    if ($result = $conn->store_result()) $result->free();
+    if (!$conn->more_results()) break;
+    $conn->next_result();
+} while (true);
+$notebook = (int)row("SELECT product_id FROM INVENTORY WHERE title='Marble Notebook'")['product_id'];
+$review = ['product_id' => $notebook, 'rating' => 4, 'product_rating' => 4, 'review_text' => 'Review fixture test'];
+$upload = api_multipart(2, 'reviews/upload_review_video.php',
+    ['video' => new CURLFile(__DIR__ . '/fixtures/review-video.webm', 'video/webm', 'review.webm')]);
+check(ok($upload) && !empty($upload['body']['video_url']), 'buyer can upload a review video');
+$uploadedVideo = $upload['body']['video_url'] ?? null;
+harness_on_cleanup(static function () use ($uploadedVideo): void {
+    if (!$uploadedVideo) return;
+    require_once __DIR__ . '/../helpers/image_upload.php';
+    @unlink(data_media_dir('review-images') . '/' . basename($uploadedVideo));
+});
+$review['video_url'] = '/media/review-images/review_u3_20260930_120000_abcdef123456.webm';
+check(api(2, 'reviews/submit_review.php', $review)['status'] === 400, 'buyer cannot attach another user video');
+$review['video_url'] = '/media/review-images/review_u2_20260930_120000_abcdef123456.webm';
+check(api(2, 'reviews/submit_review.php', $review)['status'] === 400, 'missing review video is rejected');
+$review['video_url'] = $uploadedVideo;
+check(api(3, 'reviews/submit_review.php', array_replace($review, ['video_url' => null]))['status'] === 403, 'unrelated buyer cannot review the seeded notebook');
+check(ok(api(2, 'reviews/submit_review.php', $review)), 'seeded Marble Notebook buyer can submit a review');
+check(api(2, 'reviews/get_review.php?product_id=' . $notebook, null)['body']['review']['video_url'] === $uploadedVideo, 'buyer can retrieve review video');
+check(api(1, 'reviews/get_product_reviews.php?product_id=' . $notebook, null)['body']['reviews'][0]['video_url'] === $uploadedVideo, 'seller dashboard can retrieve review video');
+$range = http_get(harness_guest(), 'media/image.php?url=' . rawurlencode((string)$uploadedVideo), ['Range: bytes=0-15']);
+check($range['status'] === 206 && strlen($range['raw']) === 16, 'review video supports byte-range playback');
+check(api(2, 'reviews/submit_review.php', $review)['status'] === 409, 'seeded notebook cannot be reviewed twice');
+$conn->query("UPDATE user_accounts SET email='lifecycle2@buffalo.edu' WHERE user_id=2");
+$conn->query("UPDATE user_accounts SET email='lifecycle1@buffalo.edu' WHERE user_id=1");
+
+[$product, $conversation] = fixture();
+$request = accepted($product, $conversation);
+$confirmation = confirm($product, $conversation, $request);
+check(ok($confirmation), 'seller can confirm an accepted schedule');
+$confirmationId = (int)$confirmation['body']['data']['confirm_request_id'];
+check(rejected(api(3, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept'])), 'unrelated buyer cannot accept confirmation');
+check(ok(api(2, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept'])), 'buyer completes purchase');
+check(rejected(api(2, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept'])), 'repeat confirmation is rejected');
+check((int)row("SELECT sold FROM INVENTORY WHERE product_id=$product")['sold'] === 1, 'completion marks listing sold');
+check(rejected(api(2, 'scheduled_purchases/cancel.php', ['request_id' => $request])), 'completed purchase cannot be cancelled');
+check(rejected(api(1, 'seller_dashboard/delete_listing.php', ['id' => $product])), 'sold listing and receipt cannot be deleted');
+
+[$product, $conversation] = fixture();
+[$otherProduct, $otherConversation] = fixture();
+check(rejected(schedule($product, $otherConversation)), 'schedule cannot target a chat for another product');
+$first = schedule($product, $conversation);
+check(ok($first), 'first schedule is created');
+check(rejected(schedule($product, $conversation)), 'duplicate pending schedule is rejected');
+
+// A direct multipart request must not bypass the listing edit restrictions.
+foreach (['Active', 'Draft', 'Pending', 'Sold', 'sold_flag'] as $state) {
+    [$editProduct] = fixture();
+    $storedStatus = $state === 'sold_flag' ? 'Active' : $state;
+    $soldFlag = $state === 'sold_flag' ? 1 : 0;
+    $conn->query("UPDATE INVENTORY SET item_status='$storedStatus', sold=$soldFlag WHERE product_id=$editProduct");
+    foreach (['Active', 'Draft'] as $targetStatus) {
+        $edit = api_multipart(1, 'seller_dashboard/product_listing.php', [
+            'mode' => 'update', 'id' => (string)$editProduct,
+            'status' => $targetStatus, 'title' => 'Edited lifecycle desk',
+            'description' => 'A desk for lifecycle testing', 'price' => '25',
+            'categories[0]' => 'Furniture', 'itemLocation' => 'North Campus', 'condition' => 'Good',
+            'existingPhotos[0]' => '/test.jpg',
+        ]);
+        [$httpStatus, $body] = [$edit['status'], $edit['body']];
+        $blocked = in_array($state, ['Pending', 'Sold', 'sold_flag'], true);
+        check($httpStatus === ($blocked ? 403 : 200), "$state listing edit to $targetStatus returns the expected status ($httpStatus: " . json_encode($body) . ')');
+        if ($blocked) {
+            check(($body['error'] ?? '') === 'Pending or sold listings cannot be edited.', "$state edit reaches the state guard");
+            $unchanged = row("SELECT title, item_status, sold FROM INVENTORY WHERE product_id=$editProduct");
+            check($unchanged['title'] === 'Lifecycle desk' && $unchanged['item_status'] === $storedStatus
+                && (int)$unchanged['sold'] === $soldFlag, "$state edit leaves the listing unchanged");
+        }
+    }
+}
+
+foreach (['Draft', 'Sold'] as $state) {
+    [$product, $conversation] = fixture();
+    $conn->query("UPDATE INVENTORY SET item_status='$state' WHERE product_id=$product");
+    check(rejected(schedule($product, $conversation)), "$state listing cannot be scheduled");
+    [$product, $conversation] = fixture();
+    $request = (int)schedule($product, $conversation)['body']['data']['request_id'];
+    $conn->query("UPDATE INVENTORY SET item_status='$state' WHERE product_id=$product");
+    check(rejected(api(2, 'scheduled_purchases/respond.php', ['request_id' => $request, 'action' => 'accept'])), "old schedule cannot accept a $state listing");
+}
+
+[$product, $conversation] = fixture();
+$request = accepted($product, $conversation);
+$confirmationId = (int)confirm($product, $conversation, $request)['body']['data']['confirm_request_id'];
+check(ok(api(2, 'scheduled_purchases/cancel.php', ['request_id' => $request])), 'buyer can cancel before completion');
+check(rejected(api(2, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept'])), 'cancelled schedule cannot be completed through old confirmation');
+check((int)row("SELECT sold FROM INVENTORY WHERE product_id=$product")['sold'] === 0, 'cancelled purchase leaves listing unsold');
+
+[$product, $conversation] = fixture();
+$request = accepted($product, $conversation);
+$confirmationId = (int)confirm($product, $conversation, $request)['body']['data']['confirm_request_id'];
+api(2, 'scheduled_purchases/cancel.php', ['request_id' => $request]);
+$conn->query("UPDATE confirm_purchase_requests SET expires_at=DATE_SUB(NOW(), INTERVAL 1 DAY) WHERE confirm_request_id=$confirmationId");
+require_once __DIR__ . '/../confirm_purchases/helpers.php';
+$conn->begin_transaction();
+auto_finalize_confirm_request($conn, row("SELECT * FROM confirm_purchase_requests WHERE confirm_request_id=$confirmationId"));
+$conn->commit();
+check((int)row("SELECT sold FROM INVENTORY WHERE product_id=$product")['sold'] === 0, 'cancelled confirmation cannot auto-complete later');
+
+[$product, $conversation] = fixture();
+$request = accepted($product, $conversation);
+check(rejected(api(1, 'seller_dashboard/set_item_status.php', ['id' => $product, 'status' => 'Active'])), 'reserved listing cannot be manually reactivated');
+
+[$product, $conversation] = fixture();
+$request = accepted($product, $conversation);
+$confirmationId = (int)confirm($product, $conversation, $request, false)['body']['data']['confirm_request_id'];
+api(2, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept']);
+check(row("SELECT item_status FROM INVENTORY WHERE product_id=$product")['item_status'] === 'Active', 'unsuccessful exchange releases listing');
+$secondConversation = (int)api(3, 'chat/ensure_conversation.php', ['product_id' => $product])['body']['conv_id'];
+$secondRequest = (int)schedule($product, $secondConversation)['body']['data']['request_id'];
+check(ok(api(3, 'scheduled_purchases/respond.php', ['request_id' => $secondRequest, 'action' => 'accept'])), 'another buyer can reserve after unsuccessful exchange');
+check(rejected(confirm($product, $conversation, $request)), 'old unsuccessful schedule cannot steal a newer reservation');
+$secondConfirmationId = (int)confirm($product, $secondConversation, $secondRequest)['body']['data']['confirm_request_id'];
+check($secondConfirmationId > $confirmationId, 'second buyer has a newer confirmation on the same listing');
+$firstBuyerReceipt = api(2, 'receipt/view_receipt.php?product_id=' . $product, null);
+check(ok($firstBuyerReceipt), 'first buyer can still open their receipt after another buyer confirms');
+check(ok(api(3, 'receipt/view_receipt.php?product_id=' . $product, null)), 'second buyer can open their receipt');
+check(!ok(api(4, 'receipt/view_receipt.php?product_id=' . $product, null)), 'an unrelated user cannot open a receipt for the listing');
+
+[$product, $conversation] = fixture();
+$request = accepted($product, $conversation);
+check(ok(api(1, 'seller_dashboard/delete_listing.php', ['id' => $product])), 'seller can delete unsold listing with a schedule');
+check((int)row("SELECT item_deleted FROM conversations WHERE conv_id=$conversation")['item_deleted'] === 1, 'listing deletion closes chat');
+check(rejected(api(2, 'chat/create_message.php', ['conv_id' => $conversation, 'receiver_id' => 1, 'content' => 'Still here?'])), 'closed chat rejects text messages');
+check(rejected(api(2, 'scheduled_purchases/respond.php', ['request_id' => $request, 'action' => 'accept'])), 'deleted listing rejects stale schedule card');
+check(rejected(confirm($product, $conversation, $request)), 'deleted listing rejects confirmation');
+
+// Wishlist adds are decided by the unique key; a repeat add is a 400, not a 500.
+[$product, $conversation] = fixture();
+check(ok(api(2, 'wishlist/add_to_wishlist.php', ['product_id' => $product])), 'buyer can wishlist a listing');
+$repeatAdd = api(2, 'wishlist/add_to_wishlist.php', ['product_id' => $product]);
+check($repeatAdd['status'] === 400 && ($repeatAdd['body']['error'] ?? '') === 'Product already in wishlist', 'repeat wishlist add is rejected cleanly');
+check((int)row("SELECT wishlisted FROM INVENTORY WHERE product_id=$product")['wishlisted'] === 1, 'repeat wishlist add does not double-count');
+
+// Chat media is participant-only and answers errors as JSON.
+$introMessage = (int)row("SELECT message_id FROM messages WHERE conv_id=$conversation ORDER BY message_id LIMIT 1")['message_id'];
+$outsider = http_get(4, 'chat/serve_chat_image.php?message_id=' . $introMessage);
+check(error_is($outsider, 403, 'forbidden'), 'non-participant cannot fetch chat media');
+check(str_starts_with($outsider['type'], 'application/json'), 'chat media errors are sent as JSON');
+check((http_get(2, 'chat/serve_chat_image.php?message_id=' . $introMessage)['body']['error'] ?? '') === 'no_image', 'participant gets no_image for a text message');
+
+// Last: this deletes buyer 2.
+[$product, $conversation] = fixture();
+accepted($product, $conversation);
+check(ok(api(2, 'auth/delete_account.php', ['confirmation' => 'lifecycle2@buffalo.edu', 'currentPassword' => $password])), 'buyer can delete their account');
+check(row("SELECT item_status FROM INVENTORY WHERE product_id=$product")['item_status'] === 'Active', 'buyer account deletion puts their reserved item back on sale');
+
+// Ban: seller 1 is banned by moderator 4 while buyer 3 holds a reservation.
+[$product, $conversation] = fixture(3);
+$request = (int)schedule($product, $conversation)['body']['data']['request_id'];
+check(ok(api(3, 'scheduled_purchases/respond.php', ['request_id' => $request, 'action' => 'accept'])), 'buyer reserves before the seller is banned');
+$conn->query("UPDATE user_accounts SET role='moderator' WHERE user_id=4");
+check(ok(api(4, 'moderation/ban_user.php', ['user_id' => 1, 'banned' => true, 'reason' => 'Lifecycle test'])), 'moderator can ban the seller');
+check(row("SELECT status FROM scheduled_purchase_requests WHERE request_id=$request")['status'] === 'cancelled', "banning cancels the banned user's open schedules");
+check(row("SELECT item_status FROM INVENTORY WHERE product_id=$product")['item_status'] === 'Active', 'the reserved item is released when its seller is banned');
+$results = api(3, 'search/get_search_items.php', ['q' => 'Lifecycle desk'])['body'] ?? [];
+check(!in_array($product, array_map(static fn($r) => (int)($r['id'] ?? 0), is_array($results) ? $results : []), true), "a banned seller's listings are hidden from search");
+check(api(3, 'product/view_product.php?product_id=' . $product, null)['status'] === 404, "a banned seller's product page is hidden");
+check(rejected(api(3, 'chat/ensure_conversation.php', ['product_id' => $product])), 'nobody can start a chat with a banned seller');
+check(rejected(api(3, 'chat/create_message.php', ['conv_id' => $conversation, 'receiver_id' => 1, 'content' => 'Hello?'])), 'nobody can message a banned seller');
+check((int)row("SELECT COUNT(*) AS c FROM moderation_actions WHERE action='ban_user' AND target_user_id=1")['c'] === 1, 'the ban is written to the moderation audit log');
+check(ok(api(4, 'moderation/ban_user.php', ['user_id' => 1, 'banned' => false, 'reason' => 'Lifecycle test'])), 'moderator can lift the ban');
+check(api(3, 'product/view_product.php?product_id=' . $product, null)['status'] === 200, 'listings come back once the ban is lifted');
+
+harness_finish();
+```
+
+</details>
+
+<details>
+<summary>api/tests/schedule_proposal_test.php</summary>
+
+[Open source](../api/tests/schedule_proposal_test.php)
+
+```php
+<?php
+declare(strict_types=1);
+
+// Edges of the Scheduled Purchase proposal rules in api/scheduled_purchases/proposal.php.
+// Pure checks with a fixed clock: no database, no network.
+
+require_once __DIR__ . '/../scheduled_purchases/proposal.php';
+
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
+$checks = 0;
+
+function expect_same($actual, $expected, string $message): void
+{
+    global $checks;
+    $checks++;
+    if ($actual !== $expected) {
+        fwrite(STDERR, "FAIL: {$message}\nExpected: " . var_export($expected, true)
+            . "\nActual: " . var_export($actual, true) . "\n");
+        exit(1);
+    }
+}
+
+$now = new DateTimeImmutable('2026-10-01T12:00:00Z');
+$valid = [
+    'inventory_product_id' => 7, 'conversation_id' => 9,
+    'meeting_at' => '2026-10-02T12:00:00Z', 'meet_location' => 'North Campus',
+];
+$read = static fn(array $overrides, bool $payments = false): array =>
+    scheduled_purchase_read_proposal(array_merge($valid, $overrides), $now, $payments);
+$error = static fn(array $overrides, bool $payments = false): ?string => $read($overrides, $payments)['error'] ?? null;
+$proposal = static fn(array $overrides, bool $payments = false): array => $read($overrides, $payments)['proposal'] ?? [];
+
+// --- meeting time window --------------------------------------------------------
+expect_same($read([])['ok'], true, 'a meeting tomorrow is accepted');
+expect_same($read(['meeting_at' => '2026-10-01T12:00:00Z'])['ok'], true, 'a meeting at exactly now is accepted');
+expect_same($error(['meeting_at' => '2026-10-01T11:59:59Z']), 'Meeting date cannot be in the past', 'one second ago is in the past');
+expect_same($read(['meeting_at' => '2027-01-01T12:00:00Z'])['ok'], true, 'exactly three months ahead is accepted');
+expect_same($error(['meeting_at' => '2027-01-01T12:00:01Z']), 'Meeting date cannot be more than 3 months in advance', 'one second past three months is refused');
+expect_same($proposal(['meeting_at' => '2026-10-01T08:00:00-04:00'])['meeting_at']->format(DATE_ATOM), '2026-10-01T12:00:00+00:00',
+    'an Eastern offset is compared and stored as UTC');
+expect_same($error(['meeting_at' => '2026-10-02 12:00']), 'Invalid meeting date/time', 'a time without a zone is refused');
+
+// --- required fields ------------------------------------------------------------
+foreach (['inventory_product_id', 'conversation_id', 'meeting_at', 'meet_location'] as $field) {
+    expect_same($error([$field => '']), 'Missing required fields', "$field is required");
+}
+
+// --- meet location ----------------------------------------------------------------
+$thirtyChars = 'Café near Lockwood Library ok'; // 29 characters, 30 bytes
+expect_same(mb_strlen($thirtyChars . '!'), 30, 'fixture is exactly 30 characters');
+expect_same($proposal(['meet_location_choice' => 'Other', 'custom_meet_location' => $thirtyChars . '!'])['meet_location'] ?? null,
+    $thirtyChars . '!', 'a 30-character place with an accent is accepted (characters, not bytes)');
+expect_same($error(['meet_location_choice' => 'Other', 'custom_meet_location' => str_repeat('x', 31)]), 'Meet location is too long', '31 characters is too long');
+expect_same($error(['meet_location_choice' => 'Other', 'custom_meet_location' => '  ']), 'Custom meet location is required', '"Other" needs a typed place');
+expect_same($error(['meet_location_choice' => 'Mars']), 'Invalid meet location choice', 'only the listed campuses are choices');
+expect_same($error(['meet_location_choice' => ['North Campus']]), 'Invalid meet location choice', 'a non-text choice is refused');
+expect_same($proposal(['meet_location_choice' => 'Ellicott'])['meet_location'] ?? null, 'Ellicott', 'a listed choice replaces the free-text field');
+
+// --- description and trades --------------------------------------------------------
+expect_same($read(['description' => str_repeat('d', 1000)])['ok'], true, 'a 1000-character description is accepted');
+expect_same($error(['description' => str_repeat('d', 1001)]), 'Description cannot exceed 1000 characters', '1001 characters is refused');
+expect_same($error(['description' => ['x']]), 'Invalid description', 'a non-text description is refused');
+expect_same($error(['is_trade' => 'yes']), 'Invalid trade selection', 'trade must be a real boolean');
+expect_same($proposal(['is_trade' => '1'])['is_trade'] ?? null, true, '"1" counts as a trade');
+expect_same($error(['trade_item_description' => str_repeat('t', 101)]), 'Trade item description cannot exceed 100 characters', 'trade description is capped');
+expect_same($error(['trade_item_description' => 5]), 'Invalid trade item description', 'a non-text trade description is refused');
+
+// --- negotiated price ---------------------------------------------------------------
+expect_same($proposal(['negotiated_price' => '12.50'])['negotiated_price'] ?? null, 12.5, 'a two-decimal price is read');
+expect_same($proposal(['negotiated_price' => 20])['negotiated_price'] ?? null, 20.0, 'a numeric price is read');
+expect_same($proposal(['negotiated_price' => '.5'])['negotiated_price'] ?? null, 0.5, 'a leading-dot price is read');
+foreach (['12.505', '-5', '1e3', ' ', 'twelve'] as $badPrice) {
+    expect_same($error(['negotiated_price' => $badPrice]), 'Invalid negotiated price', "\"$badPrice\" is not a price");
+}
+expect_same($error(['negotiated_price' => true]), 'Invalid negotiated price', 'a boolean is not a price');
+$plain = $proposal([]);
+expect_same(array_key_exists('negotiated_price', $plain) && $plain['negotiated_price'] === null, true, 'no price means no negotiation');
+
+// --- built-in payment ----------------------------------------------------------------
+expect_same($read(['payment_option' => 'stripe', 'payment_amount' => '5.00'])['status'] ?? null, 409, 'Stripe is refused while payments are disabled');
+expect_same($error(['payment_option' => 'stripe', 'payment_amount' => '0.49'], true), 'Built-in payment amount must be between $0.50 and $9,999.99', 'below the Stripe minimum is refused');
+expect_same($proposal(['payment_option' => 'Stripe', 'payment_amount' => '0.50'], true)['payment_amount_cents'] ?? null, 50, 'the minimum is accepted, case-insensitively');
+expect_same($error(['payment_option' => 'cash']), 'Invalid payment option', 'only manual and stripe are options');
+
+// --- listing terms -----------------------------------------------------------------------
+$terms = static fn(array $overrides, bool $negotiable = true, bool $trades = true): ?string =>
+    scheduled_purchase_terms_error(array_merge($proposal([]), $overrides), $negotiable, $trades);
+expect_same($terms([]), null, 'a plain proposal meets every listing');
+expect_same($terms(['negotiated_price' => 10.0, 'negotiated_price_text' => '10'], false), 'This item is not marked as price negotiable', 'no price on a fixed-price listing');
+expect_same($terms(['is_trade' => true, 'trade_item_description' => 'Lamp'], true, false), 'This item does not accept trades', 'no trade on a no-trades listing');
+expect_same($terms(['is_trade' => true, 'trade_item_description' => 'Lamp', 'negotiated_price' => 5.0, 'negotiated_price_text' => '5']),
+    'Cannot enter a price for a trade', 'a trade and a price are exclusive');
+expect_same($terms(['is_trade' => true, 'trade_item_description' => '']), 'Trade item description is required when trade is selected', 'a trade says what is offered');
+expect_same($terms(['is_trade' => true, 'trade_item_description' => 'Lamp', 'payment_option' => 'stripe']),
+    'Built-in payment is not available for trades', 'a trade cannot be paid through Stripe');
+expect_same($terms(['negotiated_price' => 9999.99, 'negotiated_price_text' => '9999.99']), null, 'the maximum price is allowed');
+expect_same($terms(['negotiated_price' => 10000.0, 'negotiated_price_text' => '10000']), 'Negotiated price must be $9999.99 or less', 'one cent over the maximum is refused');
+expect_same($terms(['negotiated_price' => 4.2, 'negotiated_price_text' => '4.20']), 'Invalid price value', 'the typed "4.20" is caught even though the float is 4.2');
+
+echo "PASS: {$checks} schedule proposal checks\n";
+```
+
+</details>
+
+<details>
+<summary>api/tests/schema_sync_test.php</summary>
+
+[Open source](../api/tests/schema_sync_test.php)
+
+```php
+<?php
+declare(strict_types=1);
+
+// Declarative schema sync (api/database/schema_sync.php): parsing and diffing
+// need no database; the last section edits table files against a scratch
+// database on the local server and is skipped if none is reachable.
+
+require_once __DIR__ . '/../database/schema_sync.php';
+
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
+$checks = 0;
+
+function expect_same($actual, $expected, string $message): void
+{
+    global $checks;
+    $checks++;
+    if ($actual !== $expected) {
+        fwrite(STDERR, "FAIL: {$message}\nExpected: " . var_export($expected, true)
+            . "\nActual: " . var_export($actual, true) . "\n");
+        exit(1);
+    }
+}
+
+function expect_throws(callable $fn, string $needle, string $message): void
+{
+    global $checks;
+    $checks++;
+    try {
+        $fn();
+    } catch (RuntimeException $e) {
+        if (!str_contains($e->getMessage(), $needle)) {
+            fwrite(STDERR, "FAIL: {$message}\nWrong error: {$e->getMessage()}\n");
+            exit(1);
+        }
+        return;
+    }
+    fwrite(STDERR, "FAIL: {$message}\nNothing was thrown\n");
+    exit(1);
+}
+
+// --- schema_split_statements ---
+expect_same(
+    schema_split_statements("-- note; with semicolon\nCREATE TABLE a (x INT COMMENT 'a;b''c'); /* c; */ INSERT INTO a VALUES (1);\n# done;\n"),
+    ["CREATE TABLE a (x INT COMMENT 'a;b''c')", 'INSERT INTO a VALUES (1)'],
+    'statements split on semicolons outside quotes and comments'
+);
+expect_same(schema_split_statements("  \n-- only a comment\n"), [], 'a comment-only file has no statements');
+
+// --- schema_parse_table_file ---
+$file = '/tmp/orders.sql';
+$parsed = schema_parse_table_file($file, "CREATE TABLE IF NOT EXISTS `orders` (\n  id INT,\n  user_id INT,\n  FOREIGN KEY (user_id) REFERENCES Users(id),\n  FOREIGN KEY (id) REFERENCES orders(id)\n);\nINSERT IGNORE INTO orders (id) VALUES (1);");
+expect_same($parsed['name'], 'orders', 'table name read from CREATE TABLE');
+expect_same($parsed['deps'], ['Users'], 'dependencies exclude the table itself');
+expect_same(count($parsed['seed']), 1, 'INSERT after CREATE is a starter row');
+expect_throws(fn() => schema_parse_table_file('/tmp/other.sql', 'CREATE TABLE orders (id INT);'), "declares table 'orders'", 'file must be named after its table');
+expect_throws(fn() => schema_parse_table_file($file, 'DROP TABLE orders;'), 'must start with a CREATE TABLE', 'first statement must be CREATE TABLE');
+expect_throws(fn() => schema_parse_table_file($file, "CREATE TABLE orders (id INT);\nDELETE FROM orders;"), 'only INSERT', 'only INSERT may follow CREATE TABLE');
+
+// --- schema_order_tables ---
+$make = fn(string $name, array $deps) => ['name' => $name, 'file' => "{$name}.sql", 'deps' => $deps];
+$order = array_keys(schema_order_tables([
+    'c' => $make('c', ['b']), 'b' => $make('b', ['a']), 'a' => $make('a', []),
+]));
+expect_same($order, ['a', 'b', 'c'], 'referenced tables come first');
+expect_throws(fn() => schema_order_tables(['a' => $make('a', ['b']), 'b' => $make('b', ['a'])]), 'Circular', 'circular references are rejected');
+expect_throws(fn() => schema_order_tables(['a' => $make('a', ['ghost'])]), "references 'ghost'", 'a reference to an undeclared table is rejected');
+
+// --- schema_parse_create + schema_diff_table ---
+$ddl = function (array $lines): string {
+    return "CREATE TABLE `t` (\n  " . implode(",\n  ", $lines) . "\n) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4";
+};
+$live = schema_parse_create($ddl([
+    '`id` int(11) NOT NULL AUTO_INCREMENT', '`name` varchar(20) NOT NULL', '`old` int(11) DEFAULT NULL',
+    'PRIMARY KEY (`id`)', 'KEY `idx_name` (`name`)', 'KEY `idx_gone` (`old`)',
+    'CONSTRAINT `fk_a` FOREIGN KEY (`old`) REFERENCES `u` (`id`)', 'CONSTRAINT `chk_a` CHECK (`id` > 0)',
+]));
+expect_same(array_keys($live['columns']), ['id', 'name', 'old'], 'columns parsed');
+expect_same(array_keys($live['indexes']), ['idx_name', 'idx_gone'], 'indexes parsed');
+expect_same(array_keys($live['foreign_keys']), ['fk_a'], 'foreign keys parsed');
+expect_same(array_keys($live['checks']), ['chk_a'], 'checks parsed');
+expect_same(str_contains($live['options'], 'AUTO_INCREMENT'), false, 'table AUTO_INCREMENT counter is ignored');
+
+expect_same(schema_diff_table('t', $live, $live), [], 'identical tables have no operations');
+
+$want = schema_parse_create($ddl([
+    '`id` int(11) NOT NULL AUTO_INCREMENT', '`name` varchar(40) NOT NULL', '`added` int(11) DEFAULT NULL',
+    'PRIMARY KEY (`id`)', 'KEY `idx_name` (`name`,`added`)',
+    'CONSTRAINT `chk_b` CHECK (`id` > 1)',
+]));
+$notes = array_map(fn($op) => $op['phase'] . ':' . $op['note'], schema_diff_table('t', $live, $want));
+expect_same($notes, [
+    '1:drop check chk_a', '1:drop foreign key fk_a',
+    '2:drop index idx_gone',
+    '3:change column name', '3:add column added', '3:drop column old',
+    '4:change index idx_name',
+    '6:add check chk_b',
+], 'diff lists drops first, then columns, indexes, then constraints');
+$ops = schema_diff_table('t', $live, $want);
+expect_same($ops[3]['sql'], 'ALTER TABLE `t` MODIFY COLUMN `name` varchar(40) NOT NULL', 'changed column is modified in place');
+expect_same($ops[4]['sql'], 'ALTER TABLE `t` ADD COLUMN `added` int(11) DEFAULT NULL AFTER `name`', 'new column is placed after its predecessor');
+expect_same($ops[5]['destructive'], true, 'dropping a column is flagged destructive');
+expect_same($ops[6]["sql"], 'ALTER TABLE `t` DROP INDEX `idx_name`, ADD KEY `idx_name` (`name`,`added`)', 'a changed index is replaced in one statement');
+
+// --- against a scratch database ---
+mysqli_report(MYSQLI_REPORT_OFF);
+$host = getenv('DB_HOST') ?: '127.0.0.1';
+if (!in_array(strtolower($host), ['127.0.0.1', 'localhost', '::1'], true)) {
+    echo "PASS: {$checks} schema sync checks (database section skipped: DB_HOST is not local)\n";
+    exit(0);
+}
+$scratch = 'dm_schema_sync_test_' . getmypid();
+$conn = @new mysqli($host, getenv('DB_USERNAME') ?: 'root', getenv('DB_PASSWORD') ?: '');
+if ($conn->connect_errno) {
+    echo "PASS: {$checks} schema sync checks (database section skipped: no local database)\n";
+    exit(0);
+}
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+$dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $scratch;
+mkdir($dir);
+$write = fn(string $name, string $sql) => file_put_contents("{$dir}/{$name}.sql", $sql);
+$sync = fn(array $options = []) => schema_sync_run($conn, $dir, $options);
+$columns = function (string $table) use ($conn, $scratch): array {
+    $r = $conn->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='{$scratch}' AND TABLE_NAME='{$table}' ORDER BY ORDINAL_POSITION");
+    return array_column($r->fetch_all(MYSQLI_NUM), 0);
+};
+
+// expect_same() calls exit(), which skips finally blocks, so a shutdown function
+// is what guarantees the scratch databases go away after a failed check.
+register_shutdown_function(static function () use ($conn, $scratch, $dir): void {
+    $conn->query("DROP DATABASE IF EXISTS `{$scratch}`");
+    $conn->query('DROP DATABASE IF EXISTS `' . schema_shadow_name($scratch) . '`');
+    foreach (glob("{$dir}/*.sql") ?: [] as $leftover) {
+        unlink($leftover);
+    }
+    @rmdir($dir);
+});
+
+{
+    $conn->query("CREATE DATABASE `{$scratch}` CHARACTER SET utf8mb4");
+    $conn->select_db($scratch);
+
+    $write('owners', "CREATE TABLE owners (\n  owner_id INT NOT NULL AUTO_INCREMENT,\n  name VARCHAR(20) NOT NULL,\n  PRIMARY KEY (owner_id)\n) ENGINE=InnoDB;\nINSERT IGNORE INTO owners (owner_id, name) VALUES (1, 'starter');\n");
+    $write('pets', "CREATE TABLE pets (\n  pet_id INT NOT NULL AUTO_INCREMENT,\n  owner_id INT NOT NULL,\n  nickname VARCHAR(20) NOT NULL,\n  PRIMARY KEY (pet_id),\n  CONSTRAINT fk_pet_owner FOREIGN KEY (owner_id) REFERENCES owners(owner_id) ON DELETE CASCADE\n) ENGINE=InnoDB;\n");
+
+    $report = $sync();
+    expect_same($report['created'], ['owners', 'pets'], 'tables are created, referenced table first');
+    expect_same((int)$conn->query('SELECT COUNT(*) FROM owners')->fetch_row()[0], 1, 'starter rows are inserted into an empty table');
+    expect_same($report['warnings'], [], 'a fresh sync converges');
+
+    $conn->query("INSERT INTO pets (owner_id, nickname) VALUES (1, 'Rex')");
+    $report = $sync();
+    expect_same([$report['created'], $report['altered']], [[], []], 'syncing again changes nothing');
+    expect_same((int)$conn->query('SELECT COUNT(*) FROM owners')->fetch_row()[0], 1, 'starter rows are not re-added to a populated table');
+
+    $write('pets', str_replace("  nickname VARCHAR(20) NOT NULL,\n", "  nickname VARCHAR(20) NOT NULL,\n  color VARCHAR(10) NULL,\n", file_get_contents("{$dir}/pets.sql")));
+    $report = $sync();
+    expect_same($report['altered'], ['pets' => ['add column color']], 'a new column in the file is added');
+    expect_same($columns('pets'), ['pet_id', 'owner_id', 'nickname', 'color'], 'the new column is in file order');
+
+    $write('pets', str_replace('nickname VARCHAR(20)', 'nickname VARCHAR(40)', file_get_contents("{$dir}/pets.sql")));
+    expect_same($sync()['altered'], ['pets' => ['change column nickname']], 'a changed column definition is applied');
+
+    $dryRun = $sync(['dry_run' => true]);
+    expect_same($dryRun['plan'], [], 'dry run on a synced database plans nothing');
+    $write('pets', str_replace("  color VARCHAR(10) NULL,\n", '', file_get_contents("{$dir}/pets.sql")));
+    $dryRun = $sync(['dry_run' => true]);
+    expect_same(count($dryRun['plan']), 1, 'dry run reports the drop');
+    expect_same(str_starts_with($dryRun['plan'][0], '[destructive]'), true, 'dry run marks the drop destructive');
+    expect_same($columns('pets'), ['pet_id', 'owner_id', 'nickname', 'color'], 'dry run changes nothing');
+    $sync();
+    expect_same($columns('pets'), ['pet_id', 'owner_id', 'nickname'], 'a column removed from the file is dropped');
+    expect_same((string)$conn->query('SELECT nickname FROM pets')->fetch_row()[0], 'Rex', 'existing rows survive every change');
+
+    unlink("{$dir}/pets.sql");
+    $report = $sync();
+    expect_same([$report['unmanaged'], $report['dropped_tables']], [['pets'], []], 'a table without a file is reported, not dropped');
+    $report = $sync(['prune' => true]);
+    expect_same($report['dropped_tables'], ['pets'], '--prune drops tables without a file');
+}
+
+echo "PASS: {$checks} schema sync checks\n";
+```
+
+</details>
+
+<details>
+<summary>api/tests/support/integration_harness.php</summary>
+
+[Open source](../api/tests/support/integration_harness.php)
+
+```php
+<?php
+declare(strict_types=1);
+
+// Shared setup for the HTTP integration suites. Each suite gets its own randomly
+// named local database, migrated from scratch, a private `php -S` server, and
+// logged-in fixture users. Nothing touches application data, and outgoing email
+// is disabled, so account and password-reset flows can run safely.
+//
+// Usage:
+//   require __DIR__ . '/support/integration_harness.php';
+//   harness_start('lifecycle', 4);   // users lifecycle1@ … lifecycle4@buffalo.edu
+//   check(ok(api(1, 'some/endpoint.php', ['field' => 1])), 'what the endpoint promises');
+//   harness_finish();
+//
+// Set HARNESS_KEEP_LOG=1 to keep the test server's PHP error log for a failed run.
+
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+
+require_once __DIR__ . '/../../utility/load_env.php';
+load_env();
+if (!in_array(getenv('DB_HOST'), ['localhost', '127.0.0.1', '::1'], true)) {
+    throw new RuntimeException('Integration tests require a local MySQL server.');
+}
+// load_env() never overrides a variable that is already set, so blanking these
+// here keeps the test server from reaching Resend or SMTP.
+foreach (['RESEND_API_KEY', 'GMAIL_USERNAME', 'GMAIL_PASSWORD'] as $mailSetting) {
+    putenv($mailSetting . '=');
+}
+
+$root = dirname(__DIR__, 3);
+$conn = null;
+$base = '';
+$cookies = [];
+$tokens = [];
+$password = '';
+$checks = 0;
+$failures = 0;
+$harness = ['database' => null, 'server' => null, 'log' => null, 'prefix' => '', 'cleanup' => []];
+
+/** Create the database, migrate it, add $users accounts, and log each one in. */
+function harness_start(string $prefix, int $users): void
+{
+    global $conn, $base, $password, $harness, $root;
+
+    $harness['prefix'] = $prefix;
+    $harness['database'] = 'dm_' . $prefix . '_test_' . bin2hex(random_bytes(6));
+    $harness['log'] = tempnam(sys_get_temp_dir(), 'dm-' . $prefix . '-');
+    putenv('DB_NAME=' . $harness['database']);
+    require_once __DIR__ . '/../../database/db_connect.php';
+    mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+    $conn = db();
+    register_shutdown_function('harness_cleanup');
+
+    $log = $harness['log'];
     $migration = proc_open([PHP_BINARY, 'api/database/migrate_schema.php'],
-        [0 => ['pipe','r'], 1 => ['file',$log,'a'], 2 => ['file',$log,'a']], $pipes, $root);
-    if (proc_close($migration) !== 0) throw new RuntimeException('Test schema migration failed; inspect ' . $log);
-    $password = bin2hex(random_bytes(16));
+        [0 => ['pipe', 'r'], 1 => ['file', $log, 'a'], 2 => ['file', $log, 'a']], $pipes, $root);
+    if (proc_close($migration) !== 0) {
+        throw new RuntimeException('Test schema migration failed; inspect ' . $log);
+    }
+
+    $password = bin2hex(random_bytes(16)) . 'Aa1!';
     $hash = password_hash($password, PASSWORD_DEFAULT);
-    for ($id = 1; $id <= 4; $id++) {
-        $email = 'lifecycle' . $id . '@buffalo.edu';
-        $stmt = $conn->prepare("INSERT INTO user_accounts (user_id,first_name,last_name,grad_month,grad_year,email,hash_pass) VALUES (?, 'Lifecycle', 'Test', 5, 2027, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO user_accounts (user_id, first_name, last_name, grad_month, grad_year, email, hash_pass)
+                            VALUES (?, 'Harness', 'Test', 5, 2027, ?, ?)");
+    for ($id = 1; $id <= $users; $id++) {
+        $email = harness_email($id);
         $stmt->bind_param('iss', $id, $email, $hash);
         $stmt->execute();
-        $cookies[$id] = tempnam(sys_get_temp_dir(), 'dm-cookie-');
     }
-    $socket = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
+    $stmt->close();
+
+    $socket = stream_socket_server('tcp://127.0.0.1:0');
     $address = stream_socket_get_name($socket, false);
     fclose($socket);
     $base = 'http://' . $address;
-    $server = proc_open([PHP_BINARY, '-S', $address, 'router.php'],
-        [0 => ['pipe','r'], 1 => ['file',$log,'a'], 2 => ['file',$log,'a']], $pipes, $root);
-    for ($attempt = 0; $attempt < 50; $attempt++) {
-        if (@file_get_contents($base . '/api/auth/get_csrf_token.php') !== false) break;
+    $harness['server'] = proc_open([PHP_BINARY, '-S', $address, 'router.php'],
+        [0 => ['pipe', 'r'], 1 => ['file', $log, 'a'], 2 => ['file', $log, 'a']], $pipes, $root);
+    for ($attempt = 0; $attempt < 50 && @file_get_contents($base . '/api/auth/get_csrf_token.php') === false; $attempt++) {
         usleep(100000);
     }
-    for ($id = 1; $id <= 4; $id++) {
-        $login = api($id, 'auth/login.php', ['email' => 'lifecycle' . $id . '@buffalo.edu', 'password' => $password]);
-        if (!ok($login)) throw new RuntimeException('Fixture login failed: ' . json_encode($login));
-        $tokens[$id] = api($id, 'auth/get_csrf_token.php', null)['body']['csrf_token'];
+
+    for ($id = 1; $id <= $users; $id++) {
+        harness_login($id);
     }
-
-    // Exercise the actual review fixture, including its purchase-history format.
-    $conn->query("UPDATE user_accounts SET email='testuser@buffalo.edu' WHERE user_id=2");
-    $conn->query("UPDATE user_accounts SET email='testuserschedulered@buffalo.edu' WHERE user_id=1");
-    $conn->multi_query(file_get_contents($root . '/data/014_#294_review_test_data.sql'));
-    do {
-        if ($result = $conn->store_result()) $result->free();
-        if (!$conn->more_results()) break;
-        $conn->next_result();
-    } while (true);
-    $notebook = (int)row("SELECT product_id FROM INVENTORY WHERE title='Marble Notebook'")['product_id'];
-    $review = ['product_id' => $notebook, 'rating' => 4, 'product_rating' => 4, 'review_text' => 'Review fixture test'];
-    $ch = curl_init($base . '/api/reviews/upload_review_video.php');
-    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => $cookies[2],
-        CURLOPT_POST => true, CURLOPT_POSTFIELDS => ['csrf_token' => $tokens[2],
-            'video' => new CURLFile(__DIR__ . '/fixtures/review-video.webm', 'video/webm', 'review.webm')]]);
-    $upload = json_decode((string)curl_exec($ch), true);
-    check(curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200 && !empty($upload['video_url']), 'buyer can upload a review video');
-    curl_close($ch);
-    $uploadedVideo = $upload['video_url'] ?? null;
-    $review['video_url'] = '/media/review-images/review_u3_20260930_120000_abcdef123456.webm';
-    check(api(2, 'reviews/submit_review.php', $review)['status'] === 400, 'buyer cannot attach another user video');
-    $review['video_url'] = '/media/review-images/review_u2_20260930_120000_abcdef123456.webm';
-    check(api(2, 'reviews/submit_review.php', $review)['status'] === 400, 'missing review video is rejected');
-    $review['video_url'] = $uploadedVideo;
-    check(api(3, 'reviews/submit_review.php', array_replace($review, ['video_url' => null]))['status'] === 403, 'unrelated buyer cannot review the seeded notebook');
-    check(ok(api(2, 'reviews/submit_review.php', $review)), 'seeded Marble Notebook buyer can submit a review');
-    check(api(2, 'reviews/get_review.php?product_id=' . $notebook, null)['body']['review']['video_url'] === $uploadedVideo, 'buyer can retrieve review video');
-    check(api(1, 'reviews/get_product_reviews.php?product_id=' . $notebook, null)['body']['reviews'][0]['video_url'] === $uploadedVideo, 'seller dashboard can retrieve review video');
-    $ch = curl_init($base . '/api/media/image.php?url=' . rawurlencode((string)$uploadedVideo));
-    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_HTTPHEADER => ['Range: bytes=0-15']]);
-    $bytes = curl_exec($ch);
-    check(curl_getinfo($ch, CURLINFO_HTTP_CODE) === 206 && strlen((string)$bytes) === 16, 'review video supports byte-range playback');
-    curl_close($ch);
-    check(api(2, 'reviews/submit_review.php', $review)['status'] === 409, 'seeded notebook cannot be reviewed twice');
-    $conn->query("UPDATE user_accounts SET email='lifecycle2@buffalo.edu' WHERE user_id=2");
-    $conn->query("UPDATE user_accounts SET email='lifecycle1@buffalo.edu' WHERE user_id=1");
-
-    [$product, $conversation] = fixture();
-    $request = accepted($product, $conversation);
-    $confirmation = confirm($product, $conversation, $request);
-    check(ok($confirmation), 'seller can confirm an accepted schedule');
-    $confirmationId = (int)$confirmation['body']['data']['confirm_request_id'];
-    check(rejected(api(3, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept'])), 'unrelated buyer cannot accept confirmation');
-    check(ok(api(2, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept'])), 'buyer completes purchase');
-    check(rejected(api(2, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept'])), 'repeat confirmation is rejected');
-    check((int)row("SELECT sold FROM INVENTORY WHERE product_id=$product")['sold'] === 1, 'completion marks listing sold');
-    check(rejected(api(2, 'scheduled_purchases/cancel.php', ['request_id' => $request])), 'completed purchase cannot be cancelled');
-    check(rejected(api(1, 'seller_dashboard/delete_listing.php', ['id' => $product])), 'sold listing and receipt cannot be deleted');
-
-    [$product, $conversation] = fixture();
-    [$otherProduct, $otherConversation] = fixture();
-    check(rejected(schedule($product, $otherConversation)), 'schedule cannot target a chat for another product');
-    $first = schedule($product, $conversation);
-    check(ok($first), 'first schedule is created');
-    check(rejected(schedule($product, $conversation)), 'duplicate pending schedule is rejected');
-
-    // A direct multipart request must not bypass the listing edit restrictions.
-    foreach (['Active', 'Draft', 'Pending', 'Sold', 'sold_flag'] as $state) {
-        [$editProduct] = fixture();
-        $storedStatus = $state === 'sold_flag' ? 'Active' : $state;
-        $soldFlag = $state === 'sold_flag' ? 1 : 0;
-        $conn->query("UPDATE INVENTORY SET item_status='$storedStatus', sold=$soldFlag WHERE product_id=$editProduct");
-        foreach (['Active', 'Draft'] as $targetStatus) {
-            $ch = curl_init($base . '/api/seller_dashboard/product_listing.php');
-            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10,
-                CURLOPT_COOKIEFILE => $cookies[1], CURLOPT_POST => true, CURLOPT_POSTFIELDS => [
-                    'csrf_token' => $tokens[1], 'mode' => 'update', 'id' => (string)$editProduct,
-                    'status' => $targetStatus, 'title' => 'Edited lifecycle desk',
-                    'description' => 'A desk for lifecycle testing', 'price' => '25',
-                    'categories[0]' => 'Furniture', 'itemLocation' => 'North Campus', 'condition' => 'Good',
-                    'existingPhotos[0]' => '/test.jpg',
-                ]]);
-            $body = json_decode((string)curl_exec($ch), true);
-            $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            $blocked = in_array($state, ['Pending', 'Sold', 'sold_flag'], true);
-            check($httpStatus === ($blocked ? 403 : 200), "$state listing edit to $targetStatus returns the expected status ($httpStatus: " . json_encode($body) . ')');
-            if ($blocked) {
-                check(($body['error'] ?? '') === 'Pending or sold listings cannot be edited.', "$state edit reaches the state guard");
-                $unchanged = row("SELECT title, item_status, sold FROM INVENTORY WHERE product_id=$editProduct");
-                check($unchanged['title'] === 'Lifecycle desk' && $unchanged['item_status'] === $storedStatus
-                    && (int)$unchanged['sold'] === $soldFlag, "$state edit leaves the listing unchanged");
-            }
-        }
-    }
-
-    foreach (['Draft', 'Sold'] as $state) {
-        [$product, $conversation] = fixture();
-        $conn->query("UPDATE INVENTORY SET item_status='$state' WHERE product_id=$product");
-        check(rejected(schedule($product, $conversation)), "$state listing cannot be scheduled");
-        [$product, $conversation] = fixture();
-        $request = (int)schedule($product, $conversation)['body']['data']['request_id'];
-        $conn->query("UPDATE INVENTORY SET item_status='$state' WHERE product_id=$product");
-        check(rejected(api(2, 'scheduled_purchases/respond.php', ['request_id' => $request, 'action' => 'accept'])), "old schedule cannot accept a $state listing");
-    }
-
-    [$product, $conversation] = fixture();
-    $request = accepted($product, $conversation);
-    $confirmationId = (int)confirm($product, $conversation, $request)['body']['data']['confirm_request_id'];
-    check(ok(api(2, 'scheduled_purchases/cancel.php', ['request_id' => $request])), 'buyer can cancel before completion');
-    check(rejected(api(2, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept'])), 'cancelled schedule cannot be completed through old confirmation');
-    check((int)row("SELECT sold FROM INVENTORY WHERE product_id=$product")['sold'] === 0, 'cancelled purchase leaves listing unsold');
-
-    [$product, $conversation] = fixture();
-    $request = accepted($product, $conversation);
-    $confirmationId = (int)confirm($product, $conversation, $request)['body']['data']['confirm_request_id'];
-    api(2, 'scheduled_purchases/cancel.php', ['request_id' => $request]);
-    $conn->query("UPDATE confirm_purchase_requests SET expires_at=DATE_SUB(NOW(), INTERVAL 1 DAY) WHERE confirm_request_id=$confirmationId");
-    require_once __DIR__ . '/../confirm_purchases/helpers.php';
-    $conn->begin_transaction();
-    auto_finalize_confirm_request($conn, row("SELECT * FROM confirm_purchase_requests WHERE confirm_request_id=$confirmationId"));
-    $conn->commit();
-    check((int)row("SELECT sold FROM INVENTORY WHERE product_id=$product")['sold'] === 0, 'cancelled confirmation cannot auto-complete later');
-
-    [$product, $conversation] = fixture();
-    $request = accepted($product, $conversation);
-    check(rejected(api(1, 'seller_dashboard/set_item_status.php', ['id' => $product, 'status' => 'Active'])), 'reserved listing cannot be manually reactivated');
-
-    [$product, $conversation] = fixture();
-    $request = accepted($product, $conversation);
-    $confirmationId = (int)confirm($product, $conversation, $request, false)['body']['data']['confirm_request_id'];
-    api(2, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept']);
-    check(row("SELECT item_status FROM INVENTORY WHERE product_id=$product")['item_status'] === 'Active', 'unsuccessful exchange releases listing');
-    $secondConversation = (int)api(3, 'chat/ensure_conversation.php', ['product_id' => $product])['body']['conv_id'];
-    $secondRequest = (int)schedule($product, $secondConversation)['body']['data']['request_id'];
-    check(ok(api(3, 'scheduled_purchases/respond.php', ['request_id' => $secondRequest, 'action' => 'accept'])), 'another buyer can reserve after unsuccessful exchange');
-    check(rejected(confirm($product, $conversation, $request)), 'old unsuccessful schedule cannot steal a newer reservation');
-    $secondConfirmationId = (int)confirm($product, $secondConversation, $secondRequest)['body']['data']['confirm_request_id'];
-    check($secondConfirmationId > $confirmationId, 'second buyer has a newer confirmation on the same listing');
-    $firstBuyerReceipt = api(2, 'receipt/view_receipt.php?product_id=' . $product, null);
-    check(ok($firstBuyerReceipt), 'first buyer can still open their receipt after another buyer confirms');
-    check(ok(api(3, 'receipt/view_receipt.php?product_id=' . $product, null)), 'second buyer can open their receipt');
-    check(!ok(api(4, 'receipt/view_receipt.php?product_id=' . $product, null)), 'an unrelated user cannot open a receipt for the listing');
-
-    [$product, $conversation] = fixture();
-    $request = accepted($product, $conversation);
-    check(ok(api(1, 'seller_dashboard/delete_listing.php', ['id' => $product])), 'seller can delete unsold listing with a schedule');
-    check((int)row("SELECT item_deleted FROM conversations WHERE conv_id=$conversation")['item_deleted'] === 1, 'listing deletion closes chat');
-    check(rejected(api(2, 'chat/create_message.php', ['conv_id' => $conversation, 'receiver_id' => 1, 'content' => 'Still here?'])), 'closed chat rejects text messages');
-    check(rejected(api(2, 'scheduled_purchases/respond.php', ['request_id' => $request, 'action' => 'accept'])), 'deleted listing rejects stale schedule card');
-    check(rejected(confirm($product, $conversation, $request)), 'deleted listing rejects confirmation');
-
-    // Wishlist adds are decided by the unique key; a repeat add is a 400, not a 500.
-    [$product, $conversation] = fixture();
-    check(ok(api(2, 'wishlist/add_to_wishlist.php', ['product_id' => $product])), 'buyer can wishlist a listing');
-    $repeatAdd = api(2, 'wishlist/add_to_wishlist.php', ['product_id' => $product]);
-    check($repeatAdd['status'] === 400 && ($repeatAdd['body']['error'] ?? '') === 'Product already in wishlist', 'repeat wishlist add is rejected cleanly');
-    check((int)row("SELECT wishlisted FROM INVENTORY WHERE product_id=$product")['wishlisted'] === 1, 'repeat wishlist add does not double-count');
-
-    // Chat media is participant-only and answers errors as JSON.
-    $introMessage = (int)row("SELECT message_id FROM messages WHERE conv_id=$conversation ORDER BY message_id LIMIT 1")['message_id'];
-    $chatMedia = static function (int $user, int $messageId) use (&$base, &$cookies): array {
-        $ch = curl_init($base . '/api/chat/serve_chat_image.php?message_id=' . $messageId);
-        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10, CURLOPT_COOKIEFILE => $cookies[$user]]);
-        $raw = (string)curl_exec($ch);
-        $result = ['status' => curl_getinfo($ch, CURLINFO_HTTP_CODE), 'type' => (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE), 'body' => json_decode($raw, true)];
-        curl_close($ch);
-        return $result;
-    };
-    $outsider = $chatMedia(4, $introMessage);
-    check($outsider['status'] === 403 && ($outsider['body']['error'] ?? '') === 'forbidden', 'non-participant cannot fetch chat media');
-    check(str_starts_with($outsider['type'], 'application/json'), 'chat media errors are sent as JSON');
-    check(($chatMedia(2, $introMessage)['body']['error'] ?? '') === 'no_image', 'participant gets no_image for a text message');
-
-    // Last: this deletes buyer 2.
-    [$product, $conversation] = fixture();
-    accepted($product, $conversation);
-    check(ok(api(2, 'auth/delete_account.php', ['confirmation' => 'lifecycle2@buffalo.edu', 'currentPassword' => $password])), 'buyer can delete their account');
-    check(row("SELECT item_status FROM INVENTORY WHERE product_id=$product")['item_status'] === 'Active', 'buyer account deletion puts their reserved item back on sale');
-
-    // Ban: seller 1 is banned by moderator 4 while buyer 3 holds a reservation.
-    [$product, $conversation] = fixture(3);
-    $request = (int)schedule($product, $conversation)['body']['data']['request_id'];
-    check(ok(api(3, 'scheduled_purchases/respond.php', ['request_id' => $request, 'action' => 'accept'])), 'buyer reserves before the seller is banned');
-    $conn->query("UPDATE user_accounts SET role='moderator' WHERE user_id=4");
-    check(ok(api(4, 'moderation/ban_user.php', ['user_id' => 1, 'banned' => true, 'reason' => 'Lifecycle test'])), 'moderator can ban the seller');
-    check(row("SELECT status FROM scheduled_purchase_requests WHERE request_id=$request")['status'] === 'cancelled', "banning cancels the banned user's open schedules");
-    check(row("SELECT item_status FROM INVENTORY WHERE product_id=$product")['item_status'] === 'Active', 'the reserved item is released when its seller is banned');
-    $results = api(3, 'search/get_search_items.php', ['q' => 'Lifecycle desk'])['body'] ?? [];
-    check(!in_array($product, array_map(static fn($r) => (int)($r['id'] ?? 0), is_array($results) ? $results : []), true), "a banned seller's listings are hidden from search");
-    check(api(3, 'product/view_product.php?product_id=' . $product, null)['status'] === 404, "a banned seller's product page is hidden");
-    check(rejected(api(3, 'chat/ensure_conversation.php', ['product_id' => $product])), 'nobody can start a chat with a banned seller');
-    check(rejected(api(3, 'chat/create_message.php', ['conv_id' => $conversation, 'receiver_id' => 1, 'content' => 'Hello?'])), 'nobody can message a banned seller');
-    check((int)row("SELECT COUNT(*) AS c FROM moderation_actions WHERE action='ban_user' AND target_user_id=1")['c'] === 1, 'the ban is written to the moderation audit log');
-    check(ok(api(4, 'moderation/ban_user.php', ['user_id' => 1, 'banned' => false, 'reason' => 'Lifecycle test'])), 'moderator can lift the ban');
-    check(api(3, 'product/view_product.php?product_id=' . $product, null)['status'] === 200, 'listings come back once the ban is lifted');
-
-    echo "$checks checks, $failures failures" . PHP_EOL;
-} finally {
-    if ($uploadedVideo) {
-        require_once __DIR__ . '/../helpers/image_upload.php';
-        @unlink(data_media_dir('review-images') . '/' . basename($uploadedVideo));
-    }
-    if (is_resource($server)) { proc_terminate($server); proc_close($server); }
-    $conn->query("DROP DATABASE `$database`");
-    $conn->close();
-    foreach ($cookies as $cookie) @unlink($cookie);
-    @unlink($log);
 }
-exit($failures > 0 ? 1 : 0);
+
+function harness_email(int $id): string
+{
+    global $harness;
+    return $harness['prefix'] . $id . '@buffalo.edu';
+}
+
+/** Start a fresh session for $user (any cookie-jar key) and refresh its CSRF token. */
+function harness_login($user, ?string $email = null, ?string $userPassword = null): void
+{
+    global $cookies, $password;
+    if (isset($cookies[$user])) @unlink($cookies[$user]);
+    $cookies[$user] = tempnam(sys_get_temp_dir(), 'dm-cookie-');
+    $login = api($user, 'auth/login.php', ['email' => $email ?? harness_email((int)$user), 'password' => $userPassword ?? $password]);
+    if (!ok($login)) {
+        throw new RuntimeException('Fixture login failed: ' . json_encode($login));
+    }
+    harness_refresh_csrf($user);
+}
+
+function harness_refresh_csrf($user): void
+{
+    global $tokens;
+    $tokens[$user] = api($user, 'auth/get_csrf_token.php', null)['body']['csrf_token'] ?? '';
+}
+
+/** A cookie jar with no session, for anonymous or unauthenticated requests. */
+function harness_guest(string $name = 'guest'): string
+{
+    global $cookies, $tokens;
+    if (isset($cookies[$name])) @unlink($cookies[$name]);
+    $cookies[$name] = tempnam(sys_get_temp_dir(), 'dm-cookie-');
+    $tokens[$name] = '';
+    return $name;
+}
+
+/** Run $callback when the suite exits, even if it throws. */
+function harness_on_cleanup(callable $callback): void
+{
+    global $harness;
+    $harness['cleanup'][] = $callback;
+}
+
+function harness_cleanup(): void
+{
+    global $harness, $conn, $cookies;
+    foreach (array_reverse($harness['cleanup']) as $callback) {
+        try { $callback(); } catch (Throwable $e) { fwrite(STDERR, 'cleanup: ' . $e->getMessage() . PHP_EOL); }
+    }
+    $harness['cleanup'] = [];
+    if (is_resource($harness['server'])) {
+        proc_terminate($harness['server']);
+        proc_close($harness['server']);
+    }
+    if ($conn instanceof mysqli && $harness['database']) {
+        $conn->query('DROP DATABASE `' . $harness['database'] . '`');
+        $conn->close();
+        $harness['database'] = null;
+    }
+    foreach ($cookies as $cookie) @unlink($cookie);
+    if ($harness['log'] && getenv('HARNESS_KEEP_LOG')) {
+        fwrite(STDERR, 'Server log kept at ' . $harness['log'] . PHP_EOL);
+    } elseif ($harness['log']) {
+        @unlink($harness['log']);
+    }
+}
+
+/** Print the tally and exit nonzero on any failure. */
+function harness_finish(): void
+{
+    global $checks, $failures;
+    echo "$checks checks, $failures failures" . PHP_EOL;
+    exit($failures > 0 ? 1 : 0);
+}
+
+// --- checks -----------------------------------------------------------------
+
+function check(bool $condition, string $message): void
+{
+    global $failures, $checks;
+    $checks++;
+    if (!$condition) $failures++;
+    echo ($condition ? 'PASS ' : 'FAIL ') . $message . PHP_EOL;
+}
+
+function ok(array $response): bool { return $response['status'] === 200; }
+function rejected(array $response): bool { return in_array($response['status'], [400, 403, 404, 409], true); }
+
+/** True when the response has exactly this status and error text. */
+function error_is(array $response, int $status, string $error): bool
+{
+    return $response['status'] === $status && ($response['body']['error'] ?? null) === $error;
+}
+
+function row(string $sql): array
+{
+    global $conn;
+    return $conn->query($sql)->fetch_assoc() ?: [];
+}
+
+// --- requests ---------------------------------------------------------------
+
+/**
+ * Send a request as $user. A null $body sends a GET; an array is POSTed as JSON
+ * with the user's CSRF token added unless the body already sets one.
+ *
+ * @return array{status: int, body: mixed, headers: string}
+ */
+function api($user, string $path, ?array $body = [], array $headers = []): array
+{
+    global $tokens;
+    $options = [CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json'], $headers)];
+    if ($body !== null) {
+        $body += ['csrf_token' => $tokens[$user] ?? ''];
+        $options += [CURLOPT_POST => true, CURLOPT_POSTFIELDS => json_encode($body)];
+    }
+    return harness_request($user, $path, $options);
+}
+
+/** POST multipart form fields (use CURLFile for uploads) with the user's CSRF token. */
+function api_multipart($user, string $path, array $fields): array
+{
+    global $tokens;
+    $fields += ['csrf_token' => $tokens[$user] ?? ''];
+    return harness_request($user, $path, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => $fields]);
+}
+
+/** GET without JSON decoding, for media: returns status, content type and raw bytes too. */
+function http_get($user, string $path, array $headers = []): array
+{
+    return harness_request($user, $path, [CURLOPT_HTTPHEADER => $headers]);
+}
+
+function harness_request($user, string $path, array $options): array
+{
+    global $base, $cookies;
+    $ch = curl_init($base . '/api/' . $path);
+    curl_setopt_array($ch, $options + [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HEADER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEFILE => $cookies[$user],
+        CURLOPT_COOKIEJAR => $cookies[$user],
+    ]);
+    $raw = (string)curl_exec($ch);
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $response = [
+        'status' => curl_getinfo($ch, CURLINFO_HTTP_CODE),
+        'type' => (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE),
+        'headers' => substr($raw, 0, $headerSize),
+        'raw' => substr($raw, $headerSize),
+    ];
+    curl_close($ch);
+    $response['body'] = json_decode($response['raw'], true);
+    return $response;
+}
 ```
 
 </details>

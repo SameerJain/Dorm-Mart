@@ -35,13 +35,13 @@ export default function ElectronicPaymentModal({ onClose, onStatusChange, schedu
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="electronic-payment-title">
-      <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
+      <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
         <div className="flex items-start justify-between border-b border-gray-200 p-5 dark:border-gray-700">
           <div>
             <h2 id="electronic-payment-title" className="text-xl font-bold text-gray-900 dark:text-gray-100">Make an Electronic Payment</h2>
             {setup && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Pay ${(setup.amount_cents / 100).toFixed(2)} USD directly to the seller.</p>}
           </div>
-          <button type="button" onClick={onClose} aria-label="Close payment" className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:hover:bg-gray-700">✕</button>
+          <button type="button" onClick={onClose} aria-label="Close payment" className="rounded-lg p-2 coarse:min-h-[44px] coarse:min-w-[44px] text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:hover:bg-gray-700">✕</button>
         </div>
         <div className="p-5">
           {setup?.is_test_mode && <p className="mb-4 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">Test Mode: no real money will move.</p>}
@@ -93,9 +93,9 @@ function PaymentForm({ cutoff, onClose, onStatusChange }) {
     <form onSubmit={submit} className="space-y-5">
       <PaymentElement options={{ layout: "tabs", wallets: { applePay: "auto", googlePay: "auto" } }} />
       {message && <p role="status" className="text-sm text-gray-700 dark:text-gray-200">{message}</p>}
-      <div className="flex justify-end gap-3">
-        <button type="button" onClick={onClose} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">Cancel</button>
-        <button type="submit" disabled={!stripe || submitting} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60">{submitting ? "Processing…" : "Pay Now"}</button>
+      <div className="flex flex-wrap justify-end gap-3">
+        <button type="button" onClick={onClose} className="rounded-lg border border-gray-300 px-4 py-2 coarse:min-h-[44px] text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">Cancel</button>
+        <button type="submit" disabled={!stripe || submitting} className="rounded-lg bg-blue-600 px-4 py-2 coarse:min-h-[44px] text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60">{submitting ? "Processing…" : "Pay Now"}</button>
       </div>
       <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">Payment must succeed before the 30-minute cutoff. Stripe processes your payment details; Dorm Mart does not store card data or hold funds.</p>
     </form>

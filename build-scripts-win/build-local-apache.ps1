@@ -60,9 +60,9 @@ Copy-Item -Path "$dormMartPath\api" -Destination $dormMartServePath -Recurse -Fo
 Write-Host "Copying data folder..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\data" -Destination $dormMartServePath -Recurse -Force
 
-# Copy migrations folder
-Write-Host "Copying migrations folder..." -ForegroundColor Cyan
-Copy-Item -Path "$dormMartPath\migrations" -Destination $dormMartServePath -Recurse -Force
+# Copy schema folder (one SQL file per table)
+Write-Host "Copying schema folder..." -ForegroundColor Cyan
+Copy-Item -Path "$dormMartPath\schema" -Destination $dormMartServePath -Recurse -Force
 
 # Copy vendor folder
 Write-Host "Copying vendor folder..." -ForegroundColor Cyan

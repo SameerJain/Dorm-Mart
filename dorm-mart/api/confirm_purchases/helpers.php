@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
 require_once __DIR__ . '/../chat/helpers.php';
+require_once __DIR__ . '/../scheduled_purchases/helpers.php';
 
 function confirm_purchase_conversation(mysqli $conn, int $conversationId, int $productId): ?array
 {
@@ -303,60 +304,7 @@ function release_inventory_after_unsuccessful_confirm(mysqli $conn, array $row):
         return;
     }
 
-    $checkStmt = $conn->prepare('
-        SELECT COUNT(*) as cnt
-        FROM scheduled_purchase_requests spr
-        WHERE spr.inventory_product_id = ?
-          AND spr.status = \'accepted\'
-          AND spr.request_id != ?
-          AND COALESCE((
-            SELECT CASE
-              WHEN cpr.status IN (\'buyer_accepted\', \'auto_accepted\') AND cpr.is_successful = 0 THEN 0
-              ELSE 1
-            END
-            FROM confirm_purchase_requests cpr
-            WHERE cpr.scheduled_request_id = spr.request_id
-            ORDER BY cpr.confirm_request_id DESC
-            LIMIT 1
-          ), 1) = 1
-    ');
-    if (!$checkStmt) {
-        throw new RuntimeException('Failed to prepare active schedule check');
-    }
-    $checkStmt->bind_param('ii', $productId, $scheduledRequestId);
-    $checkStmt->execute();
-    $res = $checkStmt->get_result();
-    $rowCount = $res ? $res->fetch_assoc() : null;
-    $checkStmt->close();
-
-    if ($rowCount && (int)$rowCount['cnt'] > 0) {
-        return;
-    }
-
-    $activeStatus = 'Active';
-    $pendingStatus = 'Pending';
-    $updateStmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND item_status = ?');
-    if (!$updateStmt) {
-        throw new RuntimeException('Failed to prepare inventory release update');
-    }
-    $updateStmt->bind_param('sis', $activeStatus, $productId, $pendingStatus);
-    $updateStmt->execute();
-    if ($updateStmt->affected_rows > 0) {
-        $itemStmt = $conn->prepare('SELECT title, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
-        if (!$itemStmt) throw new RuntimeException('Failed to prepare released item');
-        $itemStmt->bind_param('i', $productId);
-        $itemStmt->execute();
-        $item = $itemStmt->get_result()->fetch_assoc();
-        $itemStmt->close();
-        notification_for_wishlist($conn, $productId, [
-            'type' => 'item_back_on_sale', 'title' => (string)($item['title'] ?? 'Item'),
-            'message' => ($item['title'] ?? 'Item') . ' is back on sale.',
-            'image_url' => notification_first_image($item['photos'] ?? null),
-            'severity' => 'success', 'destination' => '/app/viewProduct/' . $productId,
-            'idempotency_key' => 'back-on-sale-confirm-' . $scheduledRequestId,
-        ]);
-    }
-    $updateStmt->close();
+    scheduled_purchase_release_listing($conn, $productId, $scheduledRequestId, 'confirm');
 }
 
 /**
