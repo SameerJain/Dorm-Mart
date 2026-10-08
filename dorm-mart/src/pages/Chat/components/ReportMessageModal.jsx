@@ -48,7 +48,7 @@ export default function ReportMessageModal({
             {reasons.map((option) => (
               <label
                 key={option}
-                className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                className="flex cursor-pointer items-center gap-2 coarse:min-h-[44px] text-sm text-gray-700 dark:text-gray-300"
               >
                 <input
                   type="radio"
@@ -57,7 +57,7 @@ export default function ReportMessageModal({
                   checked={reason === option}
                   onChange={() => setReason(option)}
                   disabled={isReporting}
-                  className="h-4 w-4 text-red-600 focus:ring-red-500"
+                  className="h-4 w-4 coarse:h-5 coarse:w-5 text-red-600 focus:ring-red-500"
                 />
                 {option}
               </label>

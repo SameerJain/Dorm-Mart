@@ -118,17 +118,27 @@ This pass started from the commit hot spots (`git log` since 2026-08-15). `sched
 
   Details are in [TESTING_AND_RELIABILITY.md](TESTING_AND_RELIABILITY.md).
 
-### Open: payment columns are missing from the schema
+### Resolved: payment columns in the schema
 
-When `migrations/` became declarative `schema/*.sql` files, the columns that migration `002` added to existing tables were not carried over:
+On 2026-10-01 the payment columns from migration `002` were missing from `schema/*.sql`. The 2026-10-04 commit now declares them unconditionally in `scheduled_purchase_requests.sql` and `confirm_purchase_requests.sql`, and no schema file uses `@feature` any more.
 
-- `scheduled_purchase_requests`: `payment_option`, `payment_amount_cents`, `payment_mode`, `payment_fallback_at`, `payment_fallback_reason`, `payment_fallback_notified_at`, plus `idx_scheduled_payment_window` and `chk_scheduled_stripe_payment`.
-- `confirm_purchase_requests`: `completion_source`, `electronic_payment_id`, `successful_schedule_id`, plus `fk_confirm_electronic_payment`.
+That change on its own made the schema sync fail on MariaDB, even on a dry run:
 
-Payments are disabled today, so nothing fails. Once `dm_payments_enabled()` returns true, scheduling, confirmation and the payment helpers will query columns that no schema creates. `@feature payments` currently gates whole tables only, so there are two fixes:
+> `Function or expression 'scheduled_request_id' cannot be used in the GENERATED ALWAYS AS clause of successful_schedule_id`
 
-1. Teach `schema_sync.php` to gate individual columns.
-2. Declare the columns unconditionally. They default to `manual`/`NULL`, but the foreign key would then point at a table that may not exist.
+MySQL and MariaDB reject a stored generated column whose base column has an `ON UPDATE CASCADE` foreign key, and `fk_confirm_sched` had one. A throwaway-database probe on MariaDB 11.4 reproduced the error, and the same table without `ON UPDATE CASCADE` was created. The key now keeps only `ON DELETE CASCADE`. Its parent, `request_id`, is an auto-increment key that nothing updates, so the cascade did nothing anyway.
+
+Before the fix, a fresh install, the test databases and the pre-deploy schema sync all failed. After it, a fresh database builds all 24 tables and both integration suites pass. Because the columns always exist now, `create.php` inserts the payment columns unconditionally. While payments are disabled, the proposal reader only allows `manual`, with no amount or mode.
+
+## Refactor pass (2026-10-04)
+
+- **Listing hold and release in one place.** "Put the listing back on sale unless another accepted purchase holds it" existed four times: decline, cancel, a failed exchange, and account deletion or ban. One of them carried its own copy of the active-schedule SQL. The copies had drifted: a decline never told wishlisters the item was back. All four now call `scheduled_purchase_release_listing()`, which keeps the existing notice keys (`back-on-sale-<reason>-<id>`). Accepting calls `scheduled_purchase_reserve_listing()`.
+- **Dead code removed from `respond.php`** (−120 lines):
+  - A 35-line fallback for missing snapshot values. `snapshot_price_nego` and `snapshot_trades` are `NOT NULL`, so it never ran.
+  - `inventory_product_id > 0` guards behind an `INNER JOIN INVENTORY`, which only returns a row when the listing exists.
+  - A `negotiated_price >= 0` check that the proposal's digits-only pattern already guarantees.
+- **New check, seen to fail:** "accepting holds the listing at the scheduled terms and the agreed price" (`card_acceptance_test.php`). It goes red when the agreed price is not applied.
+- PHPStan level 1 is clean across `api/`. It was rerun after a dangling statement handle from this refactor was caught by review.
 
 This needs a decision before payments are re-enabled.
 

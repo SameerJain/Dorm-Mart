@@ -39,8 +39,11 @@ CREATE TABLE confirm_purchase_requests (
   INDEX idx_confirm_expires_at (expires_at),
   UNIQUE KEY uq_confirm_successful_schedule (successful_schedule_id),
   UNIQUE KEY uq_confirm_electronic_payment (electronic_payment_id),
+  -- No ON UPDATE CASCADE: successful_schedule_id is generated from this column,
+  -- and MySQL/MariaDB reject a generated column over a cascading-update key.
+  -- request_id is an auto-increment key that is never updated anyway.
   CONSTRAINT fk_confirm_sched
-    FOREIGN KEY (scheduled_request_id) REFERENCES scheduled_purchase_requests(request_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (scheduled_request_id) REFERENCES scheduled_purchase_requests(request_id) ON DELETE CASCADE,
   CONSTRAINT fk_confirm_inventory
     FOREIGN KEY (inventory_product_id) REFERENCES INVENTORY(product_id) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT fk_confirm_seller

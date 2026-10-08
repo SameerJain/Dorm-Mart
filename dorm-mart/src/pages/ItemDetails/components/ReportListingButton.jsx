@@ -87,7 +87,7 @@ export default function ReportListingButton({ productId, title }) {
         onClick={() => setOpen(true)}
         aria-label="Report this listing"
         title="Report this listing"
-        className="flex-shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 coarse:py-2 coarse:text-sm text-xs font-medium text-red-600 hover:bg-red-50 dark:text-[#b88989] dark:hover:text-[#c99b9b] dark:hover:bg-red-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+        className="flex-shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 coarse:min-h-[44px] coarse:text-sm text-xs font-medium text-red-600 hover:bg-red-50 dark:text-[#b88989] dark:hover:text-[#c99b9b] dark:hover:bg-red-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
       >
         <FlagIcon className="h-4 w-4" />
         <span>Report</span>
@@ -114,7 +114,7 @@ export default function ReportListingButton({ productId, title }) {
                   <button
                     type="button"
                     onClick={close}
-                    className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
+                    className="px-4 py-2 coarse:min-h-[44px] rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
                   >
                     Done
                   </button>
@@ -141,7 +141,7 @@ export default function ReportListingButton({ productId, title }) {
                   {LISTING_REPORT_REASONS.map((option) => (
                     <label
                       key={option.value}
-                      className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                      className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 coarse:min-h-[44px] text-sm transition-colors ${
                         reason === option.value
                           ? "border-red-400 bg-red-50 text-gray-900 dark:border-red-700 dark:bg-red-950/40 dark:text-gray-100"
                           : "border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700/50"
@@ -153,7 +153,7 @@ export default function ReportListingButton({ productId, title }) {
                         value={option.value}
                         checked={reason === option.value}
                         onChange={() => setReason(option.value)}
-                        className="h-4 w-4 accent-red-600"
+                        className="h-4 w-4 coarse:h-5 coarse:w-5 accent-red-600"
                       />
                       {option.label}
                     </label>
@@ -182,19 +182,19 @@ export default function ReportListingButton({ productId, title }) {
                   </p>
                 ) : null}
 
-                <div className="mt-4 flex justify-end gap-3">
+                <div className="mt-4 flex flex-wrap justify-end gap-3">
                   <button
                     type="button"
                     onClick={close}
                     disabled={submitting}
-                    className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                    className="px-4 py-2 coarse:min-h-[44px] rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={!canSubmit}
-                    className="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="px-4 py-2 coarse:min-h-[44px] rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {submitting ? "Sending..." : "Submit report"}
                   </button>

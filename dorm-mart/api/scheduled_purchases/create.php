@@ -160,14 +160,10 @@ try {
         'trade_item_description' => ['s', ($tradeItemDescription ?? '') !== '' ? $tradeItemDescription : null],
         'snapshot_price_nego' => ['i', $snapshotPriceNego ? 1 : 0], 'snapshot_trades' => ['i', $snapshotTrades ? 1 : 0],
         'snapshot_meet_location' => ['s', ($snapshotMeetLocation ?? '') !== '' ? $snapshotMeetLocation : null],
+        // While payments are disabled the reader only allows 'manual', with no amount or mode.
+        'payment_option' => ['s', $paymentOption], 'payment_amount_cents' => ['i', $paymentAmountCents],
+        'payment_mode' => ['s', $paymentMode],
     ];
-    // The payment columns exist only when the payments schema feature is enabled.
-    if (dm_payments_enabled()) {
-        $columns += [
-            'payment_option' => ['s', $paymentOption], 'payment_amount_cents' => ['i', $paymentAmountCents],
-            'payment_mode' => ['s', $paymentMode],
-        ];
-    }
     $stmt = $conn->prepare(sprintf(
         'INSERT INTO scheduled_purchase_requests (%s) VALUES (%s)',
         implode(', ', array_keys($columns)),
@@ -176,7 +172,8 @@ try {
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare insert');
     }
-    $stmt->bind_param(implode('', array_column($columns, 0)), ...array_column($columns, 1));
+    $values = array_column($columns, 1);
+    $stmt->bind_param(implode('', array_column($columns, 0)), ...$values);
     
     if (!$stmt->execute()) {
         $error = $stmt->error;

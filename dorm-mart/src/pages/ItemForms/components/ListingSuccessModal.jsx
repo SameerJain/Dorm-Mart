@@ -33,11 +33,11 @@ export default function ListingSuccessModal({
             Congrats!
           </p>
         </div>
-        <div className="px-6 py-4 flex justify-end gap-3">
+        <div className="px-6 py-4 flex flex-wrap justify-end gap-3">
           <button
             type="button"
             onClick={() => setShowSuccess(false)}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            className="px-4 py-2 coarse:min-h-[44px] rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50"
           >
             Post another product
           </button>
@@ -47,7 +47,7 @@ export default function ListingSuccessModal({
               window.scrollTo(0, 0);
               navigate("/app/seller-dashboard");
             }}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
+            className="px-4 py-2 coarse:min-h-[44px] rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
           >
             {location.state?.fromDashboard === true
               ? "Go back to Dashboard"

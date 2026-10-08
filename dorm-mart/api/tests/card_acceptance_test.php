@@ -238,6 +238,20 @@ check(ok(api(2, 'scheduled_purchases/respond.php', ['request_id' => $pending, 'a
 check(row("SELECT status FROM scheduled_purchase_requests WHERE request_id = $pending")['status'] === 'declined', '#27 the decline is recorded');
 check(error_is(api(2, 'scheduled_purchases/respond.php', ['request_id' => $pending, 'action' => 'accept']), 409, 'Request has already been handled'), '#27 a declined request cannot then be accepted');
 
+// --- #27 Accepting holds the listing on the scheduled terms -----------------------------------
+$rug = listing(1, 'Card rug');
+$conn->query("UPDATE INVENTORY SET price_nego = 1 WHERE product_id = $rug");
+$rugChat = conversation(2, $rug);
+$offer = (int)(api(1, 'scheduled_purchases/create.php', ['inventory_product_id' => $rug, 'conversation_id' => $rugChat,
+    'meeting_at' => gmdate('c', time() + 86400), 'meet_location' => 'North Campus', 'negotiated_price' => '18.50'])['body']['data']['request_id'] ?? 0);
+// The seller edits the listing after scheduling; acceptance must honour what was agreed.
+$conn->query("UPDATE INVENTORY SET price_nego = 0, item_location = 'Ellicott' WHERE product_id = $rug");
+check($offer > 0 && ok(api(2, 'scheduled_purchases/respond.php', ['request_id' => $offer, 'action' => 'accept'])), '#27 the buyer can accept a negotiated offer');
+$held = row("SELECT item_status, price_nego, listing_price, item_location FROM INVENTORY WHERE product_id = $rug");
+check($held['item_status'] === 'Pending' && (int)$held['price_nego'] === 1
+    && (float)$held['listing_price'] === 18.5 && $held['item_location'] === 'North Campus',
+    '#27 accepting holds the listing at the scheduled terms and the agreed price');
+
 // --- #28 / #48 Reviews ---------------------------------------------------------------------
 $notebook = listing(1, 'Card notebook');
 $entry = json_encode([['product_id' => $notebook, 'recorded_at' => gmdate('c'), 'confirm_payload' => ['is_successful' => true]]]);

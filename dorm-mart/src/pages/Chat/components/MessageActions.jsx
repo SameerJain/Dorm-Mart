@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 
 const LONG_PRESS_MS = 450;
 const MOVE_TOLERANCE_PX = 10;
@@ -62,6 +63,9 @@ export default function MessageActions({ actions, align = "start", preview, chil
   // fires a click on whatever is now under it. Ignore clicks until a fresh press
   // starts inside the sheet (keyboard activation, detail === 0, is always allowed).
   const sheetArmedRef = useRef(false);
+
+  // The sheet is a full-screen overlay: keep the page behind it from scrolling.
+  useBodyScrollLock(sheetOpen);
 
   const visible = actions.filter(Boolean);
   const regular = visible.filter((a) => !a.danger);
@@ -156,7 +160,13 @@ export default function MessageActions({ actions, align = "start", preview, chil
 
   // Long-press for touch screens. iOS Safari fires no contextmenu event, so time
   // the press ourselves; a drag (scrolling the chat) cancels it.
+  // A report/delete dialog renders inside this wrapper (as a child of the
+  // message), so its touches and right-clicks bubble here; they must not start
+  // a long-press or open this menu behind the dialog.
+  const fromDialog = (e) => Boolean(e.target.closest?.('[role="dialog"]'));
+
   function onTouchStart(e) {
+    if (fromDialog(e)) return;
     const t = e.touches[0];
     clearTimeout(pressRef.current?.timer);
     pressRef.current = {
@@ -189,7 +199,7 @@ export default function MessageActions({ actions, align = "start", preview, chil
       className="group/msg relative max-w-[80%] [-webkit-touch-callout:none] [@media(hover:none)]:select-none"
       onContextMenu={(e) => {
         // Right-click on desktop; long-press on Android also lands here.
-        if (e.target.closest("a, video, textarea")) return;
+        if (fromDialog(e) || e.target.closest("a, video, textarea")) return;
         e.preventDefault();
         openForDevice();
       }}
@@ -281,7 +291,7 @@ export default function MessageActions({ actions, align = "start", preview, chil
           <div
             role="menu"
             aria-label="Message actions"
-            className="w-full animate-sheet-up rounded-t-2xl bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] pt-2 shadow-2xl dark:bg-gray-800"
+            className="max-h-[85dvh] w-full animate-sheet-up overflow-y-auto overscroll-contain rounded-t-2xl bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] pt-2 shadow-2xl dark:bg-gray-800"
           >
             <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" aria-hidden="true" />
             {preview && (

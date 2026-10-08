@@ -14,9 +14,13 @@ WORKDIR /app
 # Railway passes service variables to Docker builds only when declared as ARG.
 ARG REACT_APP_API_BASE
 ARG REACT_APP_CHAT_NOTIFICATION_ON
+# PUBLIC_URL=/ keeps asset paths absolute. package.json's "homepage": "."
+# would emit ./static/..., which 404s (as index.html) when a nested route such
+# as /app/listings is loaded directly. Railway's old build command set this.
 ENV REACT_APP_API_BASE=$REACT_APP_API_BASE \
     REACT_APP_CHAT_NOTIFICATION_ON=$REACT_APP_CHAT_NOTIFICATION_ON \
-    GENERATE_SOURCEMAP=false
+    GENERATE_SOURCEMAP=false \
+    PUBLIC_URL=/
 
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund

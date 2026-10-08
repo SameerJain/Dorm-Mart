@@ -16,16 +16,16 @@ export default function CloseFormModal({ onClose, onConfirm }) {
             Are you sure you want to close? All information you've entered will
             be lost.
           </p>
-          <div className="flex gap-3 justify-end">
+          <div className="flex flex-wrap gap-3 justify-end">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="px-4 py-2 coarse:min-h-[44px] text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Stay
             </button>
             <button
               onClick={onConfirm}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700"
+              className="px-4 py-2 coarse:min-h-[44px] text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700"
             >
               Close
             </button>

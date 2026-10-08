@@ -49,7 +49,7 @@ Copy any necessary files to the server:
 6. Navigate to localhost/serve/dorm-mart from your browser since that is the file path
 7. You now should have the app running on your local apache server
 8. Make sure to sync the db schema to your local mysql: `php api/database/migrate_schema.php` (one SQL file per table in `schema/`; edit a file and rerun to change the table, no numbered migrations)
-9. To add contents to your local db, run `php api/database/migrate_data.php`
+9. To load (or reset) the test fixtures in your local db, run `php api/database/migrate_data.php`. It resets only the fixture accounts' data; any other account or data in your local db is left alone. It refuses to run against a non-local database.
 
 ### Moderator account
 

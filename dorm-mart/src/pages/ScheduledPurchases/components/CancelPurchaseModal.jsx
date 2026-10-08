@@ -26,18 +26,18 @@ export default function CancelPurchaseModal({
               {actionError}
             </p>
           )}
-          <div className="flex gap-3 justify-end">
+          <div className="flex flex-wrap gap-3 justify-end">
             <button
               onClick={onClose}
               disabled={busyRequestId === pendingCancelRequestId}
-              className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              className="px-4 py-2 coarse:min-h-[44px] text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
             >
               No, Keep It
             </button>
             <button
               onClick={onConfirm}
               disabled={busyRequestId === pendingCancelRequestId}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              className="px-4 py-2 coarse:min-h-[44px] text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
             >
               {busyRequestId === pendingCancelRequestId
                 ? "Cancelling..."
