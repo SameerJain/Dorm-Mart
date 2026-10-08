@@ -17,14 +17,16 @@ CREATE TABLE confirm_purchase_requests (
   completion_source ENUM('manual','stripe') NOT NULL DEFAULT 'manual',
   electronic_payment_id BIGINT UNSIGNED NULL DEFAULT NULL,
   -- Set only while this confirmation is a successful sale, so a schedule can
-  -- have at most one (the unique key below).
+  -- have at most one (the unique key below). VIRTUAL, not STORED: MySQL
+  -- rejects ON DELETE CASCADE on the base column of a stored generated column
+  -- (MariaDB allows it), and the unique index enforces it either way.
   successful_schedule_id BIGINT UNSIGNED GENERATED ALWAYS AS (
     CASE
       WHEN is_successful = 1 AND status IN ('buyer_accepted','auto_accepted','payment_completed')
       THEN scheduled_request_id
       ELSE NULL
     END
-  ) STORED,
+  ) VIRTUAL,
   expires_at DATETIME NOT NULL,
   buyer_response_at DATETIME NULL DEFAULT NULL,
   auto_processed_at DATETIME NULL DEFAULT NULL,

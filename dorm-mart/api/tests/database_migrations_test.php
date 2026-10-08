@@ -100,9 +100,9 @@ expect_same([$code, $report['created'], $report['altered'], $report['plan']], [0
 // --- real data survives a seed reset -----------------------------------------
 $conn->query(
     "INSERT INTO user_accounts (first_name, last_name, grad_month, grad_year, email, promotional, hash_pass, hash_auth, seller, theme, role) VALUES
-       ('Real', 'One', 5, 2027, 'real.one@buffalo.edu', 0, 'x', 'y', 1, 'light', 'user'),
-       ('Real', 'Two', 5, 2027, 'real.two@buffalo.edu', 0, 'x', 'y', 1, 'light', 'user'),
-       ('Mod', 'Erator', 5, 2027, 'moderator@buffalo.edu', 0, 'x', 'y', 0, 'light', 'moderator')"
+       ('Real', 'One', 5, 2027, 'real.one@buffalo.edu', 0, 'x', 'y', 1, 0, 'user'),
+       ('Real', 'Two', 5, 2027, 'real.two@buffalo.edu', 0, 'x', 'y', 1, 0, 'user'),
+       ('Mod', 'Erator', 5, 2027, 'moderator@buffalo.edu', 0, 'x', 'y', 0, 0, 'moderator')"
 );
 $one = (int)$conn->query("SELECT user_id FROM user_accounts WHERE email = 'real.one@buffalo.edu'")->fetch_row()[0];
 $two = (int)$conn->query("SELECT user_id FROM user_accounts WHERE email = 'real.two@buffalo.edu'")->fetch_row()[0];
