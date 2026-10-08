@@ -71,7 +71,7 @@ function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const mine = message.sender === "me";
-  const { copy, reportAction, deleteAction, status, statusIsError, modal } = useMessageActionState(
+  const { reportAction, deleteAction, status, statusIsError, modal } = useMessageActionState(
     message.message_id,
     canDelete ? onDelete : null,
   );
@@ -98,7 +98,6 @@ function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
   const actions = editing
     ? []
     : [
-        { key: "copy", label: "Copy text", icon: "copy", quick: true, onSelect: () => copy(message.content) },
         canEdit && {
           key: "edit",
           label: "Edit message",
@@ -183,7 +182,7 @@ function TextMessage({ message, canEdit, onEdit, canDelete, onDelete }) {
 
 function MediaMessage({ message, canDelete, onDelete }) {
   const mine = message.sender === "me";
-  const { copy, reportAction, deleteAction, status, statusIsError, modal } = useMessageActionState(
+  const { reportAction, deleteAction, status, statusIsError, modal } = useMessageActionState(
     message.message_id,
     canDelete ? onDelete : null,
   );
@@ -193,7 +192,6 @@ function MediaMessage({ message, canDelete, onDelete }) {
 
   const actions = [
     { key: "download", label: isVideo ? "Download video" : "Download image", icon: "download", quick: true, onSelect: () => triggerDownload(dlSrc) },
-    message.content && { key: "copy", label: "Copy caption", icon: "copy", onSelect: () => copy(message.content) },
     mine ? deleteAction : reportAction,
   ];
 
@@ -210,6 +208,7 @@ function MediaMessage({ message, canDelete, onDelete }) {
             src={withFirstFrame(mediaSrc)}
             controls
             playsInline
+            disablePictureInPicture
             preload="metadata"
             aria-label="Chat video attachment"
             className={"max-h-72 w-full rounded-lg object-contain " + (mine ? "bg-white/10" : "bg-black/5")}

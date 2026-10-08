@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { API_BASE } from "../../../utils/apiConfig";
 import { csrfFetch } from "../../../utils/csrfFetch";
 import ReportMessageModal, {
@@ -6,18 +6,13 @@ import ReportMessageModal, {
 } from "../components/ReportMessageModal";
 
 /**
- * Report + copy state for one message. Actions live in the message's ⋯ menu;
+ * Report + delete state for one message. Actions live in the message's ⋯ menu;
  * this only surfaces a short status line after the user does something.
  */
 export default function useMessageActionState(messageId, onDelete) {
   const [reportState, setReportState] = useState("idle"); // idle | confirming | reporting | reported | failed
   const [deleteState, setDeleteState] = useState("idle"); // idle | confirming | deleting | failed
   const [deleteError, setDeleteError] = useState("");
-  const [copied, setCopied] = useState(false);
-  const copiedTimer = useRef(null);
-
-  useEffect(() => () => clearTimeout(copiedTimer.current), []);
-
   async function report(reason) {
     setReportState("reporting");
     try {
@@ -47,17 +42,6 @@ export default function useMessageActionState(messageId, onDelete) {
     }
   }
 
-  async function copy(text) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      clearTimeout(copiedTimer.current);
-      copiedTimer.current = setTimeout(() => setCopied(false), 1500);
-    } catch (_) {
-      // Clipboard can be blocked (insecure context / permissions); nothing to undo.
-    }
-  }
-
   const reported = reportState === "reported";
   const reportAction = {
     key: "report",
@@ -77,17 +61,16 @@ export default function useMessageActionState(messageId, onDelete) {
     onSelect: () => setDeleteState("confirming"),
   };
 
-  const status = copied
-    ? "Copied"
-    : deleteState === "failed"
+  const status =
+    deleteState === "failed"
       ? deleteError && deleteError !== "Internal server error"
         ? `Couldn't delete the message: ${deleteError}`
         : "Couldn't delete the message. Try again from the message menu."
       : reported
-      ? "Reported · a moderator will review it"
-      : reportState === "failed"
-        ? "Couldn't send the report. Try again from the message menu."
-        : "";
+        ? "Reported · a moderator will review it"
+        : reportState === "failed"
+          ? "Couldn't send the report. Try again from the message menu."
+          : "";
 
   const modal =
     reportState === "confirming" || reportState === "reporting" ? (
@@ -109,6 +92,6 @@ export default function useMessageActionState(messageId, onDelete) {
       />
     ) : null;
 
-  const statusIsError = !copied && (reportState === "failed" || deleteState === "failed");
-  return { copy, reportAction, deleteAction, status, statusIsError, modal };
+  const statusIsError = reportState === "failed" || deleteState === "failed";
+  return { reportAction, deleteAction, status, statusIsError, modal };
 }

@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 // Pure-function checks for shared API helpers. No database or network.
 
-require_once __DIR__ . '/../helpers/contact_phone.php';
 require_once __DIR__ . '/../helpers/file_stream.php';
 require_once __DIR__ . '/../helpers/promo_unsubscribe.php';
 require_once __DIR__ . '/../helpers/request.php';
@@ -25,16 +24,6 @@ function expect_same($actual, $expected, string $message): void
             . "\nActual: " . var_export($actual, true) . "\n");
         exit(1);
     }
-}
-
-// --- normalize_contact_phone ---
-expect_same(normalize_contact_phone(''), null, 'blank phone clears the number');
-expect_same(normalize_contact_phone('   '), null, 'whitespace phone clears the number');
-foreach (['7165551234', '(716) 555-1234', '716.555.1234', '+1 716 555 1234', '1-716-555-1234'] as $input) {
-    expect_same(normalize_contact_phone($input), '(716) 555-1234', "phone {$input} normalized");
-}
-foreach (['1', '+', '((((1', '716555123', '27165551234', '716-555-12345', 'call me', '716555123x'] as $input) {
-    expect_same(normalize_contact_phone($input), false, "phone {$input} rejected");
 }
 
 // --- parse_byte_range ---

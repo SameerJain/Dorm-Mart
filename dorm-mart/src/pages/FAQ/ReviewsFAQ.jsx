@@ -21,7 +21,7 @@ const REVIEWS_SECTIONS = [
       {
         question: "When does the review option appear?",
         answer:
-          "You can leave a review once the purchase is completed. This happens when the buyer accepts the seller's confirmation request, the app accepts it after 24 hours without a response, or a built-in payment succeeds.",
+          "You can leave a review once the purchase is completed. This happens when the buyer accepts the seller's confirmation request, or when 24 hours pass without a response and the app accepts it.",
       },
     ],
   },
@@ -31,17 +31,12 @@ const REVIEWS_SECTIONS = [
       {
         question: "When can I rate a buyer?",
         answer:
-          'Once the item is marked Sold, click "Rate Buyer" on the listing in your Seller Dashboard.',
+          'Once the item is marked Sold, click "Rate Buyer" on the listing in your Seller Dashboard or on the prompt in chat.',
       },
       {
         question: "What are seller and product ratings?",
         answer:
           "The seller rating is the buyer's rating of you. The product rating is their rating of the item. You'll see both as stars on sold listings once the buyer leaves a review.",
-      },
-      {
-        question: "Can sellers rate buyers?",
-        answer:
-          'Yes. After the sale is complete, click "Rate Buyer" on the sold listing in your Seller Dashboard.',
       },
     ],
   },

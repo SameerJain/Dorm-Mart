@@ -31,8 +31,6 @@ CREATE TABLE user_accounts (
   reset_token_expires DATETIME NULL DEFAULT NULL,
   last_reset_request DATETIME NULL DEFAULT NULL,
 
-  reveal_contact_info BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Whether seller allows buyers to see their contact info',
-  phone_number VARCHAR(25) NULL,
   interested_category_1 VARCHAR(50) NULL DEFAULT NULL COMMENT 'First interested category from categories.json',
   interested_category_2 VARCHAR(50) NULL DEFAULT NULL COMMENT 'Second interested category from categories.json',
   interested_category_3 VARCHAR(50) NULL DEFAULT NULL COMMENT 'Third interested category from categories.json',

@@ -27,12 +27,9 @@ $sql = "
     inv.title AS product_title,
     inv.item_status AS product_status,
     inv.seller_id AS product_seller_id,
-    inv.photos AS product_photos,
-    CASE WHEN inv.seller_id <> ? AND seller.reveal_contact_info = 1 THEN seller.email END AS shared_contact_email,
-    CASE WHEN inv.seller_id <> ? AND seller.reveal_contact_info = 1 THEN seller.phone_number END AS shared_contact_phone
+    inv.photos AS product_photos
   FROM conversations c
   LEFT JOIN INVENTORY inv ON inv.product_id = c.product_id
-  LEFT JOIN user_accounts seller ON seller.user_id = inv.seller_id
   WHERE (c.user1_id = ? AND c.user1_deleted = 0)
      OR (c.user2_id = ? AND c.user2_deleted = 0)
   -- Most recent activity first (message ids only grow), so a conversation
@@ -47,7 +44,7 @@ if (!$stmt) {
   json_response(['success' => false, 'error' => 'Server error'], 500);
 }
 
-$stmt->bind_param('iiii', $userId, $userId, $userId, $userId);
+$stmt->bind_param('ii', $userId, $userId);
 $stmt->execute();
 
 $res = $stmt->get_result();          // requires mysqlnd (present in XAMPP)

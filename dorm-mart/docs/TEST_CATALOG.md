@@ -2034,32 +2034,6 @@ const baseProps = {
   setIsMobileList: jest.fn(),
 };
 
-test("shows contact information shared by the seller", () => {
-  render(
-    <ChatHeader
-      {...baseProps}
-      activeConversation={{
-        sharedContactEmail: "seller@buffalo.edu",
-        sharedContactPhone: "(716) 555-0123",
-      }}
-    />,
-  );
-
-  expect(screen.getByText("Seller contact")).toBeTruthy();
-  expect(
-    screen.getByRole("link", { name: "seller@buffalo.edu" }).getAttribute("href"),
-  ).toBe("mailto:seller@buffalo.edu");
-  expect(
-    screen.getByRole("link", { name: "(716) 555-0123" }).getAttribute("href"),
-  ).toBe("tel:7165550123");
-});
-
-test("does not render contact information when the seller has not shared it", () => {
-  render(<ChatHeader {...baseProps} />);
-
-  expect(screen.queryByText("Seller contact")).toBeNull();
-});
-
 test("shows an unavailable banner and hides View Item for a draft", () => {
   render(
     <ChatHeader
@@ -2107,7 +2081,7 @@ import MessageActions from "../../../../pages/Chat/components/MessageActions";
 // jsdom has no matchMedia, so the component treats this as a touch device and
 // opens the bottom sheet (rather than the pointer-device menu).
 const actions = [
-  { key: "copy", label: "Copy text", icon: "copy", onSelect: jest.fn() },
+  { key: "edit", label: "Edit message", icon: "edit", onSelect: jest.fn() },
   { key: "report", label: "Report message", icon: "report", danger: true, onSelect: jest.fn() },
 ];
 
@@ -5184,7 +5158,7 @@ test("shows each developer and their contact links", () => {
 [Open source](../src/__tests__/pages/Settings/accountInfoUtils.test.js)
 
 ```javascript
-import { formatAccountDate, formatGraduationDate, isValidPhoneNumber } from "../../../pages/Settings/accountInfoUtils";
+import { formatAccountDate, formatGraduationDate } from "../../../pages/Settings/accountInfoUtils";
 
 describe("account information formatting", () => {
   test("formats graduation month and year", () => {
@@ -5234,33 +5208,6 @@ describe("account information formatting", () => {
     for (const value of ["", null, undefined, "2025-8-20", "25-08-20", "x2025-08-20", " 2025-08-20", "08/20/2025"]) {
       expect(formatAccountDate(value)).toBe("Not available");
     }
-  });
-});
-
-describe("isValidPhoneNumber", () => {
-  test.each(["7165551234", "(716) 555-1234", "+1 716.555.1234", "  716-555-1234  ", "5"])("accepts %p", (value) => {
-    expect(isValidPhoneNumber(value)).toBe(true);
-  });
-
-  test.each([
-    "",
-    "   ",
-    "()",
-    "+ - .",
-    "call me",
-    "716-555-1234x",
-    "x716-555-1234",
-    "12345678901234567890123456",
-    null,
-    undefined,
-    7165551234,
-  ])("rejects %p", (value) => {
-    expect(isValidPhoneNumber(value)).toBe(false);
-  });
-
-  test("length is capped at 25 characters", () => {
-    expect(isValidPhoneNumber("1".repeat(25))).toBe(true);
-    expect(isValidPhoneNumber("1".repeat(26))).toBe(false);
   });
 });
 ```
@@ -5314,7 +5261,7 @@ test("shows device, location, and current-session details", async () => {
   expect(screen.getByText("Current device")).toBeTruthy();
 });
 
-test("explains local addresses, searches history, and refreshes results", async () => {
+test("explains local addresses and lists every session with its sign-out state", async () => {
   const devices = [
     {
       id: 1, device_type: "Desktop", browser: "Firefox", operating_system: "Linux",
@@ -5334,17 +5281,23 @@ test("explains local addresses, searches history, and refreshes results", async 
   });
   render(<LoggedDevicesPage />);
   expect(await screen.findByText("Local device · no public location")).toBeTruthy();
-  const search = screen.getByRole("searchbox", { name: "Search login history" });
-  fireEvent.change(search, { target: { value: "buffalo" } });
+  expect(screen.getByText("Firefox on Linux")).toBeTruthy();
   expect(screen.getByText("Safari on iOS")).toBeTruthy();
-  expect(screen.queryByText("Firefox on Linux")).toBeNull();
-  expect(screen.getByText("Showing 1 of 2 login sessions")).toBeTruthy();
-  fireEvent.change(search, { target: { value: "no match" } });
-  expect(screen.getByText("No logins match your search.")).toBeTruthy();
-  fireEvent.change(search, { target: { value: "" } });
-  fireEvent.click(screen.getByRole("button", { name: "Refresh history" }));
+  expect(screen.getByText("Buffalo, New York, United States")).toBeTruthy();
+  expect(screen.getByText("Current device")).toBeTruthy();
+  expect(screen.getAllByText("Signed out").length).toBeGreaterThan(0);
+  expect(screen.queryByRole("searchbox")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Refresh history" })).toBeNull();
+});
+
+test("offers Try again, not a refresh button, when loading fails", async () => {
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce({ ok: false, json: async () => ({ success: false, error: "Unable to load logged devices." }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, devices: [] }) });
+  render(<LoggedDevicesPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
-  expect(await screen.findByRole("button", { name: "Refresh history" })).toBeTruthy();
+  expect(await screen.findByText("No login history is available yet.")).toBeTruthy();
 });
 
 test("keeps history usable when a public IP cannot be located", async () => {
@@ -5570,8 +5523,6 @@ const mockLoadedPreferences = (overrides = {}) => {
             data: {
               promoEmails: false,
               promoFrequency: "off",
-              revealContact: true,
-              contactPhone: "(716) 555-0123",
               interests: [],
               theme: "light",
               ...overrides,
@@ -5587,41 +5538,17 @@ beforeEach(() => {
   csrfFetch.mockResolvedValue(response({ ok: true }));
 });
 
-test("loads and persists the seller contact-sharing toggle", async () => {
-  render(<UserPreferences />);
-
-  const phoneInput = await screen.findByLabelText("Phone number (optional)");
-  await waitFor(() => expect(phoneInput.value).toBe("(716) 555-0123"));
-  const toggle = await screen.findByRole("checkbox", {
-    name: /share my email and phone number/i,
-  });
-  expect(toggle.checked).toBe(true);
-
-  fireEvent.click(toggle);
-
-  await waitForSave({ revealContact: false, contactPhone: "(716) 555-0123" });
-});
-
-test("edits and persists the phone number field", async () => {
-  render(<UserPreferences />);
-
-  const phoneInput = await screen.findByLabelText("Phone number (optional)");
-  fireEvent.change(phoneInput, { target: { value: "716-555-9999" } });
-
-  await waitForSave({ contactPhone: "716-555-9999" });
-});
-
 test("shows backend validation failures instead of silently losing changes", async () => {
   csrfFetch.mockResolvedValue({
     ok: false,
     json: async () => ({ ok: false, error: "Unable to save preferences" }),
   });
+  mockLoadedPreferences({ promoFrequency: "weekly", promoEmails: true });
   render(<UserPreferences />);
 
-  const toggle = await screen.findByRole("checkbox", {
-    name: /share my email and phone number/i,
-  });
-  fireEvent.click(toggle);
+  const frequency = await screen.findByLabelText("Promotional email frequency");
+  await waitFor(() => expect(frequency.value).toBe("weekly"));
+  fireEvent.change(frequency, { target: { value: "daily" } });
 
   expect(
     (await screen.findByRole("alert", {}, { timeout: SAVE_WAIT_MS })).textContent,
@@ -5641,8 +5568,9 @@ test.each([
   });
   render(<UserPreferences />);
 
-  await waitFor(() => expect(screen.getByRole("checkbox").checked).toBe(true));
-  fireEvent.change(screen.getByLabelText("Promotional email frequency"), {
+  const select = screen.getByLabelText("Promotional email frequency");
+  await waitFor(() => expect(select.value).toBe(loadedFrequency));
+  fireEvent.change(select, {
     target: { value: frequency },
   });
 
@@ -5658,35 +5586,11 @@ test.each([
 [Open source](../src/__tests__/pages/Settings/userPreferencesUtils.test.js)
 
 ```javascript
-import { isValidContactPhone, preferenceChanges } from "../../../pages/Settings/userPreferencesUtils";
-
-describe("isValidContactPhone", () => {
-  it.each(["", "   ", "7165551234", "(716) 555-1234", "+1 716 555 1234", "1-716-555-1234"])(
-    "accepts %p",
-    (value) => {
-      expect(isValidContactPhone(value)).toBe(true);
-    },
-  );
-
-  it("treats a missing value as blank", () => {
-    expect(isValidContactPhone(null)).toBe(true);
-  });
-
-  // Ten valid digits with a stray character on either end: only the character
-  // check can reject these, so both regex anchors are pinned.
-  it.each(["1", "+", "((((1", "716555123", "2716555123 4", "716-555-12345", "call me", "7165551234x", "x7165551234"])(
-    "rejects %p",
-    (value) => {
-      expect(isValidContactPhone(value)).toBe(false);
-    },
-  );
-});
+import { preferenceChanges } from "../../../pages/Settings/userPreferencesUtils";
 
 describe("preferenceChanges", () => {
   const saved = {
     promoFrequency: "weekly",
-    revealContact: true,
-    contactPhone: "(716) 555-1234",
     interests: ["Books", "Electronics"],
   };
 
@@ -5695,11 +5599,9 @@ describe("preferenceChanges", () => {
   });
 
   it("sends the page's fields once any of them changed", () => {
-    expect(preferenceChanges(saved, { ...saved, revealContact: false })).toEqual({
-      promoFrequency: "weekly",
+    expect(preferenceChanges(saved, { ...saved, promoFrequency: "daily" })).toEqual({
+      promoFrequency: "daily",
       promoEmails: true,
-      revealContact: false,
-      contactPhone: "(716) 555-1234",
       interests: ["Books", "Electronics"],
     });
   });
@@ -5717,33 +5619,10 @@ describe("preferenceChanges", () => {
     ).toMatchObject({ interests: ["Books", "Furniture"] });
   });
 
-  it("sends the phone number trimmed", () => {
-    expect(
-      preferenceChanges(saved, { ...saved, contactPhone: " (716) 555-9999 " }),
-    ).toMatchObject({ contactPhone: "(716) 555-9999" });
-  });
-
   it("never includes theme, which the theme hook saves on its own", () => {
     const changes = preferenceChanges(saved, { ...saved, promoFrequency: "off", theme: "dark" });
     expect(changes).not.toHaveProperty("theme");
     expect(changes).toMatchObject({ promoFrequency: "off", promoEmails: false });
-  });
-
-  it("holds back a half-typed phone number instead of sending it", () => {
-    expect(preferenceChanges(saved, { ...saved, contactPhone: "716 55" })).toBeNull();
-    const changes = preferenceChanges(saved, {
-      ...saved,
-      contactPhone: "716 55",
-      revealContact: false,
-    });
-    expect(changes).toMatchObject({ revealContact: false });
-    expect(changes).not.toHaveProperty("contactPhone");
-  });
-
-  it("sends a cleared phone number", () => {
-    expect(preferenceChanges(saved, { ...saved, contactPhone: "" })).toMatchObject({
-      contactPhone: "",
-    });
   });
 
   it("returns null before preferences have loaded", () => {
@@ -7773,9 +7652,9 @@ expect_same([$code, $report['created'], $report['altered'], $report['plan']], [0
 // --- real data survives a seed reset -----------------------------------------
 $conn->query(
     "INSERT INTO user_accounts (first_name, last_name, grad_month, grad_year, email, promotional, hash_pass, hash_auth, seller, theme, role) VALUES
-       ('Real', 'One', 5, 2027, 'real.one@buffalo.edu', 0, 'x', 'y', 1, 'light', 'user'),
-       ('Real', 'Two', 5, 2027, 'real.two@buffalo.edu', 0, 'x', 'y', 1, 'light', 'user'),
-       ('Mod', 'Erator', 5, 2027, 'moderator@buffalo.edu', 0, 'x', 'y', 0, 'light', 'moderator')"
+       ('Real', 'One', 5, 2027, 'real.one@buffalo.edu', 0, 'x', 'y', 1, 0, 'user'),
+       ('Real', 'Two', 5, 2027, 'real.two@buffalo.edu', 0, 'x', 'y', 1, 0, 'user'),
+       ('Mod', 'Erator', 5, 2027, 'moderator@buffalo.edu', 0, 'x', 'y', 0, 0, 'moderator')"
 );
 $one = (int)$conn->query("SELECT user_id FROM user_accounts WHERE email = 'real.one@buffalo.edu'")->fetch_row()[0];
 $two = (int)$conn->query("SELECT user_id FROM user_accounts WHERE email = 'real.two@buffalo.edu'")->fetch_row()[0];
@@ -7857,7 +7736,6 @@ declare(strict_types=1);
 
 // Pure-function checks for shared API helpers. No database or network.
 
-require_once __DIR__ . '/../helpers/contact_phone.php';
 require_once __DIR__ . '/../helpers/file_stream.php';
 require_once __DIR__ . '/../helpers/promo_unsubscribe.php';
 require_once __DIR__ . '/../helpers/request.php';
@@ -7879,16 +7757,6 @@ function expect_same($actual, $expected, string $message): void
             . "\nActual: " . var_export($actual, true) . "\n");
         exit(1);
     }
-}
-
-// --- normalize_contact_phone ---
-expect_same(normalize_contact_phone(''), null, 'blank phone clears the number');
-expect_same(normalize_contact_phone('   '), null, 'whitespace phone clears the number');
-foreach (['7165551234', '(716) 555-1234', '716.555.1234', '+1 716 555 1234', '1-716-555-1234'] as $input) {
-    expect_same(normalize_contact_phone($input), '(716) 555-1234', "phone {$input} normalized");
-}
-foreach (['1', '+', '((((1', '716555123', '27165551234', '716-555-12345', 'call me', '716555123x'] as $input) {
-    expect_same(normalize_contact_phone($input), false, "phone {$input} rejected");
 }
 
 // --- parse_byte_range ---

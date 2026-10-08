@@ -5,7 +5,6 @@ require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/promo_email.php';
-require_once __DIR__ . '/../helpers/contact_phone.php';
 
 init_json_endpoint();
 
@@ -19,7 +18,7 @@ $conn = db();
 function get_prefs(mysqli $conn, int $userId)
 {
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  $stmt = $conn->prepare('SELECT theme, promotional, promo_frequency, reveal_contact_info, phone_number, interested_category_1, interested_category_2, interested_category_3 FROM user_accounts WHERE user_id = ?');
+  $stmt = $conn->prepare('SELECT theme, promotional, promo_frequency, interested_category_1, interested_category_2, interested_category_3 FROM user_accounts WHERE user_id = ?');
   $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
   $res = $stmt->get_result();
@@ -34,11 +33,6 @@ function get_prefs(mysqli $conn, int $userId)
   $promoEmails = false; // default
   if ($userRow && isset($userRow['promotional'])) {
     $promoEmails = (bool)$userRow['promotional'];
-  }
-
-  $revealContact = false; // default
-  if ($userRow && isset($userRow['reveal_contact_info'])) {
-    $revealContact = (bool)$userRow['reveal_contact_info'];
   }
 
   // Build interests array from the 3 category columns
@@ -59,8 +53,6 @@ function get_prefs(mysqli $conn, int $userId)
   return [
     'promoEmails' => $promoEmails,
     'promoFrequency' => $userRow['promo_frequency'] ?? ($promoEmails ? 'weekly' : 'off'),
-    'revealContact' => $revealContact,
-    'contactPhone' => $userRow['phone_number'] ?? '',
     'interests' => $interests,
     'theme' => $theme,
   ];
@@ -110,30 +102,6 @@ try {
       $types .= 's';
       $values[] = $frequency;
       $promoTurnedOn = $promo === 1;
-    }
-
-    if (array_key_exists('revealContact', $body)) {
-      $revealValue = strict_boolean_value($body['revealContact']);
-      if ($revealValue === null) {
-        json_response(['ok' => false, 'error' => 'Invalid contact visibility setting'], 400);
-      }
-      $sets[] = 'reveal_contact_info = ?';
-      $types .= 'i';
-      $values[] = $revealValue ? 1 : 0;
-    }
-
-    if (array_key_exists('contactPhone', $body)) {
-      $phoneValue = $body['contactPhone'];
-      if (!is_string($phoneValue)) {
-        json_response(['ok' => false, 'error' => 'Invalid phone number'], 400);
-      }
-      $phone = normalize_contact_phone($phoneValue);
-      if ($phone === false) {
-        json_response(['ok' => false, 'error' => 'Enter a 10-digit US phone number, or leave it blank.'], 400);
-      }
-      $sets[] = 'phone_number = ?';
-      $types .= 's';
-      $values[] = $phone;
     }
 
     if (array_key_exists('interests', $body)) {

@@ -88,11 +88,11 @@ export const INFO_BOX_CLASSES = {
     label: "text-red-700 dark:text-red-200",
     detail: "text-red-600 dark:text-red-300",
   },
-  amber: {
-    box: "bg-amber-50 dark:bg-amber-900/30 border-2 border-amber-400 dark:border-amber-700 rounded-lg p-1.5 mb-1.5",
-    icon: "text-amber-600 dark:text-amber-300",
-    label: "text-amber-700 dark:text-amber-200",
-    detail: "text-amber-600 dark:text-amber-300",
+  orange: {
+    box: "bg-orange-50 dark:bg-orange-900/30 border-2 border-orange-400 dark:border-orange-600 rounded-lg p-1.5 mb-1.5",
+    icon: "text-orange-600 dark:text-orange-400",
+    label: "text-orange-700 dark:text-orange-200",
+    detail: "text-orange-600 dark:text-orange-300",
   },
   gray: {
     box: "bg-gray-50 dark:bg-gray-800/50 border-2 border-gray-400 dark:border-gray-600 rounded-lg p-1.5 mb-1.5",

@@ -9,6 +9,10 @@ const SELLER_DASHBOARD_SECTIONS = [
         answer: `Click "Create New Listing" in the blue Statistics section at the top of the dashboard.`,
       },
       {
+        question: "How many photos and videos can I add?",
+        answer: `Up to 6 in total, and at least one has to be a photo. Photos can be up to 2 MB and videos up to 25 MB.`,
+      },
+      {
         question: "How do I edit or delete a listing?",
         answer: `Use Edit or Delete next to the listing. These options aren't available while an accepted scheduled purchase is active, or after the item is sold.`,
       },

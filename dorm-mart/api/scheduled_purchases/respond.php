@@ -200,7 +200,7 @@ try {
                 $usesPayment = ($row['payment_option'] ?? 'manual') === 'stripe' && empty($row['payment_fallback_at']);
                 $nextStepsContent = $usesPayment
                     ? 'Built-in payment opens at the scheduled time for 30 minutes. A successful payment completes the purchase automatically. Check the Ongoing Purchases page for the full meeting details.'
-                    : 'Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities! Once the exchange is done, the seller will send the Confirm Purchase form. Check the Ongoing Purchases page for the full meeting details, including contact info the seller has chosen to share.';
+                    : 'Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities! Once the exchange is done, the seller will send the Confirm Purchase form. Check the Ongoing Purchases page for the full meeting details.';
                 chat_insert_system_message($conn, $conversationId, $msgSenderId, $msgReceiverId, $nextStepsContent, [
                     'type' => 'next_steps',
                     'request_id' => $requestId,

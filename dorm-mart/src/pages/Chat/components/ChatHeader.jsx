@@ -154,30 +154,6 @@ export default function ChatHeader({
           )}
         </div>
       )}
-      {(activeConversation?.sharedContactEmail ||
-        activeConversation?.sharedContactPhone) && (
-        <address className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-blue-200 pt-3 text-xs not-italic text-slate-600 dark:border-blue-800 dark:text-gray-300 sm:text-sm">
-          <span className="font-semibold text-slate-700 dark:text-gray-200">
-            Seller contact
-          </span>
-          {activeConversation.sharedContactEmail && (
-            <a
-              href={`mailto:${activeConversation.sharedContactEmail}`}
-              className="max-w-full break-words text-blue-700 hover:underline dark:text-blue-300"
-            >
-              {activeConversation.sharedContactEmail}
-            </a>
-          )}
-          {activeConversation.sharedContactPhone && (
-            <a
-              href={`tel:${activeConversation.sharedContactPhone.replace(/[^\d+]/g, "")}`}
-              className="text-blue-700 hover:underline dark:text-blue-300"
-            >
-              {activeConversation.sharedContactPhone}
-            </a>
-          )}
-        </address>
-      )}
     </div>
   );
 }

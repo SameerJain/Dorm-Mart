@@ -5,7 +5,7 @@ import MessageActions from "../../../../pages/Chat/components/MessageActions";
 // jsdom has no matchMedia, so the component treats this as a touch device and
 // opens the bottom sheet (rather than the pointer-device menu).
 const actions = [
-  { key: "copy", label: "Copy text", icon: "copy", onSelect: jest.fn() },
+  { key: "edit", label: "Edit message", icon: "edit", onSelect: jest.fn() },
   { key: "report", label: "Report message", icon: "report", danger: true, onSelect: jest.fn() },
 ];
 

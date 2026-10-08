@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
-import { formatAccountDate, formatGraduationDate, isValidPhoneNumber } from "./accountInfoUtils";
+import { formatAccountDate, formatGraduationDate } from "./accountInfoUtils";
 
 function InfoRow({ label, value }) {
   return (
@@ -60,10 +60,6 @@ export default function AccountInfoPage() {
             <div className="sm:col-span-2"><InfoRow label="UB email" value={account.email} /></div>
             <InfoRow label="Graduation date" value={formatGraduationDate(account.grad_month, account.grad_year)} />
             <InfoRow label="Account created" value={formatAccountDate(account.join_date)} />
-            <InfoRow
-              label="Phone number"
-              value={isValidPhoneNumber(account.phone_number) ? account.phone_number.trim() : "Not set"}
-            />
           </dl>
         )}
 
@@ -80,13 +76,6 @@ export default function AccountInfoPage() {
                 className="font-semibold text-blue-700 hover:underline dark:text-blue-300"
               >
                 Edit profile photo and bio
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/app/setting/user-preferences")}
-                className="font-semibold text-blue-700 hover:underline dark:text-blue-300"
-              >
-                Phone number and contact sharing
               </button>
             </div>
           </section>

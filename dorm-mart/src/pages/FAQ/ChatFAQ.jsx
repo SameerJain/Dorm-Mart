@@ -10,8 +10,9 @@ const CHAT_SECTIONS = [
           'Click "Message Seller" on a listing. Buyers start the conversation, and sellers can reply.',
       },
       {
-        question: "Can I send images in chat?",
-        answer: "Yes. Use the attachment icon next to the message input.",
+        question: "Can I send photos or videos in chat?",
+        answer:
+          "Yes. Use the attachment button next to the message box. Photos can be up to 2 MB and videos up to 25 MB.",
       },
     ],
   },
@@ -26,7 +27,7 @@ const CHAT_SECTIONS = [
       {
         question: 'What does "Confirm Purchase" do?',
         answer:
-          "After the meetup, the seller sends a confirmation request. The buyer accepts after receiving the item and paying or completing the trade. If the buyer doesn't respond within 24 hours, the app accepts the request automatically. A successful built-in payment completes the purchase without a separate confirmation request.",
+          "After the meetup, the seller sends a confirmation request. The buyer accepts after receiving the item and paying or completing the trade. If the buyer doesn't respond within 24 hours, the app accepts the request automatically.",
       },
       {
         question:
@@ -43,6 +44,16 @@ const CHAT_SECTIONS = [
         question: "What happens if I delete a chat?",
         answer:
           "The chat is hidden from your list. The other person can still see it, and any scheduled purchase stays in place. To cancel a purchase, go to Ongoing Purchases.",
+      },
+      {
+        question: "Can I edit or delete a message?",
+        answer:
+          "You can edit your last text message and delete your most recent message. Hover over the message, or press and hold it on a phone, to see your options.",
+      },
+      {
+        question: "How do I report a message?",
+        answer:
+          'Open the message options and choose "Report message". A moderator will review it.',
       },
     ],
   },

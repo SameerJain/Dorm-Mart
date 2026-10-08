@@ -39,7 +39,7 @@ test("shows device, location, and current-session details", async () => {
   expect(screen.getByText("Current device")).toBeTruthy();
 });
 
-test("explains local addresses, searches history, and refreshes results", async () => {
+test("explains local addresses and lists every session with its sign-out state", async () => {
   const devices = [
     {
       id: 1, device_type: "Desktop", browser: "Firefox", operating_system: "Linux",
@@ -59,17 +59,23 @@ test("explains local addresses, searches history, and refreshes results", async 
   });
   render(<LoggedDevicesPage />);
   expect(await screen.findByText("Local device · no public location")).toBeTruthy();
-  const search = screen.getByRole("searchbox", { name: "Search login history" });
-  fireEvent.change(search, { target: { value: "buffalo" } });
+  expect(screen.getByText("Firefox on Linux")).toBeTruthy();
   expect(screen.getByText("Safari on iOS")).toBeTruthy();
-  expect(screen.queryByText("Firefox on Linux")).toBeNull();
-  expect(screen.getByText("Showing 1 of 2 login sessions")).toBeTruthy();
-  fireEvent.change(search, { target: { value: "no match" } });
-  expect(screen.getByText("No logins match your search.")).toBeTruthy();
-  fireEvent.change(search, { target: { value: "" } });
-  fireEvent.click(screen.getByRole("button", { name: "Refresh history" }));
+  expect(screen.getByText("Buffalo, New York, United States")).toBeTruthy();
+  expect(screen.getByText("Current device")).toBeTruthy();
+  expect(screen.getAllByText("Signed out").length).toBeGreaterThan(0);
+  expect(screen.queryByRole("searchbox")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Refresh history" })).toBeNull();
+});
+
+test("offers Try again, not a refresh button, when loading fails", async () => {
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce({ ok: false, json: async () => ({ success: false, error: "Unable to load logged devices." }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, devices: [] }) });
+  render(<LoggedDevicesPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
-  expect(await screen.findByRole("button", { name: "Refresh history" })).toBeTruthy();
+  expect(await screen.findByText("No login history is available yet.")).toBeTruthy();
 });
 
 test("keeps history usable when a public IP cannot be located", async () => {

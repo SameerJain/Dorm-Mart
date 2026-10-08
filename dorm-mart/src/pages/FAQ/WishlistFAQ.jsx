@@ -14,7 +14,7 @@ const WISHLIST_FAQ_ITEMS = [
   {
     question: "Will wishlist items disappear if a listing is removed?",
     answer:
-      "Yes. Your wishlist only shows active listings. Pending, sold, and removed items won't appear there.",
+      "Yes. Your wishlist only shows active listings. Pending, sold, and removed items won't appear there, and you'll get a notification when one of your saved items changes.",
   },
   {
     question: "Is my wishlist visible to other users?",

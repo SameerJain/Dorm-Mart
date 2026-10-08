@@ -76,8 +76,6 @@ function projectConversationRow(row, currentUserId) {
     ? Number(row.product_seller_id)
     : null;
   const productImageUrl = row.product_image_url || null;
-  const sharedContactEmail = row.shared_contact_email || null;
-  const sharedContactPhone = row.shared_contact_phone || null;
   return {
     conv_id: convId,
     receiverId,
@@ -87,8 +85,6 @@ function projectConversationRow(row, currentUserId) {
     productStatus,
     productSellerId,
     productImageUrl,
-    sharedContactEmail,
-    sharedContactPhone,
     item_deleted: Boolean(Number(row.item_deleted)),
   };
 }
