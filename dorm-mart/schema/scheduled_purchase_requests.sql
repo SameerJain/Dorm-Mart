@@ -17,7 +17,7 @@ CREATE TABLE scheduled_purchase_requests (
   -- Optional built-in (Stripe) payment for the meetup. 'manual' is the default.
   payment_option ENUM('manual','stripe') NOT NULL DEFAULT 'manual',
   payment_amount_cents INT UNSIGNED NULL DEFAULT NULL,
-  payment_mode ENUM('test','live') NULL DEFAULT NULL,
+  payment_mode ENUM('test','live','mock') NULL DEFAULT NULL,
   payment_fallback_at DATETIME NULL DEFAULT NULL,
   payment_fallback_reason VARCHAR(64) NULL DEFAULT NULL,
   payment_fallback_notified_at DATETIME NULL DEFAULT NULL,

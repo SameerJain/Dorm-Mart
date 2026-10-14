@@ -15,9 +15,6 @@ try {
     $buyerId = require_login();
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
-    if (!dm_payments_enabled()) {
-        json_response(['success' => false, 'error' => 'Electronic payments are not enabled'], 503);
-    }
     $requestId = request_int($payload, 'scheduled_request_id');
     if ($requestId <= 0) json_response(['success' => false, 'error' => 'Scheduled purchase is required'], 400);
 
@@ -41,6 +38,39 @@ try {
     $currentMode = payment_modes_for_pair($conn, (int)$schedule['seller_user_id'], $buyerId);
     if ($currentMode === null || $currentMode !== $schedule['payment_mode']) {
         json_response(['success' => false, 'error' => 'This account pair cannot use built-in payment'], 409);
+    }
+    if ($currentMode === 'mock') {
+        $conn->begin_transaction();
+        $schedule = payment_schedule($conn, $requestId, true);
+        $error = $schedule ? payment_mock_schedule_error($schedule) : 'Scheduled purchase not found';
+        if ($error !== null) {
+            $conn->rollback();
+            json_response(['success' => false, 'error' => $error], 409);
+        }
+        $sellerId = (int)$schedule['seller_user_id'];
+        $amount = (int)$schedule['payment_amount_cents'];
+        $accountId = 'mock_account_' . $sellerId;
+        $intentId = 'mock_schedule_' . $requestId;
+        $insert = $conn->prepare(
+            "INSERT INTO electronic_payments
+                (scheduled_request_id, seller_user_id, buyer_user_id, payment_mode, amount_cents,
+                 stripe_connected_account_id, stripe_payment_intent_id)
+             VALUES (?, ?, ?, 'mock', ?, ?, ?)
+             ON DUPLICATE KEY UPDATE electronic_payment_id = electronic_payment_id"
+        );
+        $insert->bind_param('iiiiss', $requestId, $sellerId, $buyerId, $amount, $accountId, $intentId);
+        $insert->execute();
+        $insert->close();
+        $conn->commit();
+        [, $windowEnd] = payment_window($schedule);
+        json_response(['success' => true, 'data' => [
+            'is_mock' => true, 'scheduled_request_id' => $requestId,
+            'amount_cents' => $amount, 'currency' => 'usd',
+            'window_ends_at' => payment_datetime_atom($windowEnd),
+        ]]);
+    }
+    if (!dm_payments_enabled() || !payment_stripe_configured($currentMode)) {
+        json_response(['success' => false, 'error' => 'Real payments are not configured'], 503);
     }
     $account = payment_account($conn, (int)$schedule['seller_user_id'], (string)$schedule['payment_mode']);
     if (!payment_account_ready($account)) {

@@ -280,7 +280,7 @@ function dm_log_auth_event(string $flow, string $requestId, string $event, array
 
 function dm_payments_enabled(): bool
 {
-    return false;
+    return dm_env_bool('PAYMENTS_ENABLED', false);
 }
 
 function dm_stripe_secret_key(string $mode): string

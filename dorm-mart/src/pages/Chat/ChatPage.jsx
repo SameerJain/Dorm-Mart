@@ -505,6 +505,8 @@ export default function ChatPage() {
               hasActiveScheduledPurchase={hasActiveScheduledPurchase}
               isSellerPerspective={isSellerPerspective}
               setAttachOpen={setAttachOpen}
+              paymentStatus={paymentStatus}
+              onElectronicPayment={() => setPaymentOpen(true)}
               setAttachedImage={setAttachedImage}
               submitComposer={submitComposer}
               taRef={taRef}

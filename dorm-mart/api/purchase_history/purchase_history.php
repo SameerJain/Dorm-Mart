@@ -218,7 +218,7 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
 
     $rows = [];
     $paymentStatuses = [];
-    if (dm_payments_enabled() && $paymentIds) {
+    if ($paymentIds) {
         $ids = array_values($paymentIds);
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $paymentStmt = $conn->prepare("SELECT electronic_payment_id, status, payment_mode, refunded_at, dispute_status FROM electronic_payments WHERE electronic_payment_id IN ($placeholders)");

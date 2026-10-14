@@ -94,12 +94,10 @@ try {
  */
 function fetch_confirm_row(mysqli $conn, int $userId, int $productId, int $confirmId): array
 {
-    $confirmSelect = dm_payments_enabled()
-        ? 'SELECT cpr.*, ep.status AS payment_status, ep.payment_mode, ep.amount_cents AS payment_amount_cents,
+    $confirmSelect = 'SELECT cpr.*, ep.status AS payment_status, ep.payment_mode, ep.amount_cents AS payment_amount_cents,
                   ep.electronic_payment_id, ep.stripe_refund_id, ep.refunded_at, ep.dispute_status
              FROM confirm_purchase_requests cpr
-             LEFT JOIN electronic_payments ep ON ep.electronic_payment_id = cpr.electronic_payment_id'
-        : 'SELECT cpr.* FROM confirm_purchase_requests cpr';
+             LEFT JOIN electronic_payments ep ON ep.electronic_payment_id = cpr.electronic_payment_id';
 
     if ($confirmId > 0) {
         $sql = $confirmSelect . ' WHERE cpr.confirm_request_id = ?';

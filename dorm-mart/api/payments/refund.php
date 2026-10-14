@@ -15,9 +15,6 @@ try {
     $sellerId = require_login();
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
-    if (!dm_payments_enabled()) {
-        json_response(['success' => false, 'error' => 'Electronic payments are not enabled'], 503);
-    }
     $paymentId = request_int($payload, 'electronic_payment_id');
     $relist = strict_boolean_value($payload['relist'] ?? false);
     if ($paymentId <= 0 || $relist === null) {
@@ -34,6 +31,21 @@ try {
     if (!$payment || (int)$payment['seller_user_id'] !== $sellerId) {
         $conn->rollback();
         json_response(['success' => false, 'error' => 'Payment not found'], 404);
+    }
+    $mode = (string)$payment['payment_mode'];
+    $currentMode = payment_modes_for_pair($conn, $sellerId, (int)$payment['buyer_user_id']);
+    $seller = payment_user($conn, $sellerId);
+    if ($mode !== 'mock' && ($currentMode === 'mock' || (int)$seller['is_protected'] === 1)) {
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'Payment mode does not match these accounts'], 409);
+    }
+    if ($mode !== 'mock') {
+        if (!dm_payments_enabled() || !payment_stripe_configured($mode)) {
+            $conn->rollback();
+            json_response(['success' => false, 'error' => 'Real payments are not configured'], 503);
+        }
+        payment_require_https_for_live($mode);
+        $stripe = payment_stripe_client($mode);
     }
     if (($payment['status'] ?? '') === 'refunded') {
         $conn->rollback();
@@ -68,11 +80,12 @@ try {
         }
         $reserve->close();
     }
+    if ($mode === 'mock') {
+        payment_finalize_refund_transaction($conn, $paymentId, 'mock_refund_' . $paymentId);
+        $conn->commit();
+        json_response(['success' => true, 'data' => ['status' => 'refunded', 'is_mock' => true]]);
+    }
     $conn->commit();
-
-    $mode = (string)$payment['payment_mode'];
-    payment_require_https_for_live($mode);
-    $stripe = payment_stripe_client($mode);
     $refund = $stripe->refunds->create([
         'payment_intent' => (string)$payment['stripe_payment_intent_id'],
         'reason' => 'requested_by_customer',

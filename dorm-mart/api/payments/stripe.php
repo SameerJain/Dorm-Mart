@@ -46,7 +46,8 @@ function payment_stripe_client(string $mode): \Stripe\StripeClient
     if ($secret === '') {
         throw new RuntimeException('Stripe is not configured for this payment mode');
     }
-    if (!str_starts_with($secret, $mode === 'live' ? 'sk_live_' : 'sk_test_')) {
+    $prefix = $mode === 'live' ? 'live_' : 'test_';
+    if (!str_starts_with($secret, 'sk_' . $prefix) && !str_starts_with($secret, 'rk_' . $prefix)) {
         throw new RuntimeException('Stripe secret key does not match the payment mode');
     }
     return new \Stripe\StripeClient($secret);

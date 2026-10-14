@@ -6,7 +6,7 @@ CREATE TABLE electronic_payments (
   connected_payment_account_id BIGINT UNSIGNED NULL DEFAULT NULL,
   seller_user_id BIGINT UNSIGNED NULL DEFAULT NULL,
   buyer_user_id BIGINT UNSIGNED NULL DEFAULT NULL,
-  payment_mode ENUM('test','live') NOT NULL,
+  payment_mode ENUM('test','live','mock') NOT NULL,
   amount_cents INT UNSIGNED NOT NULL,
   currency CHAR(3) NOT NULL DEFAULT 'usd',
   stripe_connected_account_id VARCHAR(255) NOT NULL,

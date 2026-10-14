@@ -118,6 +118,12 @@ function payment_handle_intent_succeeded(mysqli $conn, string $mode, \Stripe\Eve
     $metadataSchedule = (int)($intent->metadata['scheduled_request_id'] ?? 0);
     $schedule = $metadataSchedule > 0 ? payment_schedule($conn, $metadataSchedule, true) : null;
     if (!$schedule) throw new RuntimeException('Scheduled Purchase not found for Stripe payment');
+    if ($schedule['payment_mode'] === 'mock'
+        || payment_modes_for_pair($conn, (int)$schedule['seller_user_id'], (int)$schedule['buyer_user_id']) === 'mock') {
+        // A Stripe event must never fulfill or refund a demo transaction.
+        $conn->commit();
+        return;
+    }
 
     $payment = payment_row_by_intent($conn, $mode, $intentId, true);
     if (!$payment) {

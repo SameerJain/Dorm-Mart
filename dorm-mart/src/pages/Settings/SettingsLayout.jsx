@@ -7,6 +7,7 @@ const SETTINGS_LINKS = [
   { label: "My Profile", to: "/app/setting/my-profile" },
   { label: "Account Info", to: "/app/setting/personal-information" },
   { label: "User Preferences", to: "/app/setting/user-preferences" },
+  { label: "Payments", to: "/app/setting/payments" },
   { label: "Change Password", to: "/app/setting/change-password" },
   { label: "Logged Devices", to: "/app/setting/security-options" },
   { label: "Two-Factor Authentication", to: "/app/setting/two-factor-authentication" },

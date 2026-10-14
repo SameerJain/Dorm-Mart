@@ -12,7 +12,17 @@ init_json_endpoint('GET');
 
 try {
     $userId = require_login();
-    if (!dm_payments_enabled()) {
+    $conn = db();
+    $user = payment_user($conn, $userId);
+    if (!$user) json_response(['success' => false, 'error' => 'User not found'], 404);
+    $mode = payment_mode_for_protected((int)$user['is_protected'] === 1);
+    if ($mode === 'mock') {
+        json_response(['success' => true, 'data' => [
+            'feature_enabled' => true, 'payment_mode' => 'mock', 'is_mock' => true,
+            'connected' => false, 'ready' => true, 'dashboard_url' => null,
+        ]]);
+    }
+    if (!dm_payments_enabled() || !payment_stripe_configured($mode)) {
         json_response([
             'success' => true,
             'data' => [
@@ -29,11 +39,6 @@ try {
         ]);
     }
 
-    $conn = db();
-    $user = payment_user($conn, $userId);
-    if (!$user) json_response(['success' => false, 'error' => 'User not found'], 404);
-
-    $mode = payment_mode_for_protected((int)$user['is_protected'] === 1);
     $account = payment_account($conn, $userId, $mode);
 
     if (dm_payments_enabled() && $account && empty($account['disconnected_at'])) {

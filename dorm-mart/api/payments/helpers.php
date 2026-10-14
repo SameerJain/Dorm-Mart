@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../confirm_purchases/helpers.php';
 require_once __DIR__ . '/../config/app_config.php';
+require_once __DIR__ . '/../database/protect_test_accounts.php';
 
 const PAYMENT_WINDOW_SECONDS = 1800;
 const PAYMENT_MIN_AMOUNT_CENTS = 50;
@@ -24,7 +25,15 @@ function payment_amount_cents_from_value(mixed $value): ?int
 
 function payment_mode_for_protected(bool $isProtected): string
 {
-    return $isProtected ? 'test' : 'live';
+    return $isProtected ? 'mock' : 'live';
+}
+
+function payment_is_mock_user(array $user): bool
+{
+    if ((int)$user['is_protected'] === 1) return true;
+    static $seedEmails = null;
+    $seedEmails ??= array_fill_keys(seed_account_emails(), true);
+    return isset($seedEmails[strtolower(trim((string)$user['email']))]);
 }
 
 function payment_user(mysqli $conn, int $userId): ?array
@@ -40,6 +49,7 @@ function payment_user(mysqli $conn, int $userId): ?array
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
+    if ($row) $row['is_protected'] = payment_is_mock_user($row) ? 1 : 0;
     return $row ?: null;
 }
 
@@ -113,37 +123,43 @@ function payment_upsert_account(mysqli $conn, int $userId, string $mode, array $
 
 function payment_modes_for_pair(mysqli $conn, int $sellerId, int $buyerId): ?string
 {
-    $stmt = $conn->prepare('SELECT user_id, is_protected FROM user_accounts WHERE user_id IN (?, ?)');
+    $stmt = $conn->prepare('SELECT user_id, email, is_protected FROM user_accounts WHERE user_id IN (?, ?)');
     if (!$stmt) throw new RuntimeException('Failed to prepare payment mode lookup');
     $stmt->bind_param('ii', $sellerId, $buyerId);
     $stmt->execute();
     $result = $stmt->get_result();
     $protected = [];
     while ($row = $result->fetch_assoc()) {
-        $protected[(int)$row['user_id']] = (int)$row['is_protected'] === 1;
+        $protected[(int)$row['user_id']] = payment_is_mock_user($row);
     }
     $stmt->close();
     if (!array_key_exists($sellerId, $protected) || !array_key_exists($buyerId, $protected)) return null;
-    if ($protected[$sellerId] !== $protected[$buyerId]) return null;
-    return payment_mode_for_protected($protected[$sellerId]);
+    return payment_mode_for_protected($protected[$sellerId] || $protected[$buyerId]);
+}
+
+function payment_stripe_configured(string $mode): bool
+{
+    if (!in_array($mode, ['test', 'live'], true)) return false;
+    return dm_stripe_secret_key($mode) !== ''
+        && dm_stripe_publishable_key($mode) !== ''
+        && dm_stripe_webhook_secret($mode) !== ''
+        && dm_stripe_account_webhook_secret($mode) !== ''
+        && dm_stripe_payment_method_configuration($mode) !== '';
 }
 
 function payment_schedule_eligibility(mysqli $conn, int $sellerId, int $buyerId): array
 {
+    $mode = payment_modes_for_pair($conn, $sellerId, $buyerId);
+    if ($mode === 'mock') {
+        return ['eligible' => true, 'mode' => 'mock', 'reason' => null];
+    }
     if (!dm_payments_enabled()) {
         return ['eligible' => false, 'mode' => null, 'reason' => 'Built-in payment is not enabled yet.'];
     }
-    $mode = payment_modes_for_pair($conn, $sellerId, $buyerId);
     if ($mode === null) {
-        return ['eligible' => false, 'mode' => null, 'reason' => 'Test and live accounts cannot use built-in payment together.'];
+        return ['eligible' => false, 'mode' => null, 'reason' => 'The buyer or seller is unavailable.'];
     }
-    if (
-        dm_stripe_secret_key($mode) === ''
-        || dm_stripe_publishable_key($mode) === ''
-        || dm_stripe_webhook_secret($mode) === ''
-        || dm_stripe_account_webhook_secret($mode) === ''
-        || dm_stripe_payment_method_configuration($mode) === ''
-    ) {
+    if (!payment_stripe_configured($mode)) {
         return ['eligible' => false, 'mode' => $mode, 'reason' => 'Stripe is not fully configured for this environment.'];
     }
     $account = payment_account($conn, $sellerId, $mode);
@@ -160,6 +176,7 @@ function payment_schedule(mysqli $conn, int $requestId, bool $forUpdate = false)
         SELECT spr.*, inv.title AS item_title, inv.listing_price, inv.sold,
                seller.is_protected AS seller_is_protected,
                buyer.is_protected AS buyer_is_protected,
+               seller.email AS seller_email, buyer.email AS buyer_email,
                cpa.payment_account_id,
                cpa.stripe_account_id,
                cpa.charges_enabled,
@@ -178,7 +195,8 @@ function payment_schedule(mysqli $conn, int $requestId, bool $forUpdate = false)
         $sql = '
         SELECT spr.*, inv.title AS item_title, inv.listing_price, inv.sold,
                seller.is_protected AS seller_is_protected,
-               buyer.is_protected AS buyer_is_protected
+               buyer.is_protected AS buyer_is_protected,
+               seller.email AS seller_email, buyer.email AS buyer_email
           FROM scheduled_purchase_requests spr
           INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
           INNER JOIN user_accounts seller ON seller.user_id = spr.seller_user_id
@@ -193,6 +211,10 @@ function payment_schedule(mysqli $conn, int $requestId, bool $forUpdate = false)
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
+    if ($row) {
+        $row['seller_is_protected'] = payment_is_mock_user(['is_protected' => $row['seller_is_protected'], 'email' => $row['seller_email']]) ? 1 : 0;
+        $row['buyer_is_protected'] = payment_is_mock_user(['is_protected' => $row['buyer_is_protected'], 'email' => $row['buyer_email']]) ? 1 : 0;
+    }
     return $row ?: null;
 }
 
@@ -214,6 +236,23 @@ function payment_window_state(array $schedule, ?DateTimeImmutable $now = null): 
     if ($now < $start) return 'upcoming';
     if ($now >= $end) return 'expired';
     return 'open';
+}
+
+function payment_mock_schedule_error(array $schedule): ?string
+{
+    if (($schedule['payment_mode'] ?? '') !== 'mock'
+        || (!(int)($schedule['seller_is_protected'] ?? 0) && !(int)($schedule['buyer_is_protected'] ?? 0))) {
+        return 'This purchase is not a mock transaction';
+    }
+    if (($schedule['status'] ?? '') !== 'accepted') return 'Scheduled purchase is not accepted';
+    if (($schedule['payment_option'] ?? '') !== 'stripe' || !empty($schedule['payment_fallback_at'])) {
+        return 'Built-in payment is unavailable for this purchase';
+    }
+    if ((int)($schedule['sold'] ?? 0) === 1) return 'This item has already been sold';
+    if (payment_window_state($schedule) !== 'open') return 'The Payment Window is not open';
+    $amount = (int)($schedule['payment_amount_cents'] ?? 0);
+    if ($amount < PAYMENT_MIN_AMOUNT_CENTS || $amount > PAYMENT_MAX_AMOUNT_CENTS) return 'Scheduled payment amount is invalid';
+    return null;
 }
 
 function payment_datetime_atom(DateTimeInterface $value): string
@@ -447,9 +486,11 @@ function payment_finalize_refund_transaction(
             $conversationId,
             $isLateRefund ? $buyerId : $sellerId,
             $isLateRefund ? $sellerId : $buyerId,
-            $isLateRefund
+            ($row['payment_mode'] ?? '') === 'mock'
+                ? 'Mock refund completed. No real money was moved.'
+                : ($isLateRefund
                 ? 'The electronic payment finished after the deadline and was refunded.'
-                : 'The seller issued a full electronic payment refund.',
+                : 'The seller issued a full electronic payment refund.'),
             [
                 'type' => 'payment_refunded',
                 'electronic_payment_id' => $electronicPaymentId,
@@ -457,6 +498,7 @@ function payment_finalize_refund_transaction(
                 'inventory_product_id' => $productId,
                 'payment_amount_cents' => (int)$row['amount_cents'],
                 'payment_status' => 'refunded',
+                'payment_mode' => $row['payment_mode'],
                 'relisted' => (int)($row['refund_relist'] ?? 0) === 1,
                 'refund_reason' => $row['refund_reason'] ?? null,
             ]

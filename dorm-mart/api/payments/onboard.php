@@ -15,15 +15,17 @@ try {
     $userId = require_login();
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
-    if (!dm_payments_enabled()) {
-        json_response(['success' => false, 'error' => 'Electronic payments are not enabled'], 503);
-    }
-
     $conn = db();
     $user = payment_user($conn, $userId);
     if (!$user) json_response(['success' => false, 'error' => 'User not found'], 404);
 
     $mode = payment_mode_for_protected((int)$user['is_protected'] === 1);
+    if ($mode === 'mock') {
+        json_response(['success' => true, 'data' => ['is_mock' => true, 'payment_mode' => 'mock', 'url' => null]]);
+    }
+    if (!dm_payments_enabled() || !payment_stripe_configured($mode)) {
+        json_response(['success' => false, 'error' => 'Real payments are not configured'], 503);
+    }
     payment_require_https_for_live($mode);
     $stripe = payment_stripe_client($mode);
     $account = payment_account($conn, $userId, $mode);

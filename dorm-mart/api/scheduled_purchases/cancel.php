@@ -88,6 +88,8 @@ try {
     if (
         $currentStatus === 'accepted'
         && dm_payments_enabled()
+        && ($row['payment_mode'] ?? '') !== 'mock'
+        && payment_modes_for_pair($conn, $sellerId, $buyerId) !== 'mock'
         && ($row['payment_option'] ?? 'manual') === 'stripe'
         && empty($row['payment_fallback_at'])
     ) {
