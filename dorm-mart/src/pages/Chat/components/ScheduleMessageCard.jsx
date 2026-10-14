@@ -361,6 +361,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
             <p className="font-bold">Built-in payment · {formatCurrency(paymentAmount)} USD</p>
             <p className="mt-1 text-xs leading-5">Accepting locks this amount. Payment opens at the scheduled time for 30 minutes and a successful Stripe payment completes the purchase automatically.</p>
             {metadata.payment_mode === "test" && <p className="mt-1 text-xs font-bold uppercase tracking-wide">Test Mode: no real money</p>}
+            {metadata.payment_mode === "mock" && <p className="mt-1 text-xs font-bold uppercase tracking-wide">Mock transaction: no real money</p>}
           </div>
         )}
 

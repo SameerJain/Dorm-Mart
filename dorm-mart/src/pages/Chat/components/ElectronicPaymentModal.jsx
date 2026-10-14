@@ -10,16 +10,19 @@ export default function ElectronicPaymentModal({ onClose, onStatusChange, schedu
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      import("@stripe/stripe-js"),
-      csrfPostJson(`${API_BASE}/payments/create_intent.php`, {
+    csrfPostJson(`${API_BASE}/payments/create_intent.php`, {
         scheduled_request_id: scheduledRequestId,
-      }),
-    ])
-      .then(([stripeModule, result]) => {
+      })
+      .then(async (result) => {
         if (cancelled) return;
         const data = result?.data;
+        if (data?.is_mock) {
+          setSetup(data);
+          return;
+        }
         if (!data?.client_secret || !data?.publishable_key) throw new Error("Payment could not be prepared.");
+        const stripeModule = await import("@stripe/stripe-js");
+        if (cancelled) return;
         setSetup(data);
         setStripePromise(stripeModule.loadStripe(data.publishable_key, {
           stripeAccount: data.connected_account_id,
@@ -38,13 +41,14 @@ export default function ElectronicPaymentModal({ onClose, onStatusChange, schedu
       <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
         <div className="flex items-start justify-between border-b border-gray-200 p-5 dark:border-gray-700">
           <div>
-            <h2 id="electronic-payment-title" className="text-xl font-bold text-gray-900 dark:text-gray-100">Make an Electronic Payment</h2>
-            {setup && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Pay ${(setup.amount_cents / 100).toFixed(2)} USD directly to the seller.</p>}
+            <h2 id="electronic-payment-title" className="text-xl font-bold text-gray-900 dark:text-gray-100">{setup?.is_mock ? "Mock transaction" : "Make an Electronic Payment"}</h2>
+            {setup && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{setup.is_mock ? "Demo amount" : "Pay"}: ${(setup.amount_cents / 100).toFixed(2)} USD{setup.is_mock ? "" : " directly to the seller"}.</p>}
           </div>
           <button type="button" onClick={onClose} aria-label="Close payment" className="rounded-lg p-2 coarse:min-h-[44px] coarse:min-w-[44px] text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:hover:bg-gray-700">✕</button>
         </div>
         <div className="p-5">
           {setup?.is_test_mode && <p className="mb-4 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">Test Mode: no real money will move.</p>}
+          {setup?.is_mock && <MockPaymentForm scheduledRequestId={scheduledRequestId} onStatusChange={onStatusChange} />}
           {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{error}</p>}
           {!setup && !error && <p className="text-sm text-gray-500">Preparing secure payment…</p>}
           {setup && stripePromise && (
@@ -54,6 +58,39 @@ export default function ElectronicPaymentModal({ onClose, onStatusChange, schedu
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function MockPaymentForm({ scheduledRequestId, onStatusChange }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit() {
+    if (submitting || completed) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await csrfPostJson(`${API_BASE}/payments/mock_confirm.php`, {
+        scheduled_request_id: scheduledRequestId,
+      });
+      if (!result?.data?.completed) throw new Error("Mock transaction could not be completed.");
+      setCompleted(true);
+      await onStatusChange();
+    } catch (submitError) {
+      setError(submitError.message || "Mock transaction could not be completed.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="rounded-lg bg-amber-100 p-3 text-sm font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">This is a mock transaction. No real money is charged or transferred, and no card details are needed.</p>
+      {completed && <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">Mock transaction completed. Your demo receipt is ready.</p>}
+      {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
+      <button type="button" onClick={submit} disabled={submitting || completed} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{completed ? "Completed" : submitting ? "Completing..." : "Complete mock transaction"}</button>
     </div>
   );
 }

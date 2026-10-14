@@ -48,18 +48,20 @@ try {
     // auto-confirmed / were paid) as successful, at the recorded final price,
     // excluding trades. Items a seller simply marked "Sold" no longer add their
     // asking price, and trades no longer count as cash.
-    // Note: a refunded electronic payment that was not relisted still counts;
-    // payments are disabled in code, so revisit when they are turned on.
+    // Mock transactions and refunded electronic payments are not earnings.
     $earned = seller_stats_row(
         $conn,
         "SELECT COUNT(*) AS paid_sales_count,
                 COALESCE(SUM(cpr.final_price), 0) AS earnings
            FROM confirm_purchase_requests cpr
            JOIN scheduled_purchase_requests spr ON spr.request_id = cpr.scheduled_request_id
+           LEFT JOIN electronic_payments ep ON ep.electronic_payment_id = cpr.electronic_payment_id
           WHERE cpr.seller_user_id = ?
             AND cpr.is_successful = 1
             AND cpr.status IN ('buyer_accepted', 'auto_accepted', 'payment_completed')
             AND cpr.final_price IS NOT NULL
+            AND cpr.completion_source <> 'mock'
+            AND (ep.status IS NULL OR ep.status NOT IN ('refunded', 'refund_pending'))
             AND spr.is_trade = 0",
         'i',
         $userId

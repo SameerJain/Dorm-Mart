@@ -20,7 +20,8 @@ try {
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $read = scheduled_purchase_read_proposal($payload, new DateTimeImmutable('now', new DateTimeZone('UTC')), dm_payments_enabled());
+    // Payment availability is checked against the actual buyer and seller below.
+    $read = scheduled_purchase_read_proposal($payload, new DateTimeImmutable('now', new DateTimeZone('UTC')), true);
     if (!$read['ok']) {
         json_response(['success' => false, 'error' => $read['error']], $read['status']);
     }
@@ -160,7 +161,6 @@ try {
         'trade_item_description' => ['s', ($tradeItemDescription ?? '') !== '' ? $tradeItemDescription : null],
         'snapshot_price_nego' => ['i', $snapshotPriceNego ? 1 : 0], 'snapshot_trades' => ['i', $snapshotTrades ? 1 : 0],
         'snapshot_meet_location' => ['s', ($snapshotMeetLocation ?? '') !== '' ? $snapshotMeetLocation : null],
-        // While payments are disabled the reader only allows 'manual', with no amount or mode.
         'payment_option' => ['s', $paymentOption], 'payment_amount_cents' => ['i', $paymentAmountCents],
         'payment_mode' => ['s', $paymentMode],
     ];

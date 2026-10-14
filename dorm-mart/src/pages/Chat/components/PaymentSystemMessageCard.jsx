@@ -1,6 +1,7 @@
 export default function PaymentSystemMessageCard({ message }) {
   const metadata = message.metadata || {};
   const type = metadata.type;
+  const isMock = metadata.payment_mode === "mock" || metadata.completion_source === "mock";
   const amount = metadata.payment_amount_cents != null
     ? `$${(Number(metadata.payment_amount_cents) / 100).toFixed(2)} USD`
     : null;
@@ -9,6 +10,10 @@ export default function PaymentSystemMessageCard({ message }) {
     payment_fallback: ["Manual Confirmation Restored", "Built-in payment is no longer available for this Scheduled Purchase."],
     payment_refunded: ["Electronic Payment Refunded", amount ? `${amount} was refunded through Stripe.` : "The payment was refunded through Stripe."],
   }[type] || ["Payment Update", message.content];
+  if (isMock) {
+    content[0] = type === "payment_refunded" ? "Mock Refund Completed" : "Mock Transaction Completed";
+    content[1] = "This was a mock transaction. No real money was charged or transferred.";
+  }
 
   return (
     <div className="mx-auto my-2 max-w-md rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center shadow-sm dark:border-emerald-800 dark:bg-emerald-950/30">

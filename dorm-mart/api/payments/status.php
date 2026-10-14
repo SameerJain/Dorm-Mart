@@ -20,9 +20,6 @@ try {
     if ($conversationId <= 0 || $productId <= 0) {
         json_response(['success' => false, 'error' => 'Missing reference ids'], 400);
     }
-    if (!dm_payments_enabled()) {
-        json_response(['success' => true, 'data' => ['available' => false]]);
-    }
 
     $conn = db();
     $lookup = $conn->prepare(
@@ -47,6 +44,8 @@ try {
     $conn->begin_transaction();
     $schedule = payment_schedule($conn, $requestId, true);
     if (!$schedule) throw new RuntimeException('Scheduled purchase disappeared');
+    $currentMode = payment_modes_for_pair($conn, (int)$schedule['seller_user_id'], (int)$schedule['buyer_user_id']);
+    $isMock = $schedule['payment_mode'] === 'mock';
 
     $paymentStmt = $conn->prepare('SELECT * FROM electronic_payments WHERE scheduled_request_id = ? LIMIT 1 FOR UPDATE');
     $paymentStmt->bind_param('i', $requestId);
@@ -75,6 +74,8 @@ try {
         && payment_window_state($schedule) === 'expired'
         && ($payment['status'] ?? null) !== 'succeeded'
         && dm_payments_enabled()
+        && !$isMock && $currentMode === $schedule['payment_mode']
+        && payment_stripe_configured($currentMode)
     ) {
         try {
             $stripe = payment_stripe_client((string)$payment['payment_mode']);
@@ -93,12 +94,11 @@ try {
         && empty($schedule['payment_fallback_at'])
         && !$completed
     ) {
-        $account = payment_account($conn, (int)$schedule['seller_user_id'], (string)$schedule['payment_mode'], true);
-        $currentMode = payment_modes_for_pair($conn, (int)$schedule['seller_user_id'], (int)$schedule['buyer_user_id']);
+        $account = $isMock ? null : payment_account($conn, (int)$schedule['seller_user_id'], (string)$schedule['payment_mode'], true);
         $fallbackReason = null;
         if ($currentMode === null || $currentMode !== $schedule['payment_mode']) {
             $fallbackReason = 'account_mode_changed';
-        } elseif (!payment_account_ready($account)) {
+        } elseif (!$isMock && (!payment_account_ready($account) || !payment_stripe_configured($currentMode))) {
             $fallbackReason = 'seller_unavailable';
         } elseif (payment_window_state($schedule) === 'expired' && !$awaitingSuccessWebhook && (!$payment || $payment['status'] !== 'succeeded')) {
             $fallbackReason = 'window_expired';
@@ -111,7 +111,7 @@ try {
     }
     $conn->commit();
 
-    if ($intentToCancel && dm_payments_enabled()) {
+    if ($intentToCancel && dm_payments_enabled() && !$isMock && $currentMode !== 'mock') {
         try {
             $stripe = payment_stripe_client((string)$intentToCancel['payment_mode']);
             $intent = $stripe->paymentIntents->retrieve(
@@ -149,6 +149,7 @@ try {
             'payment_amount_cents' => $schedule['payment_amount_cents'] !== null ? (int)$schedule['payment_amount_cents'] : null,
             'payment_mode' => $schedule['payment_mode'],
             'is_test_mode' => $schedule['payment_mode'] === 'test',
+            'is_mock' => $isMock,
             'window_state' => $windowState,
             'window_starts_at' => payment_datetime_atom($windowStart),
             'window_ends_at' => payment_datetime_atom($windowEnd),
@@ -156,7 +157,7 @@ try {
             'fallback_reason' => $schedule['payment_fallback_reason'],
             'payment_status' => $paymentStatus,
             'completed' => $terminal,
-            'can_pay' => dm_payments_enabled() && $stripeSchedule && !$fallback && !$terminal && $isBuyer && $windowState === 'open',
+            'can_pay' => ($isMock || dm_payments_enabled()) && $stripeSchedule && !$fallback && !$terminal && $isBuyer && $windowState === 'open',
             'manual_confirm_available' => $isSeller && !$terminal && (!$stripeSchedule || $fallback),
         ],
     ]);

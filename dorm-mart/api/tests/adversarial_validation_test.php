@@ -75,7 +75,7 @@ expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-
 expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-08-20T16:00:00Z')), 'open', 'payment did not open at scheduled time');
 expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-08-20T16:29:59Z')), 'open', 'payment closed before 30 minutes');
 expect_value(payment_window_state($paymentSchedule, new DateTimeImmutable('2026-08-20T16:30:00Z')), 'expired', 'payment remained open at cutoff');
-expect_value(payment_mode_for_protected(true), 'test', 'protected users must use Stripe test mode');
+expect_value(payment_mode_for_protected(true), 'mock', 'protected users must never use Stripe');
 expect_value(payment_mode_for_protected(false), 'live', 'normal users must use Stripe live mode');
 
 $timelySchedule = ['meeting_at' => '2026-08-20 16:00:00', 'payment_fallback_at' => null];

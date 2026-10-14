@@ -28,13 +28,16 @@ Dorm Mart should get deployment-specific values from env vars, not hardcoded hos
 
 ## Stripe payments
 
-Electronic payments are currently switched off in code: `dm_payments_enabled()` in
-`api/config/app_config.php` returns `false` regardless of `PAYMENTS_ENABLED`, and migration
-`025` is skipped while it does. Turning payments on means changing that function back to
-read the variable. Keep it off until Stripe Connect, HTTPS, payment-domain registration,
-and both webhook modes are configured.
+Seed accounts use local mock transactions without any Stripe keys or onboarding.
+If either participant is protected, the server chooses mock mode. Checkout,
+receipts, and refunds are labeled as mock transactions, and no Stripe request or
+money transfer is made. Mock payments do not count toward earnings.
 
-- `PAYMENTS_ENABLED`: Enables Scheduled Purchase electronic payments (ignored while the function above is hard-coded off).
+Real payments are off by default. Enable them only after Stripe Connect, HTTPS,
+payment-domain registration, and webhooks are configured. Run schema sync before
+using either payment flow so the database accepts the mock payment mode.
+
+- `PAYMENTS_ENABLED`: Enables real Stripe payments. Defaults to `false`; mock transactions remain available to seed accounts.
 - `STRIPE_TEST_PUBLISHABLE_KEY`, `STRIPE_TEST_SECRET_KEY`: Stripe Sandbox API keys.
 - `STRIPE_LIVE_PUBLISHABLE_KEY`, `STRIPE_LIVE_SECRET_KEY`: Stripe live-mode API keys.
 - `STRIPE_TEST_WEBHOOK_SECRET`: Signing secret for `api/payments/webhook_test.php`.

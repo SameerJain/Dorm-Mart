@@ -79,6 +79,7 @@ Use Dorm Mart to browse student listings, search and filter items, post goods fo
 ### Pay, keep receipts, and leave reviews
 
 - Where built-in payments are enabled, sellers can connect Stripe and offer payment on eligible scheduled purchases. Buyers pay from chat during the payment window, and a successful payment completes the purchase automatically.
+- Seed accounts can demonstrate checkout and refunds without Stripe keys. These transactions are clearly labeled as mock transactions and never charge or transfer real money.
 - Use manual purchase confirmation for exchanges arranged directly between buyer and seller, including trades.
 - Find completed purchases in purchase history, with receipts that distinguish the listing price, final price, and trades.
 - Sellers can issue a full refund for a successful Stripe payment from the receipt and choose whether to relist the item.

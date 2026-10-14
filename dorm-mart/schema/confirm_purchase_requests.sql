@@ -14,7 +14,7 @@ CREATE TABLE confirm_purchase_requests (
   failure_reason ENUM('buyer_no_show','insufficient_funds','other') NULL DEFAULT NULL,
   failure_reason_notes TEXT NULL DEFAULT NULL,
   status ENUM('pending','buyer_accepted','buyer_declined','auto_accepted','payment_completed','seller_cancelled') NOT NULL DEFAULT 'pending',
-  completion_source ENUM('manual','stripe') NOT NULL DEFAULT 'manual',
+  completion_source ENUM('manual','stripe','mock') NOT NULL DEFAULT 'manual',
   electronic_payment_id BIGINT UNSIGNED NULL DEFAULT NULL,
   -- Set only while this confirmation is a successful sale, so a schedule can
   -- have at most one (the unique key below). VIRTUAL, not STORED: MySQL

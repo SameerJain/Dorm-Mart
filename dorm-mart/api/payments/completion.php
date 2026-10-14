@@ -65,6 +65,7 @@ function payment_complete_purchase_transaction(
     }
 
     $amountCents = (int)$row['amount_cents'];
+    $source = $row['payment_mode'] === 'mock' ? 'mock' : 'stripe';
     $finalPrice = $amountCents / 100;
     $snapshot = [
         'item_title' => (string)$row['item_title'],
@@ -76,7 +77,7 @@ function payment_complete_purchase_transaction(
         'negotiated_price' => $finalPrice,
         'is_trade' => false,
         'payment_amount_cents' => $amountCents,
-        'completion_source' => 'stripe',
+        'completion_source' => $source,
     ];
     $snapshotJson = json_encode($snapshot, JSON_UNESCAPED_SLASHES);
     if ($snapshotJson === false) throw new RuntimeException('Failed to encode payment completion snapshot');
@@ -86,7 +87,7 @@ function payment_complete_purchase_transaction(
             (scheduled_request_id, inventory_product_id, seller_user_id, buyer_user_id, conversation_id,
              is_successful, final_price, status, completion_source, electronic_payment_id, expires_at,
              buyer_response_at, auto_processed_at, payload_snapshot)
-         VALUES (?, ?, ?, ?, ?, 1, ?, 'payment_completed', 'stripe', ?, NOW(), ?, ?, ?)"
+         VALUES (?, ?, ?, ?, ?, 1, ?, 'payment_completed', ?, ?, NOW(), ?, ?, ?)"
     );
     if (!$insert) throw new RuntimeException('Failed to prepare payment confirmation insert');
     $sellerId = (int)$row['seller_user_id'];
@@ -94,13 +95,14 @@ function payment_complete_purchase_transaction(
     $conversationId = (int)$row['conversation_id'];
     $succeededDb = $succeededAt->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
     $insert->bind_param(
-        'iiiiidisss',
+        'iiiiidsisss',
         $scheduleId,
         $inventoryId,
         $sellerId,
         $buyerId,
         $conversationId,
         $finalPrice,
+        $source,
         $electronicPaymentId,
         $succeededDb,
         $succeededDb,
@@ -120,7 +122,7 @@ function payment_complete_purchase_transaction(
         'is_successful' => 1,
         'final_price' => $finalPrice,
         'status' => 'payment_completed',
-        'completion_source' => 'stripe',
+        'completion_source' => $source,
         'electronic_payment_id' => $electronicPaymentId,
         'payload_snapshot' => $snapshotJson,
     ];
@@ -130,7 +132,7 @@ function payment_complete_purchase_transaction(
         'electronic_payment_id' => $electronicPaymentId,
         'is_successful' => true,
         'final_price' => $finalPrice,
-        'completion_source' => 'stripe',
+        'completion_source' => $source,
         'auto_accepted' => true,
     ]);
 
@@ -140,7 +142,7 @@ function payment_complete_purchase_transaction(
             $conversationId,
             $buyerId,
             $sellerId,
-            'Electronic payment completed this purchase.',
+            $source === 'mock' ? 'Mock transaction completed. No real money was moved.' : 'Electronic payment completed this purchase.',
             [
                 'type' => 'payment_completed',
                 'confirm_purchase_status' => 'payment_completed',
@@ -153,7 +155,8 @@ function payment_complete_purchase_transaction(
                 'final_price' => $finalPrice,
                 'payment_amount_cents' => $amountCents,
                 'payment_status' => 'succeeded',
-                'completion_source' => 'stripe',
+                'completion_source' => $source,
+                'payment_mode' => $row['payment_mode'],
                 'meeting_at' => dm_utc_atom($row['meeting_at']),
             ]
         );

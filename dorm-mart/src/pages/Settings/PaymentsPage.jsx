@@ -61,14 +61,19 @@ export default function PaymentsPage() {
           )}
         </div>
         <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-          Connect Stripe to offer card and eligible wallet payments for Scheduled Purchases. You are the merchant of record, receive funds directly, and pay Stripe’s processing fees.
+          {account?.is_mock ? "This demo account uses mock transactions. No real money is charged or transferred." : "Connect Stripe to offer card and eligible wallet payments for Scheduled Purchases. You receive funds directly and pay Stripe’s processing fees."}
         </p>
 
         {!account ? (
           <p className="mt-8 text-sm text-gray-500">Loading payment settings…</p>
+        ) : account.is_mock ? (
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+            <h2 className="font-semibold">Mock transactions are ready</h2>
+            <p className="mt-2">Choose built-in payment when scheduling a demo purchase. The buyer can complete the mock transaction from chat during the Payment Window. No Stripe account or card details are needed.</p>
+          </div>
         ) : !account.feature_enabled ? (
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
-            Payments are not enabled on this installation yet. Configure Stripe, HTTPS, wallet domains, and both webhook modes before turning on the payment feature flag.
+            Real payments are not available on this installation yet. You can still arrange purchases through chat and use manual confirmation.
           </div>
         ) : (
           <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
@@ -105,10 +110,10 @@ export default function PaymentsPage() {
 
         {error && <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-        <div className="mt-8 rounded-xl border border-gray-200 p-5 text-sm leading-6 text-gray-600 dark:border-gray-700 dark:text-gray-300">
+        {!account?.is_mock && <div className="mt-8 rounded-xl border border-gray-200 p-5 text-sm leading-6 text-gray-600 dark:border-gray-700 dark:text-gray-300">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Before you connect</h2>
           <p className="mt-2">This feature supports US sellers age 18 or older and USD payments. Stripe handles identity verification, payment details, payouts, refunds, and disputes. Dorm Mart does not hold funds or guarantee the item handoff.</p>
-        </div>
+        </div>}
       </div>
     </SettingsLayout>
   );
