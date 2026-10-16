@@ -62,7 +62,7 @@
   "devDependencies": {
     "autoprefixer": "^10.4.21",
     "env-cmd": "^11.0.0",
-    "postcss": "^8.5.26"
+    "postcss": "^8.5.27"
   },
   "_comment_proxy": "used to connect local react to locally running php server",
   "proxy": "http://localhost:8080"
