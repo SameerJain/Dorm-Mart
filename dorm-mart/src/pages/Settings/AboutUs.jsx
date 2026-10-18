@@ -13,7 +13,7 @@ const developers = [
     linkedin: "https://www.linkedin.com/in/sameer-jain1/",
     photo: sameerPhoto,
     contribution:
-      "Sameer built the login and password-recovery flows and worked on account security. He created the dark mode system, seller dashboard, purchase scheduling, wishlists, and product reviews, including the scheduling controls in chat. He has continued maintaining the app, with work on Railway deployment, the custom domain, and email delivery.",
+      "Sameer built login, password recovery, account security, dark mode, the seller dashboard, purchase scheduling, wishlists, and product reviews. He connected scheduling and purchase updates to chat, then continued developing Dorm Mart after the course ended. His later work includes listing videos and drafts, personalized recommendations, payment flows, moderation tools, two-factor authentication, Railway deployment, and transactional email delivery. He also maintains the app, fixes bugs, and expands its automated regression tests.",
   },
   {
     name: "Anish Banerjee",
@@ -23,7 +23,7 @@ const developers = [
     linkedin: "https://www.linkedin.com/in/anish-banerjee-71aba9290/",
     photo: anishPhoto,
     contribution:
-      "Anish set up the first database connection and built account creation and password changes. He worked on creating listings, browsing the home feed, searching with filters, and viewing product details. He also built purchase confirmation, receipts, the purchase-history API, and the personal and public profile pages.",
+      "Anish set up the first database connection and built account creation and password changes. He implemented listing creation, the home feed, search filters, and individual product details, connecting React pages to the PHP backend. He also built purchase confirmation, receipts, the purchase history API, and personal and public profiles. His work included profile photos, custom bios, Instagram links, seller contact details, and the database changes and validation behind these features.",
   },
   {
     name: "Chris (Sooseok) Kim",
@@ -33,7 +33,7 @@ const developers = [
     linkedin: "https://www.linkedin.com/in/kim-chris-sooseok/",
     photo: chrisPhoto,
     contribution:
-      "Chris built the chat system so buyers and sellers could message each other, share photos, and keep track of unread messages. He also built the purchase-history page and its year filter, added wishlist counts and notifications, and made the navigation, settings, and search filters easier to use on phones. He wrote the FAQ pages and the scripts for applying database migrations and test data.",
+      "Chris built the chat system so buyers and sellers could exchange messages and photos, manage conversations, and track unread chat messages. He created the purchase history page and year filter, added wishlist counts and notifications, and improved navigation, settings, and search filters on phones. He also wrote the in-app FAQ pages, implemented database migration and test data scripts, and worked on password recovery screens and Windows and macOS deployment setup.",
   },
 ];
 
