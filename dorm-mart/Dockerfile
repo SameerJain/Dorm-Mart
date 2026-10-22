@@ -44,7 +44,7 @@ RUN composer install --no-dev --no-interaction --no-progress --prefer-dist \
 # ---------------------------------------------------------------------------
 # Stage 3: runtime
 # ---------------------------------------------------------------------------
-FROM php:8.3-apache-bookworm
+FROM php:8.3.36-apache-bookworm
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libpng-dev libjpeg62-turbo-dev libwebp-dev \
