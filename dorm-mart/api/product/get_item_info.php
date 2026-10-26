@@ -21,7 +21,6 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-// SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
 $sql = "SELECT 
     product_id,
     title,

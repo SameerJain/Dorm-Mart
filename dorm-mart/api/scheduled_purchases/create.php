@@ -37,7 +37,6 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $itemStmt = $conn->prepare('SELECT product_id, title, seller_id, price_nego, trades, item_location, listing_price, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
     if (!$itemStmt) {
         throw new RuntimeException('Failed to prepare inventory query');
@@ -59,7 +58,6 @@ try {
     $snapshotTrades = isset($itemRow['trades']) ? ((int)$itemRow['trades'] === 1) : false;
     $snapshotMeetLocation = isset($itemRow['item_location']) ? trim((string)$itemRow['item_location']) : null;
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $convStmt = $conn->prepare('SELECT conv_id, product_id, user1_id, user2_id, user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
     if (!$convStmt) {
         throw new RuntimeException('Failed to prepare conversation query');
@@ -98,7 +96,6 @@ try {
         json_response(['success' => false, 'error' => 'Could not determine buyer'], 400);
     }
 
-    // Ensure buyer is not the seller
     if ($buyerId === $sellerId) {
         json_response(['success' => false, 'error' => 'Cannot schedule with yourself'], 400);
     }
@@ -106,7 +103,6 @@ try {
         json_response(['success' => false, 'error' => 'This user is no longer available'], 403);
     }
 
-    // Check the listing's terms before any further lookups.
     $termsError = scheduled_purchase_terms_error($proposal, $snapshotPriceNego, $snapshotTrades);
     if ($termsError !== null) {
         json_response(['success' => false, 'error' => $termsError], 400);
@@ -121,7 +117,6 @@ try {
         $paymentMode = (string)$eligibility['mode'];
     }
 
-    // Generate unique 4-character verification code for buyer-seller meetup confirmation
     $verificationCode = generate_unique_code($conn);
 
     // The chat UI hides the schedule button while a request is open, but only
@@ -257,7 +252,6 @@ function generate_unique_code(mysqli $conn): string
     $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     $length = strlen($alphabet) - 1;
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $checkStmt = $conn->prepare('SELECT request_id FROM scheduled_purchase_requests WHERE verification_code = ? LIMIT 1');
     if (!$checkStmt) {
         throw new RuntimeException('Failed to prepare code check');

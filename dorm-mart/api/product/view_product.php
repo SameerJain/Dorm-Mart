@@ -58,7 +58,6 @@ try {
         LIMIT 1
     ";
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $mysqli->prepare($sql);
     if (!$stmt) {
         throw new Exception('DB prepare failed: ' . $mysqli->error);

@@ -67,10 +67,9 @@ export function validateListing({
   return errors;
 }
 
-/** Draft validation: photo + title always, price only when non-empty. */
-export function validateDraft({ title, price, images }) {
+/** Draft validation: title always, price only when non-empty. */
+export function validateDraft({ title, price }) {
   const errors = {};
-  if (!hasListingPhoto(images)) errors.images = DRAFT_PHOTO_ERROR;
   assignIfError(errors, "title", validateTitle(title));
   assignIfError(errors, "price", validatePrice(price, { required: false }));
   return errors;

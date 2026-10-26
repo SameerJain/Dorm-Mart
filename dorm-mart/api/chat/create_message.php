@@ -124,7 +124,6 @@ try {
     chat_ensure_participants($conn, $convId, $u1, $u2);
     chat_reopen_conversation($conn, $convId);
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $isFlagged = contains_profanity($conn, $content) ? 1 : 0;
     $stmt = $conn->prepare(
         'INSERT INTO messages

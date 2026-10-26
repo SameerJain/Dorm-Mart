@@ -84,7 +84,6 @@ $requestId = bin2hex(random_bytes(8));
 try {
     $conn = db();
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare('SELECT user_id, first_name, last_name, email, reset_token_hash, reset_token_expires, last_reset_request, is_protected FROM user_accounts WHERE email = ?');
     $stmt->bind_param('s', $email);  // 's' = string type, safely bound as parameter
     $stmt->execute();

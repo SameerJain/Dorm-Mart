@@ -69,7 +69,6 @@ try {
         json_response(['success' => false, 'error' => listing_cap_error('activating this one')], 403);
     }
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare(
         'UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND seller_id = ?'
         . ' AND (sold IS NULL OR sold = 0) AND (item_status IS NULL OR item_status <> \'Sold\')'

@@ -88,7 +88,6 @@ try {
 
     $conn = db();
     
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare(
         'SELECT user_id, first_name, last_name, email, hash_pass, theme, two_factor_enabled, role, is_banned, auth_version
          FROM user_accounts WHERE email = ? LIMIT 1'
@@ -110,7 +109,6 @@ try {
     $row = $res->fetch_assoc();
     $stmt->close();
 
-    // SECURITY NOTE: password_verify() safely checks the submitted password.
     if (!password_verify($password, (string)$row['hash_pass'])) {
         $conn->close();
         $logLoginOutcome('failed_password', ['user_id' => (int)$row['user_id']]);
@@ -198,7 +196,6 @@ try {
     notify_new_login_device($userId);
     record_login_device($userId);
 
-    // Persist across restarts
     issue_remember_cookie($userId);
 
     json_response(['ok' => true, 'theme' => $theme, 'role' => $row['role'] ?? 'user']);

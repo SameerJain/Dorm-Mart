@@ -90,7 +90,6 @@ try {
     $conn->set_charset('utf8mb4');
     $conn->begin_transaction();
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $schedStmt = $conn->prepare('
         SELECT
             spr.*,
@@ -145,7 +144,6 @@ try {
         }
     }
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     // Check for any pending confirm purchase requests (block creation if pending)
     // Note: buyer_declined status allows new confirm purchases to be created
     $pendingStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE scheduled_request_id = ? AND status = \'pending\' ORDER BY confirm_request_id DESC LIMIT 1');
@@ -215,7 +213,6 @@ try {
         throw new RuntimeException('Failed to encode snapshot');
     }
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $insertStmt = $conn->prepare('
         INSERT INTO confirm_purchase_requests
             (scheduled_request_id, inventory_product_id, seller_user_id, buyer_user_id, conversation_id, is_successful,

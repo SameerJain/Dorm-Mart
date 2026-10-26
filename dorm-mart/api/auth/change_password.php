@@ -38,7 +38,6 @@ $conn = null;
 try {
   $conn = db();
 
-  // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
   $stmt = $conn->prepare('SELECT hash_pass, is_protected FROM user_accounts WHERE user_id = ? LIMIT 1');
   $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
@@ -58,7 +57,6 @@ try {
     json_response(password_confirm_retry_error($passwordLimit), 429);
   }
 
-  // SECURITY NOTE: password_verify() safely checks the submitted password.
   if (!password_verify($current, (string)$row['hash_pass'])) {
     $conn->close();
     json_response(['ok' => false, 'error' => 'Invalid current password'], 401);
@@ -79,10 +77,8 @@ try {
     json_response(['ok' => false, 'error' => "This shared demo account's password can't be changed."], 403);
   }
 
-  // SECURITY NOTE: password_hash() stores only the salted bcrypt hash.
   $newHash = hash_password($next);
 
-  // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
   $upd = $conn->prepare(
     'UPDATE user_accounts
      SET hash_pass = ?, hash_auth = NULL, reset_token_hash = NULL,
