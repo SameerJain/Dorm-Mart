@@ -20,7 +20,6 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
   const confirmRequestId = metadata.confirm_request_id;
 
   const [localStatus, setLocalStatus] = useState(() => {
-    // Check enriched metadata first (from backend enrichment)
     const enrichedStatus = metadata.confirm_purchase_status;
     if (
       enrichedStatus === "buyer_accepted" ||
@@ -28,21 +27,13 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     )
       return "accepted";
     if (enrichedStatus === "buyer_declined") return "declined";
-    // The scheduled purchase was cancelled (or an account deleted) first.
     if (enrichedStatus === "seller_cancelled") return "cancelled";
-    // Fall back to message type if no enriched status
     if (
       messageType === "confirm_accepted" ||
       messageType === "confirm_auto_accepted"
     )
       return "accepted";
     if (messageType === "confirm_denied") return "declined";
-    // Check if buyer_response_at exists in metadata (indicates response was made)
-    if (metadata.buyer_response_at) {
-      // If there's a response timestamp but no status, check the status again
-      // This handles edge cases where status might not be set but response exists
-      return null; // Will be determined by enriched status on next render
-    }
     return null;
   });
   const [isResponding, setIsResponding] = useState(false);
@@ -68,13 +59,11 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
   const failureReason = metadata.failure_reason;
   const failureReasonNotes = metadata.failure_reason_notes;
 
-  // Check if price differs from listing price
   const hasPriceChange =
     finalPrice !== null &&
     listingPrice !== null &&
     parseFloat(finalPrice) !== parseFloat(listingPrice);
 
-  // Check if buttons should be shown - don't show if status indicates response was already made
   const enrichedStatus = metadata.confirm_purchase_status;
   const hasResponded =
     enrichedStatus &&
@@ -106,15 +95,12 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
       return { label: "Waiting for buyer", tone: "warning" };
     if (messageType === "confirm_request" && !isMine)
       return { label: "Action required", tone: "warning" };
-    // Fallback to ensure we always return a valid object
     return { label: "Update", tone: "info" };
   }, [isMine, localStatus, messageType]);
 
-  // Determine title text based on buyer response and seller's success marking
   const titleText = useMemo(() => {
     const enrichedStatus = metadata.confirm_purchase_status;
     if (localStatus === "cancelled") return "Confirm Purchase: Cancelled";
-    // Check if buyer denied first
     if (
       enrichedStatus === "buyer_declined" ||
       messageType === "confirm_denied" ||
@@ -122,19 +108,6 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     ) {
       return "Confirm Purchase: Buyer Denied";
     }
-    // Check if buyer accepted
-    if (
-      enrichedStatus === "buyer_accepted" ||
-      enrichedStatus === "auto_accepted" ||
-      messageType === "confirm_accepted" ||
-      messageType === "confirm_auto_accepted" ||
-      localStatus === "accepted"
-    ) {
-      return isSuccessful
-        ? "Confirm Purchase: Marked Successful"
-        : "Confirm Purchase: Marked Unsuccessful";
-    }
-    // Default: show seller's success marking
     return isSuccessful
       ? "Confirm Purchase: Marked Successful"
       : "Confirm Purchase: Marked Unsuccessful";
@@ -176,16 +149,10 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     },
   };
 
-  // Ensure statusDescriptor and visual are always valid
-  const safeStatusDescriptor = statusDescriptor || {
-    label: "Update",
-    tone: "info",
-  };
   const visualTone =
-    isSuccessful || isCancelled ? safeStatusDescriptor.tone : "danger";
-  const visual = toneClasses[visualTone] || toneClasses.info;
+    isSuccessful || isCancelled ? statusDescriptor.tone : "danger";
+  const visual = toneClasses[visualTone];
 
-  // Get icon based on status
   const getIcon = () => {
     if (
       messageType === "confirm_accepted" ||
@@ -226,7 +193,6 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
       );
     }
     if (messageType === "confirm_request") return null;
-    // Default info icon
     return (
       <svg
         className={`w-5 h-5 ${visual.iconColor} flex-shrink-0 mt-0.5`}
@@ -289,9 +255,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
   const formattedExpires = formatMessageDate(expiresAt);
   const formattedResponded = formatMessageDate(respondedAt);
 
-  // Safety fallback: Early return if critical metadata is missing - prevents empty div rendering
-  // Note: Validation should happen in ChatPage.jsx before rendering, so this should rarely trigger
-  // Must be after all hooks to comply with React hooks rules
+  // Keep this return after the hooks.
   if (
     !messageType ||
     (messageType === "confirm_request" && !confirmRequestId)
@@ -325,7 +289,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
                           : "text-blue-800 dark:text-blue-100"
                   }`}
                 >
-                  {safeStatusDescriptor.label}
+                  {statusDescriptor.label}
                 </span>
               </div>
               <p

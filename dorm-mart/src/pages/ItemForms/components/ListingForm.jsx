@@ -479,7 +479,7 @@ export default function ListingForm({
               {hasPhoto ? "+ Add Photos or Videos" : "+ Add a Photo"}
             </button>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
-              At least one photo is required. Add up to {LIMITS.images} photos
+              At least one photo is required to publish. Drafts can be saved without photos. Add up to {LIMITS.images} photos
               and videos total; videos can be up to 25 MB.
               {images.length >= LIMITS.images && (
                 <span className="block mt-1 text-gray-600 dark:text-gray-300 font-medium">

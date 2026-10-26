@@ -48,7 +48,6 @@ try {
         FOR UPDATE
     SQL;
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $selectStmt = $conn->prepare($selectSql);
     if (!$selectStmt) {
         throw new RuntimeException('Failed to prepare select');
@@ -95,7 +94,6 @@ try {
     }
 
     $nextStatus = $action === 'accept' ? 'accepted' : 'declined';
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $updateStmt = $conn->prepare('UPDATE scheduled_purchase_requests SET status = ?, buyer_response_at = NOW() WHERE request_id = ? LIMIT 1');
     if (!$updateStmt) {
         throw new RuntimeException('Failed to prepare update');

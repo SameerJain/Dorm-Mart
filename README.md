@@ -163,6 +163,20 @@ Frontend tests use Jest and React Testing Library. The backend command runs the 
 
 Pick an open issue or describe the change you want to make before you start. Put your work on a branch, keep the change focused, and open a pull request when it is ready for review. Include testing notes, screenshots, or both when they help reviewers understand the change.
 
+## Team contributions
+
+### Sameer Jain
+
+Sameer built login, password recovery, account security, dark mode, the seller dashboard, purchase scheduling, wishlists, and product reviews. He connected scheduling and purchase updates to chat, then continued developing Dorm Mart after the course ended. His later work includes listing videos and drafts, personalized recommendations, payment flows, moderation tools, two-factor authentication, Railway deployment, and transactional email delivery. He also maintains the app, fixes bugs, and expands its automated regression tests.
+
+### Anish Banerjee
+
+Anish set up the first database connection and built account creation and password changes. He implemented listing creation, the home feed, search filters, and individual product details, connecting React pages to the PHP backend. He also built purchase confirmation, receipts, the purchase history API, and personal and public profiles. His work included profile photos, custom bios, Instagram links, seller contact details, and the database changes and validation behind these features.
+
+### Chris (Sooseok) Kim
+
+Chris built the chat system so buyers and sellers could exchange messages and photos, manage conversations, and track unread chat messages. He created the purchase history page and year filter, added wishlist counts and notifications, and improved navigation, settings, and search filters on phones. He also wrote the in-app FAQ pages, implemented database migration and test data scripts, and worked on password recovery screens and Windows and macOS deployment setup.
+
 ## The team
 
 - Sooseok Kim

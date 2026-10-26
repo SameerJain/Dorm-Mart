@@ -267,7 +267,7 @@ try {
     $validatedUploads,
     static fn(array $upload): bool => $upload['is_photo']
   ));
-  if ($existingPhotoCount + $newPhotoCount < 1) {
+  if (!$savingDraft && $existingPhotoCount + $newPhotoCount < 1) {
     $photoError = 'At least one photo is required. Videos are optional and count toward the 6-media limit.';
     json_response([
       'ok' => false,
@@ -339,7 +339,6 @@ try {
       $rejectLocked(409, 'Cancel or complete the accepted scheduled purchase before saving this listing as a draft.');
     }
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $sql = "UPDATE INVENTORY
                SET title=?,
                    categories=?,
@@ -415,7 +414,6 @@ try {
   if ($status === 'Active' && listing_cap_locked_active_count($conn, $userId) >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
     $rejectLocked(403, listing_cap_error($capAction));
   }
-  // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
   $sql = "INSERT INTO INVENTORY
             (title, categories, item_location, item_condition, description, photos, listing_price, item_status, trades, price_nego, seller_id)
           VALUES

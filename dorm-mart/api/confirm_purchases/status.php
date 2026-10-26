@@ -76,7 +76,6 @@ try {
             : null,
     ];
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $confirmStmt = $conn->prepare('
         SELECT *
         FROM confirm_purchase_requests

@@ -53,17 +53,14 @@ function generate_password(): string
     $digits = '0123456789';
     $special = '!@#$%^&*()-_=+[]{};:,.?/';
 
-    // Generate exactly 1 special character
     $password = [
         $special[random_int(0, strlen($special) - 1)],
     ];
 
-    // Ensure at least 1 uppercase, 1 lowercase, and 1 digit (remaining 7 characters)
     $password[] = $uppers[random_int(0, strlen($uppers) - 1)];
     $password[] = $lowers[random_int(0, strlen($lowers) - 1)];
     $password[] = $digits[random_int(0, strlen($digits) - 1)];
 
-    // Fill the remaining 4 characters from uppercase, lowercase, or digits only (no special)
     $nonSpecial = $uppers . $lowers . $digits;
     for ($i = count($password); $i < $length; $i++) {
         $password[] = $nonSpecial[random_int(0, strlen($nonSpecial) - 1)];
@@ -78,10 +75,8 @@ function generate_password(): string
     return implode('', $password);
 }
 
-// Read the JSON body from React's fetch()
 $data = json_request_body_or_error(['ok' => false, 'error' => 'Invalid JSON body']);
 
-// Extract the values (before validation)
 if (!is_string($data['firstName'] ?? null)
     || !is_string($data['lastName'] ?? null)
     || !is_string($data['email'] ?? null)) {
@@ -110,10 +105,8 @@ if ($accountRateLimit['blocked']) {
     ], 429);
 }
 
-// Load email policy configuration
 require_once __DIR__ . '/../config/email_config.php';
 
-// Input validation with regex patterns
 $firstName = validate_input($firstNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
 $lastName = validate_input($lastNameRaw, 30, '/^[a-zA-Z\s\-]+$/');
 $gradMonth = strict_integer_value($data['gradMonth'] ?? null);
@@ -127,16 +120,13 @@ if ($gradMonth === null || $gradYear === null || $promos === null || $termsAccep
         : 'Invalid input format'], 400);
 }
 
-// Email validation based on ALLOW_ALL_EMAILS flag
 if (ALLOW_ALL_EMAILS) {
-    // Accept any valid email format
     $email = validate_input($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
     if ($email === false || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         dm_log_auth_event('create_account', $requestId, 'ineligible_request');
         accept_account_request();
     }
 } else {
-    // Only accept @buffalo.edu
     $email = validate_input($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
     if ($email === false || !preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
         dm_log_auth_event('create_account', $requestId, 'ineligible_request');
@@ -156,22 +146,18 @@ if (preg_match('/^\d+$/', $emailLocalPart)) {
     accept_account_request();
 }
 
-// --- Validate graduation date format ---
 if ($gradMonth < 1 || $gradMonth > 12 || $gradYear < 1900) {
     json_response(['ok' => false, 'error' => 'Invalid graduation date'], 400);
 }
 
-// --- Current and limit dates ---
 $currentYear  = (int)date('Y');
 $currentMonth = (int)date('n');
 $maxFutureYear = $currentYear + 6;
 
-// --- Check for past date ---
 if ($gradYear < $currentYear || ($gradYear === $currentYear && $gradMonth < $currentMonth)) {
     json_response(['ok' => false, 'error' => 'Graduation date cannot be in the past'], 400);
 }
 
-// --- Check for excessive future date ---
 if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > $currentMonth)) {
     json_response(['ok' => false, 'error' => 'Graduation date cannot be more than 6 years in the future'], 400);
 }
@@ -179,7 +165,6 @@ if ($gradYear > $maxFutureYear || ($gradYear === $maxFutureYear && $gradMonth > 
 require_once __DIR__ . '/../database/db_connect.php';
 try {
     $conn = db();
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $chk = $conn->prepare('SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1');
     $chk->bind_param('s', $email);  // 's' = string type, safely bound as parameter
     $chk->execute();
@@ -192,24 +177,15 @@ try {
     }
     $chk->close();
 
-    // 2) Generate & hash password
-    // SECURITY NOTE: Store only the salted password hash.
     $tempPassword = generate_password();
     $hashPass     = hash_password($tempPassword);
 
-    // 3) Insert user
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $sql = 'INSERT INTO user_accounts
           (first_name, last_name, grad_month, grad_year, email, promotional, promo_frequency, hash_pass, hash_auth, join_date, seller, theme, received_intro_promo_email)
         VALUES
           (?, ?, ?, ?, ?, ?, ?, ?, NULL, CURRENT_DATE, 0, 0, ?)';
 
     $ins = $conn->prepare($sql);
-    /*
-    types: s=string, i=int
-    first_name(s), last_name(s), grad_month(i), grad_year(i),
-    email(s), promotional(i), hash_pass(s), hash_auth(s), received_intro_promo_email(i)
-*/
     $promotional = $promos ? 1 : 0;
     $promoFrequency = $promos ? 'weekly' : 'off';
     $receivedIntroPromoEmail = $promos ? 1 : 0; // Set to TRUE if promotional emails are enabled

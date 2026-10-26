@@ -327,7 +327,6 @@ try {
     }
     $sql .= $order . "\n" . ' LIMIT ? ';
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $mysqli->prepare($sql);
     if ($stmt === false) {
         throw new Exception('Prepare failed: ' . $mysqli->error);

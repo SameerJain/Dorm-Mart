@@ -180,7 +180,6 @@ function UserPreferences() {
         >
           {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "All changes saved" : ""}
         </p>
-        {/* Notification Settings */}
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
             Notification Settings
@@ -201,13 +200,11 @@ function UserPreferences() {
           </div>
         </div>
 
-        {/* My Interests */}
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
             My Interests
           </h2>
 
-          {/* Search Bar with Enhanced Functionality */}
           <div className="relative mb-4">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
@@ -236,7 +233,6 @@ function UserPreferences() {
             />
           </div>
 
-          {/* Selected Interests with Enhanced UI */}
           {selectedInterests.length > 0 && (
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
@@ -284,7 +280,6 @@ function UserPreferences() {
             </div>
           )}
 
-          {/* Enhanced Suggestions Dropdown */}
           {showSuggestions && (
             <div className="mb-4">
               <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-800">
@@ -340,7 +335,6 @@ function UserPreferences() {
             </div>
           )}
 
-          {/* Popular Categories */}
           {!searchQuery && (
             <div className="space-y-3">
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -392,13 +386,11 @@ function UserPreferences() {
           )}
         </div>
 
-        {/* Theme */}
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
             Theme
           </h2>
 
-          {/* Theme Toggle */}
           <div className="flex items-center space-x-4 mb-4">
             <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-gray-700/80">
               <button

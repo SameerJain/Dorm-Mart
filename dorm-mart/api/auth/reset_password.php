@@ -8,7 +8,6 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/device_history.php';
 
-// Get request data
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 $data = strpos($ct, 'application/json') !== false
     ? json_request_body_or_error(['success' => false, 'error' => 'Invalid JSON payload'])
@@ -18,12 +17,10 @@ $token = is_string($data['token'] ?? null) ? trim($data['token']) : '';
 $newPassword = is_string($data['newPassword'] ?? null) ? $data['newPassword'] : '';
 $uid = request_int($data, 'uid');
 
-// Validate inputs
 if (!preg_match('/^[a-f0-9]{64}$/D', $token) || $newPassword === '' || $uid <= 0) {
     json_response(['success' => false, 'error' => 'Token, user ID, and new password are required'], 400);
 }
 
-// Validate password policy
 $MAX_LEN = 64;
 if (strlen($newPassword) > $MAX_LEN) {
     json_response(['success' => false, 'error' => 'Password is too long. Maximum length is 64 characters.'], 400);
@@ -77,10 +74,8 @@ try {
         json_response(['success' => false, 'error' => "This shared demo account's password can't be changed."], 403);
     }
 
-    // Hash the new password
     $hashedPassword = hash_password($newPassword);
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare('
         UPDATE user_accounts
         SET hash_pass = ?, hash_auth = NULL, reset_token_hash = NULL,

@@ -678,11 +678,7 @@ function ProductListingPage() {
     }
 
     if (savingDraft) {
-      // Price is optional while drafting, but the backend still rejects a
-      // non-empty value that isn't a real, in-range price — validate it here
-      // too so an incomplete value like "." doesn't round-trip to the server
-      // just to come back as an error.
-      const draftErrors = validateDraft({ title, price, images });
+      const draftErrors = validateDraft({ title, price });
       setErrors(draftErrors);
       if (Object.keys(draftErrors).length > 0) {
         scrollToFormTop();

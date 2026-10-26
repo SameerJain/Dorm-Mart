@@ -10,14 +10,11 @@ init_json_endpoint();
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Ensure user is authenticated
 $userId = require_login();
 $conn = db();
 
-// Helpers
 function get_prefs(mysqli $conn, int $userId)
 {
-  // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
   $stmt = $conn->prepare('SELECT theme, promotional, promo_frequency, interested_category_1, interested_category_2, interested_category_3 FROM user_accounts WHERE user_id = ?');
   $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
@@ -35,7 +32,6 @@ function get_prefs(mysqli $conn, int $userId)
     $promoEmails = (bool)$userRow['promotional'];
   }
 
-  // Build interests array from the 3 category columns
   $interests = [];
   if ($userRow) {
     $rawInterests = array_filter([

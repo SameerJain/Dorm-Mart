@@ -399,15 +399,7 @@ function LoginPage() {
                     type="email"
                     autoComplete="username"
                     value={email}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Ensure we capture the full value up to 255 characters
-                      if (value.length <= 255) {
-                        setEmail(value);
-                      } else {
-                        setEmail(value.slice(0, 255));
-                      }
-                    }}
+                    onChange={(e) => setEmail(e.target.value.slice(0, 255))}
                     maxLength={255}
                     required
                     disabled={loading}

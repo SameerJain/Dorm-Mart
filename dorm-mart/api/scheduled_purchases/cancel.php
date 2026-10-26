@@ -29,7 +29,6 @@ try {
     $conn->set_charset('utf8mb4');
     $conn->begin_transaction();
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $selectSql = <<<SQL
         SELECT
             spr.*,
@@ -112,7 +111,6 @@ try {
         }
     }
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $updateStmt = $conn->prepare('UPDATE scheduled_purchase_requests SET status = ?, canceled_by_user_id = ? WHERE request_id = ? LIMIT 1');
     if (!$updateStmt) {
         throw new RuntimeException('Failed to prepare update');
