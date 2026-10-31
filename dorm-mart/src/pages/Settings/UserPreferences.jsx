@@ -1,203 +1,145 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
 import SettingsLayout from "./SettingsLayout";
 import { useTheme } from "../../hooks/useTheme";
-import PageBackButton from "../../components/PageBackButton";
+import useCategories from "../../hooks/useCategories";
 import logger from "../../utils/logger";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
+import { preferenceChanges } from "./userPreferencesUtils";
+
+const SAVE_DEBOUNCE_MS = 600;
 
 function UserPreferences() {
-  const navigate = useNavigate();
-  const {
-    theme,
-    updateTheme,
-    syncFromServerIfNoPending,
-    isLoading: themeIsLoading,
-  } = useTheme();
+  const { theme, updateTheme, syncFromServerIfNoPending } = useTheme();
   const [promoFrequency, setPromoFrequency] = useState("off");
-  const [revealContact, setRevealContact] = useState(false);
-  const [contactPhone, setContactPhone] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedInterests, setSelectedInterests] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [saveError, setSaveError] = useState("");
+  const [saveStatus, setSaveStatus] = useState("idle");
+  // Last values the server confirmed. Autosave sends only what differs from it,
+  // so a load never echoes the same values back and a partial save cannot
+  // overwrite a field the user did not touch.
+  const savedRef = useRef(null);
+  const showSuggestions = searchQuery.length > 0;
 
-  const [availableCategories, setAvailableCategories] = useState([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [categoriesError, setCategoriesError] = useState(null);
+  const {
+    categories: availableCategories,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useCategories();
 
-  // Load categories from backend
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setCategoriesLoading(true);
-        setCategoriesError(null);
-        const res = await fetch(`${API_BASE}/categories/get_categories.php`);
-        if (!res.ok) throw new Error("Failed to load categories");
-        const data = await res.json();
-        if (!Array.isArray(data)) throw new Error("Invalid categories format");
-        if (!cancelled) setAvailableCategories(data);
-      } catch (e) {
-        if (!cancelled) {
-          logger.error("Failed to load categories:", e);
-          setCategoriesError(e.message);
-        }
-      } finally {
-        if (!cancelled) setCategoriesLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Enhanced interest management
   const handleInterestToggle = (interest) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setSelectedInterests((prev) => {
-        if (prev.includes(interest)) {
-          return prev.filter((item) => item !== interest);
-        }
-        // Enforce maximum of 3 categories
-        if (prev.length >= 3) {
-          return prev; // Don't add if already at limit
-        }
-        return [...prev, interest];
-      });
-      setIsLoading(false);
-    }, 200);
+    setSelectedInterests((prev) => {
+      if (prev.includes(interest)) {
+        return prev.filter((item) => item !== interest);
+      }
+      return prev.length >= 3 ? prev : [...prev, interest];
+    });
   };
 
   const handleInterestRemove = (interest) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setSelectedInterests((prev) => prev.filter((item) => item !== interest));
-      setIsLoading(false);
-    }, 200);
+    setSelectedInterests((prev) => prev.filter((item) => item !== interest));
   };
 
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    setShowSuggestions(query.length > 0);
+  // Only predefined categories can be chosen, so Enter must not submit free text.
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "Enter") e.preventDefault();
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      // Don't allow custom interests - only select from existing categories
-    }
-  };
-
-  // Filter categories based on search
   const filteredCategories = availableCategories.filter(
     (category) =>
       category.toLowerCase().includes(searchQuery.toLowerCase()) &&
       !selectedInterests.includes(category),
   );
 
-  // Show/hide suggestions based on search
-  useEffect(() => {
-    if (searchQuery.length > 0) {
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
-  }, [searchQuery]);
-
-  // Hydrate from backend on mount (if authenticated)
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        setLoadError("");
         const res = await fetch(`${API_BASE}/profile/user_preferences.php`, {
           method: "GET",
           credentials: "include",
         });
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!json || json.ok !== true || !json.data) return;
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json || json.ok !== true || !json.data) {
+          throw new Error((json && json.error) || "Unable to load your preferences.");
+        }
+        if (cancelled) return;
         const {
           promoEmails,
           promoFrequency: savedPromoFrequency,
-          revealContact,
-          contactPhone: savedContactPhone,
           interests,
           theme: serverTheme,
         } = json.data;
-        if (cancelled) return;
-        setPromoFrequency(savedPromoFrequency || (promoEmails ? "weekly" : "off"));
-        setRevealContact(!!revealContact);
-        setContactPhone(savedContactPhone || "");
-        if (Array.isArray(interests)) setSelectedInterests(interests);
+        const loaded = {
+          promoFrequency: savedPromoFrequency || (promoEmails ? "weekly" : "off"),
+          interests: Array.isArray(interests) ? interests : [],
+        };
+        savedRef.current = loaded;
+        setPromoFrequency(loaded.promoFrequency);
+        setSelectedInterests(loaded.interests);
         if (serverTheme === "dark" || serverTheme === "light") {
           syncFromServerIfNoPending(serverTheme);
         }
         setPreferencesLoaded(true);
       } catch (e) {
         logger.warn("UserPreferences: GET failed", e);
-        if (!cancelled) setPreferencesLoaded(true);
+        // Leave preferencesLoaded false: autosaving the untouched defaults
+        // would overwrite the user's real settings.
+        if (!cancelled) setLoadError(e.message || "Unable to load your preferences.");
       }
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadAttempt]);
 
-  // Save to backend whenever relevant values change (debounced)
   useEffect(() => {
-    if (!preferencesLoaded) return;
-    if (themeIsLoading) return;
+    if (!preferencesLoaded || !savedRef.current) return undefined;
+
+    const current = {
+      promoFrequency,
+      interests: selectedInterests,
+    };
+    const changes = preferenceChanges(savedRef.current, current);
+    if (changes === null) return undefined;
 
     const controller = new AbortController();
     const t = setTimeout(async () => {
+      setSaveStatus("saving");
       try {
-        const body = {
-          promoEmails: promoFrequency !== "off",
-          promoFrequency,
-          revealContact,
-          contactPhone,
-          interests: selectedInterests,
-          theme: theme,
-        };
         const response = await csrfFetch(`${API_BASE}/profile/user_preferences.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify(body),
+          body: JSON.stringify(changes),
           signal: controller.signal,
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || result.ok !== true) {
           throw new Error(result.error || "Unable to save preferences.");
         }
+        savedRef.current = { ...savedRef.current, ...current };
         setSaveError("");
+        setSaveStatus("saved");
       } catch (e) {
         if (e.name !== "AbortError") {
           logger.warn("UserPreferences: POST failed", e);
           setSaveError(e.message || "Unable to save preferences.");
+          setSaveStatus("idle");
         }
       }
-    }, 400);
+    }, SAVE_DEBOUNCE_MS);
     return () => {
       controller.abort();
       clearTimeout(t);
     };
-  }, [
-    promoFrequency,
-    revealContact,
-    contactPhone,
-    selectedInterests,
-    theme,
-    themeIsLoading,
-    preferencesLoaded,
-  ]);
+  }, [promoFrequency, selectedInterests, preferencesLoaded]);
 
   return (
     <SettingsLayout>
@@ -205,16 +147,37 @@ function UserPreferences() {
         <h1 className="text-2xl font-serif font-semibold text-blue-600">
           User Preferences
         </h1>
-        <PageBackButton onClick={() => navigate(-1)} />
       </div>
 
       <div className="space-y-8">
+        {loadError && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-red-100 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200"
+          >
+            <span>
+              {loadError} Changes won&apos;t be saved until your preferences load.
+            </span>
+            <button
+              type="button"
+              onClick={() => setLoadAttempt((n) => n + 1)}
+              className="rounded-md border border-red-300 px-3 py-1 font-medium hover:bg-red-200 dark:border-red-800 dark:hover:bg-red-900"
+            >
+              Retry
+            </button>
+          </div>
+        )}
         {saveError && (
           <p role="alert" className="rounded-lg bg-red-100 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
             {saveError}
           </p>
         )}
-        {/* Notification Settings */}
+        <p
+          aria-live="polite"
+          className="-mt-4 min-h-[1.25rem] text-right text-xs text-slate-500 dark:text-gray-400"
+        >
+          {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "All changes saved" : ""}
+        </p>
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
             Notification Settings
@@ -235,13 +198,11 @@ function UserPreferences() {
           </div>
         </div>
 
-        {/* My Interests */}
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
             My Interests
           </h2>
 
-          {/* Search Bar with Enhanced Functionality */}
           <div className="relative mb-4">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
@@ -260,16 +221,16 @@ function UserPreferences() {
             </div>
             <input
               type="text"
+              aria-label="Search categories"
               placeholder="Search categories..."
               value={searchQuery}
-              onChange={handleSearchChange}
-              onKeyPress={handleKeyPress}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
               maxLength={50}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
             />
           </div>
 
-          {/* Selected Interests with Enhanced UI */}
           {selectedInterests.length > 0 && (
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
@@ -277,26 +238,25 @@ function UserPreferences() {
                   Selected Interests ({selectedInterests.length}/3)
                 </p>
                 <button
+                  type="button"
                   onClick={() => setSelectedInterests([])}
-                  className="text-xs text-red-600 hover:text-red-800"
+                  className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                 >
                   Clear All
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {selectedInterests.map((interest, index) => (
+                {selectedInterests.map((interest) => (
                   <span
                     key={interest}
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm transition-all duration-200 ${
-                      isLoading ? "opacity-50" : "opacity-100"
-                    } bg-blue-100 text-blue-800 border border-blue-200`}
-                    style={{ animationDelay: `${index * 50}ms` }}
+                    className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-3 py-1 text-sm text-blue-800 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-200"
                   >
                     {interest}
                     <button
+                      type="button"
                       onClick={() => handleInterestRemove(interest)}
-                      className="ml-2 text-blue-600 hover:text-blue-800 transition-colors"
-                      disabled={isLoading}
+                      aria-label={`Remove ${interest}`}
+                      className="ml-2 text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-100"
                     >
                       <svg
                         className="h-3 w-3"
@@ -318,31 +278,30 @@ function UserPreferences() {
             </div>
           )}
 
-          {/* Enhanced Suggestions Dropdown */}
           {showSuggestions && (
             <div className="mb-4">
-              <div className="border border-gray-200 rounded-lg bg-white shadow-lg max-h-48 overflow-y-auto">
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-800">
                 {filteredCategories.length > 0 ? (
                   <>
-                    <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-                      <p className="text-xs font-medium text-gray-600">
+                    <div className="border-b border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700">
+                      <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
                         Suggested Categories
                       </p>
                     </div>
                     <div className="p-2">
                       {filteredCategories.slice(0, 8).map((category) => (
                         <button
+                          type="button"
                           key={category}
                           onClick={() => {
                             handleInterestToggle(category);
                             setSearchQuery("");
-                            setShowSuggestions(false);
                           }}
-                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 rounded-md transition-colors"
+                          className="w-full rounded-md px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-blue-200"
                         >
                           <span className="flex items-center">
                             <svg
-                              className="h-4 w-4 mr-2 text-gray-400"
+                              className="mr-2 h-4 w-4 text-gray-400"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -374,7 +333,6 @@ function UserPreferences() {
             </div>
           )}
 
-          {/* Popular Categories */}
           {!searchQuery && (
             <div className="space-y-3">
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -401,6 +359,7 @@ function UserPreferences() {
                 <div className="flex flex-wrap gap-2">
                   {availableCategories.map((category) => (
                     <button
+                      type="button"
                       key={category}
                       onClick={() => handleInterestToggle(category)}
                       disabled={
@@ -425,63 +384,11 @@ function UserPreferences() {
           )}
         </div>
 
-        {/* Seller privacy */}
-        <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
-            Seller Privacy
-          </h2>
-          <div className="max-w-lg space-y-4">
-            <div>
-              <label
-                htmlFor="contact-phone"
-                className="text-sm font-medium text-slate-700 dark:text-gray-300"
-              >
-                Phone number (optional)
-              </label>
-              <input
-                type="tel"
-                id="contact-phone"
-                value={contactPhone}
-                onChange={(e) =>
-                  setContactPhone(
-                    e.target.value.replace(/[^0-9+().\-\s]/g, "").slice(0, 25),
-                  )
-                }
-                autoComplete="tel"
-                placeholder="(716) 555-0123"
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-              />
-            </div>
-            <div className="flex items-start space-x-3">
-              <input
-                type="checkbox"
-                id="reveal-contact"
-                checked={revealContact}
-                onChange={(e) => setRevealContact(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
-              />
-              <label
-                htmlFor="reveal-contact"
-                className="text-sm text-slate-700 dark:text-gray-300"
-              >
-                Share my UB email{contactPhone ? " and phone number" : ""} with
-                buyers who message me about one of my listings.
-              </label>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-gray-400">
-              Contact information is hidden by default and is never shown on
-              your public profile.
-            </p>
-          </div>
-        </div>
-
-        {/* Theme */}
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">
             Theme
           </h2>
 
-          {/* Theme Toggle */}
           <div className="flex items-center space-x-4 mb-4">
             <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-gray-700/80">
               <button

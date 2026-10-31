@@ -30,7 +30,6 @@ try {
     $email    = (string)($profileRow['email'] ?? '');
     $username = derive_username($email);
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $response = [
         'success'     => true,
         'profile'     => [

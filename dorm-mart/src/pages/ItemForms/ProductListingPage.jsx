@@ -12,12 +12,13 @@ import {
   resolveProductPhotoUrl,
 } from "../../utils/imageFallback";
 import logger from "../../utils/logger";
-import { containsMemePrice } from "../../utils/priceValidation";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 import ListingForm from "./components/ListingForm";
 import ImageCropperModal from "./components/ImageCropperModal";
 import ListingStatusBanners from "./components/ListingStatusBanners";
 import ListingSuccessModal from "./components/ListingSuccessModal";
-import useListingCategories from "./hooks/useListingCategories";
+import useCategories from "../../hooks/useCategories";
 import {
   CATEGORIES_MAX,
   DEFAULT_FORM,
@@ -30,6 +31,7 @@ import {
   MAX_VIDEO_BYTES,
   PRICE_INPUT_PATTERN,
 } from "./utils/listingFormConfig";
+import { validateDraft, validateListing } from "./utils/listingValidation";
 
 function ProductListingPage() {
   const { id } = useParams();
@@ -62,11 +64,12 @@ function ProductListingPage() {
   const scrollPositionRef = useRef(0);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const runExclusive = useSubmitLock();
   const [serverMsg, setServerMsg] = useState(null);
   const [loadingExisting, setLoadingExisting] = useState(false);
   const [showTopErrorBanner, setShowTopErrorBanner] = useState(false);
   const [loadError, setLoadError] = useState(null);
-  const [isSold, setIsSold] = useState(false);
+  const [isEditBlocked, setIsEditBlocked] = useState(false);
   const [listingStatus, setListingStatus] = useState(null);
 
   const [atListingCap, setAtListingCap] = useState(false);
@@ -74,8 +77,11 @@ function ProductListingPage() {
 
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const { availableCategories, catFetchError, catLoading } =
-    useListingCategories();
+  const {
+    categories: availableCategories,
+    error: catFetchError,
+    loading: catLoading,
+  } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState("");
 
   const [showCropper, setShowCropper] = useState(false);
@@ -92,34 +98,7 @@ function ProductListingPage() {
     return () => window.removeEventListener("resize", updatePreviewSize);
   }, []);
 
-  // Prevent body scroll when cropper modal is open
-  useEffect(() => {
-    if (showCropper) {
-      scrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
-      document.documentElement.style.overflow = "hidden";
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollPositionRef.current}px`;
-      document.body.style.width = "100%";
-    } else {
-      const scrollY = scrollPositionRef.current;
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-      requestAnimationFrame(() => {
-        window.scrollTo(0, scrollY);
-      });
-    }
-    return () => {
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-    };
-  }, [showCropper]);
+  useBodyScrollLock(showCropper);
 
   // Mirror crop geometry in refs so dragging reads the latest values.
   const displayInfoRef = useRef({
@@ -167,7 +146,6 @@ function ProductListingPage() {
     setErrors({});
   }
 
-  // Active listing cap
   useEffect(() => {
     let ignore = false;
     async function checkActiveListingCap() {
@@ -198,7 +176,6 @@ function ProductListingPage() {
     };
   }, []);
 
-  // Existing listing
   useEffect(() => {
     if (!isEdit || !id) return;
 
@@ -227,28 +204,24 @@ function ProductListingPage() {
 
         if (ignore) return;
 
-        // Prevent editing sold items
-        if (data.sold === true) {
-          setIsSold(true);
-          setLoadError("Cannot edit sold items.");
+        if (Number(data.sold) === 1 || ["pending", "sold"].includes(String(data.item_status || "").toLowerCase())) {
+          setIsEditBlocked(true);
+          setLoadError("Cannot edit pending or sold items.");
           setServerMsg(
-            "Cannot edit sold items. Please return to the seller dashboard.",
+            "Cannot edit pending or sold items. Please return to the seller dashboard.",
           );
           setLoadingExisting(false);
-          // Redirect to seller dashboard after a short delay
           setTimeout(() => {
             navigate("/app/seller-dashboard", { replace: true });
           }, 2000);
           return;
         }
 
-        setIsSold(false);
+        setIsEditBlocked(false);
         setListingStatus(data.item_status || "Active");
 
-        // Populate form fields
         setTitle(data.title || "");
 
-        // Handle categories (can be tags array or categories JSON)
         let cats = [];
         if (Array.isArray(data.tags)) {
           cats = data.tags;
@@ -274,7 +247,6 @@ function ProductListingPage() {
         setAcceptTrades(data.trades === true || data.trades === 1);
         setPriceNegotiable(data.price_nego === true || data.price_nego === 1);
 
-        // Handle existing photos
         let existingPhotos = [];
         if (Array.isArray(data.photos)) {
           existingPhotos = data.photos;
@@ -285,7 +257,6 @@ function ProductListingPage() {
               existingPhotos = parsed;
             }
           } catch (e) {
-            // If not JSON, treat as comma-separated
             existingPhotos = data.photos
               .split(",")
               .map((s) => s.trim())
@@ -293,23 +264,21 @@ function ProductListingPage() {
           }
         }
 
-        // Convert existing photo URLs to image objects for display
-        // Store original URLs separately so we can send them back
         const imageObjects = existingPhotos.map((url) => {
           return {
-            file: null, // No file object for existing images
+            file: null,
             url: resolveProductPhotoUrl(url, {
               apiBase: API_BASE,
               publicBase: PUBLIC_BASE,
             }),
-            originalUrl: url, // Store original URL for submission
+            originalUrl: url,
             type: isVideoMediaUrl(url) ? "video" : "image",
           };
         });
         setImages(imageObjects);
 
         setSelectedCategory("");
-        setErrors({}); // This already clears all errors including images
+        setErrors({});
       } catch (e) {
         if (!ignore) {
           logger.error("Error loading existing listing:", e);
@@ -329,13 +298,11 @@ function ProductListingPage() {
     };
   }, [id, isEdit, navigate]);
 
-  // Reset form when switching back to new-listing mode.
   useEffect(() => {
     if (isNew) {
       resetFormFields();
       setServerMsg(null);
       setLoadError(null);
-      setIsSold(false);
       setListingStatus(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -398,51 +365,15 @@ function ProductListingPage() {
   };
 
   const validateAll = () => {
-    const newErrors = {};
-
-    if (!title.trim()) {
-      newErrors.title = "Title is required";
-    } else if (title.length > LIMITS.title) {
-      newErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
-    }
-
-    if (!description.trim()) {
-      newErrors.description = "Description is required";
-    } else if (description.length > LIMITS.description) {
-      newErrors.description = `Description must be ${LIMITS.description} characters or fewer`;
-    }
-
-    if (price === "") {
-      newErrors.price = "Price is required";
-    } else if (containsMemePrice(price)) {
-      newErrors.price =
-        "The price has a meme input in it. Please try a different price.";
-    } else if (!Number.isFinite(Number(price))) {
-      newErrors.price = "Please enter a valid price";
-    } else if (Number(price) < LIMITS.priceMin) {
-      newErrors.price = `Minimum price is $${LIMITS.priceMin.toFixed(2)}`;
-    } else if (Number(price) > LIMITS.price) {
-      newErrors.price = `Price must be $${LIMITS.price} or less`;
-    }
-
-    if (!categories || categories.length === 0) {
-      newErrors.categories = "Select at least one category";
-    } else if (categories.length > CATEGORIES_MAX) {
-      newErrors.categories = `Select at most ${CATEGORIES_MAX} categories`;
-    }
-
-    if (!itemLocation) {
-      newErrors.itemLocation = "Select an item location";
-    }
-    if (!condition || condition === "") {
-      newErrors.condition = "Select an item condition";
-    }
-
-    if (!hasListingPhoto(images)) {
-      newErrors.images =
-        "At least one photo is required. Videos are optional and count toward the 6-media limit.";
-    }
-
+    const newErrors = validateListing({
+      title,
+      description,
+      price,
+      categories,
+      itemLocation,
+      condition,
+      images,
+    });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -488,7 +419,6 @@ function ProductListingPage() {
       return;
     }
 
-    // Clear file size and type errors if validation passes
     if (
       errors.images &&
       (errors.images.includes("too large") ||
@@ -521,7 +451,6 @@ function ProductListingPage() {
         const w = img.width;
         const h = img.height;
         if (w === h) {
-          // already square
           setImages((prev) => {
             const photo = {
               file,
@@ -530,16 +459,13 @@ function ProductListingPage() {
             };
             return hasListingPhoto(prev) ? [...prev, photo] : [photo, ...prev];
           });
-          // Clear image error when image is added
           clearError("images");
         } else {
-          // Check image limit before opening cropper
           if (images.length >= LIMITS.images) {
             setMediaError(`Maximum ${LIMITS.images} media files allowed.`);
             e.target.value = null;
             return;
           }
-          // open cropper
           setCropImageSrc(ev.target.result);
           setCropImgEl(img);
           setPendingFileName(file.name || "image.png");
@@ -719,41 +645,31 @@ function ProductListingPage() {
     resetCropper();
   }
 
+  const scrollToFormTop = () => {
+    formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   async function submitListing(e, status) {
     e.preventDefault();
     setServerMsg(null);
     const savingDraft = status === "Draft";
 
-    if (isEdit && isSold) {
-      setServerMsg("Cannot edit sold items.");
-      formTopRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+    if (isEdit && isEditBlocked) {
+      setServerMsg("Cannot edit pending or sold items.");
+      scrollToFormTop();
       return;
     }
 
     if (savingDraft) {
-      const draftErrors = {};
-      if (!title.trim()) {
-        draftErrors.title = "Title is required";
-      } else if (title.length > LIMITS.title) {
-        draftErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
-      }
+      const draftErrors = validateDraft({ title, price });
       setErrors(draftErrors);
       if (Object.keys(draftErrors).length > 0) {
-        formTopRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+        scrollToFormTop();
         setShowTopErrorBanner(true);
         return;
       }
     } else if (!validateAll()) {
-      formTopRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      scrollToFormTop();
       setShowTopErrorBanner(true);
       return;
     }
@@ -772,11 +688,9 @@ function ProductListingPage() {
     fd.append("acceptTrades", acceptTrades ? "1" : "0");
     fd.append("priceNegotiable", priceNegotiable ? "1" : "0");
 
-    // Separate existing photos (no file) from new uploads (has file)
     const existingPhotoUrls = [];
     images.forEach((img) => {
       if (img?.file) {
-        // New upload - add as file
         fd.append(
           "images[]",
           img.file,
@@ -784,12 +698,10 @@ function ProductListingPage() {
             `${img.type === "video" ? "video" : "image"}_${Date.now()}`,
         );
       } else if (img?.originalUrl) {
-        // Existing photo - store original URL to send back
         existingPhotoUrls.push(img.originalUrl);
       }
     });
 
-    // In edit mode, send existing photos that should be kept
     if (isEdit && existingPhotoUrls.length > 0) {
       existingPhotoUrls.forEach((url) => {
         fd.append("existingPhotos[]", url);
@@ -816,6 +728,14 @@ function ProductListingPage() {
 
       if (!data?.ok) {
         setServerMsg(data?.message || data?.error || "Submission failed.");
+        if (data?.errors && typeof data.errors === "object") {
+          setErrors((current) => ({ ...current, ...data.errors }));
+          formTopRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+          setShowTopErrorBanner(true);
+        }
         return;
       }
 
@@ -841,7 +761,6 @@ function ProductListingPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <main className="max-w-6xl mx-auto p-4 sm:p-6">
-        {/* Header */}
         <div className="mb-6 sm:mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
             {headerText}
@@ -892,13 +811,19 @@ function ProductListingPage() {
             onFileChange={onFileChange}
             price={price}
             priceNegotiable={priceNegotiable}
-            publishListing={(e) => submitListing(e, "Active")}
+            publishListing={(e) => {
+              e?.preventDefault?.();
+              runExclusive(() => submitListing(e, "Active"));
+            }}
             removeCategory={removeCategory}
             removeImage={removeImage}
             scrollPositionRef={scrollPositionRef}
             selectableOptions={selectableOptions}
             selectedCategory={selectedCategory}
-            saveDraft={(e) => submitListing(e, "Draft")}
+            saveDraft={(e) => {
+              e?.preventDefault?.();
+              runExclusive(() => submitListing(e, "Draft"));
+            }}
             setAcceptTrades={setAcceptTrades}
             setCategories={setCategories}
             setCondition={setCondition}

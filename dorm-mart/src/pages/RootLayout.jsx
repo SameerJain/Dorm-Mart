@@ -20,7 +20,6 @@ function RootLayout() {
   const matches = useMatches();
   const isNotFoundRoute = matches.some((m) => m.handle?.isNotFound);
   const chatContext = useContext(ChatContext);
-  // Check if we're viewing a conversation (activeConvId exists) or the list (no activeConvId)
   const isViewingConversation = chatContext?.activeConvId != null;
 
   const [isFAQModalOpen, setIsFAQModalOpen] = useState(false);
@@ -51,11 +50,9 @@ function RootLayout() {
         setIsChecking(false);
         loadUserTheme(user?.user_id);
       } catch (error) {
-        // AbortError means component unmounted, don't update state or navigate
         if (error.name === "AbortError") {
           return;
         }
-        // Not authenticated, redirect to login
         setIsChecking(false);
         navigate("/login", { replace: true });
       }
@@ -63,18 +60,15 @@ function RootLayout() {
 
     checkAuth();
 
-    // Cleanup: abort fetch if component unmounts
     return () => {
       controller.abort();
     };
   }, [navigate]);
 
-  // Scroll to top when navigating to a new page
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  // Show loading state while checking authentication
   if (isChecking) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -86,9 +80,8 @@ function RootLayout() {
     );
   }
 
-  // Only render if authenticated
   if (!isAuthenticated) {
-    return null; // Will redirect, but return null as fallback
+    return null;
   }
 
   return (
@@ -103,16 +96,23 @@ function RootLayout() {
             <MainNav />
           </div>
         )}
-        <Outlet />
+        {/* Keep content clear of the notch / camera cutout in landscape. */}
+        <div className="pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
+          <Outlet />
+        </div>
 
-      {/* FAQ button + modal only on md and larger, hidden on the FAQ page itself */}
+      {/* FAQ button + modal on md and larger, hidden on the FAQ page itself.
+          Phones in landscape reach FAQ from the menu instead, since a floating
+          button covers too much of a ~400px-tall screen. */}
         {location.pathname !== "/app/faq" && (
-          <div className="hidden md:block">
+          <div className="hidden md:block short:!hidden">
           <button
             type="button"
             onClick={handleFAQClick}
             className="
-              fixed bottom-7 right-7 z-50
+              fixed z-50
+              bottom-[max(1.75rem,env(safe-area-inset-bottom))]
+              right-[max(1.75rem,env(safe-area-inset-right))]
               h-12 w-12 flex items-center justify-center
               rounded-full shadow-lg
               bg-blue-600 text-white

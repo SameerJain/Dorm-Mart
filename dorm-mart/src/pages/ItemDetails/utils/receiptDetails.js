@@ -146,7 +146,7 @@ export function buildPurchaseRows(details) {
 
   const rows = [];
   const addRow = (label, value, options = {}) => {
-    const { showPlaceholder = false, placeholder = "\u2014" } = options;
+    const { showPlaceholder = false, placeholder = "N/A" } = options;
     if (value === null || value === undefined || value === "") {
       if (showPlaceholder) {
         rows.push({ label, value: placeholder });

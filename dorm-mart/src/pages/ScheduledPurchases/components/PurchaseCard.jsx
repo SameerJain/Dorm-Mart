@@ -85,8 +85,7 @@ function CostTradeInfo({ req, tone }) {
           </span>
         </div>
         <p
-          className={`text-sm font-semibold min-w-0 break-words break-all overflow-wrap-anywhere ${isRedCost ? "text-red-800 dark:text-red-100" : isCompleted ? "text-gray-700 dark:text-gray-300" : "text-amber-800 dark:text-amber-100"}`}
-          style={{ wordBreak: "break-all", overflowWrap: "anywhere" }}
+          className={`text-sm font-semibold min-w-0 break-words ${isRedCost ? "text-red-800 dark:text-red-100" : isCompleted ? "text-gray-700 dark:text-gray-300" : "text-amber-800 dark:text-amber-100"}`}
         >
           {req.trade_item_description}
         </p>
@@ -175,7 +174,7 @@ function RequestStateInfo({ req }) {
   if (state === "expired") {
     return (
       <StatusInfoBox
-        color="amber"
+        color="orange"
         label="EXPIRED"
         detail="No response received in time"
         icon="clock"
@@ -271,7 +270,7 @@ export default function PurchaseCard({
           <div className={`text-sm ${tone.metaText}`}>
             {isBuyer ? "Requested" : "Created"}{" "}
             {formatPurchaseDateTime(req.created_at)}
-            {req.buyer_response_at && (
+            {req.buyer_response_at && state !== "expired" && (
               <div>
                 {isBuyer ? "You responded" : "Buyer responded"}{" "}
                 {formatPurchaseDateTime(req.buyer_response_at)}
@@ -320,7 +319,7 @@ export default function PurchaseCard({
         </div>
 
         {req.description && (
-          <div className={`text-sm break-words overflow-wrap-anywhere ${tone.bodyText}`}>
+          <div className={`text-sm break-words ${tone.bodyText}`}>
             <span className="font-semibold">Description:</span> {req.description}
           </div>
         )}

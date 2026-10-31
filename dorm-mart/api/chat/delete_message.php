@@ -5,13 +5,9 @@ require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint('POST');
-
-ensure_session();
-if (empty($_SESSION['user_id'])) {
-    json_response(['success' => false, 'error' => 'Please log in again'], 401);
-}
 
 $userId = require_login();
 $input = json_request_body();
@@ -30,7 +26,7 @@ try {
     $conn->begin_transaction();
 
     $messageStmt = $conn->prepare(
-        'SELECT message_id, conv_id, receiver_id, deleted_at
+        'SELECT message_id, conv_id, receiver_id, deleted_at, metadata
            FROM messages
           WHERE message_id = ? AND sender_id = ?
           LIMIT 1
@@ -52,13 +48,29 @@ try {
         $conn->rollback();
         json_response(['success' => false, 'error' => 'Message already deleted'], 409);
     }
+    // Schedule and Confirm Purchase cards carry the other party's next action;
+    // removing one would strand them. The chat UI never offers Delete on these.
+    if ($message['metadata'] !== null && $message['metadata'] !== '') {
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'This message cannot be deleted'], 409);
+    }
 
     $convId = (int)$message['conv_id'];
     $receiverId = (int)$message['receiver_id'];
+
+    if (chat_conversation_is_closed($conn, $convId)) {
+        $conn->rollback();
+        json_response(['success' => false, 'error' => 'This chat has been closed.'], 409);
+    }
+
+    // "Last sent message" ignores system cards (schedule/confirm/intro), which
+    // the chat hides or cannot delete; otherwise a card sent after the user's
+    // last text would make the Delete option the UI shows always fail.
     $latestStmt = $conn->prepare(
         'SELECT message_id
            FROM messages
           WHERE conv_id = ? AND sender_id = ? AND deleted_at IS NULL
+            AND (metadata IS NULL OR metadata = \'\')
           ORDER BY message_id DESC
           LIMIT 1
           FOR UPDATE'

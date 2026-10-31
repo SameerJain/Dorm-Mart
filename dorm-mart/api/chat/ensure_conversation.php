@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../helpers/request.php';
+require_once __DIR__ . '/../helpers/moderation.php';
 require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint('POST');
@@ -59,6 +60,10 @@ try {
         json_response(['success' => false, 'error' => 'Cannot message your own listing'], 400);
     }
 
+    if (moderation_user_is_banned($conn, $sellerId)) {
+        json_response(['success' => false, 'error' => 'This user is no longer available'], 403);
+    }
+
     $orderedA = min($buyerId, $sellerId);
     $orderedB = max($buyerId, $sellerId);
     $lockKey = sprintf('conv:%d:%d', $orderedA, $orderedB);
@@ -77,8 +82,6 @@ try {
             throw new RuntimeException('Could not obtain lock');
         }
 
-        // Fetch existing conversation if present
-        // Check for conversation with matching product_id (or NULL if no product)
         if ($productId > 0) {
             $stmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_fname, user2_fname, product_id FROM conversations WHERE user1_id = ? AND user2_id = ? AND product_id = ? LIMIT 1');
             $stmt->bind_param('iii', $orderedA, $orderedB, $productId);
@@ -92,19 +95,19 @@ try {
         $stmt->close();
 
         if ($conversationRow) {
-            // Ensure conversation participants exist even for existing conversations
             $convId = (int) $conversationRow['conv_id'];
             chat_ensure_participants($conn, $convId, $orderedA, $orderedB);
+            // "Message seller" on a conversation the buyer had hidden brings it
+            // back to their list; otherwise the next list refresh drops it again.
+            chat_unhide_for_user($conn, $convId, $buyerId);
         }
 
         if (!$conversationRow) {
-            // Need names for both participants
             $names = chat_user_display_names($conn, $orderedA, $orderedB);
 
             $user1Name = $names[$orderedA] ?? ('User ' . $orderedA);
             $user2Name = $names[$orderedB] ?? ('User ' . $orderedB);
 
-            // Insert conversation with product_id if provided
             if ($productId > 0) {
                 $stmt = $conn->prepare('INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname, product_id) VALUES (?, ?, ?, ?, ?)');
                 $stmt->bind_param('iissi', $orderedA, $orderedB, $user1Name, $user2Name, $productId);
@@ -128,9 +131,10 @@ try {
             chat_ensure_participants($conn, $convId, $orderedA, $orderedB);
         }
 
-        chat_release_lock($conn, $lockKey);
-
+        // Commit before releasing: a waiter that acquires the lock earlier would
+        // not see the uncommitted row and would insert a duplicate conversation.
         $conn->commit();
+        chat_release_lock($conn, $lockKey);
     } catch (Throwable $inner) {
         $conn->rollback();
         if (isset($lockKey)) chat_release_lock($conn, $lockKey);
@@ -141,12 +145,10 @@ try {
         throw new RuntimeException('Unable to ensure conversation');
     }
 
-    // Add product details to conversation row for consistency with fetch_conversations.php
     if ($productRow) {
         $conversationRow['product_title'] = (string) ($productRow['title'] ?? '');
         $conversationRow['product_seller_id'] = isset($productRow['seller_id']) ? (int) $productRow['seller_id'] : null;
 
-        // Extract first image URL for product_image_url
         $conversationRow['product_image_url'] = inventory_first_photo($productRow['photos'] ?? null);
     } else {
         $conversationRow['product_title'] = null;
@@ -181,9 +183,7 @@ try {
         ];
     }
 
-    $sharedContactEmail = null;
-    $sharedContactPhone = null;
-    $namesStmt = $conn->prepare('SELECT user_id, first_name, last_name, email, phone_number, reveal_contact_info FROM user_accounts WHERE user_id IN (?, ?) LIMIT 2');
+    $namesStmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?) LIMIT 2');
     if ($namesStmt) {
         $namesStmt->bind_param('ii', $buyerId, $sellerId);
         $namesStmt->execute();
@@ -202,16 +202,10 @@ try {
                 $sellerFirst = $first;
                 $sellerLast = $last;
                 $sellerName = $full !== '' ? $full : null;
-                if ((int)($row['reveal_contact_info'] ?? 0) === 1) {
-                    $sharedContactEmail = (string)($row['email'] ?? '');
-                    $sharedContactPhone = $row['phone_number'] ?: null;
-                }
             }
         }
         $namesStmt->close();
     }
-    $conversationRow['shared_contact_email'] = $sharedContactEmail;
-    $conversationRow['shared_contact_phone'] = $sharedContactPhone;
 
     $convId = (int) $conversationRow['conv_id'];
     $existingMessageCount = 0;

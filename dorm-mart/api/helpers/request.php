@@ -5,6 +5,22 @@ require_once __DIR__ . '/response.php';
 
 const MAX_JSON_REQUEST_BYTES = 1024 * 1024;
 
+if (!function_exists('request_is_same_origin_fetch')) {
+    /**
+     * Whether a GET came from the app itself rather than a cross-site link.
+     *
+     * Lax session cookies ride along on top-level cross-site navigations, so a
+     * GET that writes (mark-as-read, view counts) can be triggered from another
+     * site. Browsers label those requests via Sec-Fetch-Site; non-browser
+     * clients and old browsers omit it and are let through.
+     */
+    function request_is_same_origin_fetch(): bool
+    {
+        $site = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? null;
+        return $site === null || $site === 'same-origin';
+    }
+}
+
 if (!function_exists('decode_json_object')) {
     function decode_json_object(string $raw): ?array
     {
@@ -120,6 +136,35 @@ if (!function_exists('strict_iso_datetime_value')) {
             return null;
         }
         return $date;
+    }
+}
+
+if (!function_exists('require_product_id')) {
+    function require_product_id(array $source, string $key = 'product_id'): int
+    {
+        $productId = request_int($source, $key);
+        if ($productId <= 0) {
+            json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
+        }
+        return $productId;
+    }
+}
+
+if (!function_exists('price_has_blocked_digits')) {
+    /**
+     * Whether a price, as the user typed it, contains a joke number we refuse.
+     * Checked on the string so "4.20" is caught even though (float) drops the 0.
+     * Keep in sync with MEME_PRICE_SEQUENCES in src/utils/priceValidation.js.
+     */
+    function price_has_blocked_digits(string $price): bool
+    {
+        $digits = preg_replace('/[^0-9]/', '', $price);
+        foreach (['80085', '8008', '5318008', '42069', '66666', '6969', '42042', '1488', '420', '666', '69', '67'] as $sequence) {
+            if (strpos($digits, $sequence) !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 

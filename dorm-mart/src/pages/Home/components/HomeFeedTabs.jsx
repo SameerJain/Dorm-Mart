@@ -55,9 +55,15 @@ export default function HomeFeedTabs({
           </div>
           <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
             <div className="flex w-full min-w-0 flex-col items-center gap-1.5 sm:w-auto sm:items-start">
-              <div className="flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-600 dark:bg-gray-700/60">
+              <div
+                role="tablist"
+                aria-label="Home feed"
+                className="flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-600 dark:bg-gray-700/60"
+              >
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={activeTab === "forYou"}
                   onClick={() => onSelectTab("forYou")}
                   className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                     activeTab === "forYou"
@@ -69,6 +75,8 @@ export default function HomeFeedTabs({
                 </button>
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={activeTab === "explore"}
                   onClick={() => onSelectTab("explore")}
                   className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                     activeTab === "explore"

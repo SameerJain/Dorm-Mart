@@ -16,7 +16,7 @@ export default function ImageCropperModal({
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white dark:bg-gray-950 rounded-lg shadow-2xl max-w-3xl w-full p-3 md:p-5">
+      <div className="max-h-[90dvh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-3 shadow-2xl dark:bg-gray-950 md:p-5">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">
           Crop Image
         </h2>
@@ -82,18 +82,18 @@ export default function ImageCropperModal({
           className="hidden"
         />
 
-        <div className="mt-5 flex justify-end gap-3">
+        <div className="mt-5 flex flex-wrap justify-end gap-3">
           <button
             type="button"
             onClick={handleCropCancel}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/40"
+            className="px-4 py-2 coarse:min-h-[44px] rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/40"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleCropConfirm}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
+            className="px-4 py-2 coarse:min-h-[44px] rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
           >
             Crop &amp; Use
           </button>

@@ -37,9 +37,7 @@ try {
         json_response(['success' => false, 'error' => 'Conversation not found for this listing'], 404);
     }
     $buyerId = (int)$row['user1_id'] === $sellerId ? (int)$row['user2_id'] : (int)$row['user1_id'];
-    $eligibility = dm_payments_enabled()
-        ? payment_schedule_eligibility($conn, $sellerId, $buyerId)
-        : ['eligible' => false, 'mode' => null, 'reason' => 'Electronic payments are not enabled.'];
+    $eligibility = payment_schedule_eligibility($conn, $sellerId, $buyerId);
     $listingPrice = $row['listing_price'] !== null ? (float)$row['listing_price'] : null;
 
     json_response([
@@ -48,6 +46,7 @@ try {
             'eligible' => (bool)$eligibility['eligible'],
             'payment_mode' => $eligibility['mode'],
             'is_test_mode' => ($eligibility['mode'] ?? null) === 'test',
+            'is_mock' => ($eligibility['mode'] ?? null) === 'mock',
             'reason' => $eligibility['reason'],
             'listing_price' => $listingPrice,
             'listing_price_cents' => $listingPrice !== null ? (int)round($listingPrice * 100) : null,

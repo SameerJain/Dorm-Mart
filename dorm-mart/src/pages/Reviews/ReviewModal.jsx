@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import StarRating from "./StarRating";
 import EditableStarRating from "./EditableStarRating";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 import ReviewImageGallery from "./components/ReviewImageGallery";
+import ReviewVideo from "./components/ReviewVideo";
 import { onProductImageError } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
 import {
@@ -13,6 +14,8 @@ import {
 import { csrfFetch } from "../../utils/csrfFetch";
 import { formatDate } from "../../utils/formatters";
 import SubmitConfirmationDialog from "../../components/SubmitConfirmationDialog";
+import ReviewTextArea from "../../components/forms/ReviewTextArea";
+import ViewRatingBlock from "./components/ViewRatingBlock";
 
 /**
  * ReviewModal Component
@@ -48,14 +51,17 @@ function ReviewModal({
   const [productRating, setProductRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const runExclusive = useSubmitLock();
   const [error, setError] = useState(null);
   const [charCount, setCharCount] = useState(0);
   const [uploadedImages, setUploadedImages] = useState([]); // Array of {file, url, uploadedUrl}
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmCallback, setConfirmCallback] = useState(null);
-  const [pendingSubmit, setPendingSubmit] = useState(false); // Track if we're waiting for confirmation
+  const [pendingSubmit, setPendingSubmit] = useState(false);
   const fileInputRef = React.useRef(null);
 
   const maxChars = 1000;
@@ -68,7 +74,6 @@ function ReviewModal({
     setPendingSubmit(false);
   };
 
-  // Reset form when modal opens in create mode
   useEffect(() => {
     if (isOpen && mode === "create") {
       setRating(0);
@@ -77,9 +82,9 @@ function ReviewModal({
       setCharCount(0);
       setError(null);
       setUploadedImages([]);
+      setVideoUrl(null);
       // Don't reset confirmation modal state here - let handleSubmit control it
     } else if (!isOpen) {
-      // Only reset confirmation modal state when modal closes
       setShowConfirmModal(false);
       setConfirmMessage("");
       setConfirmCallback(null);
@@ -87,13 +92,11 @@ function ReviewModal({
     }
   }, [isOpen, mode]);
 
-  // Load existing review data in view mode
   useEffect(() => {
     if (isOpen && mode === "view" && existingReview) {
       setRating(existingReview.rating || 0);
       setProductRating(existingReview.product_rating || 0);
       setReviewText(existingReview.review_text || "");
-      // Load images with proper API base path
       if (
         existingReview.image1_url ||
         existingReview.image2_url ||
@@ -121,19 +124,18 @@ function ReviewModal({
     }
   };
 
-  // Check if there are unsaved changes
   const hasUnsavedChanges = () => {
     if (mode !== "create") return false;
     return (
       rating > 0 ||
       productRating > 0 ||
       reviewText.trim().length > 0 ||
-      uploadedImages.length > 0
+      uploadedImages.length > 0 || videoUrl !== null
     );
   };
 
-  // Handle close with confirmation if needed
   const handleClose = () => {
+    if (isUploadingVideo || isUploadingImage || isSubmitting) return;
     if (hasUnsavedChanges()) {
       setConfirmMessage(
         "You have unsaved changes. Are you sure you want to close?",
@@ -148,11 +150,37 @@ function ReviewModal({
     onClose();
   };
 
+  const handleVideoSelect = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!["video/mp4", "video/webm", "video/quicktime"].includes(file.type) || file.size > 25 * 1024 * 1024) {
+      setError("Use an MP4, WebM, or MOV video up to 25 MB");
+      return;
+    }
+    setIsUploadingVideo(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("video", file);
+      const response = await csrfFetch(`${API_BASE}/reviews/upload_review_video.php`, {
+        method: "POST", body, credentials: "include",
+      });
+      if (!response.ok) throw new Error(await readApiError(response, "Video upload failed"));
+      const result = await readJsonResponse(response);
+      if (!result?.success) throw new Error(result?.error || "Video upload failed");
+      setVideoUrl(result.video_url);
+    } catch (err) {
+      setError(err.message || "Video upload failed");
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
   const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    // Check if adding these would exceed max
     if (uploadedImages.length + files.length > maxImages) {
       setError(`You can only upload up to ${maxImages} images`);
       return;
@@ -162,20 +190,17 @@ function ReviewModal({
     setError(null);
 
     for (const file of files) {
-      // Validate file type
       const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
       if (!allowedTypes.has(file.type)) {
         setError("Only JPEG, PNG, and WebP images are allowed");
         continue;
       }
 
-      // Validate file size (2MB)
       if (file.size > 2 * 1024 * 1024) {
         setError("Each image must be less than 2MB");
         continue;
       }
 
-      // Upload immediately
       try {
         const formData = new FormData();
         formData.append("image", file);
@@ -202,7 +227,6 @@ function ReviewModal({
           throw new Error(result?.error || "Failed to upload image");
         }
 
-        // Add to uploaded images with both preview URL and server URL
         setUploadedImages((prev) => [
           ...prev,
           {
@@ -217,7 +241,6 @@ function ReviewModal({
     }
 
     setIsUploadingImage(false);
-    // Clear the file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -226,7 +249,6 @@ function ReviewModal({
   const handleRemoveImage = (index) => {
     setUploadedImages((prev) => {
       const newImages = [...prev];
-      // Revoke the preview URL to free memory
       URL.revokeObjectURL(newImages[index].previewUrl);
       newImages.splice(index, 1);
       return newImages;
@@ -240,7 +262,7 @@ function ReviewModal({
     }
 
     if (mode !== "create") return;
-    if (isSubmitting || pendingSubmit) return; // Prevent double submission
+    if (isSubmitting || pendingSubmit || isUploadingImage || isUploadingVideo) return;
 
     if (rating <= 0) {
       setError("Please select a seller rating");
@@ -255,32 +277,24 @@ function ReviewModal({
       return;
     }
 
-    // Set pending submit flag to prevent direct submission
     setPendingSubmit(true);
 
-    // Show confirmation dialog before submitting
     const message =
       "Are you sure you are done writing your review? Changes cannot be made.";
     setConfirmMessage(message);
 
-    // Create callback function that will be called when user confirms
     const callback = async () => {
-      // Close confirmation modal first
       setShowConfirmModal(false);
       setConfirmMessage("");
       // Don't reset confirmCallback or pendingSubmit yet - proceedWithSubmit needs them for safety check
-      // Then proceed with submission
       await proceedWithSubmit();
-      // Reset state after submission completes
       setConfirmCallback(null);
       setPendingSubmit(false);
     };
-    // Store the callback function directly
     setConfirmCallback(() => callback);
 
-    // Set state to show confirmation modal
     setShowConfirmModal(true);
-    return; // Important: stop execution here, don't proceed with submission
+    return;
   };
 
   const proceedWithSubmit = async () => {
@@ -288,7 +302,6 @@ function ReviewModal({
     setError(null);
 
     try {
-      // Prepare image URLs (up to 3)
       const imageUrls = {
         image1_url: uploadedImages[0]?.uploadedUrl || null,
         image2_url: uploadedImages[1]?.uploadedUrl || null,
@@ -302,6 +315,7 @@ function ReviewModal({
           rating: rating,
           product_rating: productRating,
           review_text: reviewText.trim(),
+          video_url: videoUrl,
           ...imageUrls,
         },
       );
@@ -310,7 +324,6 @@ function ReviewModal({
         throw new Error(result?.error || "Failed to submit review");
       }
 
-      // Success!
       if (onReviewSubmitted) {
         onReviewSubmitted(result);
       }
@@ -323,7 +336,7 @@ function ReviewModal({
   };
 
   const isFormValid =
-    rating > 0 && productRating > 0 && reviewText.trim().length > 0;
+    rating > 0 && productRating > 0 && reviewText.trim().length > 0 && !isUploadingImage && !isUploadingVideo;
 
   if (!isOpen) return null;
 
@@ -331,7 +344,6 @@ function ReviewModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
       onClick={(e) => {
-        // Prevent closing main modal when confirmation modal is open
         if (!showConfirmModal && e.target === e.currentTarget) {
           handleClose();
         }
@@ -341,10 +353,9 @@ function ReviewModal({
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxHeight: "90vh",
+          maxHeight: "90dvh",
         }}
       >
-        {/* Header */}
         <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             {mode === "create" ? "Leave a Review" : "Review"}
@@ -370,15 +381,17 @@ function ReviewModal({
           </button>
         </div>
 
-        {/* Content */}
         <div
           className="px-6 py-6 overflow-y-auto flex-1 min-h-0"
           style={{ minWidth: 0 }}
         >
           <div className="mb-4 min-w-0">
-            <p className="text-sm text-gray-600 dark:text-gray-400 break-words">
-              Product:{" "}
-              <span className="font-medium text-gray-900 dark:text-gray-100 break-words">
+            <p className="flex min-w-0 items-baseline gap-1 text-sm text-gray-600 dark:text-gray-400">
+              <span className="flex-none">Product:</span>
+              <span
+                className="min-w-0 flex-1 truncate font-medium text-gray-900 dark:text-gray-100"
+                title={productTitle}
+              >
                 {productTitle}
               </span>
             </p>
@@ -413,54 +426,24 @@ function ReviewModal({
                 onChange={setProductRating}
               />
 
-              {/* Review Text Section */}
               <div className="mb-6">
-                <label
-                  htmlFor="review-text"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Review <span className="text-red-500">*</span>
-                </label>
-                <div
-                  className="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
-                >
-                  <textarea
-                    id="review-text"
-                    value={reviewText}
-                    onChange={handleReviewTextChange}
-                    placeholder="Share your experience with this product..."
-                    rows={6}
-                    maxLength={maxChars}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    style={{
-                      border: "none",
-                      borderRadius: "0",
-                      overflow: "auto",
-                      scrollbarWidth: "thin",
-                      scrollbarColor: "rgba(156, 163, 175, 0.5) transparent",
-                    }}
-                    required
-                  />
-                </div>
-                <div className="mt-1 flex items-center justify-between">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {charCount} / {maxChars} characters
-                  </p>
-                  {charCount >= maxChars && (
-                    <p className="text-xs text-red-500">
-                      Maximum character limit reached
-                    </p>
-                  )}
-                </div>
+                <ReviewTextArea
+                  id="review-text"
+                  label="Review"
+                  value={reviewText}
+                  onChange={handleReviewTextChange}
+                  placeholder="Share your experience with this product..."
+                  maxChars={maxChars}
+                  charCount={charCount}
+                  required
+                />
               </div>
 
-              {/* Image Upload Section */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Add up to 3 photos (optional)
                 </label>
 
-                {/* Upload Button */}
                 {uploadedImages.length < maxImages && (
                   <div className="mb-3">
                     <input
@@ -486,7 +469,6 @@ function ReviewModal({
                   </div>
                 )}
 
-                {/* Image Previews */}
                 {uploadedImages.length > 0 && (
                   <div className="grid grid-cols-3 gap-3">
                     {uploadedImages.map((img, index) => (
@@ -502,7 +484,7 @@ function ReviewModal({
                         <button
                           type="button"
                           onClick={() => handleRemoveImage(index)}
-                          className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 coarse:p-1.5 mouse:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
                           aria-label="Remove image"
                         >
                           <svg
@@ -525,7 +507,23 @@ function ReviewModal({
                 )}
               </div>
 
-              {/* Error Message */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" htmlFor="review-video">Video (optional)</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">One MP4, WebM, or MOV video, up to 25 MB.</p>
+                {videoUrl ? (
+                  <>
+                    <ReviewVideo url={videoUrl} />
+                    <button type="button" onClick={() => setVideoUrl(null)} disabled={isSubmitting}
+                      className="text-sm text-red-600 dark:text-red-400">Remove video</button>
+                  </>
+                ) : (
+                  <input id="review-video" type="file" accept="video/mp4,video/webm,video/quicktime"
+                    onChange={handleVideoSelect} disabled={isUploadingVideo || isSubmitting}
+                    className="block w-full text-sm text-gray-700 dark:text-gray-300" />
+                )}
+                {isUploadingVideo && <p role="status" className="mt-2 text-sm text-gray-500">Uploading video...</p>}
+              </div>
+
               {error && (
                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <p className="text-sm text-red-600 dark:text-red-400">
@@ -534,7 +532,6 @@ function ReviewModal({
                 </div>
               )}
 
-              {/* Action Buttons */}
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"
@@ -549,7 +546,7 @@ function ReviewModal({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleSubmit(e);
+                    runExclusive(() => handleSubmit());
                   }}
                   disabled={!isFormValid || isSubmitting}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -559,39 +556,10 @@ function ReviewModal({
               </div>
             </form>
           ) : (
-            // View Mode
             <div>
-              {/* Seller Rating Display */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Seller Rating
-                </label>
-                <div className="flex items-center gap-3">
-                  <StarRating rating={rating} readOnly={true} size={32} />
-                  <span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    {rating.toFixed(1)} / 5.0
-                  </span>
-                </div>
-              </div>
+              <ViewRatingBlock label="Seller Rating" rating={rating} />
+              <ViewRatingBlock label="Product Rating" rating={productRating} />
 
-              {/* Product Rating Display */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Product Rating
-                </label>
-                <div className="flex items-center gap-3">
-                  <StarRating
-                    rating={productRating}
-                    readOnly={true}
-                    size={32}
-                  />
-                  <span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    {productRating.toFixed(1)} / 5.0
-                  </span>
-                </div>
-              </div>
-
-              {/* Review Text Display */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Review
@@ -599,13 +567,14 @@ function ReviewModal({
                 <div
                   className="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden"
                 >
-                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all">
+                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
                     {reviewText}
                   </p>
                 </div>
               </div>
 
               <ReviewImageGallery review={existingReview} viewMode={viewMode} />
+              <ReviewVideo url={existingReview?.video_url} />
 
               {existingReview?.created_at && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
@@ -613,7 +582,6 @@ function ReviewModal({
                 </p>
               )}
 
-              {/* Close Button */}
               <div className="flex justify-end">
                 <button
                   onClick={handleClose}

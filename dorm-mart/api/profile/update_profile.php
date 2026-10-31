@@ -71,6 +71,17 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
+    // Remember the current photo so the replaced file can be removed afterwards;
+    // otherwise every re-upload leaves an orphan on the persistent volume.
+    $previousPhoto = null;
+    if ($photoKey !== null) {
+        $prevStmt = $conn->prepare('SELECT profile_photo FROM user_accounts WHERE user_id = ? LIMIT 1');
+        $prevStmt->bind_param('i', $userId);
+        $prevStmt->execute();
+        $previousPhoto = $prevStmt->get_result()->fetch_assoc()['profile_photo'] ?? null;
+        $prevStmt->close();
+    }
+
     $sql = 'UPDATE user_accounts SET ' . implode(', ', $setClauses) . ' WHERE user_id = ? LIMIT 1';
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
@@ -89,6 +100,11 @@ try {
 
     $stmt->execute();
     $stmt->close();
+
+    // Only after the row points elsewhere, so a failed update never loses the live photo.
+    if ($photoKey !== null && $previousPhoto !== null && $previousPhoto !== ($photoPath ?? null)) {
+        delete_owned_profile_photo((string)$previousPhoto, $userId);
+    }
 
     $updatedProfile = fetch_updated_fields($conn, $userId);
     $conn->close();

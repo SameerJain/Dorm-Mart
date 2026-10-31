@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import chatIcon from "../../assets/icons/icons8-chat-96.png";
 import notificationIcon from "../../assets/icons/icons8-notification-96.png";
@@ -12,7 +12,6 @@ import { ChatContext } from "../../context/ChatContext";
 import { getTabForPath } from "../../pages/FAQ/faqUtils.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
-// Main navigation bar component with search, notifications, chat, and menu dropdowns
 function MainNav() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -21,6 +20,7 @@ function MainNav() {
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
+  const navRef = useRef(null);
   const location = useLocation();
   const currentUser = useAuth();
   const isModerator = currentUser?.role === "moderator";
@@ -28,7 +28,23 @@ function MainNav() {
   const ctx = useContext(ChatContext);
   const { unreadMsgTotal, unreadNotificationTotal } = ctx;
 
-  // helper: close mobile menu + market submenu together
+  // Publish the rendered nav height as --nav-h so full-height pages (chat,
+  // settings) can size themselves to the space below it at every breakpoint.
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return undefined;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty("--nav-h", `${nav.offsetHeight}px`);
+    publish();
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publish);
+    observer?.observe(nav);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty("--nav-h");
+    };
+  }, []);
+
   const closeMobileMenuAndMarket = () => {
     setShowMobileMenu(false);
     setShowMobileMarketDropdown(false);
@@ -72,7 +88,6 @@ function MainNav() {
     navigate("/app/wishlist");
   };
 
-  // Search state + handlers
   const [searchText, setSearchText] = useState("");
   const inputRef = useRef(null);
 
@@ -98,9 +113,11 @@ function MainNav() {
   };
 
   return (
-    <nav className="bg-blue-600 text-slate-100 dark:bg-slate-900 dark:text-gray-100 dark:shadow-sm dark:shadow-black/20 pt-[env(safe-area-inset-top,0px)]">
-      <div className="mx-auto flex min-w-0 max-w-[100vw] items-center gap-1 sm:gap-2 md:gap-4 px-1.5 py-2 sm:px-2 md:p-3 box-border">
-        {/* Dorm Mart logo - visible on desktop only */}
+    <nav
+      ref={navRef}
+      className="bg-blue-600 text-slate-100 dark:bg-slate-900 dark:text-gray-100 dark:shadow-sm dark:shadow-black/20 pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
+    >
+      <div className="mx-auto flex min-w-0 max-w-[100vw] items-center gap-1 sm:gap-2 md:gap-4 px-1.5 py-2 sm:px-2 md:p-3 short:!py-1.5 box-border">
         <button
           onClick={() => navigate("/app")}
           className="hidden md:block ml-1 sm:ml-2 md:ml-4 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif font-semibold cursor-pointer hover:scale-105 hover:opacity-90 hover:drop-shadow-lg transition-all duration-200 bg-transparent border-none p-0 text-slate-100 whitespace-nowrap flex-shrink-0"
@@ -108,9 +125,10 @@ function MainNav() {
           Dorm Mart
         </button>
         <div className="flex-1 min-w-0 mx-0.5 sm:mx-2 md:mx-3 lg:mx-5">
-          <div className="flex h-10 sm:h-11 md:h-15 min-w-0 items-center overflow-hidden rounded-full bg-white shadow-inner">
+          <div className="flex h-10 sm:h-11 md:h-15 min-w-0 items-center overflow-hidden rounded-full bg-white shadow-inner focus-within:ring-2 focus-within:ring-blue-300">
             <input
-              type="text"
+              type="search"
+              aria-label="Search listings"
               placeholder="Search"
               value={searchText}
               ref={inputRef}
@@ -145,7 +163,8 @@ function MainNav() {
                 e.preventDefault();
                 handleSearchSubmit(searchText);
               }}
-              className="flex h-full w-9 shrink-0 items-center justify-center border-l border-slate-200 border-black sm:w-12 md:w-16 lg:w-20"
+              aria-label="Search"
+              className="flex h-full w-9 shrink-0 items-center justify-center border-l border-slate-200 focus:outline-none focus-visible:bg-slate-100 sm:w-12 md:w-16 lg:w-20"
             >
               <img
                 src={searchIcon}
@@ -156,7 +175,6 @@ function MainNav() {
           </div>
         </div>
 
-        {/* Desktop navigation - hidden on mobile */}
         <ul className="mr-1 sm:mr-2 hidden md:flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink-0">
           <Icon
             to="/app/notification"
@@ -171,7 +189,6 @@ function MainNav() {
             badge={unreadMsgTotal}
           />
 
-          {/* Hamburger menu icon for desktop - replaces marketplace icon */}
           <li className="relative" ref={dropdownRef}>
             <button
               onClick={(e) => {
@@ -180,6 +197,8 @@ function MainNav() {
               }}
               className="flex items-center justify-center p-2 rounded-lg"
               aria-label="Menu"
+              aria-haspopup="menu"
+              aria-expanded={showDropdown}
             >
               <svg
                 className="w-9 h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 text-white dark:text-gray-100"
@@ -196,14 +215,14 @@ function MainNav() {
               </svg>
             </button>
             {showDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
+              <div className="absolute right-0 mt-2 w-48 max-h-[calc(100dvh-var(--nav-h,64px)-1rem)] overflow-y-auto overscroll-contain bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
                 {isModerator && (
                   <button
                     onClick={() => {
                       navigate("/app/moderation");
                       setShowDropdown(false);
                     }}
-                    className="w-full px-4 py-2 text-left font-semibold text-red-700 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-gray-600"
+                    className="w-full px-4 py-2 coarse:py-3 text-left font-semibold text-red-700 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-gray-600"
                   >
                     Moderation
                   </button>
@@ -213,7 +232,7 @@ function MainNav() {
                     handleSellerDashboard();
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   Seller Dashboard
                 </button>
@@ -222,7 +241,7 @@ function MainNav() {
                     handleWishlist();
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   My Wishlist
                 </button>
@@ -231,7 +250,7 @@ function MainNav() {
                     handleOngoingPurchases();
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   Ongoing Purchases
                 </button>
@@ -240,7 +259,7 @@ function MainNav() {
                     handlePurchaseHistory();
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   Purchase History
                 </button>
@@ -250,30 +269,41 @@ function MainNav() {
                     navigate("/app/setting");
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   Settings
+                </button>
+                <button
+                  onClick={() => {
+                    navigate("/app/faq", {
+                      state: { defaultTab: getTabForPath(location.pathname) },
+                    });
+                    setShowDropdown(false);
+                  }}
+                  className="hidden short:block w-full text-left px-4 py-2 coarse:py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                >
+                  FAQ
                 </button>
               </div>
             )}
           </li>
         </ul>
 
-        {/* Mobile hamburger menu - visible only on mobile */}
         <div className="mr-1 shrink-0 md:hidden relative" ref={mobileMenuRef}>
           <button
             onClick={() => {
               setShowMobileMenu((prev) => {
                 const next = !prev;
                 if (!next) {
-                  // when closing, also close market dropdown
                   setShowMobileMarketDropdown(false);
                 }
                 return next;
               });
             }}
-            className="flex flex-col justify-center items-center w-8 h-8 gap-1.5"
+            className="flex flex-col justify-center items-center w-10 h-10 gap-1.5"
             aria-label="Menu"
+            aria-haspopup="menu"
+            aria-expanded={showMobileMenu}
           >
             <span className="w-6 h-0.5 bg-white dark:bg-gray-200"></span>
             <span className="w-6 h-0.5 bg-white dark:bg-gray-200"></span>
@@ -281,7 +311,7 @@ function MainNav() {
           </button>
 
           {showMobileMenu && (
-            <div className="absolute right-0 mt-2 w-56 rounded-lg border-2 border-blue-400 bg-blue-600 py-2 shadow-lg z-50 dark:border-blue-700 dark:bg-blue-800 dark:shadow-black/40">
+            <div className="absolute right-0 mt-2 w-56 max-h-[calc(100dvh-var(--nav-h,64px)-1rem)] overflow-y-auto overscroll-contain rounded-lg border-2 border-blue-400 bg-blue-600 py-2 shadow-lg z-50 dark:border-blue-700 dark:bg-blue-800 dark:shadow-black/40">
               {isModerator && (
                 <button
                   onClick={() => {
@@ -316,7 +346,7 @@ function MainNav() {
                   {unreadNotificationTotal > 0 && (
                     <span
                       className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
-                      aria-label={`${unreadNotificationTotal} unread notifications`}
+                      aria-hidden="true"
                     >
                       {unreadNotificationTotal > 99
                         ? "99+"
@@ -325,6 +355,9 @@ function MainNav() {
                   )}
                 </span>
                 <span>Notifications</span>
+                {unreadNotificationTotal > 0 && (
+                  <span className="sr-only">{`, ${unreadNotificationTotal} unread`}</span>
+                )}
               </button>
 
               <button
@@ -339,16 +372,18 @@ function MainNav() {
                   {unreadMsgTotal > 0 && (
                     <span
                       className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
-                      aria-label={`${unreadMsgTotal} unread`}
+                      aria-hidden="true"
                     >
                       {unreadMsgTotal > 99 ? "99+" : unreadMsgTotal}
                     </span>
                   )}
                 </span>
                 <span>Chat</span>
+                {unreadMsgTotal > 0 && (
+                  <span className="sr-only">{`, ${unreadMsgTotal} unread`}</span>
+                )}
               </button>
 
-              {/* "Market" dropdown (mobile) */}
               <div className="relative">
                 <button
                   onClick={() => setShowMobileMarketDropdown((prev) => !prev)}
@@ -372,7 +407,7 @@ function MainNav() {
                         handleSellerDashboard();
                         closeMobileMenuAndMarket();
                       }}
-                      className="w-full rounded-t-md px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
+                      className="w-full rounded-t-md px-4 py-2.5 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                     >
                       Seller Dashboard
                     </button>
@@ -381,7 +416,7 @@ function MainNav() {
                         handleWishlist();
                         closeMobileMenuAndMarket();
                       }}
-                      className="w-full px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
+                      className="w-full px-4 py-2.5 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                     >
                       My Wishlist
                     </button>
@@ -390,7 +425,7 @@ function MainNav() {
                         handleOngoingPurchases();
                         closeMobileMenuAndMarket();
                       }}
-                      className="w-full px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
+                      className="w-full px-4 py-2.5 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                     >
                       Ongoing Purchases
                     </button>
@@ -399,7 +434,7 @@ function MainNav() {
                         handlePurchaseHistory();
                         closeMobileMenuAndMarket();
                       }}
-                      className="w-full rounded-b-md px-4 py-2 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
+                      className="w-full rounded-b-md px-4 py-2.5 text-left text-white transition-colors hover:bg-blue-800 dark:hover:bg-blue-800"
                     >
                       Purchase History
                     </button>

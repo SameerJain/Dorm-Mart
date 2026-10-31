@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Print the HTTP status from repeated failed login attempts.
+
+echo "=== Rate Limiting Test ==="
+API_BASE="${API_TEST_BASE_URL:-${API_BASE_URL:-http://localhost:8080/api}}"
+
+# Clean up any previous cookies
+rm -f cookies.txt
+
+# Attempt 1: Initial login attempt to get a session cookie
+echo -e "\nAttempt 1"
+curl -X POST "${API_BASE%/}/auth/login.php" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@buffalo.edu","password":"wrongpassword"}' \
+  -c cookies.txt \
+  -w "\nHTTP Status: %{http_code}\n" \
+  -s
+
+# Attempts 2-6 using the same session cookie
+for i in {2..6}; do 
+  echo -e "\nAttempt $i"
+  curl -X POST "${API_BASE%/}/auth/login.php" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -c cookies.txt \
+    -d '{"email":"test@buffalo.edu","password":"wrongpassword"}' \
+    -w "\nHTTP Status: %{http_code}\n" \
+    -s
+  sleep 1 # Small delay to simulate user input
+done
+
+echo -e "\n=== Test Complete ==="
+echo "Expected: Attempts 1-4 return 401, Attempt 5+ return 429"
+echo "Cleaning up..."
+rm -f cookies.txt
+echo "Done!"

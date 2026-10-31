@@ -1,4 +1,5 @@
 import React from "react";
+import { STAR_EMPTY, STAR_FILLED } from "../../constants/colors";
 
 /**
  * StarRating Component
@@ -51,16 +52,14 @@ function StarRating({
         return (
           <div
             key={starIndex}
-            className="relative inline-block"
-            style={{ width: size, height: size, verticalAlign: "middle" }}
+            className="relative inline-block align-middle"
+            style={{ width: size, height: size }}
             onMouseLeave={handleMouseLeave}
           >
-            {/* Base star (always rendered) */}
             <div className="absolute inset-0">
               <Star filled={false} size={size} />
             </div>
 
-            {/* Filled overlay for full or half stars */}
             {(isFull || isHalf) && (
               <div
                 className="absolute inset-0 overflow-hidden"
@@ -72,7 +71,6 @@ function StarRating({
               </div>
             )}
 
-            {/* Clickable left half for 0.5 rating */}
             {!readOnly && (
               <button
                 type="button"
@@ -83,7 +81,6 @@ function StarRating({
               />
             )}
 
-            {/* Clickable right half for full rating */}
             {!readOnly && (
               <button
                 type="button"
@@ -100,10 +97,6 @@ function StarRating({
   );
 }
 
-/**
- * Individual Star Component
- * Renders a single star with filled/empty states
- */
 function Star({ filled, size }) {
   return (
     <svg
@@ -112,13 +105,12 @@ function Star({ filled, size }) {
       viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="block"
-      style={{ display: "block", verticalAlign: "middle" }}
+      className="block align-middle"
     >
       <path
         d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-        fill={filled ? "#fbbf24" : "#e5e7eb"}
-        stroke="#fbbf24"
+        fill={filled ? STAR_FILLED : STAR_EMPTY}
+        stroke={STAR_FILLED}
         strokeWidth="1"
         strokeLinecap="round"
         strokeLinejoin="round"

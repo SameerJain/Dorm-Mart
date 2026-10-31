@@ -7,20 +7,24 @@ if (php_sapi_name() !== 'cli') {
     exit("Forbidden\n");
 }
 
-if ($argc < 3) {
-    fwrite(STDERR, "Usage: php api/database/create_moderator.php <email> <password> [first-name] [last-name]\n");
+// The password is read from stdin, never argv: command-line arguments land in
+// shell history and are visible to other users in the process list.
+if ($argc < 2) {
+    fwrite(STDERR, "Usage: php api/database/create_moderator.php <email> [first-name] [last-name]\n");
+    fwrite(STDERR, "The password is read from stdin (typed at the prompt, or piped in).\n");
     exit(1);
 }
 
 $email = strtolower(trim((string)$argv[1]));
-$password = (string)$argv[2];
-$firstName = trim((string)($argv[3] ?? 'Dorm Mart'));
-$lastName = trim((string)($argv[4] ?? 'Moderator'));
+$firstName = trim((string)($argv[2] ?? 'Dorm Mart'));
+$lastName = trim((string)($argv[3] ?? 'Moderator'));
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     fwrite(STDERR, "Enter a valid email address.\n");
     exit(1);
 }
+
+$password = read_moderator_password();
 if (strlen($password) < 12 || strlen($password) > 64) {
     fwrite(STDERR, "Moderator passwords must contain between 12 and 64 characters.\n");
     exit(1);
@@ -30,7 +34,7 @@ require_once __DIR__ . '/db_connect.php';
 
 try {
     $conn = db();
-    $hash = password_hash($password, PASSWORD_BCRYPT);
+    $hash = hash_password($password);
     $gradMonth = (int)date('n');
     $gradYear = (int)date('Y') + 4;
 
@@ -69,4 +73,25 @@ try {
 } catch (Throwable $e) {
     fwrite(STDERR, "Unable to create moderator: " . $e->getMessage() . PHP_EOL);
     exit(1);
+}
+
+/** One line from stdin; prompts (with echo hidden on POSIX terminals) when interactive. */
+function read_moderator_password(): string
+{
+    $interactive = stream_isatty(STDIN);
+    $echoHidden = false;
+    if ($interactive) {
+        fwrite(STDERR, 'Moderator password: ');
+        if (DIRECTORY_SEPARATOR === '/') {
+            $echoHidden = shell_exec('stty -echo 2>/dev/null && echo ok') !== null;
+        }
+    }
+    $line = fgets(STDIN);
+    if ($echoHidden) {
+        shell_exec('stty echo');
+    }
+    if ($interactive) {
+        fwrite(STDERR, PHP_EOL);
+    }
+    return rtrim((string)$line, "\r\n");
 }

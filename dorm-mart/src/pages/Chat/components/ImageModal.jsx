@@ -1,5 +1,24 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
+import { withFirstFrame } from "../../../utils/videoSrc";
+import {
+  MAX_IMAGE_BYTES,
+  MAX_VIDEO_BYTES,
+  ALLOWED_IMAGE_MIME_TYPES,
+  ALLOWED_IMAGE_EXTENSIONS,
+  ALLOWED_VIDEO_MIME_TYPES,
+  ALLOWED_VIDEO_EXTENSIONS,
+} from "../../ItemForms/utils/listingFormConfig";
+
+const ALLOWED_MIME = new Set([
+  ...ALLOWED_IMAGE_MIME_TYPES,
+  ...ALLOWED_VIDEO_MIME_TYPES,
+]);
+const ALLOWED_EXTS = new Set([
+  ...ALLOWED_IMAGE_EXTENSIONS,
+  ...ALLOWED_VIDEO_EXTENSIONS,
+]);
+const VIDEO_EXTS = ALLOWED_VIDEO_EXTENSIONS;
 
 export default function ImageModal({
   open,
@@ -13,27 +32,6 @@ export default function ImageModal({
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
-
-  // Limits & allow-list
-  const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
-  const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
-  const ALLOWED_MIME = new Set([
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "video/mp4",
-    "video/webm",
-    "video/quicktime",
-  ]);
-  const ALLOWED_EXTS = new Set([
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-    ".mp4",
-    ".webm",
-    ".mov",
-  ]);
 
   const resetPicker = useCallback(() => {
     setFile(null);
@@ -72,12 +70,11 @@ export default function ImageModal({
   }
 
   function isAllowedType(f) {
-    // Prefer MIME, but fall back to extension if needed
     if (f.type) return ALLOWED_MIME.has(f.type);
 
     const name = (f.name || "").toLowerCase();
     const ext = ALLOWED_EXTS.has(
-      name.slice(name.lastIndexOf(".")), // includes dot
+      name.slice(name.lastIndexOf(".")),
     );
     return ext;
   }
@@ -85,9 +82,7 @@ export default function ImageModal({
   function isVideoFile(f) {
     if (f.type) return ALLOWED_MIME.has(f.type) && f.type.startsWith("video/");
     const name = (f.name || "").toLowerCase();
-    return new Set([".mp4", ".webm", ".mov"]).has(
-      name.slice(name.lastIndexOf(".")),
-    );
+    return VIDEO_EXTS.has(name.slice(name.lastIndexOf(".")));
   }
 
   function onFileChange(e) {
@@ -96,7 +91,6 @@ export default function ImageModal({
 
     const video = isVideoFile(f);
 
-    // Size
     if (f.size > (video ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) {
       setErrorMsg(
         video
@@ -111,7 +105,6 @@ export default function ImageModal({
       return;
     }
 
-    // Type
     if (!isAllowedType(f)) {
       setErrorMsg(
         "Only JPG/JPEG, PNG, WEBP, MP4, WEBM, and MOV files are allowed.",
@@ -124,7 +117,6 @@ export default function ImageModal({
       return;
     }
 
-    // Valid
     setErrorMsg(null);
     setFile(f);
     setPreviewUrl((old) => {
@@ -150,10 +142,9 @@ export default function ImageModal({
       aria-labelledby={labelledBy}
     >
       <div
-        className="w-full max-w-sm rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden"
+        className="w-full max-w-sm max-h-[90dvh] flex flex-col rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <h3
             id={labelledBy}
@@ -180,8 +171,7 @@ export default function ImageModal({
           </button>
         </div>
 
-        {/* Body */}
-        <div className="px-4 py-5 space-y-4">
+        <div className="min-h-0 overflow-y-auto px-4 py-5 space-y-4">
           <input
             ref={fileInputRef}
             type="file"
@@ -190,11 +180,13 @@ export default function ImageModal({
             onChange={onFileChange}
           />
 
-          <div className="h-56 sm:h-72 max-h-[65vh] rounded-lg border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-900/30">
+          <div className="h-56 sm:h-72 max-h-[65dvh] rounded-lg border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-900/30">
             {previewUrl && file && isVideoFile(file) ? (
               <video
-                src={previewUrl}
+                src={withFirstFrame(previewUrl)}
                 controls
+                playsInline
+                disablePictureInPicture
                 preload="metadata"
                 aria-label="Selected video preview"
                 className="h-full w-full object-contain"

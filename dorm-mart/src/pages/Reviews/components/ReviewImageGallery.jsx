@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { MessageDialog } from "../../../components/Dialog";
 import { API_BASE } from "../../../utils/apiConfig";
 import { resolveProductPhotoUrl } from "../../../utils/imageFallback";
 import logger from "../../../utils/logger";
+import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 
 const reviewImageUrl = (url) =>
   resolveProductPhotoUrl(url, { apiBase: API_BASE, proxyUnknown: true });
@@ -21,18 +23,24 @@ function getReviewImages(review) {
 export default function ReviewImageGallery({ review, viewMode }) {
   const images = getReviewImages(review);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [downloadFailed, setDownloadFailed] = useState(false);
 
+  const closeButtonRef = useRef(null);
+
+  useBodyScrollLock(Boolean(selectedImage));
+
+  // The lightbox is a plain overlay, so it handles Escape and focus itself.
   useEffect(() => {
-    if (selectedImage) {
-      document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    }
+    if (!selectedImage) return undefined;
+    const opener = document.activeElement;
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setSelectedImage(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
     return () => {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
+      window.removeEventListener("keydown", onKeyDown);
+      opener?.focus?.();
     };
   }, [selectedImage]);
 
@@ -55,26 +63,32 @@ export default function ReviewImageGallery({ review, viewMode }) {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       logger.error("Error downloading image:", error);
-      alert("Failed to download image. Please try again.");
+      setDownloadFailed(true);
     }
   };
 
   return (
     <div className="mb-6">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+      <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         Images
-      </label>
+      </p>
 
       {viewMode === "seller" ? (
         <div className="space-y-4">
           {images.map((imageUrl, index) => (
             <div key={imageUrl} className={sellerImageFrameClass}>
-              <img
-                src={reviewImageUrl(imageUrl)}
-                alt={`Review attachment ${index + 1}`}
+              <button
+                type="button"
                 onClick={() => setSelectedImage(imageUrl)}
-                className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
-              />
+                aria-label={`Enlarge review attachment ${index + 1}`}
+                className="flex h-full w-full items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <img
+                  src={reviewImageUrl(imageUrl)}
+                  alt={`Review attachment ${index + 1}`}
+                  className="max-h-full max-w-full object-contain hover:opacity-90 transition-opacity"
+                />
+              </button>
               <button
                 type="button"
                 onClick={(e) => {
@@ -84,7 +98,7 @@ export default function ReviewImageGallery({ review, viewMode }) {
                     `review-image-${index + 1}.jpg`,
                   );
                 }}
-                className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 coarse:py-1.5 rounded-lg text-sm font-medium mouse:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
               >
                 Download
               </button>
@@ -108,6 +122,9 @@ export default function ReviewImageGallery({ review, viewMode }) {
       {viewMode === "seller" && selectedImage && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-75 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Review image"
           onClick={() => setSelectedImage(null)}
         >
           <div className="relative flex max-h-[90vh] max-w-[min(100%,90vw)] items-center justify-center">
@@ -118,6 +135,7 @@ export default function ReviewImageGallery({ review, viewMode }) {
               onClick={(e) => e.stopPropagation()}
             />
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={() => setSelectedImage(null)}
               className="absolute top-4 right-4 bg-white hover:bg-gray-100 text-gray-900 rounded-full p-2 shadow-lg"
@@ -139,6 +157,14 @@ export default function ReviewImageGallery({ review, viewMode }) {
             </button>
           </div>
         </div>
+      )}
+
+      {downloadFailed && (
+        <MessageDialog
+          title="Download failed"
+          message="Failed to download image. Please try again."
+          onClose={() => setDownloadFailed(false)}
+        />
       )}
     </div>
   );

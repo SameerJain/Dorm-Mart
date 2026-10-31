@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint();
 
@@ -14,7 +14,6 @@ $conn->set_charset('utf8mb4');
 $userId = require_login();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Update typing status
     $body = json_request_body_or_error(['success' => false, 'error' => 'Invalid JSON']);
     require_csrf_token($body['csrf_token'] ?? null);
 
@@ -25,7 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         json_response(['success' => false, 'error' => 'conversation_id is required'], 400);
     }
 
-    // Verify user has access to this conversation
     $checkStmt = $conn->prepare('SELECT conv_id FROM conversations WHERE conv_id = ? AND (user1_id = ? OR user2_id = ?) LIMIT 1');
     $checkStmt->bind_param('iii', $conversationId, $userId, $userId);
     $checkStmt->execute();
@@ -36,11 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $checkStmt->close();
 
-    // Use transaction to ensure atomicity and prevent race conditions
     $conn->begin_transaction();
     
     try {
-        // Insert or update typing status atomically
         $isTypingInt = $isTyping ? 1 : 0;
         $stmt = $conn->prepare('INSERT INTO typing_status (conversation_id, user_id, is_typing, updated_at) 
                                 VALUES (?, ?, ?, NOW()) 
@@ -56,20 +52,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->close();
             json_response(['success' => false, 'error' => 'Failed to update typing status'], 500);
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         $conn->rollback();
+        error_log('typing_status update error: ' . $e->getMessage());
         json_response(['success' => false, 'error' => 'Failed to update typing status'], 500);
     }
 
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Get typing status for other person in conversation
     $conversationId = request_int($_GET, 'conversation_id');
     
     if ($conversationId <= 0) {
         json_response(['success' => false, 'error' => 'conversation_id is required'], 400);
     }
 
-    // Verify user has access to this conversation and get other user's ID
     $convStmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? AND (user1_id = ? OR user2_id = ?) LIMIT 1');
     $convStmt->bind_param('iii', $conversationId, $userId, $userId);
     $convStmt->execute();
@@ -81,15 +76,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $convRow = $convRes->fetch_assoc();
     $convStmt->close();
 
-    // Determine other user's ID
     $otherUserId = ((int)$convRow['user1_id'] === $userId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
     
     if ($otherUserId <= 0) {
         json_response(['success' => false, 'error' => 'Invalid conversation'], 400);
     }
 
-    // Get typing status for other user with their name, only if updated within last 8 seconds
-    // Increased from 5 to 8 seconds to account for polling intervals and network delays
     // The 8 second window accounts for network latency and polling intervals
     // Note: 30-second continuous typing timeout is handled on the frontend
     $stmt = $conn->prepare('SELECT ts.is_typing, ua.first_name, ua.last_name 
@@ -114,14 +106,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $stmt->close();
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $response = [
         'success' => true, 
         'is_typing' => $isTyping
     ];
     if ($isTyping && $typingUserFirstName) {
         $response['typing_user_first_name'] = $typingUserFirstName;
-        // Only include last_name if available, but don't require it
         if ($typingUserLastName) {
             $response['typing_user_last_name'] = $typingUserLastName;
         }

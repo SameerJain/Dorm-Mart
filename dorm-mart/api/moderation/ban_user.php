@@ -6,6 +6,8 @@ require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../helpers/moderation.php';
+require_once __DIR__ . '/../scheduled_purchases/helpers.php';
 
 init_json_endpoint('POST');
 $moderatorId = require_moderator();
@@ -37,6 +39,7 @@ try {
         json_response(['success' => false, 'error' => 'Moderator accounts cannot be banned here'], 409);
     }
 
+    $conn->begin_transaction();
     if ($shouldBan) {
         $stmt = $conn->prepare(
             'UPDATE user_accounts
@@ -53,12 +56,37 @@ try {
     $stmt->execute();
     $stmt->close();
 
+    // A banned user cannot log in to show up or answer, so nobody should keep
+    // waiting on a meetup with them. Unbanning restores nothing here: their
+    // listings reappear on their own, but cancelled schedules stay cancelled.
+    $cancelledSchedules = $shouldBan
+        ? scheduled_purchase_cancel_all_for_user(
+            $conn,
+            $targetId,
+            'This scheduled purchase was cancelled because the other user is no longer active on Dorm Mart.'
+        )
+        : 0;
+    $conn->commit();
+
+    moderation_log_action($conn, $moderatorId, $shouldBan ? 'ban_user' : 'unban_user', [
+        'target_user_id' => $targetId,
+        'target_type' => 'user',
+        'target_id' => $targetId,
+        'details' => $shouldBan ? $reason . ' (' . $cancelledSchedules . ' scheduled purchases cancelled)' : $reason,
+    ]);
+
     if ($shouldBan) {
         mark_all_login_devices_signed_out($targetId);
     }
 
-    json_response(['success' => true, 'user_id' => $targetId, 'is_banned' => $shouldBan]);
+    json_response([
+        'success' => true,
+        'user_id' => $targetId,
+        'is_banned' => $shouldBan,
+        'cancelled_schedules' => $cancelledSchedules,
+    ]);
 } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) { try { $conn->rollback(); } catch (Throwable $_) {} }
     error_log('moderation ban error: ' . $e->getMessage());
     json_response(['success' => false, 'error' => 'Server error'], 500);
 }

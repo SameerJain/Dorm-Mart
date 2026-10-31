@@ -8,10 +8,7 @@ export default function PasswordRequirementRow({
 }) {
   return (
     <div className={className}>
-      <span
-        className={dotClassName}
-        style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }}
-      />
+      <span className={`${dotClassName} ${ok ? "bg-green-500" : "bg-red-500"}`} />
       <span className={ok ? okTextClassName : missingTextClassName}>
         {text}
       </span>

@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { decimalNumericKeyDownHandler } from "../../../utils/numericInputKeyHandlers";
 import { MAX_LISTING_PRICE } from "../../../utils/priceValidation";
 
@@ -10,11 +11,14 @@ export default function NegotiationFields({
   setTradeItemDescription,
   tradeItemDescription,
 }) {
+  const priceId = useId();
+  const tradeId = useId();
+
   return (
     <>
       {selectedListing?.priceNegotiable && (
         <div className="max-w-xs">
-          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+          <label htmlFor={priceId} className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
             Negotiated Price (Optional)
           </label>
           {selectedListing?.price && (
@@ -28,6 +32,7 @@ export default function NegotiationFields({
                 $
               </span>
               <input
+                id={priceId}
                 type="text"
                 inputMode="decimal"
                 value={negotiatedPrice}
@@ -79,10 +84,11 @@ export default function NegotiationFields({
 
       {selectedListing?.acceptTrades && isTrade && (
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+          <label htmlFor={tradeId} className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
             Item You Are Trading For <span className="text-red-500">*</span>
           </label>
           <textarea
+            id={tradeId}
             value={tradeItemDescription}
             onChange={(e) => setTradeItemDescription(e.target.value)}
             rows={3}

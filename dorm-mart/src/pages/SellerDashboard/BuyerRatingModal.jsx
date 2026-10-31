@@ -8,6 +8,7 @@ import { formatDate } from "../../utils/formatters";
 import logger from "../../utils/logger";
 import { readRatingValue } from "./utils/sellerDashboardUtils";
 import SubmitConfirmationDialog from "../../components/SubmitConfirmationDialog";
+import ReviewTextArea from "../../components/forms/ReviewTextArea";
 
 /**
  * BuyerRatingModal Component
@@ -77,12 +78,10 @@ function BuyerRatingModal({
     }
   }, [productId]);
 
-  // Fetch existing rating when modal opens
   useEffect(() => {
     if (isOpen && productId && buyerId) {
       fetchExistingRating();
     } else if (!isOpen) {
-      // Reset state when modal closes
       setExistingRating(null);
       setRating(0);
       setReviewText("");
@@ -95,7 +94,6 @@ function BuyerRatingModal({
     }
   }, [isOpen, productId, buyerId, fetchExistingRating]);
 
-  // Reset form when modal opens
   useEffect(() => {
     if (isOpen && !existingRating) {
       setRating(0);
@@ -126,33 +124,25 @@ function BuyerRatingModal({
       return;
     }
 
-    if (isSubmitting || pendingSubmit) return; // Prevent double submission
+    if (isSubmitting || pendingSubmit) return;
 
-    // Set pending submit flag to prevent direct submission
     setPendingSubmit(true);
 
-    // Show confirmation dialog before submitting
     const message =
       "Are you sure you want to submit this rating? Changes cannot be made.";
     setConfirmMessage(message);
 
-    // Create callback function that will be called when user confirms
     const callback = async () => {
-      // Close confirmation modal first
       setShowConfirmModal(false);
       setConfirmMessage("");
-      // Then proceed with submission
       await proceedWithSubmit();
-      // Reset state after submission completes
       setConfirmCallback(null);
       setPendingSubmit(false);
     };
-    // Store the callback function directly
     setConfirmCallback(() => callback);
 
-    // Set state to show confirmation modal
     setShowConfirmModal(true);
-    return; // Important: stop execution here, don't proceed with submission
+    return;
   };
 
   const proceedWithSubmit = async () => {
@@ -174,7 +164,6 @@ function BuyerRatingModal({
         throw new Error(result?.error || "Failed to submit rating");
       }
 
-      // Success!
       if (onRatingSubmitted) {
         onRatingSubmitted(result);
       }
@@ -195,18 +184,16 @@ function BuyerRatingModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
       onClick={(e) => {
-        // Prevent closing main modal when confirmation modal is open
         if (!showConfirmModal && e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full overflow-hidden"
+        className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl dark:bg-gray-800"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             {existingRating ? "Buyer Rating" : "Rate Buyer"}
           </h2>
@@ -231,19 +218,20 @@ function BuyerRatingModal({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           <div className="mb-4 min-w-0">
-            <p className="text-sm text-gray-600 dark:text-gray-400 break-words">
-              Product:{" "}
-              <span className="font-medium text-gray-900 dark:text-gray-100 break-words">
+            <p className="flex min-w-0 items-baseline gap-1 text-sm text-gray-600 dark:text-gray-400">
+              <span className="flex-none">Product:</span>
+              <span
+                className="min-w-0 flex-1 truncate font-medium text-gray-900 dark:text-gray-100"
+                title={productTitle}
+              >
                 {productTitle}
               </span>
             </p>
           </div>
 
           {existingRating ? (
-            // View existing rating
             <div>
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -256,7 +244,6 @@ function BuyerRatingModal({
                   </span>
                 </div>
               </div>
-              {/* Review Text Display */}
               {existingRating.review_text && (
                 <div className="mb-6 min-w-0">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -266,11 +253,7 @@ function BuyerRatingModal({
                     className="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 min-w-0 overflow-hidden"
                   >
                     <p
-                      className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all overflow-wrap-anywhere"
-                      style={{
-                        wordBreak: "break-all",
-                        overflowWrap: "anywhere",
-                      }}
+                      className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words"
                     >
                       {existingRating.review_text}
                     </p>
@@ -292,7 +275,6 @@ function BuyerRatingModal({
               </div>
             </div>
           ) : (
-            // Rating form
             <form onSubmit={handleSubmit}>
               <EditableStarRating
                 label="Rate this Buyer"
@@ -300,49 +282,19 @@ function BuyerRatingModal({
                 onChange={setRating}
               />
 
-              {/* Review Text Section */}
               <div className="mb-6">
-                <label
-                  htmlFor="buyer-review-text"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Review (Optional)
-                </label>
-                <div
-                  className="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 min-w-0"
-                >
-                  <textarea
-                    id="buyer-review-text"
-                    value={reviewText}
-                    onChange={handleReviewTextChange}
-                    placeholder="Share your experience with this buyer..."
-                    rows={6}
-                    maxLength={maxChars}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none break-words break-all overflow-wrap-anywhere"
-                    style={{
-                      border: "none",
-                      borderRadius: "0",
-                      overflow: "auto",
-                      scrollbarWidth: "thin",
-                      scrollbarColor: "rgba(156, 163, 175, 0.5) transparent",
-                      wordBreak: "break-all",
-                      overflowWrap: "anywhere",
-                    }}
-                  />
-                </div>
-                <div className="mt-1 flex items-center justify-between">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {charCount} / {maxChars} characters
-                  </p>
-                  {charCount >= maxChars && (
-                    <p className="text-xs text-red-500">
-                      Maximum character limit reached
-                    </p>
-                  )}
-                </div>
+                <ReviewTextArea
+                  id="buyer-review-text"
+                  label="Review"
+                  optional
+                  value={reviewText}
+                  onChange={handleReviewTextChange}
+                  placeholder="Share your experience with this buyer..."
+                  maxChars={maxChars}
+                  charCount={charCount}
+                />
               </div>
 
-              {/* Error Message */}
               {error && (
                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <p className="text-sm text-red-600 dark:text-red-400">
@@ -351,7 +303,6 @@ function BuyerRatingModal({
                 </div>
               )}
 
-              {/* Action Buttons */}
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"

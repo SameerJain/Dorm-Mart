@@ -71,6 +71,7 @@ function fetch_public_profile_row(mysqli $conn, string $username): ?array
     $sql = 'SELECT user_id, first_name, last_name, email, profile_photo, bio, instagram
             FROM user_accounts
             WHERE LOWER(SUBSTRING_INDEX(email, "@", 1)) = ?
+              AND is_banned = 0
             LIMIT 1';
     $stmt = $conn->prepare($sql);
     if (!$stmt) {

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
-import PageBackButton from "../../components/PageBackButton";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 
 async function responseMessage(response) {
   const data = await response.json().catch(() => ({}));
@@ -11,7 +10,6 @@ async function responseMessage(response) {
 }
 
 export default function TwoFactorAuthentication() {
-  const navigate = useNavigate();
   const [enabled, setEnabled] = useState(null);
   const [email, setEmail] = useState("");
   const [mode, setMode] = useState(null);
@@ -19,6 +17,7 @@ export default function TwoFactorAuthentication() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const runExclusive = useSubmitLock();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -69,7 +68,6 @@ export default function TwoFactorAuthentication() {
         <h1 className="text-2xl font-serif font-semibold text-blue-600 dark:text-blue-400">
           Two-Factor Authentication
         </h1>
-        <PageBackButton onClick={() => navigate(-1)} />
       </div>
 
       <div className="max-w-2xl">
@@ -97,7 +95,11 @@ export default function TwoFactorAuthentication() {
                 setError("");
                 setMessage("");
               }}
-              className="h-11 rounded-xl bg-blue-600 px-5 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+              className={
+                enabled
+                  ? "h-11 rounded-xl bg-red-600 px-5 font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                  : "h-11 rounded-xl bg-blue-600 px-5 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+              }
             >
               {enabled ? "Disable 2FA" : "Enable 2FA"}
             </button>
@@ -133,8 +135,12 @@ export default function TwoFactorAuthentication() {
               <button
                 type="button"
                 disabled={loading || (mode === "disable" && password === "")}
-                onClick={confirmChange}
-                className="h-10 rounded-lg bg-blue-600 px-5 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                onClick={() => runExclusive(confirmChange)}
+                className={
+                  mode === "disable"
+                    ? "h-10 rounded-lg bg-red-600 px-5 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                    : "h-10 rounded-lg bg-blue-600 px-5 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                }
               >
                 {loading ? "Saving..." : "Confirm"}
               </button>

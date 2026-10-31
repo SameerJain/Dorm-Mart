@@ -1,9 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// dorm-mart/api/listings/landing_listings.php
 
-// Include security utilities
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../helpers/recommendations.php';
@@ -46,6 +44,7 @@ try {
         WHERE (i.sold = 0 OR i.sold IS NULL)
           AND i.item_status = 'Active'
           AND i.seller_id <> ?
+          AND " . inventory_seller_visible_sql('i.seller_id') . "
         ORDER BY i.date_listed DESC, i.product_id DESC
         LIMIT 120
     ";
@@ -81,7 +80,6 @@ try {
         $tags = inventory_string_list($row['categories'] ?? null);
         $image = inventory_first_photo($row['photos'] ?? null);
 
-        // status from date_listed
         $status = 'AVAILABLE';
         $createdAt = null;
         if (!empty($row['date_listed'])) {
@@ -100,7 +98,7 @@ try {
             'id'         => (int)$row['product_id'],
             'title'      => $row['title'] ?? 'Untitled',
             'price'      => $row['listing_price'] !== null ? (float)$row['listing_price'] : 0,
-            'image'      => $image,      // <-- "/data/images/xxxx.png"
+            'image'      => $image,
             'image_url'  => $image,
             'tags'       => $tags,
             'category'   => !empty($tags) ? $tags[0] : null,
@@ -109,6 +107,7 @@ try {
             'created_at' => $createdAt,
             'seller'     => $seller,
             'sold_by'    => $seller,
+            'seller_username' => inventory_username_from_email($row['email'] ?? null),
             'status'     => $status,
             'trades'     => (bool)$row['trades'],
             'price_nego' => (bool)$row['price_nego'],

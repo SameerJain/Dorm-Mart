@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 
-// dorm-mart/api/search/get_search_items.php
 
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
@@ -16,7 +15,6 @@ try {
     auth_boot_session();
     $userId = require_login();
 
-    // Parse JSON body or form data
     $contentLength = filter_var($_SERVER['CONTENT_LENGTH'] ?? null, FILTER_VALIDATE_INT);
     if ($contentLength !== false && $contentLength > MAX_JSON_REQUEST_BYTES) {
         json_response(['ok' => false, 'error' => 'Request body is too large'], 413);
@@ -34,7 +32,6 @@ try {
         $body = $decodedBody;
     }
     if (empty($body)) {
-        // Fallback to form-encoded
         $body = $_POST ?? [];
     }
 
@@ -50,7 +47,6 @@ try {
     if (mb_strlen($q) > 200) {
         json_response(['ok' => false, 'error' => 'Search query too long'], 400);
     }
-    // Optional multiple categories support
     $categories = [];
     if (isset($body['categories'])) {
         if (is_array($body['categories'])) {
@@ -137,7 +133,6 @@ try {
     if (!in_array($sort, $ALLOWED_SORTS, true)) {
         json_response(['ok' => false, 'error' => 'Invalid sort value'], 400);
     }
-    // Optional: include description in search when true
     $includeDesc = false;
     if (isset($body['includeDescription'])) {
         $includeDesc = strict_boolean_value($body['includeDescription']);
@@ -158,7 +153,6 @@ try {
     mysqli_report(MYSQLI_REPORT_OFF);
     $mysqli = db();
 
-    // Base select (we may append a dynamic relevance column when searching)
     $selectCols = "
             i.product_id,
             i.title,
@@ -182,7 +176,9 @@ try {
     $relevanceParams = [];
     $relevanceTypes = '';
 
-    // If searching and sort is empty or explicitly set to best, prioritize similarity
+    // LIKE treats % and _ as wildcards; escape them so "50%" or "_" in a
+    // query match literally instead of matching every listing.
+    $qLike = addcslashes($q, '%_\\');
     $useRelevance = ($q !== '') && in_array($sort, ['', 'best', 'best_match', 'relevance'], true);
     if ($useRelevance) {
         // Weighted matches: exact > prefix > contains (title), optional description contains
@@ -191,12 +187,12 @@ try {
             " (CASE WHEN i.title LIKE ? THEN 50 ELSE 0 END) +".
             " (CASE WHEN i.title LIKE ? THEN 20 ELSE 0 END) ";
         $relevanceParams[] = $q;                 // exact
-        $relevanceParams[] = $q . '%';           // prefix
-        $relevanceParams[] = '%' . $q . '%';     // title contains
+        $relevanceParams[] = $qLike . '%';       // prefix
+        $relevanceParams[] = '%' . $qLike . '%'; // title contains
         $relevanceTypes   .= 'sss';
         if ($includeDesc) {
             $relevanceSql .= "+ (CASE WHEN i.description LIKE ? THEN 10 ELSE 0 END) ";
-            $relevanceParams[] = '%' . $q . '%'; // desc contains
+            $relevanceParams[] = '%' . $qLike . '%'; // desc contains
             $relevanceTypes   .= 's';
         }
         $relevanceSql .= ") AS relevance ";
@@ -210,20 +206,17 @@ try {
     $params = [];
     $types = '';
 
-    // Enforce only Active and not sold
     $where[] = 'i.item_status = ?';
     $params[] = 'Active';
     $types   .= 's';
     $where[] = '(i.sold IS NULL OR i.sold = 0)';
+    $where[] = inventory_seller_visible_sql('i.seller_id');
 
-    // Category is stored as JSON array (column: categories)
     if ($category !== '') {
-        // Match a single category
         $where[] = 'JSON_CONTAINS(i.categories, ?, "$")';
         $params[] = json_encode($category, JSON_UNESCAPED_UNICODE);
         $types   .= 's';
     } elseif (!empty($categories)) {
-        // Match any of the provided categories
         $parts = [];
         foreach ($categories as $cat) {
             $parts[] = 'JSON_CONTAINS(i.categories, ?, "$")';
@@ -235,7 +228,6 @@ try {
         }
     }
 
-    // Condition and location (exact matches)
     if ($condition !== '') {
         $where[] = 'i.item_condition = ?';
         $params[] = $condition;
@@ -247,7 +239,6 @@ try {
         $types   .= 's';
     }
 
-    // Optional toggles
     $priceNegoIn = null;
     $hasPriceNego = isset($body['priceNego']) || isset($body['priceNegotiable']);
     $priceNego = isset($body['priceNego']) ? strict_boolean_value($body['priceNego']) : null;
@@ -278,21 +269,19 @@ try {
         }
     }
 
-    // Search query across title (and optionally description)
     if ($q !== '') {
         if ($includeDesc) {
             $where[] = '(i.title LIKE ? OR i.description LIKE ?)';
-            $params[] = '%' . $q . '%';
-            $params[] = '%' . $q . '%';
+            $params[] = '%' . $qLike . '%';
+            $params[] = '%' . $qLike . '%';
             $types   .= 'ss';
         } else {
             $where[] = 'i.title LIKE ?';
-            $params[] = '%' . $q . '%';
+            $params[] = '%' . $qLike . '%';
             $types   .= 's';
         }
     }
 
-    // Price range
     if ($minPrice !== null) {
         $where[] = 'i.listing_price >= ?';
         $params[] = $minPrice;
@@ -308,7 +297,6 @@ try {
         $sql .= ' WHERE ' . implode(' AND ', $where) . "\n";
     }
 
-    // Sorting
     $order = ' ORDER BY i.date_listed DESC, i.product_id DESC ';
     if ($useRelevance) {
         $order = ' ORDER BY relevance DESC, i.date_listed DESC, i.product_id DESC ';
@@ -323,14 +311,12 @@ try {
     }
     $sql .= $order . "\n" . ' LIMIT ? ';
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $mysqli->prepare($sql);
     if ($stmt === false) {
         throw new Exception('Prepare failed: ' . $mysqli->error);
     }
 
     // Bind params: where params, then relevance params (if any), then limit
-    // All parameters are safely bound, preventing SQL injection
     $typesWithLimit = $relevanceTypes . $types . 'i';
     $paramsWithLimit = array_merge($relevanceParams, $params);
     $paramsWithLimit[] = $limit;
@@ -350,7 +336,6 @@ try {
         $tags = inventory_string_list($row['categories'] ?? null);
         $image = inventory_first_photo($row['photos'] ?? null);
 
-        // status from date_listed
         $statusOut = 'AVAILABLE';
         $createdAt = null;
         if (!empty($row['date_listed'])) {
@@ -381,6 +366,7 @@ try {
             'created_at' => $createdAt,
             'seller'     => $seller,
             'sold_by'    => $seller,
+            'seller_username' => inventory_username_from_email($row['email'] ?? null),
             'status'     => $statusOut,
             'trades'     => (bool)$row['trades'],
             'price_nego' => (bool)$row['price_nego'],

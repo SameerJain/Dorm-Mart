@@ -7,6 +7,7 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../helpers/notifications.php';
 
 init_json_endpoint('POST');
 
@@ -17,29 +18,20 @@ try {
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    // Validate product_id
-    $productId = request_int($payload, 'product_id');
-    if ($productId <= 0) {
-        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
-    }
+    $productId = require_product_id($payload);
 
-    // Validate buyer_user_id
     $buyerId = request_int($payload, 'buyer_user_id');
     if ($buyerId <= 0) {
         json_response(['success' => false, 'error' => 'Invalid buyer_user_id'], 400);
     }
 
-    // Validate rating (0-5 in 0.5 increments)
-    $rating = strict_decimal_value($payload['rating'] ?? null);
-    if ($rating === null || $rating < 0.5 || $rating > 5) {
-        json_response(['success' => false, 'error' => 'Rating must be between 0.5 and 5'], 400);
-    }
-    // Check for 0.5 increments
-    if (abs(($rating * 2) - round($rating * 2)) > 0.000001) {
-        json_response(['success' => false, 'error' => 'Rating must be in 0.5 increments'], 400);
-    }
+    $rating = require_half_star_rating(
+        $payload,
+        'rating',
+        'Rating must be between 0.5 and 5',
+        'Rating must be in 0.5 increments'
+    );
 
-    // Validate review_text (optional, max 250 chars if provided)
     $reviewTextValue = $payload['review_text'] ?? '';
     $reviewText = is_string($reviewTextValue) ? trim($reviewTextValue) : '';
     if ($reviewTextValue !== null && !is_string($reviewTextValue)) {
@@ -60,7 +52,6 @@ try {
 
     $sellerId = (int)$productRow['seller_id'];
 
-    // Verify that the current user is the seller
     if ($sellerId !== $userId) {
         json_response(['success' => false, 'error' => 'You can only rate buyers for your own products'], 403);
     }
@@ -73,7 +64,6 @@ try {
         json_response(['success' => false, 'error' => 'Product must be sold to this buyer'], 403);
     }
 
-    // Check if user has already rated this buyer for this product
     $stmt = $conn->prepare('SELECT rating_id FROM buyer_ratings WHERE seller_user_id = ? AND buyer_user_id = ? AND product_id = ? LIMIT 1');
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare existing rating check');
@@ -88,7 +78,6 @@ try {
         json_response(['success' => false, 'error' => 'You have already rated this buyer for this product'], 409);
     }
 
-    // Insert the buyer rating
     $stmt = $conn->prepare(
         'INSERT INTO buyer_ratings (product_id, seller_user_id, buyer_user_id, rating, review_text) 
          VALUES (?, ?, ?, ?, ?)'
@@ -97,7 +86,15 @@ try {
         throw new RuntimeException('Failed to prepare buyer rating insert');
     }
     $stmt->bind_param('iiids', $productId, $userId, $buyerId, $rating, $reviewText);
-    $success = $stmt->execute();
+    try {
+        $success = $stmt->execute();
+    } catch (mysqli_sql_exception $e) {
+        // A double-submit that passed the check above loses on the unique key.
+        if ($e->getCode() === 1062) {
+            json_response(['success' => false, 'error' => 'You have already rated this buyer for this product'], 409);
+        }
+        throw $e;
+    }
     $ratingId = $stmt->insert_id;
     $stmt->close();
 
@@ -105,7 +102,15 @@ try {
         throw new RuntimeException('Failed to insert buyer rating');
     }
 
-    // Update buyer's average buyer_rating in user_accounts
+    notification_review_received($conn, 'buyer', $buyerId, $userId, $productId, $rating, (int)$ratingId);
+
+    $reminderStmt = $conn->prepare("DELETE FROM notifications WHERE recipient_user_id = ? AND product_id = ? AND type = 'rate_buyer_reminder'");
+    if ($reminderStmt) {
+        $reminderStmt->bind_param('ii', $userId, $productId);
+        $reminderStmt->execute();
+        $reminderStmt->close();
+    }
+
     $stmt = $conn->prepare(
         'UPDATE user_accounts SET buyer_rating = (
             SELECT AVG(rating) FROM buyer_ratings WHERE buyer_user_id = ?
@@ -117,7 +122,6 @@ try {
         $stmt->close();
     }
 
-    // Get the created rating
     $stmt = $conn->prepare(
         'SELECT rating_id, product_id, seller_user_id, buyer_user_id, rating, review_text, created_at, updated_at
          FROM buyer_ratings WHERE rating_id = ? LIMIT 1'
@@ -132,7 +136,6 @@ try {
     $stmt->close();
     $conn->close();
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     json_response([
         'success' => true,
         'rating_id' => $ratingId,

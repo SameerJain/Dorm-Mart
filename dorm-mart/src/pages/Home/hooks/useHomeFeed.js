@@ -3,12 +3,12 @@ import { API_BASE } from "../../../utils/apiConfig";
 import { apiGetJson } from "../../../utils/apiClient";
 import logger from "../../../utils/logger";
 import {
-  FALLBACK_ITEMS,
   buildHomeFeed,
   computeExploreLimit,
   getQuickFilterCategories,
   normalizeLandingItem,
   readStoredFeedTab,
+  shuffleArray,
   writeStoredFeedTab,
 } from "../utils/homeFeedUtils";
 
@@ -18,7 +18,8 @@ export function useHomeFeed() {
   const [allCategories, setAllCategories] = useState([]);
   const [wishlistedIds, setWishlistedIds] = useState(new Set());
   const [loadingUser, setLoadingUser] = useState(true);
-  const [loadingItems, setLoadingItems] = useState(false);
+  // Starts true so the empty state never flashes before the first response.
+  const [loadingItems, setLoadingItems] = useState(true);
   const [errorUser, setErrorUser] = useState(false);
   const [errorItems, setErrorItems] = useState(false);
   const [activeTab, setActiveTab] = useState("forYou");
@@ -81,13 +82,13 @@ export function useHomeFeed() {
         const normalized = (Array.isArray(data) ? data : []).map(
           normalizeLandingItem,
         );
-        setAllItems(normalized.length ? normalized : FALLBACK_ITEMS);
+        setAllItems(normalized);
         setErrorItems(false);
       } catch (error) {
         if (error.name !== "AbortError") {
           logger.error("listings/landing_listings.php failed:", error);
           setErrorItems(true);
-          setAllItems(FALLBACK_ITEMS);
+          setAllItems([]);
         }
       } finally {
         setLoadingItems(false);
@@ -135,9 +136,11 @@ export function useHomeFeed() {
     return () => controller.abort();
   }, []);
 
+  // Shuffled once per load; the explore limit only changes how many are shown.
+  const exploreOrder = useMemo(() => shuffleArray(allItems), [allItems]);
   const feed = useMemo(
-    () => buildHomeFeed(allItems, interests, exploreLimit),
-    [allItems, exploreLimit, interests],
+    () => buildHomeFeed(allItems, exploreLimit, exploreOrder),
+    [allItems, exploreLimit, exploreOrder],
   );
   const quickFilterCategories = useMemo(
     () => getQuickFilterCategories(allCategories, allItems),
@@ -156,7 +159,6 @@ export function useHomeFeed() {
     interests,
     isLoading: loadingUser || loadingItems,
     loadingUser,
-    itemsByInterest: feed.itemsByInterest,
     forYouItems: feed.forYouItems,
     hasPersonalization: feed.forYouItems.some((item) => item.personalized),
     exploreItems: feed.exploreItems,

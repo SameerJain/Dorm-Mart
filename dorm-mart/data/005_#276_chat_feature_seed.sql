@@ -52,7 +52,7 @@ WHERE email IN (
   'testuserchatfeaturesgreen@buffalo.edu'
 );
 
--- Buyer account (Po Dameron) – standard user
+-- Buyer account (Po Dameron) - standard user
 INSERT INTO user_accounts (
   first_name,
   last_name,
@@ -68,7 +68,6 @@ INSERT INTO user_accounts (
   reset_token_expires,
   last_reset_request,
   received_intro_promo_email,
-  reveal_contact_info,
   interested_category_1,
   interested_category_2,
   interested_category_3
@@ -87,13 +86,12 @@ INSERT INTO user_accounts (
   NULL,
   NULL,
   0,
-  0,
   NULL,
   NULL,
   NULL
 );
 
--- Seller account (Kylo Ren) – able to create listings
+-- Seller account (Kylo Ren) - able to create listings
 INSERT INTO user_accounts (
   first_name,
   last_name,
@@ -109,7 +107,6 @@ INSERT INTO user_accounts (
   reset_token_expires,
   last_reset_request,
   received_intro_promo_email,
-  reveal_contact_info,
   interested_category_1,
   interested_category_2,
   interested_category_3
@@ -127,7 +124,6 @@ INSERT INTO user_accounts (
   0,
   NULL,
   NULL,
-  0,
   0,
   NULL,
   NULL,
@@ -169,8 +165,14 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Gaming', 'Electronics'),
   'North Campus',
   'Like New',
-  'This is a custom gamceube controller, created by the desginer Control-In-Color. This is a cartoon and stylized design of the "Great Wave Off Kanagawa" by Hokusai. It has custom front and outer shells. The back shell has the tag "SAMMY" on it. There is also come blue tape around the cord for more style.There does not exist any mods for in-game control. The stick certainly is looser than a new controller, but its not terrible. You for sure want to play Melee with UCF and a good monitor, but this controller is certainly not going to hold you back or anthing like that.This is most definitely best used for competitive Super Smash Bros. across various installments.',
-  JSON_ARRAY('/images/custom-gamecube-controller.jpg'),
+  'Custom GameCube controller with shells from Control In Color. The front and outer shells have a stylized take on Hokusai''s Great Wave off Kanagawa, the back has SAMMY printed on it, and there''s blue tape wrapped around the cord too. Easy to spot at a setup full of identical pads, which is honestly the whole appeal.
+
+Everything I changed is cosmetic, nothing is modded inside, so it plays like a stock pad. Stick tension is a little looser than a brand new one, which is the main thing to know if you want it for Melee. Fine for casual runs, but I''d pair it with UCF and a decent monitor for anything competitive. Check the back tag in the photos before messaging since that''s part of what you''re getting. Price is flexible, reasonable offers welcome. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/custom-gamecube-controller.jpg',
+    '/images/custom-gamecube-controller-2.jpg',
+    '/images/custom-gamecube-controller-3.jpg'
+  ),
   80.00,
   'Active',
   0,

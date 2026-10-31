@@ -7,6 +7,7 @@ require_once __DIR__ . '/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/notifications.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
+require_once __DIR__ . '/../scheduled_purchases/helpers.php';
 
 init_json_endpoint('POST');
 
@@ -21,7 +22,7 @@ try {
     $conn->set_charset('utf8mb4');
 
     $accountStmt = $conn->prepare(
-        'SELECT hash_pass, is_protected, profile_photo FROM user_accounts WHERE user_id = ? LIMIT 1'
+        'SELECT hash_pass, is_protected, profile_photo, email FROM user_accounts WHERE user_id = ? LIMIT 1'
     );
     if (!$accountStmt) throw new RuntimeException('Failed to prepare account lookup');
     $accountStmt->bind_param('i', $userId);
@@ -34,19 +35,34 @@ try {
         json_response(['success' => false, 'error' => 'This account cannot be deleted'], 403);
     }
 
-    $confirmation = is_string($input['confirmation'] ?? null) ? $input['confirmation'] : '';
+    $confirmation = is_string($input['confirmation'] ?? null) ? trim($input['confirmation']) : '';
     $password = is_string($input['currentPassword'] ?? null) ? $input['currentPassword'] : '';
-    if ($confirmation !== 'DELETE MY ACCOUNT' || $password === '' || strlen($password) > 64) {
+    $accountEmail = trim((string)($account['email'] ?? ''));
+    if ($accountEmail === '' || strcasecmp($confirmation, $accountEmail) !== 0 || $password === '' || strlen($password) > 64) {
         json_response(['success' => false, 'error' => 'Invalid account deletion confirmation'], 400);
+    }
+    $passwordLimit = consume_password_confirm_attempt($userId);
+    if ($passwordLimit['blocked']) {
+        json_response(password_confirm_retry_error($passwordLimit), 429);
     }
     if (!password_verify($password, (string)$account['hash_pass'])) {
         json_response(['success' => false, 'error' => 'Current password is incorrect'], 401);
     }
+    clear_password_confirm_attempts($userId);
 
     $ownedImages = [];
     if (!empty($account['profile_photo'])) $ownedImages[] = (string)$account['profile_photo'];
 
     $conn->begin_transaction();
+
+    // First, while the user's listings still exist: cancel every unfinished
+    // schedule, void pending Confirm Purchase forms, tell the other party, and
+    // put items this user had reserved back on sale.
+    scheduled_purchase_cancel_all_for_user(
+        $conn,
+        $userId,
+        'This scheduled purchase was cancelled because the other user deleted their account.'
+    );
 
     $listingStmt = $conn->prepare(
         'SELECT product_id, title, photos FROM INVENTORY WHERE seller_id = ? FOR UPDATE'
@@ -124,12 +140,10 @@ try {
         $conversationStmt->close();
 
         account_delete_run($conn, 'DELETE FROM wishlist WHERE product_id = ?', 'i', $productId);
-        account_delete_run($conn, 'DELETE FROM wishlist_notification WHERE product_id = ?', 'i', $productId);
         account_delete_run($conn, 'DELETE FROM INVENTORY WHERE product_id = ? AND seller_id = ?', 'ii', $productId, $userId);
     }
 
     account_delete_run($conn, 'DELETE FROM wishlist WHERE user_id = ?', 'i', $userId);
-    account_delete_run($conn, 'DELETE FROM wishlist_notification WHERE seller_id = ?', 'i', $userId);
     account_delete_run($conn, 'UPDATE INVENTORY SET sold_to = NULL WHERE sold_to = ?', 'i', $userId);
 
     $accountDeletedMessage = "This user's account has been deleted. This chat has been closed.";
@@ -207,27 +221,10 @@ try {
 
     account_delete_run(
         $conn,
-        "UPDATE scheduled_purchase_requests
-         SET status = 'cancelled', canceled_by_user_id = NULL
-         WHERE (seller_user_id = ? OR buyer_user_id = ?) AND status IN ('pending', 'accepted')",
-        'ii',
-        $userId,
-        $userId
-    );
-    account_delete_run(
-        $conn,
-        "UPDATE confirm_purchase_requests
-         SET status = 'seller_cancelled'
-         WHERE (seller_user_id = ? OR buyer_user_id = ?) AND status = 'pending'",
-        'ii',
-        $userId,
-        $userId
-    );
-    account_delete_run(
-        $conn,
         'DELETE n FROM notifications n
          INNER JOIN scheduled_purchase_requests spr ON spr.request_id = n.scheduled_request_id
-         WHERE (spr.seller_user_id = ? OR spr.buyer_user_id = ?) AND n.available_at > NOW()',
+         WHERE (spr.seller_user_id = ? OR spr.buyer_user_id = ?) AND n.available_at > NOW()
+           AND n.type <> \'schedule_cancelled\'',
         'ii',
         $userId,
         $userId
@@ -277,6 +274,15 @@ try {
         'i',
         $userId
     );
+    // Per-user throttle buckets are keyed by a hash of the user id, so they have no
+    // row to join against and have to be named directly.
+    account_delete_run(
+        $conn,
+        'DELETE FROM login_rate_limits WHERE session_id IN (?, ?)',
+        'ss',
+        scoped_rate_limit_key('password_confirm', $userId),
+        scoped_rate_limit_key('two_factor_issue', $userId)
+    );
     account_delete_run($conn, 'DELETE FROM login_history WHERE user_id = ?', 'i', $userId);
 
     $deletedRows = account_delete_run($conn, 'DELETE FROM user_accounts WHERE user_id = ?', 'i', $userId);
@@ -287,17 +293,9 @@ try {
     $conn = null;
 
     account_delete_owned_images($ownedImages, $userId);
+    account_delete_review_images($userId);
 
     session_regenerate_id(true);
-    if (isset($_COOKIE['auth_token'])) {
-        setcookie('auth_token', '', [
-            'expires' => time() - 3600,
-            'path' => '/',
-            'httponly' => true,
-            'secure' => auth_is_https_request(),
-            'samesite' => 'Lax',
-        ]);
-    }
     logout_destroy_session();
 
     json_response(['success' => true]);
@@ -319,6 +317,19 @@ function account_delete_run(mysqli $conn, string $sql, string $types = '', mixed
     $affectedRows = $stmt->affected_rows;
     $stmt->close();
     return $affectedRows;
+}
+
+/**
+ * The user's reviews were deleted with the account, so their review photos are
+ * unreferenced. Chat attachments stay: the other participant's history still
+ * shows them.
+ */
+function account_delete_review_images(int $userId): void
+{
+    $dir = data_media_dir('review-images');
+    foreach (glob($dir . DIRECTORY_SEPARATOR . 'review_u' . $userId . '_*') ?: [] as $file) {
+        if (is_file($file) && !@unlink($file)) error_log('Failed to delete review image: ' . basename($file));
+    }
 }
 
 function account_delete_owned_images(array $paths, int $userId): void

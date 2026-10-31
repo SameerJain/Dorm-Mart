@@ -33,8 +33,18 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Gaming', 'Furniture', 'Office'),
   'North Campus',
   'Like New',
-  'This gaming chair is built for comfort, support, and style, making long gaming sessions easier and more enjoyable. Designed with an ergonomic, high-back structure, it features contoured padding that supports your spine, neck, and lower back, helping reduce fatigue during hours of play or work. The adjustable armrests, reclining backrest, and customizable height settings let you fine-tune your seating position for perfect comfort. Covered in durable, easy-to-clean materials, it offers a sleek, modern look that fits seamlessly into any gaming setup or home office. A sturdy base and smooth-rolling casters provide stability and mobility, while the included headrest and lumbar cushions add extra support where you need it most. Whether you''re grinding out long sessions, streaming, or tackling school or work tasks, this gaming chair delivers the comfort, durability, and style every gamer needs.',
-  JSON_ARRAY('/images/gaming-chair-product-image.jpeg'),
+  '$180 or best offer.
+
+Gaming chair with a tall back, adjustable armrests, a reclining backrest, and separate head and lower back cushions that clip on and off (both cushions are included). Height and recline still adjust smoothly with no sticking or grinding, and the wheels roll fine on carpet and hardwood with no wobble or squeak.
+
+Try sitting in it before you decide, since a chair that feels great to me might not fit someone with a different build.
+
+Selling because I switched desks and don''t have space for it anymore. It''s full sized, so bring a car or a friend to help carry it, and we''d need a pickup spot on campus with room to load it.',
+  JSON_ARRAY(
+    '/images/gaming-chair-product-image.jpeg',
+    '/images/gaming-chair-product-image-2.jpg',
+    '/images/gaming-chair-product-image-3.jpg'
+  ),
   180.00,
   'Active',
   0,
@@ -64,8 +74,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Decor'),
   'North Campus',
   'Like New',
-  'This Christmas ornament adds a touch of festive charm and sparkle to your holiday décor, making it a perfect addition to any tree, wreath, or seasonal display. Crafted with attention to detail, it features a beautifully finished design that catches the light from every angle, creating a warm, magical glow throughout your home. Lightweight yet durable, it hangs securely without weighing down branches, ensuring it stays in place all season long. Its classic style blends seamlessly with both modern and traditional decorations, making it a versatile piece you can enjoy year after year. Whether you''re starting a new collection, adding to a cherished tradition, or looking for a thoughtful gift, this ornament brings a timeless, joyful touch to your holiday celebrations.',
-  JSON_ARRAY('/images/christmas-ornament-test-image.jpg'),
+  'Single Christmas ornament, no chips, cracks, or faded spots. Bought it during a holiday sale and never put up a tree that year, so it''s been wrapped in a box ever since. One ornament, not a set, and the photo shows the exact design you''d get. $12, and I''m not against a reasonable offer. Easy to meet on campus.',
+  JSON_ARRAY(
+    '/images/christmas-ornament-test-image.jpg',
+    '/images/christmas-ornament-test-image-2.jpg',
+    '/images/christmas-ornament-test-image-3.jpg',
+    '/images/christmas-ornament-test-image-4.jpg'
+  ),
   12.00,
   'Active',
   0,

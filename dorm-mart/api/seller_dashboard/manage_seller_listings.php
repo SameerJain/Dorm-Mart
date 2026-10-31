@@ -2,28 +2,24 @@
 
 declare(strict_types=1);
 
-// Include security utilities
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../helpers/request.php';
 
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
 init_json_endpoint('POST');
 
 try {
-    // Require authentication - this will redirect to login if not authenticated
     $userId = require_login();
 
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    // DB connection
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Fetch seller listings from INVENTORY for current user
     $sql = "SELECT
                 i.product_id,
                 i.title,
@@ -111,7 +107,6 @@ try {
 
     json_response(['success' => true, 'data' => $data]);
 } catch (Throwable $e) {
-    // Log error server-side (in production, use proper logging)
     error_log('Seller listings error: ' . $e->getMessage());
     error_log('Stack trace: ' . $e->getTraceAsString());
 

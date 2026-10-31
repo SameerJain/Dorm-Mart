@@ -62,8 +62,12 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Utility'),
   'North Campus',
   'Fair',
-  'This storage bin is a simple, stylish solution for keeping any room neat, organized, and clutter-free. Designed with a sturdy structure and soft fabric exterior, it blends easily with most décor styles while offering dependable everyday use. The spacious interior provides plenty of room for clothes, blankets, books, toys, or miscellaneous items that need a dedicated home. Reinforced handles on each side make it easy to pull from shelves, lift, or carry around the room, while the lightweight build ensures effortless movement. Its foldable design allows the bin to collapse flat when not in use, helping save space and simplify storage. The clean, minimalist look fits seamlessly in bedrooms, dorms, closets, or living areas, adding both function and a touch of warmth. Whether placed on a shelf, tucked under a bed, or used as a standalone organizer, this storage bin offers a practical, versatile way to maintain order while enhancing the overall tidiness of your space.',
-  JSON_ARRAY('/images/storage-bin-product-image.jpg'),
+  'Fabric storage bin that held my winter clothes and extra towels for a whole semester with no rips or broken seams. Folds flat when empty, handy if you don''t want a rigid box in the way between semesters. Some light wear and marks on the outside from being moved around, which is why it''s priced where it is. Both handles are solid, and the top is open so it won''t keep dust out like a lidded bin would. Bin only, nothing inside. $15.99, open to offers. Bring a bag to carry it since it doesn''t fold small enough for a backpack.',
+  JSON_ARRAY(
+    '/images/storage-bin-product-image.jpg',
+    '/images/storage-bin-product-image-2.jpg',
+    '/images/storage-bin-product-image-3.jpg'
+  ),
   15.99,
   'Active',
   0,
@@ -73,8 +77,8 @@ INSERT INTO INVENTORY (
   0
 );
 
--- Item 2: Suit Hangar Pack
-DELETE FROM INVENTORY WHERE title = 'Suit Hangar Pack' AND seller_id = @lisa_id;
+-- Item 2: Suit Hanger Pack
+DELETE FROM INVENTORY WHERE title IN ('Suit Hangar Pack', 'Suit Hanger Pack') AND seller_id = @lisa_id;
 
 INSERT INTO INVENTORY (
   title,
@@ -91,12 +95,19 @@ INSERT INTO INVENTORY (
   seller_id,
   sold
 ) VALUES (
-  'Suit Hangar Pack',
+  'Suit Hanger Pack',
   JSON_ARRAY('Dorm Essentials', 'Clothing'),
   'South Campus',
   'Like New',
-  'This suit hangers pack offers a reliable, space-saving solution for keeping your wardrobe looking sharp and well-organized. Each hanger is crafted with a strong, durable frame designed to support the structure of suits, blazers, coats, and dress shirts without bending or warping over time. The contoured shoulder shape helps garments maintain their natural form, preventing unwanted creases and keeping jackets ready to wear. A non-slip coating or bar ensures pants stay securely in place, eliminating the hassle of slipping fabrics. Lightweight yet sturdy, these hangers maximize closet space while maintaining a polished, uniform look. Ideal for home closets, dorm rooms, or professional settings, this pack provides consistent quality and convenience for anyone looking to elevate their clothing care routine. Whether you''re storing business attire, special-occasion outfits, or everyday staples, these suit hangers offer dependable support, neat organization, and a refined presentation that keeps your wardrobe at its best.',
-  JSON_ARRAY('/images/suit-hangers-product-image.jpg'),
+  'Pack of suit hangers with shaped shoulders so jackets and dress shirts don''t collapse at the top, plus a lower bar for pants. No cracked pieces, bent arms, or loose joints in the set. I bought more than I needed during a closet clean out, so most of them have just been hanging there unused. Handy if your interview clothes are draped over a chair right now, or you''re moving soon and want your shirts to arrive with fewer wrinkles. Selling the whole pack together.
+
+Open to a trade instead of cash. Can meet on campus, bring a bag since loose hangers catch on everything.',
+  JSON_ARRAY(
+    '/images/suit-hangers-product-image.jpg',
+    '/images/suit-hangers-product-image-2.jpg',
+    '/images/suit-hangers-product-image-3.jpg',
+    '/images/suit-hangers-product-image-4.jpg'
+  ),
   18.00,
   'Active',
   1,
@@ -128,8 +139,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Bed', 'Utility'),
   'Ellicott',
   'Excellent',
-  'This desk mirror offers a clean, modern design that enhances any workspace, vanity, or bedroom setup with both style and practicality. Built with a sturdy base and smooth, stable frame, it stays firmly in place while you get ready, do your skincare routine, or handle quick touch-ups throughout the day. The crystal-clear reflective surface provides sharp, accurate visibility, making tasks like makeup application, grooming, or adjusting accessories easier and more precise. Its compact size fits comfortably on desks, shelves, and countertops without taking up unnecessary space, while still offering a generous viewing area. Many models feature adjustable angles, allowing you to tilt the mirror to your preferred position for optimal lighting and comfort. Lightweight and easy to move, it can be relocated around your room or packed for travel without hassle. Whether used for daily routines or quick checks between tasks, this desk mirror adds convenience, simplicity, and a polished touch to any personal space.',
-  JSON_ARRAY('/images/desk-mirror-product-image.webp'),
+  'Tabletop mirror that tilts to whatever angle you need so you''re not leaning over your desk. Glass is clear with no cracks or fog, and the base stays put when you adjust it. No built in light or magnification, just a plain mirror. Switched to a wall mirror so it doesn''t have a spot in my room anymore. $35, open to offers or a trade. Wrap it in something soft if it''s riding in a bag with books.',
+  JSON_ARRAY(
+    '/images/desk-mirror-product-image.webp',
+    '/images/desk-mirror-product-image-2.jpg',
+    '/images/desk-mirror-product-image-3.jpg',
+    '/images/desk-mirror-product-image-4.jpg'
+  ),
   35.00,
   'Active',
   1,
@@ -193,8 +209,17 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Decor', 'Misc.'),
   'Other',
   'Like New',
-  'This Bob Marley poster brings timeless style and cultural energy to any room, celebrating the legendary musician whose message of peace, unity, and resilience still resonates today. Printed with rich, high-quality inks, the artwork captures Marley''s iconic presence, highlighting his expressive features, signature dreadlocks, and the warm, nostalgic tones often associated with reggae culture. The poster''s smooth finish enhances color depth and clarity, giving it a vibrant, polished look that stands out on dorm walls, bedrooms, music rooms, or creative spaces. Its durable paper resists fading, ensuring the image stays sharp even after long-term display. Lightweight and easy to frame, hang, or mount with clips or adhesive strips, it offers flexible decorating options to suit your style. Whether you''re a dedicated fan of reggae, a collector of music art, or simply looking to add personality to a blank wall, this Bob Marley poster brings character, inspiration, and a touch of soulful rhythm to your space.',
-  JSON_ARRAY('/images/bob-marley-poster-product-image.jpg'),
+  'Was going to build a whole wall of music posters, bought this one, then changed my mind about the room before I ever framed it. It''s been stored flat since, so the paper is in good shape: no tears, folds, water marks, or writing on the image.
+
+The portrait and warm color palette are why I picked it, so look closely at the photo if the exact tone matters for your room.
+
+Poster only, no frame or hanging clips. Rolling it for the walk home is fine, just flatten it again once you''re back to avoid new creases. $24.99, or I''d consider trading for another piece of wall art. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/bob-marley-poster-product-image.jpg',
+    '/images/bob-marley-poster-product-image-2.jpg',
+    '/images/bob-marley-poster-product-image-3.jpg',
+    '/images/bob-marley-poster-product-image-4.jpg'
+  ),
   24.99,
   'Active',
   1,
@@ -226,8 +251,21 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Gaming', 'Games'),
   'Other',
   'Fair',
-  'The PlayStation 2 remains one of the most iconic gaming consoles ever made, offering a blend of nostalgia, reliability, and timeless entertainment. Its sleek, compact design fits easily into any setup, while the signature matte finish and angular edges give it a classic look that still feels modern. Known for its massive game library, the PS2 supports thousands of titles across action, sports, RPGs, and family-friendly genres, making it the perfect system for collectors, retro gamers, or anyone revisiting childhood favorites. With smooth disc playback, intuitive controls, and quick startup, it delivers a simple, satisfying gaming experience without unnecessary complications. It also doubles as a DVD player, adding extra versatility for media lovers. Whether you''re rediscovering beloved franchises, building a retro collection, or introducing classic games to new players, the PlayStation 2 offers enduring fun, dependable performance, and the charm of one of gaming''s most legendary consoles.',
-  JSON_ARRAY('/images/playstation-2-product-image.jpg'),
+  'PS2 with the scuffs and scratches you''d expect from years of actual use, but it powers on every time and the disc door opens and closes fine.
+
+Includes:
+- Console
+- One controller
+- Power cable
+- Video cable
+(all shown in the photos, no games)
+
+Heads up that a lot of newer TVs are HDMI only, so you may need an adapter for a console this old. I haven''t tested every port repeatedly, so try it with your own setup soon after buying. Cheap way to revisit old games without paying collector prices. $50, open to offers. Bring a tote or backpack big enough for the cables.',
+  JSON_ARRAY(
+    '/images/playstation-2-product-image.jpg',
+    '/images/playstation-2-product-image-2.jpg',
+    '/images/playstation-2-product-image-3.jpg'
+  ),
   50.00,
   'Active',
   0,
@@ -259,8 +297,13 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Electronics', 'Gaming', 'Games'),
   'South Campus',
   'Like New',
-  'This Mini LED Monitor delivers impressive clarity and portability, making it the perfect companion for work, gaming, travel, and creative projects. Its vibrant LED display provides sharp resolution, rich color accuracy, and smooth motion, giving you a crisp viewing experience whether you''re editing photos, watching videos, or extending your laptop or console screen. Lightweight and ultra-slim, it fits easily into backpacks, desk setups, or small workspaces without adding clutter. The monitor features multiple connectivity options—such as HDMI and USB-C—ensuring quick, reliable plug-and-play compatibility with laptops, gaming systems, tablets, and more. Its adjustable stand allows comfortable viewing angles, while the durable frame protects the screen during daily use or travel. Ideal for students, professionals, and gamers who need extra visual space on the go, this Mini LED Monitor offers convenience, versatility, and high-quality performance in a compact, modern design.',
-  JSON_ARRAY('/images/mini-led-monitor-product-image.jpg'),
+  'Selling because I moved to a single larger monitor and don''t need a second screen eating desk space. It''s a mini LED monitor with a bright, clear picture, and I haven''t noticed any dead pixels or cracks. Takes both HDMI and USB C, but check what your laptop or console actually outputs first since a matching port doesn''t always mean it supports video. The stand folds away for storage or carrying, the cables in the photos are included, and the frame and screen are both clean with no visible damage. Good pick for extra screen space for notes, a second window, or gaming without committing to a big permanent monitor on a small desk. Flexible on the $80. Can meet on campus and I''m happy to plug it in so you can see it power on before you buy.',
+  JSON_ARRAY(
+    '/images/mini-led-monitor-product-image.jpg',
+    '/images/mini-led-monitor-product-image-2.jpg',
+    '/images/mini-led-monitor-product-image-3.jpg',
+    '/images/mini-led-monitor-product-image-4.jpg'
+  ),
   80.00,
   'Active',
   0,
@@ -324,8 +367,12 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Kitchen', 'Food'),
   'Ellicott',
   'Fair',
-  'This frying pan is designed to deliver reliable performance, everyday convenience, and long-lasting durability, making it an essential tool for any kitchen. Crafted with a sturdy, heat-efficient base, it distributes warmth evenly to help prevent hotspots and ensure consistent cooking results whether you''re sautéing vegetables, searing meats, frying eggs, or preparing quick weeknight meals. The smooth nonstick interior allows food to release effortlessly, reducing the need for excess oil and making cleanup fast and simple. Its comfortable, stay-cool handle offers a secure grip for easy maneuvering, while the lightweight construction keeps it practical for daily use. Compatible with most stovetops, this pan is versatile enough for beginners, home cooks, and meal-prep enthusiasts. Designed to withstand frequent use without warping, scratching, or losing its coating, it''s a dependable kitchen staple that brings convenience, efficiency, and great results to your cooking routine.',
-  JSON_ARRAY('/images/frying-pan-product-image.jpg'),
+  'Frying pan that got me through a semester of eggs, grilled cheese, and reheated leftovers, so it''s definitely used, not display worthy. Cooking surface has marks and the outside isn''t spotless, which is reflected in the price. Base sits flat, handle''s secure with no cracks or loose screws, and a little oil or butter helps stuff release. Good size for one or two people. No lid or utensils, and I haven''t tried it on every stovetop type so check yours. $20 or I''d trade for a kitchen item I''d actually use. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/frying-pan-product-image.jpg',
+    '/images/frying-pan-product-image-2.jpg',
+    '/images/frying-pan-product-image-3.jpg'
+  ),
   20.00,
   'Active',
   1,
@@ -357,8 +404,15 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Misc.', 'Utility'),
   'Other',
   'Excellent',
-  'This desk lamp offers bright, focused lighting designed to enhance productivity, comfort, and style in any workspace. Its sleek, modern design fits seamlessly on desks, nightstands, or study areas, while the adjustable arm and pivoting head let you direct light exactly where you need it—perfect for reading, writing, crafting, or long computer sessions. Multiple brightness levels allow you to switch from soft ambient glow to crisp task lighting, reducing eye strain and creating the ideal atmosphere for work or relaxation. Energy-efficient LED bulbs provide long-lasting illumination without overheating, keeping your space cool and comfortable. The stable base ensures steady positioning, and intuitive controls make adjustments simple and quick. Compact yet powerful, this lamp is ideal for students, professionals, and home offices, offering reliable lighting, thoughtful design, and the versatility needed for daily tasks.',
-  JSON_ARRAY('/images/desk-lamp-product-image.jpg'),
+  'Desk lamp with an adjustable arm and a rotating shade, so you can aim the light where you need it instead of lighting the whole room. I used it next to my bed for reading and at my desk for late study sessions, and it was bright enough to see notes clearly without keeping my roommate awake. No cracks or loose joints and the base stays steady with the arm fully extended. The bulb in it is included but you can swap in a different brightness or color temperature. Switched to a wall mounted light so it''s just been sitting in a corner. Leave room to adjust the arm so you don''t knock into a monitor.
+
+Open to a lower offer or a trade instead of the full $50. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/desk-lamp-product-image.jpg',
+    '/images/desk-lamp-product-image-2.jpg',
+    '/images/desk-lamp-product-image-3.jpg',
+    '/images/desk-lamp-product-image-4.jpg'
+  ),
   50.00,
   'Active',
   1,
@@ -368,8 +422,8 @@ INSERT INTO INVENTORY (
   0
 );
 
--- Item 9: Lysol Air Freshner Pack
-DELETE FROM INVENTORY WHERE title = 'Lysol Air Freshner Pack' AND seller_id = @michelle_id;
+-- Item 9: Lysol Air Freshener Pack
+DELETE FROM INVENTORY WHERE title IN ('Lysol Air Freshner Pack', 'Lysol Air Freshener Pack') AND seller_id = @michelle_id;
 
 INSERT INTO INVENTORY (
   title,
@@ -386,12 +440,22 @@ INSERT INTO INVENTORY (
   seller_id,
   sold
 ) VALUES (
-  'Lysol Air Freshner Pack',
+  'Lysol Air Freshener Pack',
   JSON_ARRAY('Utility', 'Dorm Essentials'),
   'North Campus',
   'Excellent',
-  'This Lysol pack provides a dependable, all-in-one cleaning solution designed to keep your home fresh, sanitized, and protected from everyday germs. Each product is formulated with powerful disinfecting agents that eliminate bacteria, viruses, and grime on high-touch surfaces like countertops, doorknobs, appliances, and bathroom fixtures. The convenient multi-item pack ensures you always have the right cleaner on hand—whether you''re tackling quick wipe-downs, deep cleaning sessions, or routine household maintenance. The crisp, clean scent leaves rooms smelling refreshed without being overwhelming, while the fast-acting formula works in seconds to cut through messes and restore surfaces. Ideal for kitchens, bathrooms, offices, and shared spaces, this Lysol pack is perfect for busy households, students, and anyone who values a healthier environment. With reliable performance, easy-to-use packaging, and trusted brand quality, it helps make daily cleaning simpler, faster, and more effective.',
-  JSON_ARRAY('/images/lysol-pack-product-image.jpeg'),
+  'Three pack of Lysol air sanitizer spray:
+purple, orange, and blue, all shown in the photo.
+Nothing leaking or cracked and the labels are readable so you can check scents.
+Got way more cleaning supplies than I needed after moving so I''m passing them on. Selling all three together, not split up.
+Use per the directions on the packaging, including ventilation.
+$15 for all three, open to offers. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/lysol-pack-product-image.jpeg',
+    '/images/lysol-pack-product-image-3.jpg',
+    '/images/lysol-pack-product-image-4.jpg',
+    '/images/lysol-pack-product-image-5.jpg'
+  ),
   15.00,
   'Active',
   0,
@@ -454,8 +518,14 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('School'),
   'North Campus',
   'Like New',
-  'Freedom on My Mind is a comprehensive, engaging textbook that explores African American history with depth, clarity, and powerful storytelling. Designed for both students and educators, it blends vivid primary sources, insightful analysis, and well-organized chapters to highlight the central role of Black experiences in shaping the United States. The book traces key themes—struggle, resilience, activism, and cultural identity—while placing historical moments in a broader social and political context. Clear visuals, maps, and firsthand accounts help bring the narrative to life, making complex topics accessible without oversimplifying them. Whether used for classroom study or personal learning, Freedom on My Mind supports critical thinking, encourages discussion, and offers a nuanced, evidence-based look at the African American past. Its balanced structure and rich content make it a reliable, informative resource for anyone seeking a deeper understanding of American history.',
-  JSON_ARRAY('/images/african-american-history-textbook-product-image.jpg'),
+  'Finished this class, so my copy of Freedom on My Mind has been sitting on a shelf since the semester ended. Pages are clean with no writing or highlighting from me and the cover has very little wear. The book mixes readings, primary sources, maps, and photographs, and the index was really useful for finding a specific person or event before an exam.
+
+Match the exact edition and ISBN to your syllabus first, professors sometimes assign a different printing. Physical book only, no access code or online login. $30, but I''m open to a trade or a lower price, especially if you''re also grabbing another book from my listings. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/african-american-history-textbook-product-image.jpg',
+    '/images/african-american-history-textbook-product-image-2.jpg',
+    '/images/african-american-history-textbook-product-image-3.jpg'
+  ),
   30.00,
   'Active',
   1,
@@ -487,8 +557,19 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Clothing', 'Electronics'),
   'South Campus',
   'Excellent',
-  'This steam iron delivers fast, effective wrinkle removal with a powerful burst of steam designed to smooth everything from delicate fabrics to heavy cotton. Its nonstick soleplate glides effortlessly across clothing, ensuring even heat distribution for crisp, polished results every time. With adjustable steam settings, you can tailor the output to suit different materials, preventing damage while achieving professional-level finishes. The iron heats quickly, helping you tackle last-minute touch-ups without delay, and the convenient spray function adds extra precision for stubborn creases. A comfortable, ergonomic handle provides steady control, while the anti-drip design keeps water from spotting your garments. The large water tank allows longer ironing sessions between refills, and the self-clean feature helps maintain performance over time. Ideal for everyday use, dorms, apartments, or busy households, this steam iron brings efficiency, reliability, and smooth, wrinkle-free results to your laundry routine.',
-  JSON_ARRAY('/images/steam-iron-product-image.webp'),
+  'Steam iron, mostly used for dress shirts and the occasional thing I left in the dryer too long.
+
+Works: heats up quickly, steam and spray both work, no cord damage
+Soleplate: glides smoothly without catching
+Storage: always emptied the tank and stored it upright, so no mineral buildup that I know of
+Not included: ironing board
+
+Match the heat setting to the fabric label instead of guessing. $45, or I''d consider a trade. Can meet up on campus.',
+  JSON_ARRAY(
+    '/images/steam-iron-product-image.webp',
+    '/images/steam-iron-product-image-2.jpg',
+    '/images/steam-iron-product-image-3.jpg'
+  ),
   45.00,
   'Active',
   1,
@@ -520,8 +601,12 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Dorm Essentials', 'Misc.'),
   'North Campus',
   'Like New',
-  'This Swiffer provides an easy, efficient way to keep floors and surfaces clean, capturing dust, dirt, and hair with minimal effort. Designed with a lightweight, flexible handle and a wide cleaning head, it glides smoothly under furniture, around corners, and across hard-to-reach spots. The disposable dry pads lock in debris using textured ridges and electrostatic fibers, making everyday touch-ups fast and mess-free. For deeper cleaning, the wet pads deliver a fresh, thorough wipe that removes grime and leaves floors looking bright and refreshed. Ideal for hardwood, tile, laminate, and vinyl, the Swiffer is perfect for busy households, pet owners, and anyone who wants a quick, reliable cleaning routine without heavy tools or buckets. Its slim profile makes it easy to store, while the simple pad replacement system keeps maintenance stress-free. With its versatility and convenience, this Swiffer helps maintain a cleaner home with less time and effort.',
-  JSON_ARRAY('/images/swiffer-product-image.jpg'),
+  'Swiffer sweeper, handle and head both work fine with no cracks or loose joints. Used it a handful of times in my dorm before moving somewhere with a real vacuum. Hard floors only, and the box is included but no replacement pads. $15 or a trade, can meet on campus.',
+  JSON_ARRAY(
+    '/images/swiffer-product-image.jpg',
+    '/images/swiffer-product-image-2.jpg',
+    '/images/swiffer-product-image-3.jpg'
+  ),
   15.00,
   'Active',
   1,

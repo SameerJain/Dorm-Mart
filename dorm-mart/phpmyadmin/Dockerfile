@@ -1,10 +1,11 @@
+# phpMyAdmin for the Railway project. Deploy it WITHOUT a public domain and reach
+# it over Railway private networking only; it is a login page to the database.
 FROM phpmyadmin/phpmyadmin:latest
 
-ENV PMA_HOST=mysql
-ENV PMA_PORT=3306
-ENV PMA_USER=root
-ENV PMA_PASSWORD=""
-ENV MYSQL_ROOT_PASSWORD=""
+# Connection details come from Railway service variables (PMA_HOST, PMA_PORT,
+# PMA_USER, PMA_PASSWORD). Nothing is defaulted here so a misconfigured deploy
+# cannot fall back to root with an empty password.
 
-# These will be overridden by Railway environment variables
-ENV PMA_ARBITRARY=1
+# Only the configured server. Arbitrary-host mode turns the page into an open
+# MySQL proxy for anyone who can reach it.
+ENV PMA_ARBITRARY=0

@@ -1,3 +1,5 @@
+import { FAQItem } from "./FAQItemList";
+
 export default function FAQSectionList({ sections }) {
   return (
     <div className="space-y-5 text-sm text-gray-700 dark:text-gray-300">
@@ -7,15 +9,11 @@ export default function FAQSectionList({ sections }) {
             {section.title}
           </h2>
           {section.items.map((item) => (
-            <div
+            <FAQItem
               key={item.question}
-              className="pb-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
-            >
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                {item.question}
-              </h3>
-              <p className="mt-0.5">{item.answer}</p>
-            </div>
+              question={item.question}
+              answer={item.answer}
+            />
           ))}
         </section>
       ))}

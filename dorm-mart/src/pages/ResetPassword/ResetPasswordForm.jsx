@@ -12,6 +12,7 @@ import {
   hasUpper,
   MAX_PASSWORD_LEN,
 } from "../../utils/passwordPolicy";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 
 const MAX_LEN = MAX_PASSWORD_LEN;
 
@@ -62,20 +63,18 @@ function Field({
 function ResetPasswordForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const runExclusive = useSubmitLock();
   const token = searchParams.get("token");
   const uid = searchParams.get("uid");
 
-  // Form state
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Token validation state
   const [isTokenValid, setIsTokenValid] = useState(true);
   const [tokenError, setTokenError] = useState("");
   const [isVerifyingToken, setIsVerifyingToken] = useState(true);
 
-  // Error handling state
   const [submitError, setSubmitError] = useState("");
   const [passwordMismatchError, setPasswordMismatchError] = useState("");
 
@@ -83,7 +82,6 @@ function ResetPasswordForm() {
 
   const enforceMax = (setter) => (e) => setter(e.target.value);
 
-  // Check if user already completed password reset for this specific token
   useEffect(() => {
     // Reset links are scoped to one account so token validation stays O(1).
     if (!token || !uid || !/^\d+$/.test(uid)) {
@@ -91,7 +89,6 @@ function ResetPasswordForm() {
       return;
     }
 
-    // Validate token with backend
     const validateToken = async () => {
       try {
         const response = await fetch(
@@ -124,11 +121,9 @@ function ResetPasswordForm() {
   }, [token, uid, navigate]);
 
   const handleSubmit = useCallback(async () => {
-    // Clear previous errors
     setSubmitError("");
     setPasswordMismatchError("");
 
-    // Validate form inputs
     if (!newPassword || !confirmPassword) {
       setSubmitError("Please fill in all required fields.");
       return;
@@ -169,11 +164,9 @@ function ResetPasswordForm() {
       return;
     }
 
-    // Set loading state
     setIsLoading(true);
 
     try {
-      // Call the reset password API
       const response = await fetch(`${API_BASE}/auth/reset_password.php`, {
         method: "POST",
         headers: {
@@ -189,10 +182,8 @@ function ResetPasswordForm() {
       const data = await response.json();
 
       if (data.success) {
-        // Password reset successful - redirect to login
         navigate("/login?message=password_reset_success", { replace: true });
       } else {
-        // Handle API errors
         setSubmitError(data.error || "Failed to reset password");
       }
     } catch (error) {
@@ -203,21 +194,21 @@ function ResetPasswordForm() {
     }
   }, [token, uid, navigate, newPassword, confirmPassword]);
 
+  // Key auto-repeat fires this for as long as Enter is held, so it has to go
+  // through the same lock as the button.
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Enter") handleSubmit();
+      if (e.key === "Enter") runExclusive(handleSubmit);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleSubmit]);
+  }, [handleSubmit, runExclusive]);
 
   return (
     <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
-      {/* Form: full width below lg (matches mobile when left branding is hidden); half width on lg+ with image panel */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-hidden">
-        {/* Branding header: same as mobile through tablet; hidden on lg+ where PreLoginBranding shows */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center [justify-content:safe_center] p-4 pt-[max(1rem,env(safe-area-inset-top))] sm:p-6 lg:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-y-auto overscroll-contain">
         <div className="lg:hidden mb-6 sm:mb-8 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
@@ -229,7 +220,6 @@ function ResetPasswordForm() {
 
         <div className="w-full max-w-4xl relative z-10 overflow-y-auto">
           <div className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600 min-h-[600px] flex flex-col">
-            {/* Torn paper effect */}
             <div
               className="absolute inset-0 rounded-lg bg-blue-600"
               style={{
@@ -239,7 +229,6 @@ function ResetPasswordForm() {
             ></div>
 
             <div className="relative z-10 flex-1 flex flex-col">
-              {/* Header with dot */}
               <div className="mb-6 sm:mb-8 border-b border-white/20 pb-4 sm:pb-5">
                 <div className="text-center">
                   <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-3 sm:mb-4"></div>
@@ -308,7 +297,6 @@ function ResetPasswordForm() {
                     </div>
                   )}
 
-                  {/* Test 1: Invalid token error */}
                   {submitError && (
                     <div className="mb-6 p-4 sm:p-5 bg-red-500/30 border-2 border-red-500 rounded-lg">
                       <div className="flex items-start">
@@ -334,7 +322,6 @@ function ResetPasswordForm() {
                     </div>
                   )}
 
-                  {/* Test 3: Password mismatch error */}
                   {passwordMismatchError && (
                     <div className="mb-6 p-4 sm:p-5 bg-yellow-100/20 border border-yellow-300/30 rounded-lg">
                       <div className="flex items-start">
@@ -381,7 +368,7 @@ function ResetPasswordForm() {
 
                   <button
                     type="button"
-                    onClick={handleSubmit}
+                    onClick={() => runExclusive(handleSubmit)}
                     disabled={isLoading || !isTokenValid || isVerifyingToken}
                     className="mt-6 min-h-[44px] w-full xl:w-48 bg-sky-500 hover:bg-sky-600 disabled:bg-sky-300 disabled:cursor-not-allowed text-white rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium disabled:hover:scale-100 text-base sm:text-lg active:scale-95"
                   >

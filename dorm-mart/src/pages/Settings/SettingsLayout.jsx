@@ -3,10 +3,60 @@ import { useState } from "react";
 import { logout } from "../../utils/handleAuth";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
+const SETTINGS_LINKS = [
+  { label: "My Profile", to: "/app/setting/my-profile" },
+  { label: "Account Info", to: "/app/setting/personal-information" },
+  { label: "User Preferences", to: "/app/setting/user-preferences" },
+  { label: "Payments", to: "/app/setting/payments" },
+  { label: "Change Password", to: "/app/setting/change-password" },
+  { label: "Logged Devices", to: "/app/setting/security-options" },
+  { label: "Two-Factor Authentication", to: "/app/setting/two-factor-authentication" },
+  { label: "About Us", to: "/app/setting/about-us" },
+  { label: "Delete Account", to: "/app/setting/delete-account" },
+];
+
+const LOGOUT_BUTTON_CLASS =
+  "mt-1 rounded-lg border border-white/50 px-3 py-2 text-base font-medium leading-6 text-white transition hover:border-white/75 hover:bg-white/20 active:bg-white/30 dark:border-white/35 dark:hover:border-white/55 dark:hover:bg-white/15";
+
+function settingsLinkClass({ isActive }) {
+  return [
+    "rounded-lg px-3 py-2 text-base font-medium leading-6 text-white transition",
+    "hover:underline hover:bg-white/10 dark:hover:bg-white/10",
+    isActive
+      ? "bg-white/15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] dark:bg-white/10 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
+      : "bg-transparent",
+  ].join(" ");
+}
+
+function SettingsNavLinks({ onNavigate, onLogout }) {
+  return (
+    <>
+      {SETTINGS_LINKS.map((l) => (
+        <NavLink
+          key={l.to}
+          to={l.to}
+          onClick={onNavigate}
+          className={settingsLinkClass}
+        >
+          {l.label}
+        </NavLink>
+      ))}
+      <button
+        onClick={() => {
+          onLogout();
+          onNavigate?.();
+        }}
+        className={LOGOUT_BUTTON_CLASS}
+      >
+        Log Out
+      </button>
+    </>
+  );
+}
+
 function SettingsLayout({ children }) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const navigate = useNavigate();
-  const linkBase = "/app/setting";
 
   useBodyScrollLock(showMobileMenu);
 
@@ -15,28 +65,15 @@ function SettingsLayout({ children }) {
     navigate("/login");
   };
 
-  const links = [
-    { label: "My Profile", to: `${linkBase}/my-profile` },
-    { label: "Account Info", to: `${linkBase}/personal-information` },
-    { label: "User Preferences", to: `${linkBase}/user-preferences` },
-    { label: "Change Password", to: `${linkBase}/change-password` },
-    { label: "Logged Devices", to: `${linkBase}/security-options` },
-    { label: "Two-Factor Authentication", to: `${linkBase}/two-factor-authentication` },
-    { label: "Payments", to: `${linkBase}/payments` },
-    { label: "About Us", to: `${linkBase}/about-us` },
-    { label: "Delete Account", to: `${linkBase}/delete-account` },
-  ];
-
   return (
-    // Back to normal: no `relative`, still using the height minus nav
     <div
-      className="h-[calc(100dvh-64px)] w-full flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden"
+      className="h-[calc(100dvh-var(--nav-h,64px))] w-full flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden"
     >
-      {/* Mobile hamburger menu button - only visible on mobile */}
-      <div className="lg:hidden p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+      <div className="lg:hidden px-4 py-2 short:py-0.5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <button
           onClick={() => setShowMobileMenu(!showMobileMenu)}
-          className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+          aria-expanded={showMobileMenu}
+          className="flex min-h-11 items-center space-x-2 pr-3 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
         >
           <svg
             className="w-6 h-6"
@@ -55,45 +92,17 @@ function SettingsLayout({ children }) {
         </button>
       </div>
 
-      {/* Full-width grid that also stretches to full height */}
       <div className="grid flex-1 w-full grid-cols-1 lg:grid-cols-[280px_1fr] gap-3 lg:gap-6 px-3 sm:px-6 pt-3 sm:pt-6 pb-4 sm:pb-8 min-h-0">
-        {/* Desktop Sidebar (hidden on mobile) */}
         <aside className="hidden h-full rounded-xl p-0 text-white shadow bg-blue-600 dark:bg-blue-800 dark:shadow-lg dark:shadow-black/25 dark:ring-1 dark:ring-white/10 lg:block">
           <div className="px-4 py-3">
             <h2 className="text-xl font-serif font-semibold">Settings</h2>
           </div>
-          <div
-            className="h-px w-full"
-            style={{ background: "rgba(255,255,255,0.25)" }}
-          />
+          <div className="h-px w-full bg-white/25" />
           <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2">
-            {links.map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                className={({ isActive }) =>
-                  [
-                    "rounded-lg px-3 py-2 text-base font-medium leading-6 text-white transition",
-                    "hover:underline hover:bg-white/10 dark:hover:bg-white/10",
-                    isActive
-                      ? "bg-white/15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] dark:bg-white/10 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
-                      : "bg-transparent",
-                  ].join(" ")
-                }
-              >
-                {l.label}
-              </NavLink>
-            ))}
-            <button
-              onClick={handleLogout}
-              className="mt-1 rounded-lg border border-white/50 px-3 py-2 text-base font-medium leading-6 text-white transition hover:border-white/75 hover:bg-white/20 active:bg-white/30 dark:border-white/35 dark:hover:border-white/55 dark:hover:bg-white/15"
-            >
-              Log Out
-            </button>
+            <SettingsNavLinks onLogout={handleLogout} />
           </nav>
         </aside>
 
-        {/* Mobile Sidebar Overlay – now FIXED so it covers nav bar too */}
         <div
           className={`lg:hidden fixed inset-0 z-40 flex transition-opacity duration-300 ${
             showMobileMenu
@@ -101,15 +110,13 @@ function SettingsLayout({ children }) {
               : "opacity-0 pointer-events-none"
           }`}
         >
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black bg-opacity-50"
             onClick={() => setShowMobileMenu(false)}
           ></div>
 
-          {/* Sliding sidebar */}
           <aside
-            className={`relative h-full w-64 transform rounded-r-xl bg-blue-600 p-0 text-white shadow-lg transition-transform duration-300 dark:bg-blue-800 dark:shadow-black/40 dark:ring-1 dark:ring-white/10 ${
+            className={`relative flex h-full w-[calc(16rem+env(safe-area-inset-left,0px))] flex-col transform rounded-r-xl bg-blue-600 p-0 pl-[env(safe-area-inset-left,0px)] pt-[env(safe-area-inset-top,0px)] text-white shadow-lg transition-transform duration-300 dark:bg-blue-800 dark:shadow-black/40 dark:ring-1 dark:ring-white/10 ${
               showMobileMenu ? "translate-x-0" : "-translate-x-full"
             }`}
           >
@@ -117,7 +124,8 @@ function SettingsLayout({ children }) {
               <h2 className="text-xl font-serif font-semibold">Settings</h2>
               <button
                 onClick={() => setShowMobileMenu(false)}
-                className="text-white hover:text-gray-300"
+                aria-label="Close settings menu"
+                className="-m-2 p-2 text-white hover:text-gray-300"
               >
                 <svg
                   className="w-6 h-6"
@@ -134,50 +142,17 @@ function SettingsLayout({ children }) {
                 </svg>
               </button>
             </div>
-            <div
-              className="h-px w-full"
-              style={{ background: "rgba(255,255,255,0.25)" }}
-            />
-            <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2">
-              {links.map((l) => (
-                <NavLink
-                  key={l.to}
-                  to={l.to}
-                  onClick={() => setShowMobileMenu(false)}
-                  className={({ isActive }) =>
-                    [
-                      "rounded-lg px-3 py-2 text-base font-medium leading-6 text-white transition",
-                      "hover:underline hover:bg-white/10 dark:hover:bg-white/10",
-                      isActive
-                        ? "bg-white/15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] dark:bg-white/10 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
-                        : "bg-transparent",
-                    ].join(" ")
-                  }
-                >
-                  {l.label}
-                </NavLink>
-              ))}
-              <button
-                onClick={() => {
-                  handleLogout();
-                  setShowMobileMenu(false);
-                }}
-                className="mt-1 rounded-lg border border-white/50 px-3 py-2 text-base font-medium leading-6 text-white transition hover:border-white/75 hover:bg-white/20 active:bg-white/30 dark:border-white/35 dark:hover:border-white/55 dark:hover:bg-white/15"
-              >
-                Log Out
-              </button>
+            <div className="h-px w-full bg-white/25" />
+            <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto overscroll-contain p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+              <SettingsNavLinks
+                onNavigate={() => setShowMobileMenu(false)}
+                onLogout={handleLogout}
+              />
             </nav>
           </aside>
         </div>
 
-        {/* Content (stretch to bottom) */}
-        <main
-          className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 pb-10 sm:pb-12 shadow overflow-auto min-h-0"
-          style={{
-            overscrollBehaviorY: "contain",
-            WebkitOverflowScrolling: "touch",
-          }}
-        >
+        <main className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 pb-10 sm:pb-12 shadow overflow-auto overscroll-contain min-h-0">
           {children}
         </main>
       </div>

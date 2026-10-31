@@ -14,11 +14,7 @@ try {
     auth_boot_session();
     $userId = require_login();
 
-    // Validate product_id
-    $productId = strict_integer_value($_GET['product_id'] ?? null);
-    if ($productId === null || $productId <= 0) {
-        json_response(['success' => false, 'error' => 'Invalid product_id'], 400);
-    }
+    $productId = require_product_id($_GET);
 
     $conn = db();
     $conn->set_charset('utf8mb4');
@@ -34,7 +30,6 @@ try {
         json_response(['success' => false, 'error' => 'You are not authorized to view buyer ratings for this product'], 403);
     }
 
-    // Get the buyer rating for this product
     $stmt = $conn->prepare(
         'SELECT rating_id, product_id, seller_user_id, buyer_user_id, rating, review_text, created_at, updated_at
          FROM buyer_ratings 
@@ -59,7 +54,6 @@ try {
         ]);
     }
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $ratingData = [
         'rating_id' => (int)$rating['rating_id'],
         'product_id' => (int)$rating['product_id'],

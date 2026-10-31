@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { ChatContext } from "../../../context/ChatContext";
-import { API_BASE } from "../../../utils/apiConfig";
+import { fetchMe } from "../../../utils/handleAuth";
 
 export default function useCurrentUserId() {
   const chatCtx = useContext(ChatContext);
@@ -8,32 +8,21 @@ export default function useCurrentUserId() {
   const [myId, setMyId] = useState(null);
 
   useEffect(() => {
+    if (chatMyId) {
+      setMyId(chatMyId);
+      return undefined;
+    }
+
+    // fetchMe shares one me.php request with the chat context; two parallel
+    // calls can race on the rotating remember-me cookie.
     const controller = new AbortController();
-
-    (async () => {
-      if (chatMyId) {
-        setMyId(chatMyId);
-        return;
-      }
-
-      try {
-        const response = await fetch(`${API_BASE}/auth/me.php`, {
-          signal: controller.signal,
-          credentials: "include",
-        });
-        if (!response.ok) return;
-
-        const json = await response.json();
-        if (json.user_id) {
-          setMyId(json.user_id);
-        }
-      } catch (error) {
-        if (error.name !== "AbortError") {
-          // A logged-out user can still view public item details.
-        }
-      }
-    })();
-
+    fetchMe(controller.signal)
+      .then((json) => {
+        if (json?.user_id) setMyId(json.user_id);
+      })
+      .catch(() => {
+        // A logged-out user can still view public item details.
+      });
     return () => controller.abort();
   }, [chatMyId]);
 

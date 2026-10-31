@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import PreLoginBranding from "../../components/PreLoginBranding";
 import PreLoginNavLinks from "../../components/PreLoginNavLinks";
-import { integerNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
 import { useEmailPolicy } from "../../hooks/useEmailPolicy";
+import { useSubmitLock } from "../../hooks/useSubmitLock";
 import {
   ACCOUNT_REQUEST_RATE_LIMIT_MESSAGE,
   applyAccountRequestLockout,
@@ -12,6 +12,29 @@ import {
   getAccountRequestRateLimit,
   submitAccountRequest,
 } from "./accountCreationRequest";
+
+const MAX_GRADUATION_YEARS_AHEAD = 6;
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+function isValidGraduationMonth(month, year, currentYear, currentMonth, maxYear) {
+  if (!Number.isInteger(month) || month < 1 || month > 12) return false;
+  if (year === currentYear) return month >= currentMonth;
+  if (year === maxYear) return month <= currentMonth;
+  return year > currentYear && year < maxYear;
+}
 
 function FieldError({ children, className = "" }) {
   if (!children) return null;
@@ -45,7 +68,30 @@ function CreateAccountPage() {
     () => getAccountRequestRateLimit().blockedUntil,
   );
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
+  const runExclusive = useSubmitLock();
   const rateLimited = rateLimitBlockedUntil > Date.now();
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
+  const maxGraduationYear = currentYear + MAX_GRADUATION_YEARS_AHEAD;
+  const graduationYears = Array.from(
+    { length: MAX_GRADUATION_YEARS_AHEAD + 1 },
+    (_, index) => currentYear + index,
+  );
+  const selectedGraduationYear = Number(formData.gradYear);
+  const graduationMonths = MONTH_NAMES.map((name, index) => ({
+    name,
+    value: index + 1,
+  })).filter(({ value }) =>
+    !formData.gradYear ||
+    isValidGraduationMonth(
+      value,
+      selectedGraduationYear,
+      currentYear,
+      currentMonth,
+      maxGraduationYear,
+    ),
+  );
 
   useBodyScrollLock(showNotice);
 
@@ -67,11 +113,8 @@ function CreateAccountPage() {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    // Enforce hard caps at input-time
     let nextValue = type === "checkbox" ? checked : value;
     if (name === "firstName" || name === "lastName") {
-      // Only allow letters (including spaces and hyphens for names like "Mary-Jane" or "Van Der Berg")
-      // Remove any non-letter characters except spaces and hyphens
       nextValue = String(nextValue).replace(/[^a-zA-Z\s-]/g, "");
       nextValue = nextValue.slice(0, 30);
     }
@@ -88,6 +131,17 @@ function CreateAccountPage() {
     setFormData((prev) => ({
       ...prev,
       [name]: nextValue,
+      ...(name === "gradYear" &&
+      prev.gradMonth &&
+      !isValidGraduationMonth(
+        Number(prev.gradMonth),
+        Number(nextValue),
+        currentYear,
+        currentMonth,
+        maxGraduationYear,
+      )
+        ? { gradMonth: "" }
+        : {}),
     }));
   };
 
@@ -126,11 +180,15 @@ function CreateAccountPage() {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
         const gradDate = new Date(year, month - 1, 1);
-        const maxDate = new Date(now.getFullYear() + 8, now.getMonth(), 1);
+        const maxDate = new Date(
+          now.getFullYear() + MAX_GRADUATION_YEARS_AHEAD,
+          now.getMonth(),
+          1,
+        );
         if (gradDate < new Date(now.getFullYear(), now.getMonth(), 1))
           newErrors.gradDate = "Graduation date cannot be in the past";
         if (gradDate > maxDate)
-          newErrors.gradDate = "Graduation date must be within 8 years";
+          newErrors.gradDate = "Graduation date must be within 6 years";
       }
     }
 
@@ -139,11 +197,9 @@ function CreateAccountPage() {
     } else if (email.length > 255) {
       newErrors.email = "Email must be 255 characters or fewer";
     } else if (!emailPolicyLoading) {
-      // Only validate domain if policy is loaded
       if (!allowAllEmails && !email.toLowerCase().endsWith("@buffalo.edu")) {
         newErrors.email = "Email must be a buffalo.edu address";
       } else if (allowAllEmails) {
-        // Basic email format validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
           newErrors.email = "Please enter a valid email address";
@@ -157,8 +213,7 @@ function CreateAccountPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!validate()) return;
 
     const clientRateLimit = consumeAccountRequestAttempt();
@@ -196,9 +251,7 @@ function CreateAccountPage() {
     <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
-      {/* Right side - Create Account form (full width on mobile/tablet, 50% on desktop) */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-6 lg:px-8 xl:px-8 pt-6 sm:pt-8 md:pt-16 md:pb-8 lg:py-6 xl:py-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] h-dvh min-h-0 overflow-y-auto lg:overflow-y-hidden pre-login-bg relative">
-        {/* Mobile branding header (visible only on mobile/tablet) */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center md:[justify-content:safe_center] p-4 sm:p-6 md:p-6 lg:px-8 xl:px-8 pt-[max(1.5rem,env(safe-area-inset-top))] sm:pt-8 md:pt-16 md:pb-8 lg:py-6 xl:py-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] h-dvh min-h-0 overflow-y-auto overscroll-contain pre-login-bg relative">
         <div className="lg:hidden mb-4 sm:mb-6 md:mb-8 text-center w-full relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
@@ -209,7 +262,6 @@ function CreateAccountPage() {
         </div>
         <div className="w-full max-w-sm sm:max-w-md md:max-w-xl lg:max-w-md relative z-10">
           <div className="px-4 sm:px-6 md:px-8 lg:px-6 py-2.5 sm:py-4 md:py-6 lg:py-3 rounded-lg relative bg-blue-600">
-            {/* Torn paper effect */}
             <div
               className="absolute inset-0 rounded-lg bg-blue-600"
               style={{
@@ -219,7 +271,6 @@ function CreateAccountPage() {
             />
 
             <div className="relative z-10">
-              {/* Header with dot */}
               <div className="text-center mb-2.5 sm:mb-4 md:mb-5 lg:mb-2.5">
                 <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 bg-black rounded-full mx-auto mb-2 sm:mb-3 md:mb-3" />
                 <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-3xl font-serif text-white leading-tight">
@@ -227,16 +278,17 @@ function CreateAccountPage() {
                 </h2>
               </div>
 
-              {/* Form - Improved spacing and touch targets */}
               <form
-                onSubmit={handleSubmit}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  runExclusive(handleSubmit);
+                }}
                 className={
                   Object.keys(errors).length > 0
                     ? "space-y-1.5 sm:space-y-2 md:space-y-2 lg:space-y-1 xl:space-y-1.5"
                     : "space-y-3 sm:space-y-4 md:space-y-4 lg:space-y-2.5 xl:space-y-3"
                 }
               >
-                {/* First Name */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     First Name
@@ -252,7 +304,6 @@ function CreateAccountPage() {
                   <FieldError>{errors.firstName}</FieldError>
                 </div>
 
-                {/* Last Name */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     Last Name
@@ -268,41 +319,41 @@ function CreateAccountPage() {
                   <FieldError>{errors.lastName}</FieldError>
                 </div>
 
-                {/* Graduation Date */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     Graduation Date (Month / Year)
                   </label>
                   <div className="flex gap-3 sm:gap-4 md:gap-3">
-                    <input
-                      type="text"
-                      inputMode="numeric"
+                    <select
                       name="gradMonth"
                       value={formData.gradMonth}
                       onChange={handleChange}
-                      onKeyDown={integerNumericKeyDownHandler}
-                      placeholder="MM"
-                      maxLength={2}
-                      autoComplete="off"
-                      className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base"
-                    />
-                    <input
-                      type="text"
-                      inputMode="numeric"
+                      className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base cursor-pointer"
+                    >
+                      <option value="">Month</option>
+                      {graduationMonths.map(({ name, value }) => (
+                        <option key={value} value={value}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
                       name="gradYear"
                       value={formData.gradYear}
                       onChange={handleChange}
-                      onKeyDown={integerNumericKeyDownHandler}
-                      placeholder="YYYY"
-                      maxLength={4}
-                      autoComplete="off"
-                      className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base"
-                    />
+                      className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl lg:text-base cursor-pointer"
+                    >
+                      <option value="">Year</option>
+                      {graduationYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <FieldError>{errors.gradDate}</FieldError>
                 </div>
 
-                {/* Email */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     University Email Address
@@ -318,7 +369,6 @@ function CreateAccountPage() {
                   <FieldError>{errors.email}</FieldError>
                 </div>
 
-                {/* Checkboxes - Improved touch targets */}
                 <div className="space-y-3 sm:space-y-4 md:space-y-3 lg:space-y-2.5">
                   <label className="flex items-start text-gray-100 min-h-[44px] py-2">
                     <input
@@ -341,7 +391,7 @@ function CreateAccountPage() {
                           });
                         }}
                       >
-                        Terms & Conditions
+                        Terms of Service
                       </button>{" "}
                       and{" "}
                       <button
@@ -379,7 +429,6 @@ function CreateAccountPage() {
                     (rateLimited ? ACCOUNT_REQUEST_RATE_LIMIT_MESSAGE : "")}
                 </FieldError>
 
-                {/* Confirm button - Minimum 44px height for touch targets */}
                 <button
                   type="submit"
                   disabled={loading || rateLimited}
@@ -410,7 +459,6 @@ function CreateAccountPage() {
                 </button>
               </form>
 
-              {/* Links - Improved touch targets and spacing */}
               <div className="mt-4 sm:mt-6 md:mt-5 lg:mt-3 mb-2.5 sm:mb-4 md:mb-3 lg:mb-2.5 text-center">
                 <PreLoginNavLinks
                   className="text-sm sm:text-base md:text-lg lg:text-base"
@@ -426,15 +474,12 @@ function CreateAccountPage() {
         </div>
       </div>
 
-      {/* Notice Modal - Improved mobile responsiveness */}
       {showNotice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-          {/* backdrop */}
           <div
             className="absolute inset-0 bg-black bg-opacity-50"
             onClick={() => setShowNotice(false)}
           />
-          {/* card */}
           <div className="relative z-10 w-full max-w-lg rounded-xl shadow-2xl border border-white/10 bg-blue-600">
             <div className="p-6 sm:p-8">
               <h3 className="text-2xl sm:text-3xl font-serif text-white mb-4 sm:mb-5 text-center leading-tight">

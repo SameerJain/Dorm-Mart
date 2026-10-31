@@ -30,19 +30,20 @@ export default function PaymentOption({
         <span>
           <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
             Use built-in payment
+            {eligibility?.is_mock && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">Mock transaction</span>}
             {eligibility?.is_test_mode && (
-              <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+              <span className="ml-2 inline-block whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
                 Test Mode
               </span>
             )}
           </span>
           <span className="mt-1 block text-sm text-gray-600 dark:text-gray-300">
-            The buyer can pay during the 30-minute window. Successful payment completes the purchase automatically.
+            {eligibility?.is_mock ? "Demo payment only. No real money is charged or transferred." : "The buyer can pay during the 30-minute window. Successful payment completes the purchase automatically."}
           </span>
         </span>
       </label>
 
-      {loading && <p className="mt-3 text-sm text-gray-500">Checking Stripe availability…</p>}
+      {loading && <p className="mt-3 text-sm text-gray-500">Checking payment availability...</p>}
       {!loading && !available && reason && (
         <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">{reason}</p>
       )}
@@ -70,7 +71,7 @@ export default function PaymentOption({
             />
           </div>
           <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-            Buyer acceptance locks this USD amount. You receive the payment directly and pay Stripe’s processing fee.
+            {eligibility?.is_mock ? "This amount is for the demo receipt. No money will move." : "Buyer acceptance locks this USD amount. You receive the payment directly and pay Stripe’s processing fee."}
           </p>
         </div>
       )}

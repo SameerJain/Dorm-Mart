@@ -1,1 +1,1 @@
-web: php -S 0.0.0.0:$PORT router.php
+web: PHP_CLI_SERVER_WORKERS=8 php -d upload_max_filesize=26M -d post_max_size=30M -S 0.0.0.0:$PORT router.php

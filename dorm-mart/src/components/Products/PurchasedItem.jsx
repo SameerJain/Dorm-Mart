@@ -6,9 +6,18 @@ import {
   resolveStoredImageUrl,
 } from "../../utils/imageFallback";
 import { API_BASE } from "../../utils/apiConfig";
-import { useState, useEffect } from "react";
+import { apiGetJson } from "../../utils/apiClient";
+import { useState, useEffect, useCallback, useRef } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
 import { formatDateTime } from "../../utils/formatters";
+
+// Resolves to the buyer's review for this product, or null when there is none.
+async function fetchExistingReview(productId) {
+  const result = await apiGetJson(
+    `${API_BASE}/reviews/get_review.php?product_id=${encodeURIComponent(productId)}`,
+  );
+  return result?.success && result.has_review ? result.review : null;
+}
 
 function PurchasedItem({
   id,
@@ -33,39 +42,34 @@ function PurchasedItem({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoadingReview, setIsLoadingReview] = useState(true);
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
+  const mountedRef = useRef(true);
 
-  // Fetch review status on mount
   useEffect(() => {
-    if (!id) return;
-
-    const fetchReviewStatus = async () => {
-      try {
-        const response = await fetch(
-          `${API_BASE}/reviews/get_review.php?product_id=${id}`,
-          {
-            method: "GET",
-            credentials: "include",
-          },
-        );
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.has_review) {
-            setHasReview(true);
-            setExistingReview(result.review);
-          }
-        }
-      } catch (error) {
-        logger.error("Error fetching review status:", error);
-      } finally {
-        setIsLoadingReview(false);
-      }
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
     };
+  }, []);
 
-    fetchReviewStatus();
+  const loadReview = useCallback(async () => {
+    try {
+      const review = await fetchExistingReview(id);
+      if (mountedRef.current && review) {
+        setHasReview(true);
+        setExistingReview(review);
+      }
+    } catch (error) {
+      logger.error("Error fetching review status:", error);
+    }
   }, [id]);
 
-  // Auto-open review modal if autoOpenReview prop is true and review status is loaded
+  useEffect(() => {
+    if (!id) return;
+    loadReview().finally(() => {
+      if (mountedRef.current) setIsLoadingReview(false);
+    });
+  }, [id, loadReview]);
+
   useEffect(() => {
     if (autoOpenReview && !isLoadingReview && !hasAutoOpened) {
       setIsModalOpen(true);
@@ -79,35 +83,13 @@ function PurchasedItem({
 
   const handleReviewSubmitted = () => {
     setHasReview(true);
-    // Optionally refetch the review to get the latest data
-    fetchReviewAfterSubmit();
-  };
-
-  const fetchReviewAfterSubmit = async () => {
-    try {
-      const response = await fetch(
-        `${API_BASE}/reviews/get_review.php?product_id=${id}`,
-        {
-          method: "GET",
-          credentials: "include",
-        },
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.has_review) {
-          setExistingReview(result.review);
-        }
-      }
-    } catch (error) {
-      logger.error("Error fetching review after submit:", error);
-    }
+    // Refetch so the view mode shows the saved review.
+    loadReview();
   };
 
   return (
     <>
       <li className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 shadow">
-        {/* Left: image */}
         <Link to={detailPath} state={detailState} className="block">
           <img
             src={displayImage}
@@ -117,15 +99,13 @@ function PurchasedItem({
           />
         </Link>
 
-        {/* Middle: details */}
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          {/* Top: title + seller */}
           <div className="mt-2 sm:mt-0 overflow-hidden">
-            <h3 className="text-base sm:text-lg font-semibold line-clamp-2 break-words break-all overflow-hidden text-gray-900 dark:text-gray-100">
+            <h3 className="text-base sm:text-lg font-semibold line-clamp-2 break-words overflow-hidden text-gray-900 dark:text-gray-100">
               <Link
                 to={detailPath}
                 state={detailState}
-                className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-sm break-words break-all"
+                className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-sm break-words"
               >
                 {title}
               </Link>
@@ -135,18 +115,16 @@ function PurchasedItem({
             </p>
             {paymentStatus && (
               <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                Stripe {String(paymentStatus).replaceAll("_", " ")}{paymentMode === "test" ? " · Test Mode" : ""}
+                {paymentMode === "mock" ? "Mock transaction · " : "Stripe "}{String(paymentStatus).replaceAll("_", " ")}{paymentMode === "test" ? " · Test Mode" : ""}
               </p>
             )}
           </div>
 
-          {/* Bottom: date */}
           <p className="mt-2 sm:mt-1 text-sm text-gray-500 dark:text-gray-400">
             Purchased on {date ? formatDateTime(date) : ""}
           </p>
         </div>
 
-        {/* Right: buttons */}
         <div className="flex flex-col gap-2 mt-3 sm:mt-0 w-full sm:w-auto">
           <Link
             to={detailPath}
@@ -156,7 +134,6 @@ function PurchasedItem({
             See Receipt
           </Link>
 
-          {/* Review Button */}
           {!isLoadingReview && (
             <button
               onClick={handleReviewButtonClick}
@@ -173,7 +150,6 @@ function PurchasedItem({
         </div>
       </li>
 
-      {/* Review Modal */}
       <ReviewModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

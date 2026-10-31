@@ -3,20 +3,20 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../helpers/profanity.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../helpers/moderation.php';
 
-init_json_endpoint();
+init_json_endpoint('POST');
 
 $conn = db();
 $conn->set_charset('utf8mb4');
 
 auth_boot_session();
 
-// --- auth: require a logged-in user ---
 $userId = require_login();
 
 $sender = $userId;
@@ -50,13 +50,37 @@ $senderId   = (int)$sender;
 if ($senderId === $receiverId) {
     json_response(['success' => false, 'error' => 'Cannot message yourself'], 400);
 }
+if (!chat_user_exists($conn, $receiverId)) {
+    json_response(['success' => false, 'error' => 'Receiver not found'], 404);
+}
+if (moderation_user_is_banned($conn, $receiverId)) {
+    json_response(['success' => false, 'error' => 'This user is no longer available'], 403);
+}
+
+// Flood cap only — set far above any realistic typing speed so ordinary
+// conversation never reaches it.
+$messageLimit = consume_rate_limit(
+    scoped_rate_limit_key('chat_message', $senderId),
+    CHAT_MESSAGE_MAX_PER_WINDOW,
+    CHAT_MESSAGE_WINDOW_MINUTES,
+    CHAT_MESSAGE_LOCKOUT_MINUTES
+);
+if ($messageLimit['blocked']) {
+    $retryAfterSeconds = max(1, (int)$messageLimit['retry_after_seconds']);
+    if (!headers_sent()) {
+        header('Retry-After: ' . $retryAfterSeconds);
+    }
+    json_response([
+        'success' => false,
+        'error' => 'You are sending messages too quickly. Please wait a moment and try again.',
+    ], 429);
+}
 $u1 = min($senderId, $receiverId);
 $u2 = max($senderId, $receiverId);
 $lockKey = "conv:$u1:$u2"; // used for advisory lock
 
 $convId = null;
 $msgId  = null;
-/* will hold ISO-8601 UTC string, e.g., 2025-10-31T03:05:06Z */
 $createdIso = null; // <-- will be filled after insert
 
 try {
@@ -88,7 +112,6 @@ try {
         json_response(['success' => false, 'error' => 'Invalid conversation ID'], 403);
     }
 
-    // If item is deleted, block message creation
     if (chat_conversation_is_closed($conn, $convId)) {
         chat_release_lock($conn, $lockKey);
         $conn->rollback();
@@ -98,7 +121,6 @@ try {
     chat_ensure_participants($conn, $convId, $u1, $u2);
     chat_reopen_conversation($conn, $convId);
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $isFlagged = contains_profanity($conn, $content) ? 1 : 0;
     $stmt = $conn->prepare(
         'INSERT INTO messages
@@ -110,7 +132,6 @@ try {
     $msgId = $conn->insert_id;
     $stmt->close();
 
-    /* Fetch the DB-assigned created_at in ISO-8601 UTC (matches your readers) */
     $stmt = $conn->prepare(
         'SELECT DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at
            FROM messages
@@ -126,12 +147,11 @@ try {
 
     $filteredContent = filter_profanity($conn, $content);
 
+    // Commit before releasing so the next lock holder sees this transaction's rows.
+    $conn->commit();
     chat_release_lock($conn, $lockKey);
 
-    $conn->commit();
-
     if ($createdIso === null) {
-        // Very defensive fallback; should rarely trigger since we SELECTed above.
         $createdIso = gmdate('Y-m-d\TH:i:s\Z'); // UTC "now"
     }
 
@@ -139,7 +159,6 @@ try {
         'success'     => true,
         'conv_id'     => $convId,
         'message_id'  => $msgId,
-        // Return the fields you asked for as a single object for the client
         'message'     => [
             'message_id' => $msgId,
             'content'    => $filteredContent,

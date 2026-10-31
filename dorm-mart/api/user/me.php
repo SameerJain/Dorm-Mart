@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 
-// api/user/me.php — landing/session profile (interested categories, etc.)
 
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 
@@ -45,7 +44,6 @@ try {
         ]);
     }
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $cats = [];
     $c1 = trim((string)($row['interested_category_1'] ?? ''));
     $c2 = trim((string)($row['interested_category_2'] ?? ''));

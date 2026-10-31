@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE } from "../../../utils/apiConfig";
 import { csrfPostJson } from "../../../utils/apiClient";
+import { useSubmitLock } from "../../../hooks/useSubmitLock";
 import {
   combineScheduleDateTime,
   getDateRangeMessage,
@@ -16,6 +17,7 @@ import { MEET_LOCATION_OTHER_VALUE } from "../../../constants/meetLocations";
 
 export function useSchedulePurchaseForm() {
   const location = useLocation();
+  const runExclusive = useSubmitLock();
   const navigate = useNavigate();
   const navState =
     location.state && typeof location.state === "object"
@@ -29,9 +31,6 @@ export function useSchedulePurchaseForm() {
   const [meetingMonth, setMeetingMonth] = useState("");
   const [meetingDay, setMeetingDay] = useState("");
   const [meetingYear, setMeetingYear] = useState("");
-  const monthInputRef = useRef(null);
-  const dayInputRef = useRef(null);
-  const yearInputRef = useRef(null);
   const [meetingHour, setMeetingHour] = useState("");
   const [meetingMinute, setMeetingMinute] = useState("");
   const [meetingAmPm, setMeetingAmPm] = useState("");
@@ -152,8 +151,13 @@ export function useSchedulePurchaseForm() {
     return true;
   };
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
+    // preventDefault before the lock check, or a dropped submit reloads the page.
     e.preventDefault();
+    return runExclusive(() => submitSchedule());
+  }
+
+  async function submitSchedule() {
     setFormError("");
     setDateTimeError("");
 
@@ -259,10 +263,12 @@ export function useSchedulePurchaseForm() {
       }
       navigate(navState?.convId ? `/app/chat?conv=${navState.convId}` : "/app/chat");
     } catch (err) {
+      // Show the server's reason (e.g. the item already has an active schedule);
+      // a TypeError means the request never got a response.
       setFormError(
-        err.message === "Failed to create schedule"
-          ? err.message
-          : "Could not create the schedule. Please try again.",
+        err instanceof TypeError || !err.message
+          ? "Could not create the schedule. Please try again."
+          : err.message,
       );
     } finally {
       setIsSubmitting(false);
@@ -273,7 +279,6 @@ export function useSchedulePurchaseForm() {
     closeConfirmOpen,
     customMeetLocation,
     dateTimeError,
-    dayInputRef,
     description,
     error,
     formError,
@@ -287,7 +292,6 @@ export function useSchedulePurchaseForm() {
     meetingMinute,
     meetingMonth,
     meetingYear,
-    monthInputRef,
     negotiatedPrice,
     paymentAmount,
     paymentEligibility,
@@ -312,6 +316,5 @@ export function useSchedulePurchaseForm() {
     setUseBuiltInPayment,
     tradeItemDescription,
     useBuiltInPayment,
-    yearInputRef,
   };
 }

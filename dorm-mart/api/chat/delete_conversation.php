@@ -47,17 +47,21 @@ try {
         json_response(['success' => false, 'error' => 'Not authorized to hide this conversation'], 403);
     }
 
-    $alreadyHidden = $isUser1
-        ? (int)$conversation['user1_deleted'] === 1
-        : (int)$conversation['user2_deleted'] === 1;
-    if ($alreadyHidden) {
-        $conn->rollback();
-        json_response(['success' => false, 'error' => 'Conversation already hidden'], 409);
-    }
-
+    // Hiding is idempotent: a double-click or retry reports success instead of
+    // surfacing a 409 for a state the user already asked for.
     $column = $isUser1 ? 'user1_deleted' : 'user2_deleted';
     $stmt = $conn->prepare("UPDATE conversations SET {$column} = 1 WHERE conv_id = ?");
     $stmt->bind_param('i', $convId);
+    $stmt->execute();
+    $stmt->close();
+
+    // A hidden conversation must not keep counting toward the chat badge.
+    $stmt = $conn->prepare(
+        'UPDATE conversation_participants
+            SET unread_count = 0, first_unread_msg_id = 0
+          WHERE conv_id = ? AND user_id = ?'
+    );
+    $stmt->bind_param('ii', $convId, $userId);
     $stmt->execute();
     $stmt->close();
     $conn->commit();

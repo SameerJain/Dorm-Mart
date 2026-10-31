@@ -40,17 +40,14 @@ function FAQPage() {
           `}
         </style>
 
-        {/* header */}
         <div className="flex items-center justify-between mb-4 sm:mb-5 gap-2">
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">
-            Frequently Asked Questions
+            Frequently asked questions
           </h2>
           <PageBackButton onClick={handleCloseFAQ} />
         </div>
 
-        {/* body */}
         <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-          {/* sidebar / mobile tabs */}
           <div
             className="
               flex gap-2 md:gap-2
@@ -85,7 +82,6 @@ function FAQPage() {
             ))}
           </div>
 
-          {/* content */}
           <div className="flex-1 mt-2 md:mt-0">
             <div className="faq-content px-1 sm:px-4 pt-3 sm:pt-4 pb-2">
               {FAQ_CONTENT[activeView]}

@@ -1,8 +1,18 @@
 <?php
-// Utility script to reset received_intro_promo_email flag for all users
-// This allows developers to test the promo email functionality multiple times
+declare(strict_types=1);
 
-// Dev-only utility — block all web access
+// Dev-only CLI tool for testing promotional email locally.
+//
+//   php api/utility/reset_promo_email.php          reset the intro-email flag and
+//                                                  make every opted-in user due
+//                                                  for a digest again
+//   php api/utility/reset_promo_email.php <email>  the same, for one user
+//
+// Refuses to run against a non-local database, like migrate_data.php.
+// (It used to also require REQUEST_METHOD=POST, which the CLI never sets, so
+// it could not run at all; and it never reset promo_last_sent_at, which is what
+// decides when the next digest goes out.)
+
 if (php_sapi_name() !== 'cli') {
     http_response_code(403);
     header('Content-Type: application/json; charset=utf-8');
@@ -10,43 +20,41 @@ if (php_sapi_name() !== 'cli') {
     exit;
 }
 
-// Include security utilities
-require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
-// Only allow POST requests
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
-    exit;
+$host = strtolower(trim((string)getenv('DB_HOST')));
+if (!in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
+    fwrite(STDERR, "Refusing to reset promo state on a non-local database (DB_HOST={$host}).\n");
+    exit(1);
 }
 
-require_once __DIR__ . '/../database/db_connect.php';
+$email = isset($argv[1]) ? trim((string)$argv[1]) : '';
 
 try {
     $conn = db();
-    
-    // Reset received_intro_promo_email to FALSE for all users
-    $stmt = $conn->prepare('UPDATE user_accounts SET received_intro_promo_email = FALSE');
-    $result = $stmt->execute();
+    if ($email !== '') {
+        $stmt = $conn->prepare(
+            'UPDATE user_accounts SET received_intro_promo_email = FALSE, promo_last_sent_at = NULL WHERE email = ?'
+        );
+        $stmt->bind_param('s', $email);
+    } else {
+        $stmt = $conn->prepare(
+            'UPDATE user_accounts SET received_intro_promo_email = FALSE, promo_last_sent_at = NULL'
+        );
+    }
+    $stmt->execute();
     $affectedRows = $stmt->affected_rows;
     $stmt->close();
-    
-    if ($result) {
-        echo json_encode([
-            'ok' => true, 
-            'message' => "Successfully reset promo email flag for {$affectedRows} users",
-            'affected_rows' => $affectedRows
-        ]);
-    } else {
-        http_response_code(500);
-        echo json_encode(['ok' => false, 'error' => 'Failed to reset promo email flags']);
-    }
-    
     $conn->close();
+
+    echo json_encode([
+        'ok' => true,
+        'affected_rows' => $affectedRows,
+        'message' => $email !== ''
+            ? "Reset promo state for {$email}"
+            : "Reset promo state for {$affectedRows} users",
+    ]) . PHP_EOL;
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Database error occurred']);
-    error_log("reset_promo_email.php error: " . $e->getMessage());
+    fwrite(STDERR, 'reset_promo_email failed: ' . $e->getMessage() . "\n");
+    exit(1);
 }

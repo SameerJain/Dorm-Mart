@@ -33,8 +33,19 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Electronics', 'Gaming'),
   'North Campus',
   'Like New',
-  'This electronic drum set offers a powerful, versatile playing experience for beginners and experienced drummers alike, delivering realistic sound and responsive feel in a compact, home-friendly design. Featuring multiple mesh drum pads, sensitive cymbals, and a performance-ready drum module loaded with high-quality kits and customizable settings, it lets you practice, record, or perform with ease. The mesh heads provide natural rebound and quiet operation, making them perfect for late-night sessions, while the sturdy rack keeps everything stable during energetic play. With built-in coaching functions, metronome tools, and headphone compatibility, you can improve your skills without disturbing others. USB and audio outputs make it simple to connect to computers, amps, or recording software. Durable, adjustable, and easy to set up, this electronic drum set delivers professional features in a space-saving package ideal for any practice room or bedroom studio.',
-  JSON_ARRAY('/images/electronic-drum-set-product-image.jpeg'),
+  'No sticks, pedals, or seat included, so you''ll need to source those if you don''t already have them.
+
+Electronic drum set with mesh pads, cymbals, and a drum module on an adjustable rack, all working correctly. The module has several drum kits plus a metronome and practice functions, which I used a lot when I was first learning.
+
+Mesh heads are quieter than an acoustic kit, but hitting the pads and pedals still makes some noise and vibration, so keep roommates in mind. USB and audio outputs are there for connecting to a computer or recording, but check the model against your own gear first.
+
+Selling because I don''t have room in my new place and it''s mostly gone unused for months. Measure your space first, even a compact kit takes up more room than it looks like in photos. $250, flexible.',
+  JSON_ARRAY(
+    '/images/electronic-drum-set-product-image.jpeg',
+    '/images/electronic-drum-set-product-image-2.jpg',
+    '/images/electronic-drum-set-product-image-3.jpg',
+    '/images/electronic-drum-set-product-image-4.jpg'
+  ),
   250.00,
   'Active',
   0,

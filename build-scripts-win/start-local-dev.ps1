@@ -7,7 +7,6 @@ function Test-ListeningPort([int]$Port) {
     return $null -ne (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue | Select-Object -First 1)
 }
 
-# Start XAMPP services first
 Write-Host "Starting XAMPP Apache and MySQL..." -ForegroundColor Yellow
 try {
     if (Test-ListeningPort 80) {
@@ -38,7 +37,6 @@ if (!(Test-Path (Join-Path $dormMartPath "package.json"))) {
     throw "Could not find dorm-mart/package.json under $projectRoot"
 }
 
-# Start React development server in first PowerShell window
 if (Test-ListeningPort 3000) {
     Write-Host "React is already listening on port 3000; not starting a duplicate." -ForegroundColor DarkYellow
 } else {
@@ -46,10 +44,8 @@ if (Test-ListeningPort 3000) {
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$dormMartPath'; Write-Host 'React Dev Server Starting...' -ForegroundColor Green; npm run start-local-win"
 }
 
-# Wait a moment for the first window to start
 Start-Sleep -Seconds 2
 
-# Start PHP server in second PowerShell window
 if (Test-ListeningPort 8080) {
     Write-Host "PHP is already listening on port 8080; not starting a duplicate." -ForegroundColor DarkYellow
 } else {

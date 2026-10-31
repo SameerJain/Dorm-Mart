@@ -2,6 +2,11 @@
 
 Keep `PAYMENTS_ENABLED=false` until the Sandbox section passes.
 
+Seed-account demos do not need this Stripe setup. Run schema sync, sign in with
+seed accounts, select built-in payment when scheduling, and accept the purchase.
+During the Payment Window the buyer can complete a mock transaction from chat.
+The checkout and receipt say that no real money moved. Mock refunds work too.
+
 ## Stripe Dashboard
 
 1. Rotate every API key that was pasted into chat or otherwise exposed. Use only the replacement keys below.
@@ -41,4 +46,4 @@ Set these in the deployment secret store, never in git:
 - Live equivalents of all five variables
 - `FRONTEND_BASE_URL=https://dormmart.me`
 
-Run migration `025_stripe_connect_payments.sql`, deploy with payments disabled, and complete the scenarios in the integration plan. Enable `PAYMENTS_ENABLED=true` only after Sandbox passes and Stripe confirms the direct-charge marketplace responsibility model for live use.
+Run `php api/database/migrate_schema.php`, deploy with real payments disabled, and complete the scenarios in the integration plan. Enable `PAYMENTS_ENABLED=true` only after Sandbox passes and Stripe confirms the direct-charge marketplace responsibility model for live use. Seed accounts always stay in mock mode.

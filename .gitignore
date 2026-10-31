@@ -3,8 +3,14 @@ dorm-mart/node_modules
 dorm-mart/.pnp
 dorm-mart/.pnp.js
 
+# Profanity word-list data: excluded so the raw word list isn't committed to
+# this public repo. See "Profanity word list" in dorm-mart/docs/PROJECT_HANDOFF.md.
+dorm-mart/vendor/snipe/banbuilder/src/dict/
+
 # Testing
 dorm-mart/coverage
+dorm-mart/stryker-tmp
+dorm-mart/reports/mutation
 
 # Production
 dorm-mart/build
@@ -12,7 +18,8 @@ dorm-mart/build
 # Environment files
 .env
 .env.*
-.env.example
+# The template holds only placeholders; it must stay trackable.
+!.env.example
 dorm-mart/.env.development.local
 dorm-mart/.env.test.local
 dorm-mart/.env.production.local
@@ -34,16 +41,41 @@ dorm-mart/deploy.bat
 railway.toml
 nixpacks.toml
 !dorm-mart/railway.toml
+!dorm-mart/railway.promotional.toml
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# AI Agents
+# AI coding tools: local settings, memory, rules and instruction files
 .claude/
 .codex/
-.agents 
+.agents
+.cursor/
+.windsurf/
+.gemini/
+.continue/
+.roo/
+.kiro/
+.aider*
+.cursorrules
+.cursorignore
+.windsurfrules
+.clinerules
+.mcp.json
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+GEMINI.md
+.github/copilot-instructions.md
+
+# AI working notes kept on disk locally
+CONTEXT.md
+context.md
+/artifacts/
+dorm-mart/code-review-refactor-report.md
+dorm-mart/docs/AGENT_WORKFLOWS.md
 
 # VS Code
 .vscode/
@@ -70,13 +102,6 @@ body.json
 cookies.txt
 cookies_buyer.txt
 cookies_seller.txt
-
-# React test files
-react-test-files/chris/aptitude.cse.buffalo.edu/
-react-test-files/chris/localhost-3000/
-react-test-files/chris/localhost:3000/
-react-test-files/chris/undefined/
-!react-test-files/chris/
 
 #Personal helpful code
 /code-snippets

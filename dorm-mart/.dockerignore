@@ -1,0 +1,18 @@
+# Secrets: never copy env files into the image.
+.env
+.env.*
+
+# Rebuilt inside the image.
+node_modules
+build
+vendor
+
+# Local-only and development artifacts.
+.git
+coverage
+reports
+.stryker-tmp
+media
+*.log
+cookies*.txt
+hdr.txt

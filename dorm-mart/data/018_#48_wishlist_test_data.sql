@@ -33,8 +33,19 @@ INSERT INTO INVENTORY (
   JSON_ARRAY('Books', 'School'),
   'North Campus',
   'Like New',
-  'Calculus: Early Transcendentals is a comprehensive, widely respected textbook designed to build a strong foundation in differential and integral calculus. Clear explanations, rigorous examples, and thoughtfully structured chapters guide students from fundamental concepts to advanced problem-solving. With its emphasis on early introduction of transcendental functions, the book helps learners develop intuition and confidence as topics progress. Detailed diagrams, practice problems, and real-world applications make it ideal for high school, college, or self-study. Durable, reliable, and academically trusted, this textbook is an essential resource for mastering calculus.',
-  JSON_ARRAY('/images/calculus-early-transcdentals-product-image.jpg'),
+  'Calculus: Early Transcendentals, finished the class so I don''t need it taking up shelf space. Pages are clean, no writing, highlighting, or torn corners. It covers differential and integral calculus with worked examples, diagrams, and practice problems, and I found it more helpful than lecture notes when reviewing before an exam.
+
+Before you buy:
+- Match the edition and ISBN to your syllabus. Exercises can differ between editions even when the title looks identical
+- Physical book only, no online access code or homework platform login
+- If your class needs digital access you''ll have to buy that separately
+
+$80, reasonable offers welcome. Can meet on campus.',
+  JSON_ARRAY(
+    '/images/calculus-early-transcdentals-product-image.jpg',
+    '/images/calculus-early-transcdentals-product-image-2.jpg',
+    '/images/calculus-early-transcdentals-product-image-3.jpg'
+  ),
   80.00,
   'Active',
   0,

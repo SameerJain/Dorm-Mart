@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE, PUBLIC_BASE } from "../../../utils/apiConfig";
+import { apiGetJson } from "../../../utils/apiClient";
 import { normalizeProductDetail } from "../../../utils/productDetails";
 import logger from "../../../utils/logger";
 
@@ -16,16 +17,10 @@ export default function useProductDetail(productId) {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(
+        const json = await apiGetJson(
           `${API_BASE}/product/view_product.php?product_id=${encodeURIComponent(productId)}`,
-          {
-            signal: controller.signal,
-            credentials: "include",
-          },
+          { signal: controller.signal },
         );
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const json = await response.json();
         setData(json || null);
       } catch (error) {
         if (error.name !== "AbortError") {

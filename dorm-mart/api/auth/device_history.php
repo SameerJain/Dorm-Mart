@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/login_location.php';
+
 function login_device_details(string $userAgent): array
 {
     $operatingSystem = 'Unknown OS';
@@ -49,13 +51,14 @@ function login_device_details(string $userAgent): array
 
 function login_request_ip(): string
 {
+    // Same trust rule as rate_limit_client_ip(): Railway appends the real client
+    // to X-Forwarded-For, so only the last entry is ours. CF-Connecting-IP and
+    // X-Real-IP are not set by Railway and would arrive client-controlled.
+    $forwarded = array_map('trim', explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '')));
     $candidates = [
-        $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
-        $_SERVER['HTTP_X_REAL_IP'] ?? '',
+        (string)end($forwarded),
+        $_SERVER['REMOTE_ADDR'] ?? '',
     ];
-    $forwarded = explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''));
-    $candidates[] = trim($forwarded[0] ?? '');
-    $candidates[] = $_SERVER['REMOTE_ADDR'] ?? '';
 
     foreach ($candidates as $candidate) {
         $ip = trim((string)$candidate);
@@ -67,8 +70,28 @@ function login_request_ip(): string
     return 'Unknown';
 }
 
+/**
+ * Geo headers (Vercel/Cloudflare) are only trustworthy when that edge sits in
+ * front of the app and overwrites them. Railway passes client-sent headers
+ * through unchanged, so by default they are ignored and the location comes
+ * from the IP lookup instead. Set TRUST_PROXY_GEO_HEADERS=true behind a proxy
+ * that sets them.
+ */
+function login_trust_proxy_geo_headers(): bool
+{
+    $value = getenv('TRUST_PROXY_GEO_HEADERS');
+    if ($value === false) {
+        $value = $_ENV['TRUST_PROXY_GEO_HEADERS'] ?? '';
+    }
+    return in_array(strtolower(trim((string)$value)), ['1', 'true', 'yes'], true);
+}
+
 function login_request_location(): ?string
 {
+    if (!login_trust_proxy_geo_headers()) {
+        return login_ip_location(login_request_ip());
+    }
+
     $parts = [
         $_SERVER['HTTP_X_VERCEL_IP_CITY'] ?? $_SERVER['HTTP_CF_IPCITY'] ?? '',
         $_SERVER['HTTP_X_VERCEL_IP_COUNTRY_REGION'] ?? $_SERVER['HTTP_CF_REGION'] ?? '',
@@ -81,7 +104,85 @@ function login_request_location(): ?string
         return substr($clean, 0, 80);
     }, $parts))));
 
-    return $parts ? substr(implode(', ', $parts), 0, 160) : null;
+    return $parts ? substr(implode(', ', $parts), 0, 160) : login_ip_location(login_request_ip());
+}
+
+function login_device_fingerprint(): array
+{
+    $userAgent = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'), 0, 512);
+    $details = login_device_details($userAgent);
+    return [
+        'user_agent' => $userAgent,
+        'device_type' => $details['device_type'],
+        'browser' => $details['browser'],
+        'operating_system' => $details['operating_system'],
+        'ip_address' => login_request_ip(),
+        'location' => login_request_location(),
+    ];
+}
+
+/**
+ * Warn the user when a password or 2FA sign-in comes from a device they have
+ * never used before. Call it before record_login_device(), which adds this
+ * device to the history.
+ *
+ * A device is its browser + OS + device type, matching how Logged Devices
+ * groups sessions; IP address is left out because it changes with networks.
+ * First-ever sign-ins have nothing to compare against and stay quiet.
+ */
+function notify_new_login_device(int $userId): void
+{
+    if ($userId <= 0) {
+        return;
+    }
+
+    $conn = null;
+    try {
+        require_once __DIR__ . '/../database/db_connect.php';
+        require_once __DIR__ . '/../helpers/notifications.php';
+        $conn = db();
+        $fp = login_device_fingerprint();
+
+        $stmt = $conn->prepare(
+            'SELECT COUNT(*) AS total,
+                    COALESCE(SUM(device_type = ? AND browser = ? AND operating_system = ?), 0) AS matches
+               FROM login_history
+              WHERE user_id = ?'
+        );
+        $stmt->bind_param('sssi', $fp['device_type'], $fp['browser'], $fp['operating_system'], $userId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if ((int)($row['total'] ?? 0) === 0 || (int)($row['matches'] ?? 0) > 0) {
+            $conn->close();
+            return;
+        }
+
+        $device = sprintf('%s on %s', $fp['browser'], $fp['operating_system']);
+        $where = $fp['location'] ? " near {$fp['location']}" : '';
+        notification_insert($conn, [
+            'recipient_user_id' => $userId,
+            'type' => 'new_login_device',
+            'title' => 'New sign-in to your account',
+            'message' => "Someone signed in with {$device}{$where}. If this wasn't you, change your password now.",
+            'severity' => 'warning',
+            'destination' => '/app/setting/security-options',
+            'metadata' => [
+                'device_type' => $fp['device_type'],
+                'browser' => $fp['browser'],
+                'operating_system' => $fp['operating_system'],
+                'location' => $fp['location'],
+            ],
+            'idempotency_key' => 'new-login-device-' . hash('sha256', session_id() . "\0" . $userId),
+        ]);
+        $conn->close();
+    } catch (Throwable $e) {
+        if ($conn instanceof mysqli) {
+            $conn->close();
+        }
+        error_log('new login device notification error: ' . $e->getMessage());
+    }
 }
 
 function record_login_device(int $userId): bool
@@ -95,14 +196,8 @@ function record_login_device(int $userId): bool
     try {
         require_once __DIR__ . '/../database/db_connect.php';
         $conn = db();
-        $userAgent = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'), 0, 512);
-        $details = login_device_details($userAgent);
+        $fp = login_device_fingerprint();
         $sessionHash = hash('sha256', $sessionId);
-        $ipAddress = login_request_ip();
-        $location = login_request_location();
-        $deviceType = $details['device_type'];
-        $browser = $details['browser'];
-        $operatingSystem = $details['operating_system'];
 
         $stmt = $conn->prepare(
             'INSERT INTO login_history
@@ -111,19 +206,20 @@ function record_login_device(int $userId): bool
              ON DUPLICATE KEY UPDATE
                 device_type = VALUES(device_type), browser = VALUES(browser),
                 operating_system = VALUES(operating_system), user_agent = VALUES(user_agent),
-                ip_address = VALUES(ip_address), location = COALESCE(VALUES(location), location),
+                location = COALESCE(VALUES(location), location),
+                ip_address = VALUES(ip_address),
                 last_seen_at = CURRENT_TIMESTAMP, signed_out_at = NULL'
         );
         $stmt->bind_param(
             'isssssss',
             $userId,
             $sessionHash,
-            $deviceType,
-            $browser,
-            $operatingSystem,
-            $userAgent,
-            $ipAddress,
-            $location
+            $fp['device_type'],
+            $fp['browser'],
+            $fp['operating_system'],
+            $fp['user_agent'],
+            $fp['ip_address'],
+            $fp['location']
         );
         $stmt->execute();
         $stmt->close();
@@ -136,6 +232,93 @@ function record_login_device(int $userId): bool
             $conn->close();
         }
         error_log('device history record error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Re-attach the current request to this user's existing open row for the
+ * same device (browser + OS + device type) instead of inserting a new one.
+ *
+ * Used only for silent remember-me re-auth (ensure_session()), where PHP's
+ * server-side session data was garbage collected mid-visit and a fresh
+ * session id gets issued even though it is the same physical device
+ * continuing, not a new login. Matching on session_hash alone would create
+ * a brand new "box" here, which is what made Logged Devices show far more
+ * entries than real logins and left last_seen_at identical to logged_in_at.
+ */
+function claim_or_record_login_device(int $userId): bool
+{
+    $sessionId = session_id();
+    if ($userId <= 0 || $sessionId === '') {
+        return false;
+    }
+
+    $conn = null;
+    try {
+        require_once __DIR__ . '/../database/db_connect.php';
+        $conn = db();
+        $fp = login_device_fingerprint();
+        $sessionHash = hash('sha256', $sessionId);
+
+        $find = $conn->prepare(
+            'SELECT login_id FROM login_history
+             WHERE user_id = ? AND device_type = ? AND browser = ? AND operating_system = ?
+                   AND signed_out_at IS NULL
+             ORDER BY last_seen_at DESC LIMIT 1'
+        );
+        $find->bind_param('isss', $userId, $fp['device_type'], $fp['browser'], $fp['operating_system']);
+        $find->execute();
+        $existing = $find->get_result()->fetch_assoc();
+        $find->close();
+
+        if ($existing) {
+            $update = $conn->prepare(
+                'UPDATE login_history
+                 SET session_hash = ?, ip_address = ?, location = COALESCE(?, location),
+                     user_agent = ?, last_seen_at = CURRENT_TIMESTAMP
+                 WHERE login_id = ?'
+            );
+            $existingId = (int)$existing['login_id'];
+            $update->bind_param(
+                'ssssi',
+                $sessionHash,
+                $fp['ip_address'],
+                $fp['location'],
+                $fp['user_agent'],
+                $existingId
+            );
+            $update->execute();
+            $update->close();
+        } else {
+            $insert = $conn->prepare(
+                'INSERT INTO login_history
+                    (user_id, session_hash, device_type, browser, operating_system, user_agent, ip_address, location)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $insert->bind_param(
+                'isssssss',
+                $userId,
+                $sessionHash,
+                $fp['device_type'],
+                $fp['browser'],
+                $fp['operating_system'],
+                $fp['user_agent'],
+                $fp['ip_address'],
+                $fp['location']
+            );
+            $insert->execute();
+            $insert->close();
+        }
+
+        $conn->close();
+        $_SESSION['device_history_touched_at'] = time();
+        return true;
+    } catch (Throwable $e) {
+        if ($conn instanceof mysqli) {
+            $conn->close();
+        }
+        error_log('device history claim error: ' . $e->getMessage());
         return false;
     }
 }

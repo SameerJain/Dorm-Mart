@@ -5,7 +5,11 @@ import PreLoginBranding from "../components/PreLoginBranding";
 import PreLoginNavLinks from "../components/PreLoginNavLinks";
 import { THEME_CACHE_KEY, THEME_PENDING_KEY } from "../utils/loadTheme.js";
 import { API_BASE } from "../utils/apiConfig";
+import { clearCsrfToken } from "../utils/csrfFetch";
+import { fetchMe } from "../utils/handleAuth";
 import { useEmailPolicy } from "../hooks/useEmailPolicy";
+import { useSubmitLock } from "../hooks/useSubmitLock";
+import TurnstileWidget from "../components/TurnstileWidget";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -18,9 +22,13 @@ function LoginPage() {
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationEmail, setVerificationEmail] = useState("");
+  // Set once the server asks for a human check; stays until the page reloads.
+  const [captchaSiteKey, setCaptchaSiteKey] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
+  const runExclusive = useSubmitLock();
 
-  // Handle URL parameters
   useEffect(() => {
     const urlError = searchParams.get("error");
     const urlMessage = searchParams.get("message");
@@ -40,12 +48,10 @@ function LoginPage() {
     }
   }, [searchParams]);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError(""); // Clear previous errors
+  const handleLogin = async () => {
+    setError("");
     setLoading(true);
 
-    // Validate input lengths FIRST (prevent excessively large inputs)
     if (email.length > 255 || password.length > 64) {
       setError("Username or password is too large");
       setLoading(false);
@@ -54,7 +60,6 @@ function LoginPage() {
 
     const emailTrimmed = email.trim();
 
-    // Frontend validation
     if (emailTrimmed === "" && password.trim() === "") {
       setError("Missing required fields");
       setLoading(false);
@@ -67,7 +72,6 @@ function LoginPage() {
       return;
     }
 
-    // Email validation based on ALLOW_ALL_EMAILS flag (for UX, but backend accepts any valid email)
     if (
       !emailPolicyLoading &&
       !allowAllEmails &&
@@ -78,7 +82,6 @@ function LoginPage() {
       return;
     }
 
-    // Basic email format validation if allowAllEmails is true
     if (!emailPolicyLoading && allowAllEmails) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(emailTrimmed)) {
@@ -94,29 +97,42 @@ function LoginPage() {
       return;
     }
 
+    if (captchaSiteKey && !turnstileToken) {
+      setError("Please complete the verification check.");
+      setLoading(false);
+      return;
+    }
+
+    // Turnstile tokens are single-use: send this one and render a fresh widget.
+    const submittedToken = turnstileToken;
+    if (captchaSiteKey) {
+      setTurnstileToken("");
+      setCaptchaResetKey((key) => key + 1);
+    }
+
     try {
-      // Call backend login API
       const response = await fetch(`${API_BASE}/auth/login.php`, {
         method: "POST",
-        credentials: "include", // Important: allows cookies to be set
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: email.trim(),
           password: password,
+          ...(submittedToken ? { turnstile_token: submittedToken } : {}),
         }),
       });
 
-      // Check if response is ok before parsing JSON
       if (!response.ok) {
-        // Try to get error message from response
         let errorMessage = "Network error. Please try again.";
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorData.message || errorMessage;
+          if (errorData.requires_captcha && errorData.captcha_site_key) {
+            setCaptchaSiteKey(errorData.captcha_site_key);
+          }
         } catch (e) {
-          // Response isn't JSON, use status text
           errorMessage = `Server error (${response.status}): ${response.statusText}`;
         }
         setError(errorMessage);
@@ -134,7 +150,6 @@ function LoginPage() {
       }
 
       if (data.ok) {
-        // Auth token is now set server-side as httpOnly cookie
 
         // Cache theme only — do not call applyThemeToDOM here, or the pre-login layout
         // (e.g. left branding card) flashes dark for a moment before navigate("/app").
@@ -148,33 +163,19 @@ function LoginPage() {
           } catch (_) {}
 
           try {
-            const meRes = await fetch(`${API_BASE}/auth/me.php`, {
-              method: "GET",
-              credentials: "include",
-            });
-            if (meRes.ok) {
-              const meJson = await meRes.json();
-              const userId = meJson.user_id;
-              if (userId) {
-                const userThemeKey = `userTheme_${userId}`;
-                localStorage.setItem(userThemeKey, data.theme);
-              }
-            }
+            const { user_id: userId } = await fetchMe();
+            if (userId) localStorage.setItem(`userTheme_${userId}`, data.theme);
           } catch (e) {
-            // User not authenticated or error - continue anyway
           }
         }
 
-        // Navigate to the main app
-        navigate(data.role === "moderator" ? "/app/moderation" : "/app", {
-          state: { loginSuccess: true },
-        });
+        // Login issued a new session, so any cached CSRF token is stale.
+        clearCsrfToken();
+        navigate(data.role === "moderator" ? "/app/moderation" : "/app");
       } else {
-        // Show error from backend, with improved messaging
         const backendError = data.error || "Login failed";
         let userFriendlyError = backendError;
 
-        // Map backend errors to more user-friendly messages
         if (backendError === "Invalid email format") {
           userFriendlyError = "Please enter a valid email address";
         } else if (backendError === "Invalid credentials") {
@@ -187,7 +188,6 @@ function LoginPage() {
         setError(userFriendlyError);
       }
     } catch (error) {
-      // Handle network or other errors
       logger.error("Login error:", error);
       setError(`Network error: ${error.message || "Please try again."}`);
     } finally {
@@ -195,8 +195,7 @@ function LoginPage() {
     }
   };
 
-  const handleTwoFactorVerification = async (e) => {
-    e.preventDefault();
+  const handleTwoFactorVerification = async () => {
     setError("");
     if (!/^\d{6}$/.test(verificationCode)) {
       setError("Enter the 6-digit verification code.");
@@ -214,6 +213,15 @@ function LoginPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) {
         setError(data.error || "Unable to verify the code. Please try again.");
+        // Anything other than a plain wrong-code answer means the server has
+        // already invalidated the pending challenge (too many attempts, expired,
+        // 2FA disabled mid-flow, etc.) — bounce back to the login form instead of
+        // leaving a dead code box up that just keeps returning "session expired".
+        if (!data.retryable) {
+          setRequiresTwoFactor(false);
+          setVerificationCode("");
+          setVerificationEmail("");
+        }
         return;
       }
 
@@ -224,9 +232,9 @@ function LoginPage() {
           if (data.user_id) localStorage.setItem(`userTheme_${data.user_id}`, data.theme);
         } catch (_) {}
       }
-      navigate(data.role === "moderator" ? "/app/moderation" : "/app", {
-        state: { loginSuccess: true },
-      });
+      // Login issued a new session, so any cached CSRF token is stale.
+      clearCsrfToken();
+      navigate(data.role === "moderator" ? "/app/moderation" : "/app");
     } catch (requestError) {
       logger.error("Two-factor verification error:", requestError);
       setError(`Network error: ${requestError.message || "Please try again."}`);
@@ -266,7 +274,6 @@ function LoginPage() {
       {/* Right side - Login form (full width on mobile, 50% on desktop).
           login-page-right-column: stay visually light even if html.dark (global CSS + brief theme flash). */}
       <div className="login-page-se-mobile-col login-page-right-column w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 pb-[max(2rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-y-auto lg:overflow-hidden">
-        {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="login-page-se-branding lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
@@ -288,7 +295,6 @@ function LoginPage() {
             ></div>
 
             <div className="relative z-10">
-              {/* Header with dot */}
               <div className="text-center mb-4 sm:mb-6 md:mb-8">
                 <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-3 sm:mb-4"></div>
                 <h2 className="text-2xl sm:text-3xl md:text-5xl font-serif text-white leading-tight">
@@ -296,7 +302,6 @@ function LoginPage() {
                 </h2>
               </div>
 
-              {/* Success message display */}
               {success && (
                 <div className="mb-4 p-3 sm:p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
                   <p className="text-sm sm:text-base leading-relaxed">
@@ -305,19 +310,22 @@ function LoginPage() {
                 </div>
               )}
 
-              {/* Error message display */}
               {error && (
-                <div className="mb-4 p-3 sm:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <div role="alert" className="mb-4 p-3 sm:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
                   <p className="text-sm sm:text-base leading-relaxed">
                     {error}
                   </p>
                 </div>
               )}
 
-              {/* Login form - Improved spacing for mobile */}
               {/* scheme-light: keep native inputs light when html gets color-scheme:dark right before navigate */}
               <form
-                onSubmit={requiresTwoFactor ? handleTwoFactorVerification : handleLogin}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  runExclusive(
+                    requiresTwoFactor ? handleTwoFactorVerification : handleLogin,
+                  );
+                }}
                 noValidate
                 className="space-y-3 sm:space-y-4 md:space-y-6"
               >
@@ -339,67 +347,77 @@ function LoginPage() {
                       maxLength={6}
                       autoFocus
                       required
-                      className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-center tracking-[0.35em] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm text-xl md:text-2xl"
+                      disabled={loading}
+                      className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-center tracking-[0.35em] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm text-xl md:text-2xl disabled:opacity-60 disabled:cursor-not-allowed"
                     />
+                    {/* A way out of the code step: wrong account, or the email never
+                        arrived. Signing in again sends a fresh code (and passes the
+                        server's Turnstile check when it asks for one). */}
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => {
+                        setRequiresTwoFactor(false);
+                        setVerificationCode("");
+                        setVerificationEmail("");
+                        setError("");
+                      }}
+                      className="mt-3 text-sm font-semibold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60"
+                    >
+                      Didn't get a code? Sign in again or use a different account
+                    </button>
                   </div>
                 ) : (
                   <>
-                {/* Email input */}
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
+                  <label htmlFor="login-email" className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     University Email Address
                   </label>
                   <input
+                    id="login-email"
                     type="email"
+                    autoComplete="username"
                     value={email}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Ensure we capture the full value up to 255 characters
-                      if (value.length <= 255) {
-                        setEmail(value);
-                      } else {
-                        setEmail(value.slice(0, 255));
-                      }
-                    }}
-                    onPaste={(e) => {
-                      // Always handle paste ourselves to ensure full email is captured
-                      e.preventDefault();
-                      const pastedText = (
-                        e.clipboardData || window.clipboardData
-                      ).getData("text");
-                      let cleanedText = pastedText.trim();
-                      // Remove '-- ' prefix if present (SQL comment marker)
-                      if (cleanedText.startsWith("-- ")) {
-                        cleanedText = cleanedText.substring(3).trim();
-                      }
-                      // Limit to exactly 255 characters to match database limit
-                      const trimmedText = cleanedText.slice(0, 255);
-                      setEmail(trimmedText);
-                    }}
+                    onChange={(e) => setEmail(e.target.value.slice(0, 255))}
                     maxLength={255}
                     required
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
+                    disabled={loading}
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
 
-                {/* Password input */}
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
+                  <label htmlFor="login-password" className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     Password
                   </label>
                   <input
+                    id="login-password"
                     type="password"
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     maxLength={64}
                     required
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl"
+                    disabled={loading}
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 md:py-5 rounded-lg border-2 border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-xl disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
+
+                {captchaSiteKey && (
+                  <TurnstileWidget
+                    siteKey={captchaSiteKey}
+                    resetKey={captchaResetKey}
+                    onToken={setTurnstileToken}
+                    onLoadError={() =>
+                      setError(
+                        "Could not load the verification check. Please disable any content blockers and reload the page.",
+                      )
+                    }
+                  />
+                )}
                   </>
                 )}
 
-                {/* Login button with arrow - Minimum 44px height for touch targets */}
                 <button
                   type="submit"
                   disabled={loading}
@@ -426,7 +444,6 @@ function LoginPage() {
                 </button>
               </form>
 
-              {/* Links - Improved touch targets and spacing */}
               <div className="mt-6 sm:mt-8 text-center">
                 <PreLoginNavLinks
                   className="text-sm sm:text-base md:text-lg"
@@ -456,7 +473,6 @@ function LoginPage() {
             </div>
           </div>
 
-          {/* Tagline - Mobile only, outside login card */}
           <p className="login-page-se-tagline lg:hidden mt-6 sm:mt-8 md:mt-10 text-base sm:text-lg md:text-2xl text-gray-600 opacity-80 max-w-sm md:max-w-lg mx-auto leading-relaxed text-center px-4">
             Your campus marketplace for buying and selling. Connect with fellow
             students and save money.

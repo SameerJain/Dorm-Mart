@@ -24,6 +24,11 @@ function DeviceIcon({ type }) {
 }
 
 function DeviceCard({ device }) {
+  const location = device.location || {
+    local: "Local device · no public location",
+    private: "Private network · no public location",
+    unknown: "IP address was not recorded",
+  }[device.ip_scope] || "City could not be determined from this IP";
   return (
     <li className="rounded-xl border border-slate-200 p-4 dark:border-gray-700 sm:p-5">
       <div className="flex items-start gap-4">
@@ -47,8 +52,8 @@ function DeviceCard({ device }) {
 
           <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="font-medium text-slate-500 dark:text-gray-400">Location</dt>
-              <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{device.location || "Location unavailable"}</dd>
+              <dt className="font-medium text-slate-500 dark:text-gray-400">Approximate location</dt>
+              <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{location}</dd>
             </div>
             <div>
               <dt className="font-medium text-slate-500 dark:text-gray-400">IP address</dt>
@@ -58,10 +63,18 @@ function DeviceCard({ device }) {
               <dt className="font-medium text-slate-500 dark:text-gray-400">Logged in</dt>
               <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{formatLoginTimestamp(device.logged_in_at)}</dd>
             </div>
-            <div>
-              <dt className="font-medium text-slate-500 dark:text-gray-400">Last active</dt>
-              <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{formatLoginTimestamp(device.last_seen_at)}</dd>
-            </div>
+            {device.last_seen_at && !device.signed_out_at && (
+              <div>
+                <dt className="font-medium text-slate-500 dark:text-gray-400">Last active</dt>
+                <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{formatLoginTimestamp(device.last_seen_at)}</dd>
+              </div>
+            )}
+            {device.signed_out_at && (
+              <div>
+                <dt className="font-medium text-slate-500 dark:text-gray-400">Signed out</dt>
+                <dd className="mt-0.5 text-slate-800 dark:text-gray-200">{formatLoginTimestamp(device.signed_out_at)}</dd>
+              </div>
+            )}
           </dl>
         </div>
       </div>
@@ -104,11 +117,13 @@ export default function LoggedDevicesPage() {
   return (
     <SettingsLayout>
       <div className="mx-auto max-w-4xl">
-        <header className="border-b border-slate-200 pb-4 dark:border-gray-700">
-          <h1 className="font-serif text-2xl font-semibold text-blue-600 dark:text-blue-400">Logged Devices</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">
-            Review successful logins to your Dorm Mart account.
-          </p>
+        <header className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4 dark:border-gray-700">
+          <div>
+            <h1 className="font-serif text-2xl font-semibold text-blue-600 dark:text-blue-400">Logged Devices</h1>
+            <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">
+              Review your 50 most recent login sessions, with your current device first.
+            </p>
+          </div>
         </header>
 
         <section className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
@@ -139,13 +154,13 @@ export default function LoggedDevicesPage() {
             No login history is available yet.
           </p>
         ) : (
-          <ul className="mt-6 space-y-4">
+          <ul className="mt-6 space-y-4" aria-label="Login history">
             {devices.map((device) => <DeviceCard key={device.id} device={device} />)}
           </ul>
         )}
 
         <p className="mt-6 text-xs text-slate-500 dark:text-gray-400">
-          Location is approximate and depends on information supplied by your network provider. Only successful logins are shown.
+          Locations are estimated from IP addresses, not GPS. VPNs, mobile carriers, and campus networks can show a different city. Local and private network addresses cannot be located publicly. Each entry is a login session, so one device may appear more than once. Only successful logins are shown.
         </p>
       </div>
     </SettingsLayout>

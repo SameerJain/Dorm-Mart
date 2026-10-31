@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import ExploreSection from "./components/ExploreSection";
 import ForYouSection from "./components/ForYouSection";
 import HomeFeedTabs from "./components/HomeFeedTabs";
@@ -8,7 +8,6 @@ import { useHomeFeed } from "./hooks/useHomeFeed";
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const {
     activeTab,
     errorItems,
@@ -24,9 +23,6 @@ export default function LandingPage() {
   } = useHomeFeed();
   const [isMobile, setIsMobile] = useState(false);
   const [bannerIdx, setBannerIdx] = useState(0);
-  const [showLoginSuccess, setShowLoginSuccess] = useState(
-    Boolean(location.state?.loginSuccess),
-  );
 
   const rotatingLines = isMobile
     ? ["Happy Shopping!"]
@@ -34,15 +30,6 @@ export default function LandingPage() {
   const openExternalRoute = (url) => {
     window.location.href = url;
   };
-
-  useEffect(() => {
-    if (!location.state?.loginSuccess) return undefined;
-    const id = setTimeout(() => {
-      setShowLoginSuccess(false);
-      navigate(location.pathname, { replace: true, state: null });
-    }, 3000);
-    return () => clearTimeout(id);
-  }, [location.pathname, location.state?.loginSuccess, navigate]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -61,11 +48,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
-      {showLoginSuccess && (
-        <div role="status" className="fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-lg bg-green-600 px-5 py-3 font-medium text-white shadow-lg">
-          Login Successful.
-        </div>
-      )}
       <HomeTopBar
         bannerText={rotatingLines[bannerIdx]}
         interests={interests}
@@ -87,14 +69,15 @@ export default function LandingPage() {
             {activeTab === "forYou" && (
               <ForYouSection
                 hasPersonalization={hasPersonalization}
+                isLoading={isLoading}
                 items={forYouItems}
-                navigate={navigate}
                 wishlistedIds={wishlistedIds}
               />
             )}
 
             {activeTab === "explore" && (
               <ExploreSection
+                isLoading={isLoading}
                 items={exploreItems}
                 wishlistedIds={wishlistedIds}
               />
@@ -113,7 +96,7 @@ export default function LandingPage() {
               )}
               {errorItems && (
                 <p className="text-center text-sm text-red-500">
-                  Couldn't load latest listings. Showing sample items.
+                  Couldn't load listings right now. Please refresh to try again.
                 </p>
               )}
             </div>

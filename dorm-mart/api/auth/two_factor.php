@@ -16,7 +16,7 @@ $method = $_SERVER['REQUEST_METHOD'] ?? '';
 try {
     $conn = db();
     $stmt = $conn->prepare(
-        'SELECT first_name, last_name, email, hash_pass, two_factor_enabled
+        'SELECT first_name, last_name, email, hash_pass, two_factor_enabled, is_protected
          FROM user_accounts WHERE user_id = ? LIMIT 1'
     );
     $stmt->bind_param('i', $userId);
@@ -48,15 +48,48 @@ try {
     $action = is_string($data['action'] ?? null) ? $data['action'] : '';
 
     if ($action === 'enable') {
+        // Seeded demo accounts are shared and their inboxes are not real; turning
+        // 2FA on would lock every other tester out of the account.
+        if ((int)($user['is_protected'] ?? 0) === 1) {
+            $conn->close();
+            json_response(['ok' => false, 'error' => "Two-Factor Authentication can't be turned on for this shared demo account."], 403);
+        }
         if ((bool)$user['two_factor_enabled']) {
             $conn->close();
             json_response(['ok' => false, 'error' => 'Two-Factor Authentication is already enabled for this account.'], 409);
         }
 
-        $update = $conn->prepare('UPDATE user_accounts SET two_factor_enabled = 1 WHERE user_id = ?');
+        // Each enable emails a confirmation; cap it so toggling 2FA off and on
+        // cannot be used to flood the inbox (or burn the email-provider quota).
+        $enableLimit = consume_rate_limit(
+            scoped_rate_limit_key('two_factor_enable_email', $userId),
+            TWO_FACTOR_ENABLE_EMAILS_PER_WINDOW,
+            TWO_FACTOR_ENABLE_WINDOW_MINUTES,
+            TWO_FACTOR_ENABLE_LOCKOUT_MINUTES
+        );
+        if ($enableLimit['blocked']) {
+            $conn->close();
+            $retryAfterSeconds = max(1, (int)$enableLimit['retry_after_seconds']);
+            $displayMinutes = rate_limit_retry_minutes($retryAfterSeconds);
+            header('Retry-After: ' . $retryAfterSeconds);
+            json_response([
+                'ok' => false,
+                'error' => "Two-Factor Authentication was turned on too many times recently. Please try again in {$displayMinutes} minute"
+                    . ($displayMinutes > 1 ? 's' : '') . '.',
+            ], 429);
+        }
+
+        // Conditional flip: of two concurrent enables only one changes the row, so
+        // only one sends the confirmation email.
+        $update = $conn->prepare('UPDATE user_accounts SET two_factor_enabled = 1 WHERE user_id = ? AND two_factor_enabled = 0');
         $update->bind_param('i', $userId);
         $update->execute();
+        $flipped = $update->affected_rows === 1;
         $update->close();
+        if (!$flipped) {
+            $conn->close();
+            json_response(['ok' => false, 'error' => 'Two-Factor Authentication is already enabled for this account.'], 409);
+        }
 
         $mailResult = send_two_factor_email(
             $user,
@@ -92,10 +125,18 @@ try {
             $conn->close();
             json_response(['ok' => false, 'error' => 'Enter your current account password.'], 400);
         }
+
+        $passwordLimit = consume_password_confirm_attempt($userId);
+        if ($passwordLimit['blocked']) {
+            $conn->close();
+            json_response(password_confirm_retry_error($passwordLimit), 429);
+        }
+
         if (!password_verify($password, (string)$user['hash_pass'])) {
             $conn->close();
             json_response(['ok' => false, 'error' => 'Invalid current password.'], 401);
         }
+        clear_password_confirm_attempts($userId);
 
         $update = $conn->prepare('UPDATE user_accounts SET two_factor_enabled = 0 WHERE user_id = ?');
         $update->bind_param('i', $userId);

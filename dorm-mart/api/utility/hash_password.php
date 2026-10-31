@@ -28,17 +28,20 @@
  * - Copy the generated hashes into your SQL INSERT statements
  */
 
-// Check if passwords were provided as arguments
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit("Forbidden\n");
+}
+
+require_once __DIR__ . '/../security/security.php';
+
 if ($argc > 1) {
-    // Batch mode - hash all provided passwords
     echo "Generating password hashes...\n";
     echo str_repeat("=", 80) . "\n\n";
 
     for ($i = 1; $i < $argc; $i++) {
         $password = $argv[$i];
-        // Hash + salt using bcrypt (salt generated and embedded automatically)
-        // Uses PHP's secure password hashing with bcrypt algorithm
-        $hash = password_hash($password, PASSWORD_BCRYPT);
+        $hash = hash_password($password);
 
         echo "Password #{$i}: {$password}\n";
         echo "Hash:        {$hash}\n\n";
@@ -47,7 +50,6 @@ if ($argc > 1) {
     echo str_repeat("=", 80) . "\n";
     echo "Copy the hashes above into your SQL INSERT statements.\n";
 } else {
-    // Interactive mode - prompt for passwords one at a time
     echo "Password Hash Generator - Interactive Mode\n";
     echo str_repeat("=", 80) . "\n";
     echo "Enter passwords one at a time (press Ctrl+C to exit)\n\n";
@@ -62,8 +64,7 @@ if ($argc > 1) {
             continue;
         }
 
-        // Hash + salt using bcrypt (salt generated and embedded automatically)
-        $hash = password_hash($password, PASSWORD_BCRYPT);
+        $hash = hash_password($password);
         echo "Hash: {$hash}\n\n";
 
         $count++;

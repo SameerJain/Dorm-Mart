@@ -12,136 +12,105 @@ $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $requestPath = parse_url($requestUri, PHP_URL_PATH);
 header_remove('X-Powered-By');
 
-function router_is_https_request(): bool
+// Same HTTPS check and CSP the API sends, so the two cannot drift apart.
+require_once __DIR__ . '/api/security/transport.php';
+
+function router_api_error(int $status, string $error): void
 {
-    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+    http_response_code($status);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => $error]);
+    exit;
 }
 
-function router_csp_header(): string
+function router_not_found(): void
 {
-    return "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' wss:; frame-ancestors 'none';";
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo '404 Not Found';
+    exit;
 }
 
-// Route API requests to PHP files
+
 if (strpos($requestPath, '/api/') === 0) {
-    // Remove /api prefix and route to actual PHP file
+
     $apiPath = substr($requestPath, 5); // Remove '/api/'
 
-    // Remove query string for routing
+
     $apiPath = strtok($apiPath, '?');
 
-    // Reject path traversal and null-byte injection
+
     if (strpos($apiPath, '..') !== false || strpos($apiPath, "\0") !== false) {
-        http_response_code(400);
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'Invalid path']);
-        exit;
+        router_api_error(400, 'Invalid path');
     }
 
-    // Build full path to API file
+
     $apiFile = __DIR__ . '/api/' . $apiPath;
 
-    // If it's a directory, try index.php
+
     if (is_dir($apiFile)) {
         $apiFile .= '/index.php';
     }
 
-    // If file doesn't exist, try adding .php extension
+
     if (!file_exists($apiFile) && !is_dir($apiFile)) {
         $apiFile = __DIR__ . '/api/' . $apiPath . '.php';
     }
 
-    // Verify the resolved path stays inside the api/ directory
+    // Only a real .php file inside api/ is routable. Using the realpath-verified
+    // $resolved everywhere below prevents extension and casing tricks.
     $apiRoot = realpath(__DIR__ . '/api');
     $resolved = $apiRoot !== false ? realpath($apiFile) : false;
-    if ($resolved === false || $apiRoot === false || strpos($resolved, $apiRoot . DIRECTORY_SEPARATOR) !== 0) {
-        http_response_code(404);
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'API endpoint not found']);
-        exit;
-    }
-    if (strtolower((string)pathinfo($resolved, PATHINFO_EXTENSION)) !== 'php') {
-        http_response_code(404);
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'API endpoint not found']);
-        exit;
+    if ($resolved === false
+        || strpos($resolved, $apiRoot . DIRECTORY_SEPARATOR) !== 0
+        || strtolower((string)pathinfo($resolved, PATHINFO_EXTENSION)) !== 'php'
+        || !is_file($resolved)) {
+        router_api_error(404, 'API endpoint not found');
     }
 
-    // Block directories that are never HTTP endpoints (libraries, CLI tools, tests).
-    // Using $resolved (realpath-verified) prevents extension/casing tricks.
+    // Directories that are never HTTP endpoints (libraries, CLI tools, tests).
+    $blockedDirs = ['tests/', 'database/', 'helpers/', 'security/', 'utility/', 'config/'];
     $relPath = str_replace('\\', '/', ltrim(substr($resolved, strlen($apiRoot)), DIRECTORY_SEPARATOR));
-
-    $blockedDirs = [
-        'api_test_files/', // integration test scripts
-        'database/',       // DB libraries and CLI-only migration tools
-        'helpers/',        // shared helper libraries
-        'security/',       // security library and debug tools
-        'utility/',        // CLI tools and dev scripts — not HTTP endpoints
-        'config/',         // configuration library files — not HTTP endpoints
-    ];
-
     foreach ($blockedDirs as $dir) {
         if (str_starts_with($relPath, $dir)) {
-            http_response_code(404);
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'error' => 'API endpoint not found']);
-            exit;
+            router_api_error(404, 'API endpoint not found');
         }
     }
 
-    // If API file exists, include it
-    if (file_exists($apiFile) && is_file($apiFile)) {
-        require $apiFile;
-        exit;
-    }
-
-    // API file not found
-    http_response_code(404);
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'error' => 'API endpoint not found']);
+    require $resolved;
     exit;
 }
 
 // Serve static files from build directory. Decode before validating so encoded
-// traversal sequences cannot bypass the containment check.
+// traversal sequences cannot bypass the containment check. Uploaded media is
+// only served through the authorization-aware API.
 $decodedRequestPath = rawurldecode($requestPath);
 if (strpos($decodedRequestPath, "\0") !== false
-    || preg_match('#(?:^|[\\\\/])\.\.(?:[\\\\/]|$)#', $decodedRequestPath)) {
-    http_response_code(404);
-    header('Content-Type: text/plain; charset=utf-8');
-    echo '404 Not Found';
-    exit;
-}
-
-// Uploaded media must be served through an authorization-aware API endpoint.
-if (str_starts_with($decodedRequestPath, '/media/')) {
-    http_response_code(404);
-    header('Content-Type: text/plain; charset=utf-8');
-    echo '404 Not Found';
-    exit;
+    || preg_match('#(?:^|[\\\\/])\.\.(?:[\\\\/]|$)#', $decodedRequestPath)
+    || str_starts_with($decodedRequestPath, '/media/')) {
+    router_not_found();
 }
 
 $buildRoot = realpath(__DIR__ . '/build');
 $buildPath = __DIR__ . '/build' . $decodedRequestPath;
 
-// If requesting root, serve index.html
+
 if ($decodedRequestPath === '/' || $decodedRequestPath === '') {
     $buildPath = __DIR__ . '/build/index.html';
 }
 
-// Shared security headers for all static responses
+
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
 header('Cross-Origin-Opener-Policy: same-origin');
 header_remove('X-Powered-By');
-if (router_is_https_request()) {
+if (is_https_request()) {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 }
 
-// If file exists in build directory, serve it
+
 // Only serve an existing file when its resolved path remains inside build/.
 $resolvedBuildPath = $buildRoot !== false ? realpath($buildPath) : false;
 if ($resolvedBuildPath !== false
@@ -149,7 +118,7 @@ if ($resolvedBuildPath !== false
     && str_starts_with($resolvedBuildPath, $buildRoot . DIRECTORY_SEPARATOR)
     && is_file($resolvedBuildPath)) {
     $buildPath = $resolvedBuildPath;
-    // Set appropriate content type
+
     $ext = pathinfo($buildPath, PATHINFO_EXTENSION);
     $mimeTypes = [
         'html' => 'text/html',
@@ -173,9 +142,9 @@ if ($resolvedBuildPath !== false
     $contentType = $mimeTypes[$extLower] ?? 'application/octet-stream';
     header('Content-Type: ' . $contentType);
 
-    // CSP on HTML responses; JS/CSS/fonts get cache headers instead
+
     if ($extLower === 'html') {
-        header('Content-Security-Policy: ' . router_csp_header());
+        header('Content-Security-Policy: ' . security_csp_header());
     } elseif (in_array($extLower, ['js', 'css', 'woff2', 'woff', 'ttf'], true)) {
         header('Cache-Control: public, max-age=31536000, immutable');
     }
@@ -189,15 +158,13 @@ if ($resolvedBuildPath !== false
     exit;
 }
 
-// For React Router (SPA), serve index.html for all non-API routes
+
 $indexPath = __DIR__ . '/build/index.html';
 if (file_exists($indexPath)) {
     header('Content-Type: text/html');
-    header('Content-Security-Policy: ' . router_csp_header());
+    header('Content-Security-Policy: ' . security_csp_header());
     readfile($indexPath);
     exit;
 }
 
-// Fallback 404
-http_response_code(404);
-echo '404 Not Found';
+router_not_found();

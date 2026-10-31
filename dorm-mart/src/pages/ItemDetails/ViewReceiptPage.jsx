@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { formatCurrency } from "../../utils/formatters";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import ItemDetailHeader from "./components/ItemDetailHeader";
 import ItemFactsPanel from "./components/ItemFactsPanel";
 import ProductImageGallery from "./components/ProductImageGallery";
@@ -31,6 +32,8 @@ export default function ViewReceipt() {
   const { loading, error, receiptData, normalized } =
     useReceiptDetail(productId);
 
+  useBodyScrollLock(refundOpen);
+
   const isSellerViewingOwnProduct =
     myId &&
     normalized?.sellerId &&
@@ -57,11 +60,12 @@ export default function ViewReceipt() {
     displayedPrice != null
       ? (formatCurrency(displayedPrice) ??
         `$${Number(displayedPrice).toFixed(2)}`)
-      : "\u2014";
+      : "N/A";
 
   const isSuccessful = !purchaseDetails?.failureReason;
   const transactionStatus = isSuccessful ? "Successful" : "Failed";
-  const canRefund = isSellerViewingOwnProduct && purchaseDetails?.completionSource === "stripe" && purchaseDetails?.paymentStatus === "succeeded";
+  const isMock = purchaseDetails?.completionSource === "mock";
+  const canRefund = isSellerViewingOwnProduct && ["stripe", "mock"].includes(purchaseDetails?.completionSource) && purchaseDetails?.paymentStatus === "succeeded";
 
   async function submitRefund() {
     setRefunding(true);
@@ -163,11 +167,11 @@ export default function ViewReceipt() {
                   purchaseRows={purchaseRows}
                 />
 
-                {purchaseDetails?.completionSource === "stripe" && (
+                {["stripe", "mock"].includes(purchaseDetails?.completionSource) && (
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-800 dark:bg-emerald-950/30">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-emerald-950 dark:text-emerald-100">Stripe payment · {purchaseDetails.paymentMode === "test" ? "Test Mode" : "Live Mode"}</p>
+                        <p className="font-semibold text-emerald-950 dark:text-emerald-100">{isMock ? "Mock transaction. No real money was moved." : `Stripe payment · ${purchaseDetails.paymentMode === "test" ? "Test Mode" : "Live Mode"}`}</p>
                         <p className="mt-1 text-emerald-800 dark:text-emerald-200">Status: {String(purchaseDetails.paymentStatus || "succeeded").replaceAll("_", " ")}</p>
                       </div>
                       {canRefund && <button type="button" onClick={() => setRefundOpen(true)} className="rounded-lg border border-emerald-700 px-3 py-2 font-semibold text-emerald-800 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-emerald-200 dark:hover:bg-emerald-900/40">Issue Full Refund</button>}
@@ -205,9 +209,9 @@ export default function ViewReceipt() {
       </div>
       {refundOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="refund-title">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800">
+          <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800">
             <h2 id="refund-title" className="text-xl font-bold text-gray-900 dark:text-gray-100">Issue a Full Refund</h2>
-            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Stripe will return the full buyer payment. Stripe’s original processing fee may not be returned and remains your responsibility.</p>
+            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{isMock ? "This records a mock refund for the demo. No real money will move." : "Stripe will return the full buyer payment. Stripe’s original processing fee may not be returned and remains your responsibility."}</p>
             <fieldset className="mt-5 space-y-3">
               <legend className="text-sm font-semibold text-gray-900 dark:text-gray-100">What should happen to the listing?</legend>
               <label className="flex cursor-pointer gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700"><input type="radio" name="refund-listing" checked={!refundRelist} onChange={() => setRefundRelist(false)} /><span className="text-sm text-gray-800 dark:text-gray-200"><strong>Keep Sold</strong><br />Preserve the current sold listing.</span></label>

@@ -1,0 +1,23 @@
+# Let Git detect text files. Files already committed with CRLF are left as they
+# are (Git does not convert a text=auto file whose index copy has CRs), so this
+# does not rewrite history or flag the existing CRLF files as modified.
+* text=auto
+
+# Always LF, in the repo and in the working tree. These run on Linux (the
+# Railway container and CI); a CRLF checkout on Windows breaks the shebang
+# ("bad interpreter") or the Dockerfile's COPY'd scripts.
+*.sh text eol=lf
+Dockerfile text eol=lf
+
+# Binary assets: skip text detection.
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

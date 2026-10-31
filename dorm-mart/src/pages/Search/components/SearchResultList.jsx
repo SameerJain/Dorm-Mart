@@ -37,8 +37,8 @@ export default function SearchResultList({ items, loading, error, onSelectItem }
               onClick={() => onSelectItem(item.id)}
               className="w-full text-left bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm hover:border-blue-200 dark:hover:border-blue-700 transition p-3"
             >
-              <div className="grid grid-cols-[4.5rem,1fr,6.5rem] md:grid-cols-[6rem,1fr,8rem] gap-3 items-center">
-                <div className="h-20 w-20 md:h-24 md:w-24 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+              <div className="grid grid-cols-[5rem,1fr] sm:grid-cols-[5rem,1fr,6.5rem] md:grid-cols-[6rem,1fr,8rem] gap-x-3 gap-y-1 items-center">
+                <div className="row-span-2 sm:row-span-1 h-20 w-20 md:h-24 md:w-24 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
                   <img
                     src={withFallbackImage(item.img)}
                     alt={item.title}
@@ -47,9 +47,9 @@ export default function SearchResultList({ items, loading, error, onSelectItem }
                   />
                 </div>
 
-                <div className="flex flex-col gap-0.5 md:gap-1 pr-2 min-w-0">
+                <div className="flex flex-col gap-0.5 md:gap-1 sm:pr-2 min-w-0">
                   <p
-                    className="text-sm md:text-base font-semibold text-gray-900 dark:text-gray-100 truncate"
+                    className="text-sm md:text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 break-words sm:truncate"
                     title={item.title}
                   >
                     {item.title}
@@ -82,7 +82,7 @@ export default function SearchResultList({ items, loading, error, onSelectItem }
                   </p>
                 </div>
 
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:flex-nowrap sm:items-end sm:gap-1">
                   <div className="text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">
                     {formatCurrency(item.price) ?? "$0.00"}
                   </div>

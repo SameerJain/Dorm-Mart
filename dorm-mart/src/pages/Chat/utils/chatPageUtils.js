@@ -1,23 +1,21 @@
 export default function fmtTime(ts) {
-  const d = new Date(ts); // if ts is seconds, use new Date(ts * 1000)
+  // Timestamps are JS milliseconds throughout the chat layer.
+  const d = new Date(ts);
   const now = new Date();
 
-  // Compare calendar dates in the user's local time zone
   const sameLocalDate = (a, b) =>
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate();
 
-  // 1) Today -> just time with AM/PM (local)
   if (sameLocalDate(d, now)) {
     return d.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
-      hour12: true, // includes AM/PM
+      hour12: true,
     });
   }
 
-  // 2) Yesterday -> "yesterday HH:MM AM/PM" (local)
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (sameLocalDate(d, yesterday)) {
@@ -29,7 +27,6 @@ export default function fmtTime(ts) {
     return `yesterday ${time}`;
   }
 
-  // 3) Otherwise -> full date + time with AM/PM (local)
   return d.toLocaleString([], {
     year: "numeric",
     month: "2-digit",
@@ -68,10 +65,12 @@ export function parseChatMetadata(metadata) {
   }
 }
 
-const isVirtualPrompt = (message) =>
-  String(message.message_id || "").startsWith("review_prompt_") ||
-  String(message.message_id || "").startsWith("buyer_rating_prompt_");
-
+/**
+ * Merge raw messages with virtual review prompts for display.
+ * Superseded confirm requests/responses are hidden so only the latest
+ * response per confirm_request_id remains, then review prompts are appended
+ * after the latest accepted confirmation.
+ */
 export function buildDisplayMessages({
   activeReceiverId,
   hasAcceptedConfirm,
@@ -156,9 +155,6 @@ export function buildDisplayMessages({
     });
   }
 
-  return [...filtered, ...prompts].sort((a, b) => {
-    const timeDifference = (a.ts || 0) - (b.ts || 0);
-    if (timeDifference) return timeDifference;
-    return Number(isVirtualPrompt(a)) - Number(isVirtualPrompt(b));
-  });
+  // sort() is stable, so a prompt stays after any real message sharing its timestamp.
+  return [...filtered, ...prompts].sort((a, b) => (a.ts || 0) - (b.ts || 0));
 }

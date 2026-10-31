@@ -81,7 +81,6 @@ try {
         ORDER BY spr.created_at DESC
     SQL;
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare query');
@@ -129,7 +128,6 @@ try {
             $canceledByUserId = (int)$row['canceled_by_user_id'];
             $canceledByFirstName = isset($row['canceled_by_first_name']) ? (string)$row['canceled_by_first_name'] : '';
             $canceledByLastName = isset($row['canceled_by_last_name']) ? (string)$row['canceled_by_last_name'] : '';
-            // XSS PROTECTION: Escape user-generated content
             $canceledBy = [
                 'user_id' => $canceledByUserId,
                 'first_name' => $canceledByFirstName,
@@ -140,6 +138,7 @@ try {
         $hasCompletedConfirm = isset($row['has_completed_confirm']) && ($row['has_completed_confirm'] === 1 || $row['has_completed_confirm'] === '1');
         $hasUnsuccessfulConfirm = isset($row['has_unsuccessful_confirm']) && ($row['has_unsuccessful_confirm'] === 1 || $row['has_unsuccessful_confirm'] === '1');
         $hasReview = isset($row['has_review']) && ($row['has_review'] === 1 || $row['has_review'] === '1');
+
         $records[] = [
             'request_id' => (int)$row['request_id'],
             'inventory_product_id' => $row['inventory_product_id'] !== null ? (int)$row['inventory_product_id'] : null,

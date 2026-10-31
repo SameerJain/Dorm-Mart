@@ -4,6 +4,7 @@ import { ChatContext } from "../../../context/ChatContext";
 import { API_BASE } from "../../../utils/apiConfig";
 import { csrfFetch } from "../../../utils/csrfFetch";
 import logger from "../../../utils/logger";
+import { useSubmitLock } from "../../../hooks/useSubmitLock";
 
 export default function useMessageSeller({
   productId,
@@ -15,13 +16,14 @@ export default function useMessageSeller({
   const chatCtx = useContext(ChatContext);
   const [msgLoading, setMsgLoading] = useState(false);
   const [msgError, setMsgError] = useState(null);
+  const runExclusive = useSubmitLock();
 
   useEffect(() => {
     setMsgLoading(false);
     setMsgError(null);
   }, [productId]);
 
-  const handleMessageSeller = async () => {
+  const messageSeller = async () => {
     if (msgLoading || !normalized?.sellerId) return;
 
     if (isSellerViewingOwnProduct) {
@@ -80,5 +82,9 @@ export default function useMessageSeller({
     }
   };
 
-  return { msgLoading, msgError, handleMessageSeller };
+  return {
+    msgLoading,
+    msgError,
+    handleMessageSeller: () => runExclusive(messageSeller),
+  };
 }

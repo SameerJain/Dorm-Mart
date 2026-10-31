@@ -5,6 +5,7 @@ import PreLoginBranding from "../components/PreLoginBranding";
 import PreLoginNavLinks from "../components/PreLoginNavLinks";
 import { API_BASE } from "../utils/apiConfig";
 import { useEmailPolicy } from "../hooks/useEmailPolicy";
+import { useSubmitLock } from "../hooks/useSubmitLock";
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
+  const runExclusive = useSubmitLock();
   async function sendForgotPasswordRequest(email, signal) {
     const r = await fetch(`${API_BASE}/auth/forgot_password.php`, {
       method: "POST",
@@ -23,10 +25,7 @@ function ForgotPasswordPage() {
     return r.json();
   }
 
-  const handleForgotPasswordRequest = async (e) => {
-    e.preventDefault();
-
-    // Clear any previous errors immediately
+  const handleForgotPasswordRequest = async () => {
     setError("");
 
     const valid = emailValidation(email);
@@ -50,7 +49,7 @@ function ForgotPasswordPage() {
       setError("");
 
       setTimeout(() => {
-        setIsLoading(false); // keep spinner during the delay
+        setIsLoading(false);
         navigate("/forgot-password/confirmation");
       }, 2000);
     } catch (err) {
@@ -63,26 +62,20 @@ function ForgotPasswordPage() {
   function emailValidation(email) {
     const trimmed = email.trim();
 
-    // Check length (255 characters max to match database limit)
     if (trimmed.length > 255) return false;
 
-    // Email validation based on ALLOW_ALL_EMAILS flag
     if (!emailPolicyLoading) {
       if (!allowAllEmails) {
-        // Only accept @buffalo.edu
         const pattern = /^[^@\s]+@buffalo\.edu$/i;
         if (!pattern.test(trimmed)) return false;
       } else {
-        // Accept any valid email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(trimmed)) return false;
       }
     }
 
-    // Extract part before @
     const localPart = trimmed.split("@")[0];
 
-    // Reject if only numbers
     if (/^\d+$/.test(localPart)) return false;
 
     return true;
@@ -92,9 +85,7 @@ function ForgotPasswordPage() {
     <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
-      {/* Right side - forgot password form (full width on mobile, 50% on desktop) */}
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 py-8 sm:py-12 md:pt-16 md:pb-8 lg:py-8 pb-[max(2rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-y-auto lg:overflow-hidden">
-        {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
@@ -105,7 +96,6 @@ function ForgotPasswordPage() {
         </div>
         <div className="w-full max-w-md md:max-w-xl px-2 sm:px-0 relative z-10">
           <div className="p-4 sm:p-6 md:p-10 rounded-lg relative bg-blue-600">
-            {/* Torn paper effect */}
             <div
               className="absolute inset-0 rounded-lg bg-blue-600"
               style={{
@@ -115,7 +105,6 @@ function ForgotPasswordPage() {
             ></div>
 
             <div className="relative z-10">
-              {/* Header with dot */}
               <div className="text-center mb-6 sm:mb-8 md:mb-10">
                 <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-4 sm:mb-5"></div>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif text-white leading-tight">
@@ -123,13 +112,14 @@ function ForgotPasswordPage() {
                 </h2>
               </div>
 
-              {/* forgot password form - Improved spacing and touch targets */}
               <form
-                onSubmit={handleForgotPasswordRequest}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  runExclusive(handleForgotPasswordRequest);
+                }}
                 noValidate
                 className="space-y-4 sm:space-y-5 md:space-y-6"
               >
-                {/* email input input */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     University Email Address
@@ -149,7 +139,6 @@ function ForgotPasswordPage() {
                   </p>
                 )}
 
-                {/* request button with arrow - Minimum 44px height for touch targets */}
                 <button
                   type="submit"
                   disabled={isLoading}
@@ -197,7 +186,6 @@ function ForgotPasswordPage() {
                 </button>
               </form>
 
-              {/* Links - Improved touch targets and spacing */}
               <div className="mt-6 sm:mt-8 text-center px-2">
                 <PreLoginNavLinks
                   className="text-sm sm:text-base md:text-lg"

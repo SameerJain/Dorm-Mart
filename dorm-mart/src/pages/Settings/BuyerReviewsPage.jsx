@@ -5,6 +5,7 @@ import StarRating from "../Reviews/StarRating";
 import PageBackButton from "../../components/PageBackButton";
 import logger from "../../utils/logger";
 import { API_BASE } from "../../utils/apiConfig";
+import { formatDate } from "../../utils/formatters";
 /**
  * BuyerReviewsPage Component
  *
@@ -18,7 +19,6 @@ function BuyerReviewsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch seller ratings on mount
   useEffect(() => {
     fetchBuyerReviews();
   }, []);
@@ -27,7 +27,6 @@ function BuyerReviewsPage() {
     try {
       setLoading(true);
       setError(null);
-      // Don't pass buyer_user_id - API will use logged-in user
       const response = await fetch(
         `${API_BASE}/reviews/get_buyer_reviews.php`,
         {
@@ -113,7 +112,6 @@ function BuyerReviewsPage() {
                   </div>
                 </div>
 
-                {/* Review Text */}
                 {review.review_text && (
                   <div className="mb-3 min-w-0">
                     <div
@@ -126,11 +124,7 @@ function BuyerReviewsPage() {
                       }}
                     >
                       <p
-                        className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all overflow-wrap-anywhere"
-                        style={{
-                          wordBreak: "break-all",
-                          overflowWrap: "anywhere",
-                        }}
+                        className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words"
                       >
                         {review.review_text}
                       </p>
@@ -138,10 +132,9 @@ function BuyerReviewsPage() {
                   </div>
                 )}
 
-                {/* Date */}
                 {review.created_at && (
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(review.created_at).toLocaleDateString()}
+                    {formatDate(review.created_at)}
                   </p>
                 )}
               </div>

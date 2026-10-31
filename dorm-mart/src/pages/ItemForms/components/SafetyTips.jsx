@@ -1,9 +1,9 @@
-export default function SafetyTips() {
+export default function SafetyTips({ className = "" }) {
   return (
-    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl border border-blue-200 dark:border-blue-900/40 p-6 mt-6">
-      <h3 className="text-2xl font-bold text-blue-900 dark:text-blue-100 mb-4">
+    <div className={`bg-blue-50 dark:bg-blue-950/30 rounded-2xl border border-blue-200 dark:border-blue-900/40 p-4 sm:p-6 ${className}`}>
+      <h2 className="text-xl font-bold text-blue-900 dark:text-blue-100 mb-4">
         Safety Tips
-      </h3>
+      </h2>
       <ul className="text-sm text-blue-800 dark:text-blue-100 space-y-3">
         <li className="flex items-start gap-2">
           <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">
