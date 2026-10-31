@@ -1,5 +1,4 @@
 <?php
-// Universal page for expired/invalid reset links
 require_once __DIR__ . '/../security/security.php';
 
 header('X-Content-Type-Options: nosniff');

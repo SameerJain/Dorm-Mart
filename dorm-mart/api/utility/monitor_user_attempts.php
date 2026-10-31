@@ -18,7 +18,6 @@ require_once __DIR__ . '/../security/security.php';
 
 require_local_or_cli_access();
 
-// Get session_id from command line argument
 $sessionId = $argv[1] ?? '';
 
 if (empty($sessionId)) {
@@ -35,7 +34,6 @@ echo "Session ID: " . substr($sessionId, 0, 32) . "...\n";
 echo "Time: " . date('Y-m-d H:i:s') . "\n";
 echo str_repeat("=", 50) . "\n\n";
 
-// Get current session status
 $conn = db();
 $stmt = $conn->prepare('SELECT failed_login_attempts, last_failed_attempt, lockout_until FROM login_rate_limits WHERE session_id = ?');
 $stmt->bind_param('s', $sessionId);
@@ -72,7 +70,6 @@ if ($lastAttempt) {
 
 echo "\n";
 
-// Check rate limiting status
 echo "🔒 RATE LIMITING STATUS:\n";
 $rateLimitCheck = check_rate_limit($sessionId);
 if ($rateLimitCheck['blocked']) {
@@ -87,7 +84,6 @@ if ($rateLimitCheck['blocked']) {
 
 echo "\n";
 
-// Show decay simulation
 if ($attempts > 0 && $lastAttempt) {
     echo "⏰ DECAY SIMULATION:\n";
     $currentTime = time();
@@ -109,7 +105,6 @@ if ($attempts > 0 && $lastAttempt) {
         echo "  🎯 DECAY WOULD REDUCE ATTEMPTS BY: " . ($attempts - $expectedAttempts) . "\n";
     }
     
-    // Show when decay would complete
     if ($attempts > 0) {
         $secondsToComplete = ($attempts * 10) - $timeSince;
         if ($secondsToComplete > 0) {
@@ -122,7 +117,6 @@ if ($attempts > 0 && $lastAttempt) {
 
 echo "\n";
 
-// Show lockout expiry
 if ($lockoutUntil) {
     $lockoutExpiry = strtotime($lockoutUntil);
     $currentTime = time();

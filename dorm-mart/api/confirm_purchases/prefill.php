@@ -77,7 +77,6 @@ try {
         $defaultPrice = (float)$schedRow['listing_price'];
     }
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     json_response([
         'success' => true,
         'data' => [

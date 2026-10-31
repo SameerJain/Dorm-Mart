@@ -17,7 +17,6 @@ echo "=== RATE LIMITING DASHBOARD ===\n";
 echo "Time: " . date('Y-m-d H:i:s') . "\n";
 echo str_repeat("=", 80) . "\n\n";
 
-// Get all sessions with failed attempts
 $conn = db();
 $stmt = $conn->prepare('
     SELECT session_id, failed_login_attempts, last_failed_attempt, lockout_until
@@ -56,7 +55,6 @@ while ($row = $result->fetch_assoc()) {
         echo "   🔄  Decay reduces attempts by 1 every 10 seconds\n";
     }
     
-    // Check rate limiting status
     $rateLimitCheck = check_rate_limit($sessionId);
     if ($rateLimitCheck['blocked']) {
         $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
@@ -71,7 +69,6 @@ while ($row = $result->fetch_assoc()) {
 $stmt->close();
 $conn->close();
 
-// Show recent log entries if available
 $logFile = __DIR__ . '/attempts.log';
 if (file_exists($logFile)) {
     echo "📝 RECENT ACTIVITY:\n";

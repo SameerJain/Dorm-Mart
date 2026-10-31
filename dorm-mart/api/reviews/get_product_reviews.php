@@ -30,7 +30,6 @@ try {
         json_response(['success' => false, 'error' => 'You are not authorized to view reviews for this product'], 403);
     }
 
-    // Get all reviews for this product
     $stmt = $conn->prepare(
         'SELECT pr.review_id, pr.product_id, pr.buyer_user_id, pr.seller_user_id,
                 pr.rating, pr.product_rating, pr.review_text, pr.image1_url, pr.image2_url, pr.image3_url,
@@ -55,7 +54,6 @@ try {
             $buyerName = 'Buyer #' . $row['buyer_user_id'];
         }
 
-        // XSS PROTECTION: Escape user-generated content before returning in JSON
         $reviews[] = [
             'review_id' => (int)$row['review_id'],
             'product_id' => (int)$row['product_id'],

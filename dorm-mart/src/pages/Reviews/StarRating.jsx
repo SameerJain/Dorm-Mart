@@ -56,12 +56,10 @@ function StarRating({
             style={{ width: size, height: size }}
             onMouseLeave={handleMouseLeave}
           >
-            {/* Base star (always rendered) */}
             <div className="absolute inset-0">
               <Star filled={false} size={size} />
             </div>
 
-            {/* Filled overlay for full or half stars */}
             {(isFull || isHalf) && (
               <div
                 className="absolute inset-0 overflow-hidden"
@@ -73,7 +71,6 @@ function StarRating({
               </div>
             )}
 
-            {/* Clickable left half for 0.5 rating */}
             {!readOnly && (
               <button
                 type="button"
@@ -84,7 +81,6 @@ function StarRating({
               />
             )}
 
-            {/* Clickable right half for full rating */}
             {!readOnly && (
               <button
                 type="button"
@@ -101,10 +97,6 @@ function StarRating({
   );
 }
 
-/**
- * Individual Star Component
- * Renders a single star with filled/empty states
- */
 function Star({ filled, size }) {
   return (
     <svg

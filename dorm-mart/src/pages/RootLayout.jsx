@@ -20,7 +20,6 @@ function RootLayout() {
   const matches = useMatches();
   const isNotFoundRoute = matches.some((m) => m.handle?.isNotFound);
   const chatContext = useContext(ChatContext);
-  // Check if we're viewing a conversation (activeConvId exists) or the list (no activeConvId)
   const isViewingConversation = chatContext?.activeConvId != null;
 
   const [isFAQModalOpen, setIsFAQModalOpen] = useState(false);
@@ -51,11 +50,9 @@ function RootLayout() {
         setIsChecking(false);
         loadUserTheme(user?.user_id);
       } catch (error) {
-        // AbortError means component unmounted, don't update state or navigate
         if (error.name === "AbortError") {
           return;
         }
-        // Not authenticated, redirect to login
         setIsChecking(false);
         navigate("/login", { replace: true });
       }
@@ -63,18 +60,15 @@ function RootLayout() {
 
     checkAuth();
 
-    // Cleanup: abort fetch if component unmounts
     return () => {
       controller.abort();
     };
   }, [navigate]);
 
-  // Scroll to top when navigating to a new page
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  // Show loading state while checking authentication
   if (isChecking) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -86,9 +80,8 @@ function RootLayout() {
     );
   }
 
-  // Only render if authenticated
   if (!isAuthenticated) {
-    return null; // Will redirect, but return null as fallback
+    return null;
   }
 
   return (

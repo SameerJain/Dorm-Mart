@@ -66,11 +66,9 @@ function SettingsLayout({ children }) {
   };
 
   return (
-    // Back to normal: no `relative`, still using the height minus nav
     <div
       className="h-[calc(100dvh-var(--nav-h,64px))] w-full flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden"
     >
-      {/* Mobile hamburger menu button - only visible on mobile */}
       <div className="lg:hidden px-4 py-2 short:py-0.5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <button
           onClick={() => setShowMobileMenu(!showMobileMenu)}
@@ -94,9 +92,7 @@ function SettingsLayout({ children }) {
         </button>
       </div>
 
-      {/* Full-width grid that also stretches to full height */}
       <div className="grid flex-1 w-full grid-cols-1 lg:grid-cols-[280px_1fr] gap-3 lg:gap-6 px-3 sm:px-6 pt-3 sm:pt-6 pb-4 sm:pb-8 min-h-0">
-        {/* Desktop Sidebar (hidden on mobile) */}
         <aside className="hidden h-full rounded-xl p-0 text-white shadow bg-blue-600 dark:bg-blue-800 dark:shadow-lg dark:shadow-black/25 dark:ring-1 dark:ring-white/10 lg:block">
           <div className="px-4 py-3">
             <h2 className="text-xl font-serif font-semibold">Settings</h2>
@@ -107,7 +103,6 @@ function SettingsLayout({ children }) {
           </nav>
         </aside>
 
-        {/* Mobile Sidebar Overlay – now FIXED so it covers nav bar too */}
         <div
           className={`lg:hidden fixed inset-0 z-40 flex transition-opacity duration-300 ${
             showMobileMenu
@@ -115,13 +110,11 @@ function SettingsLayout({ children }) {
               : "opacity-0 pointer-events-none"
           }`}
         >
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black bg-opacity-50"
             onClick={() => setShowMobileMenu(false)}
           ></div>
 
-          {/* Sliding sidebar */}
           <aside
             className={`relative flex h-full w-[calc(16rem+env(safe-area-inset-left,0px))] flex-col transform rounded-r-xl bg-blue-600 p-0 pl-[env(safe-area-inset-left,0px)] pt-[env(safe-area-inset-top,0px)] text-white shadow-lg transition-transform duration-300 dark:bg-blue-800 dark:shadow-black/40 dark:ring-1 dark:ring-white/10 ${
               showMobileMenu ? "translate-x-0" : "-translate-x-full"
@@ -159,7 +152,6 @@ function SettingsLayout({ children }) {
           </aside>
         </div>
 
-        {/* Content (stretch to bottom) */}
         <main className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 pb-10 sm:pb-12 shadow overflow-auto overscroll-contain min-h-0">
           {children}
         </main>

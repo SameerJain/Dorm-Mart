@@ -35,7 +35,6 @@ try {
         'Product rating must be in 0.5 increments'
     );
 
-    // Validate review_text (1-1000 chars, required)
     $reviewText = is_string($payload['review_text'] ?? null) ? trim($payload['review_text']) : '';
     if ($reviewText === '') {
         json_response(['success' => false, 'error' => 'Review text is required'], 400);
@@ -44,7 +43,6 @@ try {
         json_response(['success' => false, 'error' => 'Review text must be 1000 characters or less'], 400);
     }
 
-    // Validate optional image URLs (up to 3 images)
     $rawImageUrls = [];
     foreach (['image1_url', 'image2_url', 'image3_url'] as $imageKey) {
         $value = $payload[$imageKey] ?? null;
@@ -54,7 +52,6 @@ try {
         $rawImageUrls[] = is_string($value) ? trim($value) : null;
     }
     
-    // Ensure images are from our upload directory (security check)
     $validateImageUrl = function($url) use ($userId) {
         if ($url === null || $url === '') return null;
         $pattern = '#^/media/review-images/review_u' . $userId
@@ -102,15 +99,12 @@ try {
 
     $sellerId = (int)$productRow['seller_id'];
 
-    // Prevent sellers from reviewing their own products
     if ($sellerId === $userId) {
         json_response(['success' => false, 'error' => 'You cannot review your own product'], 403);
     }
 
-    // Check if user has purchased this product
     $hasPurchased = false;
 
-    // Check purchase_history table (JSON array format)
     $stmt = $conn->prepare('SELECT items FROM purchase_history WHERE user_id = ? LIMIT 1');
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare purchase history lookup');
@@ -141,7 +135,6 @@ try {
         json_response(['success' => false, 'error' => 'You can only review products you have purchased'], 403);
     }
 
-    // Check if user has already reviewed this product
     $stmt = $conn->prepare('SELECT review_id FROM product_reviews WHERE buyer_user_id = ? AND product_id = ? LIMIT 1');
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare existing review check');
@@ -156,7 +149,6 @@ try {
         json_response(['success' => false, 'error' => 'You have already reviewed this product'], 409);
     }
 
-    // Insert the review with optional images
     $stmt = $conn->prepare(
         'INSERT INTO product_reviews (product_id, buyer_user_id, seller_user_id, rating, product_rating, review_text, image1_url, image2_url, image3_url, video_url)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'

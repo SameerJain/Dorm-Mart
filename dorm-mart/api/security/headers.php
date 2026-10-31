@@ -4,7 +4,6 @@
 require_once __DIR__ . '/../config/app_config.php';
 require_once __DIR__ . '/transport.php';
 
-// SECURITY HEADERS
 
 function require_local_or_cli_access(): void {
     if (php_sapi_name() === 'cli') {
@@ -59,19 +58,15 @@ function set_security_headers() {
         echo json_encode(['ok' => false, 'success' => false, 'error' => 'Server error']);
     });
 
-    // Content Security Policy - unsafe-eval removed; production React bundles don't need it
     header('Content-Security-Policy: ' . security_csp_header());
 
-    // X-Content-Type-Options - Prevents MIME type sniffing
     header("X-Content-Type-Options: nosniff");
 
     // X-Frame-Options - Prevents clickjacking (kept for older browser compat alongside frame-ancestors)
     header("X-Frame-Options: DENY");
 
-    // Referrer Policy - Controls referrer information
     header("Referrer-Policy: strict-origin-when-cross-origin");
 
-    // Permissions Policy - Controls browser features
     header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
 
     header('Cross-Origin-Opener-Policy: same-origin');
@@ -81,18 +76,15 @@ function set_security_headers() {
         header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
     }
 
-    // Remove X-Powered-By header to hide PHP version
     header_remove('X-Powered-By');
 }
 
-// CORS CONFIGURATION
 
 /**
  * Set secure CORS headers for trusted origins only
  * This prevents unauthorized cross-origin requests
  */
 function set_secure_cors() {
-    // Skip CORS for CLI requests
     if (php_sapi_name() === 'cli') {
         return;
     }
@@ -105,7 +97,6 @@ function set_secure_cors() {
     }
 
     if ($origin === '' || !in_array($origin, $allowedOrigins, true)) {
-        // Reject requests from untrusted origins
         http_response_code(403);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['ok' => false, 'error' => 'Origin not allowed']);
@@ -119,7 +110,6 @@ function set_secure_cors() {
     header('Access-Control-Max-Age: 86400');
 }
 
-// INITIALIZATION
 
 /**
  * Initialize security for API endpoints

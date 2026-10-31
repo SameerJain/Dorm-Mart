@@ -10,7 +10,6 @@ if (!function_exists('db')) {
  */
 function db(): mysqli
 {
-    // Include security utilities for escape_html function
     $root = dirname(__DIR__, 2);
     require_once $root . '/api/security/security.php';
     
@@ -27,16 +26,13 @@ function db(): mysqli
         throw new RuntimeException('Database configuration error');
     }
 
-    // Trim whitespace
     $dbname = trim($dbname);
 
-    // Validate database name format (alphanumeric, underscore, hyphen only)
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $dbname)) {
         error_log('db_connect: DB_NAME contains invalid characters');
         throw new RuntimeException('Database configuration error');
     }
 
-    // db connection
     try {
         $conn = new mysqli($servername, $username, $password);
     } catch (mysqli_sql_exception $e) {
@@ -44,7 +40,6 @@ function db(): mysqli
         throw new RuntimeException('Database connection error', 0, $e);
     }
 
-    // check if db connected successfully
     if ($conn->connect_error) {
         error_log('db_connect: Connection failed: ' . $conn->connect_error);
         throw new RuntimeException('Database connection error');
@@ -56,19 +51,15 @@ function db(): mysqli
     $dbnameEscaped = $conn->real_escape_string($dbname);
     $result = $conn->query("SHOW DATABASES LIKE '$dbnameEscaped'");
     if ($result && $result->num_rows === 0) {
-        // db doesn't exist — create it
-        // Use backticks for identifier escaping in CREATE DATABASE
         if (!$conn->query("CREATE DATABASE `$dbname`")) {
             error_log('db_connect: Failed to create database: ' . $conn->error);
             throw new RuntimeException('Database initialization error');
         }
     }
 
-    // select the database (using validated name - select_db() is a method, not SQL, so no escaping needed)
     $conn->select_db($dbname);
     $conn->set_charset('utf8mb4');
     
-    // ensure autocommit is enabled
     $conn->autocommit(true);
     
     // set timezone to UTC for consistent token expiration handling

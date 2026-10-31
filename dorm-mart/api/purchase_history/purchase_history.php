@@ -20,7 +20,6 @@ try {
 
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    // Get filter parameters (with defaults for backward compatibility)
     $dateRange = $payload['dateRange'] ?? (isset($payload['year']) ? 'Last Year' : 'All Time');
     $sort = $payload['sort'] ?? 'Newest First';
     $allowedDateRanges = ['Last 30 Days', 'Last 3 Months', 'Last Year', 'All Time'];
@@ -40,7 +39,6 @@ try {
         $dateRange = 'Last Year'; // Approximate legacy conversion
     }
 
-    // Calculate date range
     $tz = new DateTimeZone('UTC');
     $now = new DateTimeImmutable('now', $tz);
     $rangeStart = null;
@@ -65,7 +63,6 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Load items with date filtering
     $historyItems = [];
     $legacyItems = [];
     
@@ -78,7 +75,6 @@ try {
             $rangeEnd->format('Y-m-d H:i:s')
         );
     } else {
-        // All time - load all items
         $historyItems = load_purchase_history_items($conn, $userId, null, $rangeEnd);
         $legacyItems = load_legacy_purchased_items(
             $conn,
@@ -90,7 +86,6 @@ try {
 
     $rows = array_merge($historyItems, $legacyItems);
 
-    // Sort items
     switch ($sort) {
         case 'Oldest First':
             usort($rows, static function (array $a, array $b): int {
@@ -186,7 +181,6 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
         if ($recordedTs === false) {
             continue;
         }
-        // Apply date filter only if start is specified
         if ($start !== null && ($recordedTs < $startTs || $recordedTs >= $endTs)) {
             continue;
         }
@@ -207,13 +201,11 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
         return [];
     }
 
-    // Load metadata with error handling
     $metadata = [];
     try {
         $metadata = load_inventory_metadata($conn, array_values($productIds));
     } catch (Throwable $metaError) {
         error_log('Failed to load metadata for purchase history: ' . $metaError->getMessage());
-        // Continue without metadata - use fallback values
     }
 
     $rows = [];
@@ -313,7 +305,6 @@ function load_inventory_metadata(mysqli $conn, array $productIds): array
             $sellerName = $sellerId > 0 ? 'Seller #' . $sellerId : 'Unknown seller';
         }
 
-        // Get price from listing_price column
         $price = null;
         if (isset($row['listing_price']) && $row['listing_price'] !== null) {
             $price = (float)$row['listing_price'];

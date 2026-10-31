@@ -6,7 +6,6 @@ require_once $API_ROOT . '/helpers/api_bootstrap.php';
 init_json_endpoint('POST', ['ok' => false, 'error' => 'Method Not Allowed']);
 
 try {
-  // Auth + DB
   require $API_ROOT . '/auth/auth_handle.php';
   require $API_ROOT . '/database/db_connect.php';
   require $API_ROOT . '/helpers/image_upload.php';
@@ -25,7 +24,6 @@ try {
   $conn = db();
   $conn->set_charset('utf8mb4');
 
-  // --- Read FormData ---
   $mode = is_string($_POST['mode'] ?? null) ? trim($_POST['mode']) : 'create';
   $itemId = request_int($_POST, 'id');
   $status = is_string($_POST['status'] ?? null) ? $_POST['status'] : 'Active';
@@ -52,7 +50,6 @@ try {
   $locationValue = $_POST['itemLocation'] ?? ($_POST['meetLocation'] ?? '');
   $itemLocationRaw = is_string($locationValue) && $locationValue !== '' ? trim($locationValue) : null;
 
-  // Item condition
   $conditionValue = $_POST['condition'] ?? '';
   $itemCondition = is_string($conditionValue) && $conditionValue !== '' ? trim($conditionValue) : null;
 
@@ -74,7 +71,6 @@ try {
   $trades = $tradesValue ? 1 : 0;
   $priceNego = $priceNegoValue ? 1 : 0;
 
-  // --- Validation ---
   $errors = [];
   if ($title === '')                        { $errors['title'] = 'Title is required.'; }
   elseif (mb_strlen($title) > 50)          { $errors['title'] = 'Title cannot exceed 50 characters.'; }
@@ -167,15 +163,12 @@ try {
     json_response(['ok' => false, 'error' => listing_cap_error($capAction)], 403);
   }
 
-  // --- Save listing media with MIME validation ---
   $imageDirFs   = rtrim(data_images_dir(), '/\\') . DIRECTORY_SEPARATOR;
   $imageBaseUrl = '/images';
   if (!is_dir($imageDirFs)) { @mkdir($imageDirFs, 0775, true); }
 
-  // Handle existing photos for edit mode
   $existingPhotos = [];
   if ($mode === 'update' && $itemId > 0) {
-    // Accept existingPhotos[] from POST (can be array or single value)
     $existingPhotosRaw = $_POST['existingPhotos'] ?? [];
     if (is_array($existingPhotosRaw)) {
       if (array_filter($existingPhotosRaw, fn($value) => !is_string($value))) {
@@ -205,7 +198,6 @@ try {
     }
   }
 
-  // Process new image and video uploads
   $newImageUrls = [];
   $newImagePaths = [];
   $validatedUploads = [];
@@ -286,7 +278,6 @@ try {
     $newImagePaths[] = $newImagePath;
   }
 
-  // Merge existing media with new uploads.
   $imageUrls = array_merge($existingPhotos, $newImageUrls);
   foreach ($imageUrls as $index => $url) {
     if (!$isPhotoUrl($url)) continue;
@@ -298,7 +289,6 @@ try {
     break;
   }
 
-  // --- JSON columns ---
   $categoriesJson = !empty($catsArr)   ? json_encode($catsArr, JSON_UNESCAPED_SLASHES)   : null;
   $photosJson     = !empty($imageUrls) ? json_encode($imageUrls, JSON_UNESCAPED_SLASHES) : null;
 
@@ -313,7 +303,6 @@ try {
     json_response(['ok' => false, 'error' => $error], $code);
   };
 
-  // --- Create / Update ---
   if ($mode === 'update') {
     $conn->begin_transaction();
     // Seller row first, then the listing row: the same lock order as set_item_status.php.
@@ -409,7 +398,6 @@ try {
     json_response(['ok' => true, 'prod_id' => $itemId, 'status' => $status, 'image_urls' => $imageUrls]);
   }
 
-  // INSERT
   $conn->begin_transaction();
   if ($status === 'Active' && listing_cap_locked_active_count($conn, $userId) >= MAX_ACTIVE_LISTINGS_PER_SELLER) {
     $rejectLocked(403, listing_cap_error($capAction));

@@ -3,9 +3,7 @@ import backgroundImage from "../assets/images/cf704b7b8689fdfa8cf49a9f368bb17c.j
 function PreLoginBranding({ animate = false, animateText = false }) {
   return (
     <>
-      {/* Left side - Background image with branding (hidden on mobile, 50% on desktop) */}
       <div className="hidden lg:block lg:w-1/2 relative h-[calc(100dvh-2rem)] rounded-[3rem] lg:rounded-[4rem] xl:rounded-[5rem] overflow-hidden border-4 border-white/40 shadow-2xl my-4 mx-2 lg:mx-4">
-        {/* Background image */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
@@ -14,10 +12,8 @@ function PreLoginBranding({ animate = false, animateText = false }) {
           }}
         ></div>
 
-        {/* Dark overlay for better text readability */}
         <div className="absolute inset-0 bg-black bg-opacity-30"></div>
 
-        {/* Branding content */}
         <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 lg:p-8">
           <div className="text-center w-full px-4">
             <h1
@@ -41,7 +37,6 @@ function PreLoginBranding({ animate = false, animateText = false }) {
         </div>
       </div>
 
-      {/* Animation styles */}
       <style>{`
         @keyframes fade-in {
           from {

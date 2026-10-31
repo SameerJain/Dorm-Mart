@@ -3,7 +3,6 @@
 require_once __DIR__ . '/../helpers/response.php';
 require_cli();
 
-// Include security utilities
 require_once __DIR__ . '/../security/security.php';
 
 /**
@@ -31,19 +30,16 @@ require_once __DIR__ . '/../security/security.php';
  * - For resetting a single session, use reset_session_lockout.php instead
  */
 
-// Include database connection
 require_once __DIR__ . '/../database/db_connect.php';
 
 try {
     $conn = db();
 
-    // Reset all failed login attempts and lockouts for all sessions
     $stmt = $conn->prepare('UPDATE login_rate_limits SET failed_login_attempts = 0, last_failed_attempt = NULL, lockout_until = NULL');
     $stmt->execute();
     $affectedRows = $stmt->affected_rows;
     $stmt->close();
 
-    // Get current database time for confirmation
     $result = $conn->query("SELECT NOW() as db_time");
     $row = $result->fetch_assoc();
     $currentTime = $row['db_time'];
@@ -69,7 +65,6 @@ try {
         echo json_encode($response, JSON_PRETTY_PRINT);
     }
 } catch (Exception $e) {
-    // XSS PROTECTION: Escape exception message to prevent XSS
     $errorResponse = [
         'success' => false,
         'error' => 'Failed to reset lockouts',

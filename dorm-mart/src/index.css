@@ -53,7 +53,7 @@
     cursor: default !important;
   }
 
-  /* Pre-login right side background - subtle blue gradient */
+
   .pre-login-bg {
     background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%);
     position: relative;
@@ -129,7 +129,7 @@ body,
     color 0.3s ease;
 }
 
-/* Dark mode base styles */
+
 html.dark,
 html.dark body,
 html.dark #root {
@@ -251,7 +251,7 @@ html.dark .focus\:ring-blue-600:focus {
   }
 }
 
-/* --- animations (unchanged) --- */
+
 @keyframes image-glow {
   0% {
     opacity: 0;
@@ -338,22 +338,22 @@ html.dark .focus\:ring-blue-600:focus {
   }
 }
 
-/* QnA button: bounce in "z-axis" (scale in/out) on hover */
+
 @keyframes qna-bounce-z {
   0% {
-    transform: translateZ(0) scale(1); /* start at normal size */
+    transform: translateZ(0) scale(1);
   }
   40% {
-    transform: translateZ(0) scale(1.12); /* quickly pop out a bit */
+    transform: translateZ(0) scale(1.12);
   }
   100% {
-    transform: translateZ(0) scale(1); /* return to normal */
+    transform: translateZ(0) scale(1);
   }
 }
 
-/* Apply the animation only while the element is hovered */
+
 @media (hover: hover) and (pointer: fine) {
   .qna-bounce-z:hover {
-    animation: qna-bounce-z 220ms ease-out; /* short pop animation */
+    animation: qna-bounce-z 220ms ease-out;
   }
 }

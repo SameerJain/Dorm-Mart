@@ -1,5 +1,4 @@
 <?php
-// Session + persistent login helpers
 
 require_once __DIR__ . '/device_history.php';
 require_once __DIR__ . '/../security/transport.php';
@@ -37,7 +36,6 @@ function regenerate_session_on_login(): void
   unset($_SESSION['csrf_token']);
 }
 
-/* ---------- Persistent login ("remember me") ---------- */
 
 /** The one place the remember-me cookie's flags are set. Pass an expiry in the past to clear it. */
 function set_remember_cookie(string $value, int $expires): void
@@ -74,7 +72,6 @@ function issue_remember_cookie(int $userId): void
 
 function clear_remember_cookie(?int $userId = null): void
 {
-  // clear server-side
   if ($userId) {
     require_once __DIR__ . '/../database/db_connect.php';
     $conn = db();
@@ -84,7 +81,6 @@ function clear_remember_cookie(?int $userId = null): void
     $stmt->close();
     $conn->close();
   }
-  // clear client cookie
   set_remember_cookie('', time() - 3600);
 }
 
@@ -124,7 +120,6 @@ function ensure_session(): void
     return;
   }
 
-  // success → hydrate session and rotate token
   session_regenerate_id(true);
   unset($_SESSION['csrf_token']);
   $_SESSION['user_id'] = $uid;
@@ -234,7 +229,6 @@ function logout_destroy_session(): void
   clear_remember_cookie($uid);
 }
 
-/* ---------- CSRF Protection ---------- */
 
 /**
  * Generate or retrieve CSRF token from session

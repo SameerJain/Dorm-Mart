@@ -19,7 +19,6 @@ function BuyerReviewsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch seller ratings on mount
   useEffect(() => {
     fetchBuyerReviews();
   }, []);
@@ -28,7 +27,6 @@ function BuyerReviewsPage() {
     try {
       setLoading(true);
       setError(null);
-      // Don't pass buyer_user_id - API will use logged-in user
       const response = await fetch(
         `${API_BASE}/reviews/get_buyer_reviews.php`,
         {
@@ -114,7 +112,6 @@ function BuyerReviewsPage() {
                   </div>
                 </div>
 
-                {/* Review Text */}
                 {review.review_text && (
                   <div className="mb-3 min-w-0">
                     <div
@@ -135,7 +132,6 @@ function BuyerReviewsPage() {
                   </div>
                 )}
 
-                {/* Date */}
                 {review.created_at && (
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {formatDate(review.created_at)}

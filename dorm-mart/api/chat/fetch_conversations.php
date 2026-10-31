@@ -1,5 +1,4 @@
 <?php
-// api/chat/fetch_conversations.php
 declare(strict_types=1);
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
@@ -50,8 +49,6 @@ $stmt->execute();
 $res = $stmt->get_result();          // requires mysqlnd (present in XAMPP)
 $rows = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
 
-// Extract first image from photos JSON for each conversation
-// XSS PROTECTION: Escape user-generated content before returning in JSON
 foreach ($rows as &$row) {
     $row['product_image_url'] = inventory_first_photo($row['product_photos'] ?? null);
     unset($row['product_photos']); // Remove raw photos JSON from response

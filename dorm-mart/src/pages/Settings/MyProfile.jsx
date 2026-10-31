@@ -27,12 +27,11 @@ const PROFILE_PHOTO_ACCEPT = [...ALLOWED_MIME, ...ALLOWED_EXTS].join(",");
 const MAX_PROFILE_PHOTO_BYTES = 10 * 1024 * 1024;
 
 function isAllowedType(f) {
-  // Prefer MIME, but fall back to extension if needed
   if (f.type) return ALLOWED_MIME.has(f.type);
 
   const name = (f.name || "").toLowerCase();
   const ext = ALLOWED_EXTS.has(
-    name.slice(name.lastIndexOf(".")), // includes dot
+    name.slice(name.lastIndexOf(".")),
   );
   return ext;
 }
@@ -389,15 +388,14 @@ function MyProfilePage() {
     if (file.size > MAX_PROFILE_PHOTO_BYTES) {
       const errorMsg = "Image is too large. Maximum file size is 10 MB.";
       setAvatarError(errorMsg);
-      event.target.value = null; // Clear the input
+      event.target.value = null;
       return;
     }
 
-    // Validate file type
     if (!isAllowedType(file)) {
       const errorMsg = "Only JPG/JPEG, PNG, and WEBP images are allowed.";
       setAvatarError(errorMsg);
-      event.target.value = null; // Clear the input
+      event.target.value = null;
       return;
     }
 
@@ -420,7 +418,7 @@ function MyProfilePage() {
       }
       setAvatarPreview(finalUrl);
       updateProfileState({ image_url: finalUrl });
-      setAvatarError(""); // Clear any errors on success
+      setAvatarError("");
       showFeedback("Profile photo updated", "success", "avatar");
     } catch (err) {
       if (blobUrlRef.current) {
@@ -469,7 +467,7 @@ function MyProfilePage() {
       if (!hostname.endsWith("instagram.com")) {
         return false;
       }
-      return url.pathname.length > 1; // ensure something after domain
+      return url.pathname.length > 1;
     } catch (_err) {
       return false;
     }

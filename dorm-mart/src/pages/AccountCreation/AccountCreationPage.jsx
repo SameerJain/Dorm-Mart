@@ -113,11 +113,8 @@ function CreateAccountPage() {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    // Enforce hard caps at input-time
     let nextValue = type === "checkbox" ? checked : value;
     if (name === "firstName" || name === "lastName") {
-      // Only allow letters (including spaces and hyphens for names like "Mary-Jane" or "Van Der Berg")
-      // Remove any non-letter characters except spaces and hyphens
       nextValue = String(nextValue).replace(/[^a-zA-Z\s-]/g, "");
       nextValue = nextValue.slice(0, 30);
     }
@@ -200,11 +197,9 @@ function CreateAccountPage() {
     } else if (email.length > 255) {
       newErrors.email = "Email must be 255 characters or fewer";
     } else if (!emailPolicyLoading) {
-      // Only validate domain if policy is loaded
       if (!allowAllEmails && !email.toLowerCase().endsWith("@buffalo.edu")) {
         newErrors.email = "Email must be a buffalo.edu address";
       } else if (allowAllEmails) {
-        // Basic email format validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
           newErrors.email = "Please enter a valid email address";
@@ -256,9 +251,7 @@ function CreateAccountPage() {
     <div className="h-dvh flex flex-col lg:flex-row pre-login-bg overflow-hidden">
       <PreLoginBranding />
 
-      {/* Right side - Create Account form (full width on mobile/tablet, 50% on desktop) */}
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center md:[justify-content:safe_center] p-4 sm:p-6 md:p-6 lg:px-8 xl:px-8 pt-[max(1.5rem,env(safe-area-inset-top))] sm:pt-8 md:pt-16 md:pb-8 lg:py-6 xl:py-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] h-dvh min-h-0 overflow-y-auto overscroll-contain pre-login-bg relative">
-        {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="lg:hidden mb-4 sm:mb-6 md:mb-8 text-center w-full relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
@@ -269,7 +262,6 @@ function CreateAccountPage() {
         </div>
         <div className="w-full max-w-sm sm:max-w-md md:max-w-xl lg:max-w-md relative z-10">
           <div className="px-4 sm:px-6 md:px-8 lg:px-6 py-2.5 sm:py-4 md:py-6 lg:py-3 rounded-lg relative bg-blue-600">
-            {/* Torn paper effect */}
             <div
               className="absolute inset-0 rounded-lg bg-blue-600"
               style={{
@@ -279,7 +271,6 @@ function CreateAccountPage() {
             />
 
             <div className="relative z-10">
-              {/* Header with dot */}
               <div className="text-center mb-2.5 sm:mb-4 md:mb-5 lg:mb-2.5">
                 <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 bg-black rounded-full mx-auto mb-2 sm:mb-3 md:mb-3" />
                 <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-3xl font-serif text-white leading-tight">
@@ -287,7 +278,6 @@ function CreateAccountPage() {
                 </h2>
               </div>
 
-              {/* Form - Improved spacing and touch targets */}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -299,7 +289,6 @@ function CreateAccountPage() {
                     : "space-y-3 sm:space-y-4 md:space-y-4 lg:space-y-2.5 xl:space-y-3"
                 }
               >
-                {/* First Name */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     First Name
@@ -315,7 +304,6 @@ function CreateAccountPage() {
                   <FieldError>{errors.firstName}</FieldError>
                 </div>
 
-                {/* Last Name */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     Last Name
@@ -331,7 +319,6 @@ function CreateAccountPage() {
                   <FieldError>{errors.lastName}</FieldError>
                 </div>
 
-                {/* Graduation Date */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     Graduation Date (Month / Year)
@@ -367,7 +354,6 @@ function CreateAccountPage() {
                   <FieldError>{errors.gradDate}</FieldError>
                 </div>
 
-                {/* Email */}
                 <div>
                   <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     University Email Address
@@ -383,7 +369,6 @@ function CreateAccountPage() {
                   <FieldError>{errors.email}</FieldError>
                 </div>
 
-                {/* Checkboxes - Improved touch targets */}
                 <div className="space-y-3 sm:space-y-4 md:space-y-3 lg:space-y-2.5">
                   <label className="flex items-start text-gray-100 min-h-[44px] py-2">
                     <input
@@ -444,7 +429,6 @@ function CreateAccountPage() {
                     (rateLimited ? ACCOUNT_REQUEST_RATE_LIMIT_MESSAGE : "")}
                 </FieldError>
 
-                {/* Confirm button - Minimum 44px height for touch targets */}
                 <button
                   type="submit"
                   disabled={loading || rateLimited}
@@ -475,7 +459,6 @@ function CreateAccountPage() {
                 </button>
               </form>
 
-              {/* Links - Improved touch targets and spacing */}
               <div className="mt-4 sm:mt-6 md:mt-5 lg:mt-3 mb-2.5 sm:mb-4 md:mb-3 lg:mb-2.5 text-center">
                 <PreLoginNavLinks
                   className="text-sm sm:text-base md:text-lg lg:text-base"
@@ -491,15 +474,12 @@ function CreateAccountPage() {
         </div>
       </div>
 
-      {/* Notice Modal - Improved mobile responsiveness */}
       {showNotice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-          {/* backdrop */}
           <div
             className="absolute inset-0 bg-black bg-opacity-50"
             onClick={() => setShowNotice(false)}
           />
-          {/* card */}
           <div className="relative z-10 w-full max-w-lg rounded-xl shadow-2xl border border-white/10 bg-blue-600">
             <div className="p-6 sm:p-8">
               <h3 className="text-2xl sm:text-3xl font-serif text-white mb-4 sm:mb-5 text-center leading-tight">

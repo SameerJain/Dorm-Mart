@@ -104,7 +104,6 @@ try {
     natsort($files);
     $ran = [];
 
-    // The seed accounts' data is gone (reset_seed_data); replay the fixtures.
     foreach ($files as $path) {
         $name = basename($path);
         $sql = file_get_contents($path);

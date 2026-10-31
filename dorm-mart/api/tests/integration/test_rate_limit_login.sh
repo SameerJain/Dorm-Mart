@@ -1,8 +1,6 @@
 #!/bin/bash
 
-# Rate Limiting Test Script
-# Tests that 5 failed login attempts trigger a 5-minute lockout
-# and that attempt 6+ are blocked with 429 status
+# Print the HTTP status from repeated failed login attempts.
 
 echo "=== Rate Limiting Test ==="
 API_BASE="${API_TEST_BASE_URL:-${API_BASE_URL:-http://localhost:8080/api}}"

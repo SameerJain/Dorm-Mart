@@ -3,14 +3,11 @@
 
 Write-Host "Starting Build Method 2: Local Apache Simulation..." -ForegroundColor Green
 
-# Start XAMPP services first
 Write-Host "Starting XAMPP Apache and MySQL..." -ForegroundColor Yellow
 try {
-    # Start Apache
     Start-Process "C:\xampp\apache\bin\httpd.exe" -WindowStyle Hidden
     Start-Sleep -Seconds 2
     
-    # Start MySQL
     Start-Process "C:\xampp\mysql\bin\mysqld.exe" -WindowStyle Hidden
     Start-Sleep -Seconds 3
     
@@ -25,7 +22,6 @@ $dormMartPath = Join-Path $projectRoot "dorm-mart"
 $servePath = "C:\xampp\htdocs\serve"
 
 Write-Host "Building React app..." -ForegroundColor Cyan
-# Change to dorm-mart directory and build
 Set-Location $dormMartPath
 if (Test-Path (Join-Path $dormMartPath "build")) {
     Remove-Item -LiteralPath (Join-Path $dormMartPath "build") -Recurse -Force
@@ -36,43 +32,34 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Creating/clearing serve directory..." -ForegroundColor Yellow
-# Create serve directory if it doesn't exist, or clear it if it does
 if (!(Test-Path $servePath)) {
     New-Item -ItemType Directory -Path $servePath -Force
 } else {
-    # Clear existing directory
     Remove-Item -Path "$servePath\*" -Recurse -Force
     Write-Host "Cleared existing serve directory" -ForegroundColor Yellow
 }
 
-# Create dorm-mart subfolder inside serve
 $dormMartServePath = Join-Path $servePath "dorm-mart"
 New-Item -ItemType Directory -Path $dormMartServePath -Force
 Write-Host "Created dorm-mart subfolder in serve directory" -ForegroundColor Yellow
 
 Write-Host "Copying files to dorm-mart subfolder..." -ForegroundColor Yellow
 
-# Copy API folder
 Write-Host "Copying api folder..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\api" -Destination $dormMartServePath -Recurse -Force
 
-# Copy data folder
 Write-Host "Copying data folder..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\data" -Destination $dormMartServePath -Recurse -Force
 
-# Copy schema folder (one SQL file per table)
 Write-Host "Copying schema folder..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\schema" -Destination $dormMartServePath -Recurse -Force
 
-# Copy vendor folder
 Write-Host "Copying vendor folder..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\vendor" -Destination $dormMartServePath -Recurse -Force
 
-# Copy .env.local file
 Write-Host "Copying .env.local file..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\.env.local" -Destination $dormMartServePath -Force
 
-# Copy build contents (not the build folder itself)
 Write-Host "Copying build contents..." -ForegroundColor Cyan
 $buildPath = Join-Path $dormMartPath "build"
 if (Test-Path $buildPath) {
@@ -85,7 +72,6 @@ if (Test-Path $buildPath) {
 }
 
 Write-Host "Starting PHP server..." -ForegroundColor Cyan
-# Start PHP server from serve directory
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$servePath'; Write-Host 'PHP Server Starting from serve directory...' -ForegroundColor Green; C:\xampp\php\php.exe -S localhost:8080 -t ."
 
 Write-Host "Build Method 2 completed!" -ForegroundColor Green

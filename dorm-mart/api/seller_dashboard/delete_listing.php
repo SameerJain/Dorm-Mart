@@ -40,7 +40,6 @@ try {
         json_response(['success' => false, 'error' => 'Sold listings cannot be deleted.'], 409);
     }
     if (!listing_delete($conn, $id, $userId, $item, 'The item has been removed. This chat has been closed.')) {
-        // Not found or not owned by user
         json_response(['success' => false, 'error' => 'Not found'], 404);
     }
 

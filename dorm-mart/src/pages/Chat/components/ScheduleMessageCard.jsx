@@ -11,12 +11,9 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const [isResponding, setIsResponding] = useState(false);
   const [actionError, setActionError] = useState("");
 
-  // Track local response status to update UI immediately after Accept/Deny
-  // Initialize from messageType if already responded, or from metadata status/buyer_response_at
   const [localResponseStatus, setLocalResponseStatus] = useState(() => {
     if (messageType === "schedule_accepted") return "accepted";
     if (messageType === "schedule_denied") return "declined";
-    // Check if buyer has already responded (from enriched metadata)
     if (messageType === "schedule_request") {
       const scheduledStatus = metadata.scheduled_purchase_status;
       const buyerResponseAt = metadata.buyer_response_at;
@@ -56,7 +53,6 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
       }
       const result = await res.json();
       if (result.success) {
-        // Update local state immediately to reflect response
         setLocalResponseStatus(action === "accept" ? "accepted" : "declined");
         if (onRespond) {
           onRespond();
@@ -75,14 +71,8 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const handleAccept = () => handleAction("accept");
   const handleDeny = () => handleAction("decline");
 
-  // Use consistent styling matching site's design system
-  // Light backgrounds, solid borders, text matching border color
-  // schedule_request always stays blue regardless of response status
-  // Other message types (accepted/denied/cancelled) keep their colors
   const getMessageConfig = () => {
-    // schedule_request card always stays blue, regardless of localResponseStatus
     if (messageType === "schedule_request") {
-      // Check if buyer has already responded (from metadata or local state)
       const scheduledStatus = metadata.scheduled_purchase_status;
       const buyerResponseAt = metadata.buyer_response_at;
       const hasBuyerResponse =
@@ -101,11 +91,10 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
         textColor: "text-blue-600 dark:text-blue-300",
         iconColor: "text-blue-600 dark:text-blue-300",
         innerBgColor: "bg-blue-100/50 dark:bg-blue-800/30",
-        showActions: !hasResponded && !isMine, // Buyer sees actions only if not responded
+        showActions: !hasResponded && !isMine,
       };
     }
 
-    // For other message types, use their specific colors
     switch (messageType) {
       case "schedule_accepted":
         return {
@@ -183,13 +172,11 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     ? Number(metadata.payment_amount_cents) / 100
     : null;
 
-  // Determine display price: use negotiated price if available and different from listing, otherwise use listing price
   const displayPrice =
     negotiatedPrice !== null && negotiatedPrice !== listingPrice
       ? negotiatedPrice
       : listingPrice;
 
-  // Check if price differs from listing price and whether it's higher or lower
   const hasPriceChange =
     negotiatedPrice !== null &&
     listingPrice !== null &&
@@ -197,19 +184,15 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const isPriceHigher = hasPriceChange && negotiatedPrice > listingPrice;
   const isPriceLower = hasPriceChange && negotiatedPrice < listingPrice;
 
-  // Check if meet location differs from original listing location
   const hasLocationChange =
     meetLocation &&
     originalMeetLocation &&
     meetLocation.trim() !== originalMeetLocation.trim();
 
-  // Conditionally format message content for seller perspective
   const getDisplayMessage = () => {
     let content = message.content || "";
 
-    // If this is a schedule_request from seller's perspective, remove "Please Accept or Deny" text
     if (isMine && messageType === "schedule_request") {
-      // Remove "Please Accept or Deny" (case-insensitive, with or without period)
       content = content
         .replace(/\s*Please\s+Accept\s+or\s+Deny\.?\s*/gi, "")
         .trim();
@@ -277,7 +260,6 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
           </p>
         </div>
 
-        {/* Product title and price for schedule_request messages */}
         {messageType === "schedule_request" && productTitle && (
           <div
             className={`px-3 py-2 rounded-lg ${config.innerBgColor} border ${config.borderColor} overflow-hidden min-w-0`}

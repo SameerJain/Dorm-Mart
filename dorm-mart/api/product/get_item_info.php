@@ -62,11 +62,9 @@ if (!$row) {
     json_response(['ok'=>false,'error'=>'Product not found'], 404);
 }
 
-/* Decode JSON columns safely */
 $row['tags']   = isset($row['tags']) && $row['tags'] !== null ? json_decode($row['tags'], true) : null;
 $row['photos'] = isset($row['photos']) && $row['photos'] !== null ? json_decode($row['photos'], true) : null;
 
-/* Normalize booleans/ints */
 $row['trades']      = (int)$row['trades'];
 $row['price_nego']  = (int)$row['price_nego'];
 $row['sold']        = (int)$row['sold'];

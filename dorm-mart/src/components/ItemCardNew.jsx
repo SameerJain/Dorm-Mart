@@ -1,4 +1,3 @@
-// src/components/ItemCardNew.jsx
 import { useNavigate } from "react-router-dom";
 import {
   withFallbackImage,
@@ -33,12 +32,11 @@ export default function ItemCardNew({
 
   const handleClick = () => {
     if (!id) return;
-    // Prefer param route to avoid full page reload
     navigate(`/app/viewProduct/${encodeURIComponent(id)}`);
   };
 
   const handleRemoveClick = (e) => {
-    e.stopPropagation(); // Prevent card click navigation
+    e.stopPropagation();
     if (onRemoveFromWishlist && id) {
       onRemoveFromWishlist(id, title);
     }
@@ -53,10 +51,8 @@ export default function ItemCardNew({
                  dark:lg:hover:border-blue-500/45 dark:lg:hover:shadow-[0_12px_40px_-10px_rgba(0,0,0,0.85),0_0_0_1px_rgba(59,130,246,0.25)]
                  dark:lg:hover:ring-1 dark:lg:hover:ring-blue-400/30 dark:lg:hover:-translate-y-0.5`}
     >
-      {/* subtle top accent */}
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400 opacity-0 transition-opacity duration-200 lg:group-hover:opacity-100 dark:from-sky-400 dark:via-blue-400 dark:to-indigo-400 dark:lg:group-hover:opacity-100"></div>
 
-      {/* IMAGE */}
       <div className="relative w-full aspect-square bg-gray-50 dark:bg-gray-700 flex justify-center items-center overflow-hidden">
         <img
           src={imageSrc}
@@ -65,7 +61,6 @@ export default function ItemCardNew({
           className="object-contain w-full h-full p-2 transition-[transform,filter] duration-200 lg:group-hover:scale-[1.03] dark:lg:group-hover:scale-[1.02] dark:lg:group-hover:brightness-110"
         />
 
-        {/* Remove button - only shown on wishlist page; inset from corner for easier tapping */}
         {showRemoveButton && (
           <button
             onClick={handleRemoveClick}
@@ -90,7 +85,6 @@ export default function ItemCardNew({
           </button>
         )}
 
-        {/* NEW + Wishlisted: one anchored stack so right edges always line up */}
         {!showRemoveButton && (isNew || isWishlisted) && (
           <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-1 pointer-events-none">
             {isNew && (
@@ -117,32 +111,26 @@ export default function ItemCardNew({
           </div>
         )}
 
-        {/* Wishlist page: only NEW (no purple chip here); sits under X */}
         {showRemoveButton && isNew && (
           <div className="absolute top-12 right-4 z-20 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow pointer-events-none">
             NEW
           </div>
         )}
 
-        {/* Tag chip */}
         {primaryTag && (
           <div className="absolute bottom-2 left-2 bg-white/95 dark:bg-gray-900/90 text-[10px] font-medium text-gray-800 dark:text-gray-100 px-2 py-0.5 rounded-full border border-gray-100/50">
             {primaryTag}
           </div>
         )}
 
-        {/* Hover overlay: light = soft highlight; dark = vignette (no white wash) */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent opacity-0 transition-opacity duration-200 lg:group-hover:opacity-100 dark:from-black/70 dark:via-black/30 dark:to-transparent dark:lg:group-hover:opacity-100"></div>
       </div>
 
-      {/* BODY */}
       <div className="flex flex-col gap-0.5 px-3 py-2 min-w-0">
-        {/* title */}
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2 break-words overflow-hidden">
           {title}
         </h3>
 
-        {/* seller */}
         {seller ? (
           <p className="text-[11px] text-gray-500 dark:text-gray-300 flex items-center gap-1 min-w-0">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
@@ -150,7 +138,6 @@ export default function ItemCardNew({
           </p>
         ) : null}
 
-        {/* price */}
         <p className="text-lg font-bold text-gray-900 dark:text-gray-50 mt-0.5">
           {typeof price === "string"
             ? price
@@ -158,7 +145,6 @@ export default function ItemCardNew({
         </p>
       </div>
 
-      {/* bottom gradient accent */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-9 bg-gradient-to-r from-blue-50 via-transparent to-indigo-50 opacity-0 transition-opacity duration-200 lg:group-hover:opacity-100 dark:from-blue-600/20 dark:via-indigo-500/12 dark:to-violet-600/18 dark:lg:group-hover:opacity-100"></div>
     </div>
   );

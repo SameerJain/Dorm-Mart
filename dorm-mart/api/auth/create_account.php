@@ -134,8 +134,6 @@ if (ALLOW_ALL_EMAILS) {
     }
 }
 
-// The name pattern requires at least one character, so this also covers blank
-// names; an invalid email was already answered above.
 if ($firstName === false || $lastName === false) {
     json_response(['ok' => false, 'error' => 'Invalid input format'], 400);
 }

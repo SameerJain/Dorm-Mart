@@ -25,7 +25,6 @@ $userId = require_login();                 // must be logged in
 // request from this user (including chat polls) waits for it to finish.
 session_write_close();
 
-// --- inputs ---
 $messageId = request_int($_GET, 'message_id');
 $forceDownload = isset($_GET['download']) && $_GET['download'] === '1';
 
@@ -33,8 +32,6 @@ if ($messageId <= 0) {
   json_response(['success' => false, 'error' => 'bad_message_id'], 400);
 }
 
-// Verify the requester is a participant in the conversation that owns this message
-// and fetch the stored attachment URL.
 $sql = '
   SELECT m.image_url, m.conv_id, c.user1_id, c.user2_id
     FROM messages m
@@ -55,7 +52,6 @@ if (!$row) {
   json_response(['success' => false, 'error' => 'not_found'], 404);
 }
 
-// Must be either user1 or user2 of that conversation
 if ((int)$row['user1_id'] !== (int)$userId && (int)$row['user2_id'] !== (int)$userId) {
   json_response(['success' => false, 'error' => 'forbidden'], 403);
 }
@@ -69,7 +65,6 @@ if (strpos($imageRel, '/media/chat-images/') !== 0
   json_response(['success' => false, 'error' => 'file_missing'], 404);
 }
 
-// Build absolute path safely from the configured chat media directory.
 $mediaSubdir = strpos($imageRel, '/media/chat-attachments/') === 0
     ? 'chat-attachments'
     : 'chat-images';
@@ -78,12 +73,10 @@ $file = basename($imageRel);
 $absPath = $mediaRoot !== null ? realpath($mediaRoot . DIRECTORY_SEPARATOR . $file) : false;
 $mediaPrefix = $mediaRoot !== null ? rtrim($mediaRoot, '/\\') . DIRECTORY_SEPARATOR : null;
 
-// Security: ensure the resolved path is still under the media directory we expect
 if (!$absPath || !$mediaPrefix || !str_starts_with($absPath, $mediaPrefix) || !is_file($absPath)) {
   json_response(['success' => false, 'error' => 'file_missing'], 404);
 }
 
-// Detect MIME type from file bytes (prevents spoofing)
 $finfo = new finfo(FILEINFO_MIME_TYPE);              // requires php-fileinfo extension
 $mime  = $finfo->file($absPath) ?: 'application/octet-stream';
 
@@ -103,5 +96,4 @@ $downloadName = sprintf('dorm-mart-chat-%s-%d.%s', $mediaType, $messageId, $exte
 header('Cache-Control: private, max-age=604800');    // cache 7 days for the same user/session
 header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="' . $downloadName . '"');
 
-// Stream the file (with Range support for video seeking); no JSON afterward.
 stream_file_with_ranges($absPath, $mime);

@@ -8,6 +8,9 @@ import {
   getScheduleMonthOptions,
   getScheduleWindowBounds,
   getScheduleYearOptions,
+  getScheduleCalendarMonths,
+  getScheduleCalendarWeeks,
+  isWithinScheduleWindow,
   validateScheduleDateTime,
 } from "../../../../pages/ScheduledPurchases/utils/scheduleDateTimeUtils";
 
@@ -266,5 +269,71 @@ describe("validateScheduleDateTime", () => {
     );
     jest.setSystemTime(new Date("2026-11-15T17:00:00Z")); // noon Eastern
     expect(validateScheduleDateTime(at("01", "10", "2027", "3", "00", "PM"))).toBe("");
+  });
+});
+
+describe("calendar picker helpers", () => {
+  // Window from Friday, November 20 2026 (Eastern wall clock) to February 20 2027.
+  const bounds = getScheduleWindowBounds(new Date(2026, 10, 20, 10, 0, 0));
+  const days = (weeks) => weeks.flat().filter(Boolean);
+  const open = (weeks) => days(weeks).filter((c) => c.selectable).map((c) => c.day);
+
+  test("isWithinScheduleWindow includes both ends and nothing outside them", () => {
+    expect(isWithinScheduleWindow(2026, 11, 19, bounds)).toBe(false);
+    expect(isWithinScheduleWindow(2026, 11, 20, bounds)).toBe(true);
+    expect(isWithinScheduleWindow(2026, 12, 31, bounds)).toBe(true);
+    expect(isWithinScheduleWindow(2027, 1, 1, bounds)).toBe(true);
+    expect(isWithinScheduleWindow(2027, 2, 20, bounds)).toBe(true);
+    expect(isWithinScheduleWindow(2027, 2, 21, bounds)).toBe(false);
+  });
+
+  test("getScheduleCalendarMonths lists each window month across the year change", () => {
+    expect(getScheduleCalendarMonths(bounds)).toEqual([
+      { year: 2026, month: 11 },
+      { year: 2026, month: 12 },
+      { year: 2027, month: 1 },
+      { year: 2027, month: 2 },
+    ]);
+  });
+
+  test("weeks start on Sunday and pad to whole weeks", () => {
+    // November 1 2026 is a Sunday, December 1 a Tuesday, February 1 2027 a Monday.
+    const november = getScheduleCalendarWeeks(2026, 11, bounds);
+    expect(november[0][0]).toEqual({ day: 1, selectable: false });
+    expect(november.at(-1)).toEqual([
+      { day: 29, selectable: true }, { day: 30, selectable: true }, null, null, null, null, null,
+    ]);
+    const december = getScheduleCalendarWeeks(2026, 12, bounds);
+    expect(december[0].slice(0, 3)).toEqual([null, null, { day: 1, selectable: true }]);
+    const february = getScheduleCalendarWeeks(2027, 2, bounds);
+    expect(february[0][0]).toBeNull();
+    expect(february[0][1]).toEqual({ day: 1, selectable: true });
+    for (const weeks of [november, december, february]) {
+      expect(weeks.every((week) => week.length === 7)).toBe(true);
+    }
+    expect(days(february)).toHaveLength(28);
+  });
+
+  test("the first and last window months open only their in-window days", () => {
+    expect(open(getScheduleCalendarWeeks(2026, 11, bounds))).toEqual(range(20, 30));
+    expect(open(getScheduleCalendarWeeks(2027, 2, bounds))).toEqual(range(1, 20));
+  });
+
+  test("months outside the window have no selectable days", () => {
+    expect(open(getScheduleCalendarWeeks(2026, 10, bounds))).toEqual([]);
+    expect(open(getScheduleCalendarWeeks(2027, 3, bounds))).toEqual([]);
+    expect(open(getScheduleCalendarWeeks(2025, 12, bounds))).toEqual([]);
+  });
+
+  test("the calendar offers exactly the days the dropdowns offer, including month-end rollover", () => {
+    // From November 30 the window ends on "February 30", which rolls to March 2.
+    const rollover = getScheduleWindowBounds(new Date(2026, 10, 30, 9, 0, 0));
+    for (const b of [bounds, rollover]) {
+      for (const { year, month } of getScheduleCalendarMonths(b)) {
+        expect(open(getScheduleCalendarWeeks(year, month, b))).toEqual(getScheduleDayOptions(year, month, b));
+      }
+    }
+    expect(getScheduleCalendarMonths(rollover).at(-1)).toEqual({ year: 2027, month: 3 });
+    expect(open(getScheduleCalendarWeeks(2027, 3, rollover))).toEqual([1, 2]);
   });
 });

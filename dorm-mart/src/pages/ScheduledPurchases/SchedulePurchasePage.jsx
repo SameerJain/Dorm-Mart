@@ -78,10 +78,11 @@ function SchedulePurchasePage() {
             />
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+              <label htmlFor="schedule-description" className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                 Description (Optional)
               </label>
               <textarea
+                id="schedule-description"
                 value={form.description}
                 onChange={(e) => form.setDescription(e.target.value)}
                 rows={4}

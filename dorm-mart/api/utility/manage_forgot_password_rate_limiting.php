@@ -24,10 +24,8 @@ function check_forgot_password_rate_limit(string $email): array
 
     $conn = db();
 
-    // Get current rate limit settings
     $rateLimitMinutes = get_forgot_password_rate_limit_minutes();
 
-    // Check if email exists and get last reset request timestamp
     $stmt = $conn->prepare('SELECT user_id, last_reset_request FROM user_accounts WHERE email = ?');
     $stmt->bind_param('s', $email);
     $stmt->execute();
@@ -42,12 +40,10 @@ function check_forgot_password_rate_limit(string $email): array
     $user = $result->fetch_assoc();
     $stmt->close();
 
-    // If no previous request, allow it
     if (!$user['last_reset_request']) {
         return ['allowed' => true, 'message' => 'First request allowed'];
     }
 
-    // Check if enough time has passed using database comparison
     $conn = db();
     $stmt = $conn->prepare('SELECT TIMESTAMPDIFF(MINUTE, ?, NOW()) as minutes_passed');
     $stmt->bind_param('s', $user['last_reset_request']);
@@ -88,7 +84,6 @@ function get_forgot_password_rate_limit_minutes(): int
     return 10;
 }
 
-// Standalone script to clear forgot password rate limits
 if (basename(__FILE__) === basename($_SERVER['SCRIPT_NAME'])) {
     if (php_sapi_name() !== 'cli') {
         http_response_code(404);

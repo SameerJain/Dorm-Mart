@@ -184,7 +184,6 @@ export default function ConfirmPurchasePage() {
         throw new Error(msg);
       }
       setFormError("");
-      // Redirect to chat page with the conversation ID
       navigate("/app/chat", { state: { convId: navState.convId } });
     } catch (err) {
       setFormError(

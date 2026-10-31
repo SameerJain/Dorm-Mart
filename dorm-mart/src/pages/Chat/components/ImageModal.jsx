@@ -70,12 +70,11 @@ export default function ImageModal({
   }
 
   function isAllowedType(f) {
-    // Prefer MIME, but fall back to extension if needed
     if (f.type) return ALLOWED_MIME.has(f.type);
 
     const name = (f.name || "").toLowerCase();
     const ext = ALLOWED_EXTS.has(
-      name.slice(name.lastIndexOf(".")), // includes dot
+      name.slice(name.lastIndexOf(".")),
     );
     return ext;
   }
@@ -92,7 +91,6 @@ export default function ImageModal({
 
     const video = isVideoFile(f);
 
-    // Size
     if (f.size > (video ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) {
       setErrorMsg(
         video
@@ -107,7 +105,6 @@ export default function ImageModal({
       return;
     }
 
-    // Type
     if (!isAllowedType(f)) {
       setErrorMsg(
         "Only JPG/JPEG, PNG, WEBP, MP4, WEBM, and MOV files are allowed.",
@@ -120,7 +117,6 @@ export default function ImageModal({
       return;
     }
 
-    // Valid
     setErrorMsg(null);
     setFile(f);
     setPreviewUrl((old) => {
@@ -149,7 +145,6 @@ export default function ImageModal({
         className="w-full max-w-sm max-h-[90dvh] flex flex-col rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <h3
             id={labelledBy}
@@ -176,7 +171,6 @@ export default function ImageModal({
           </button>
         </div>
 
-        {/* Body */}
         <div className="min-h-0 overflow-y-auto px-4 py-5 space-y-4">
           <input
             ref={fileInputRef}

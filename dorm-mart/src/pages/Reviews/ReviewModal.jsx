@@ -61,7 +61,7 @@ function ReviewModal({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmCallback, setConfirmCallback] = useState(null);
-  const [pendingSubmit, setPendingSubmit] = useState(false); // Track if we're waiting for confirmation
+  const [pendingSubmit, setPendingSubmit] = useState(false);
   const fileInputRef = React.useRef(null);
 
   const maxChars = 1000;
@@ -74,7 +74,6 @@ function ReviewModal({
     setPendingSubmit(false);
   };
 
-  // Reset form when modal opens in create mode
   useEffect(() => {
     if (isOpen && mode === "create") {
       setRating(0);
@@ -86,7 +85,6 @@ function ReviewModal({
       setVideoUrl(null);
       // Don't reset confirmation modal state here - let handleSubmit control it
     } else if (!isOpen) {
-      // Only reset confirmation modal state when modal closes
       setShowConfirmModal(false);
       setConfirmMessage("");
       setConfirmCallback(null);
@@ -94,13 +92,11 @@ function ReviewModal({
     }
   }, [isOpen, mode]);
 
-  // Load existing review data in view mode
   useEffect(() => {
     if (isOpen && mode === "view" && existingReview) {
       setRating(existingReview.rating || 0);
       setProductRating(existingReview.product_rating || 0);
       setReviewText(existingReview.review_text || "");
-      // Load images with proper API base path
       if (
         existingReview.image1_url ||
         existingReview.image2_url ||
@@ -128,7 +124,6 @@ function ReviewModal({
     }
   };
 
-  // Check if there are unsaved changes
   const hasUnsavedChanges = () => {
     if (mode !== "create") return false;
     return (
@@ -139,7 +134,6 @@ function ReviewModal({
     );
   };
 
-  // Handle close with confirmation if needed
   const handleClose = () => {
     if (isUploadingVideo || isUploadingImage || isSubmitting) return;
     if (hasUnsavedChanges()) {
@@ -187,7 +181,6 @@ function ReviewModal({
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    // Check if adding these would exceed max
     if (uploadedImages.length + files.length > maxImages) {
       setError(`You can only upload up to ${maxImages} images`);
       return;
@@ -197,20 +190,17 @@ function ReviewModal({
     setError(null);
 
     for (const file of files) {
-      // Validate file type
       const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
       if (!allowedTypes.has(file.type)) {
         setError("Only JPEG, PNG, and WebP images are allowed");
         continue;
       }
 
-      // Validate file size (2MB)
       if (file.size > 2 * 1024 * 1024) {
         setError("Each image must be less than 2MB");
         continue;
       }
 
-      // Upload immediately
       try {
         const formData = new FormData();
         formData.append("image", file);
@@ -237,7 +227,6 @@ function ReviewModal({
           throw new Error(result?.error || "Failed to upload image");
         }
 
-        // Add to uploaded images with both preview URL and server URL
         setUploadedImages((prev) => [
           ...prev,
           {
@@ -252,7 +241,6 @@ function ReviewModal({
     }
 
     setIsUploadingImage(false);
-    // Clear the file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -261,7 +249,6 @@ function ReviewModal({
   const handleRemoveImage = (index) => {
     setUploadedImages((prev) => {
       const newImages = [...prev];
-      // Revoke the preview URL to free memory
       URL.revokeObjectURL(newImages[index].previewUrl);
       newImages.splice(index, 1);
       return newImages;
@@ -290,32 +277,24 @@ function ReviewModal({
       return;
     }
 
-    // Set pending submit flag to prevent direct submission
     setPendingSubmit(true);
 
-    // Show confirmation dialog before submitting
     const message =
       "Are you sure you are done writing your review? Changes cannot be made.";
     setConfirmMessage(message);
 
-    // Create callback function that will be called when user confirms
     const callback = async () => {
-      // Close confirmation modal first
       setShowConfirmModal(false);
       setConfirmMessage("");
       // Don't reset confirmCallback or pendingSubmit yet - proceedWithSubmit needs them for safety check
-      // Then proceed with submission
       await proceedWithSubmit();
-      // Reset state after submission completes
       setConfirmCallback(null);
       setPendingSubmit(false);
     };
-    // Store the callback function directly
     setConfirmCallback(() => callback);
 
-    // Set state to show confirmation modal
     setShowConfirmModal(true);
-    return; // Important: stop execution here, don't proceed with submission
+    return;
   };
 
   const proceedWithSubmit = async () => {
@@ -323,7 +302,6 @@ function ReviewModal({
     setError(null);
 
     try {
-      // Prepare image URLs (up to 3)
       const imageUrls = {
         image1_url: uploadedImages[0]?.uploadedUrl || null,
         image2_url: uploadedImages[1]?.uploadedUrl || null,
@@ -346,7 +324,6 @@ function ReviewModal({
         throw new Error(result?.error || "Failed to submit review");
       }
 
-      // Success!
       if (onReviewSubmitted) {
         onReviewSubmitted(result);
       }
@@ -367,7 +344,6 @@ function ReviewModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
       onClick={(e) => {
-        // Prevent closing main modal when confirmation modal is open
         if (!showConfirmModal && e.target === e.currentTarget) {
           handleClose();
         }
@@ -380,7 +356,6 @@ function ReviewModal({
           maxHeight: "90dvh",
         }}
       >
-        {/* Header */}
         <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             {mode === "create" ? "Leave a Review" : "Review"}
@@ -406,7 +381,6 @@ function ReviewModal({
           </button>
         </div>
 
-        {/* Content */}
         <div
           className="px-6 py-6 overflow-y-auto flex-1 min-h-0"
           style={{ minWidth: 0 }}
@@ -452,7 +426,6 @@ function ReviewModal({
                 onChange={setProductRating}
               />
 
-              {/* Review Text Section */}
               <div className="mb-6">
                 <ReviewTextArea
                   id="review-text"
@@ -466,13 +439,11 @@ function ReviewModal({
                 />
               </div>
 
-              {/* Image Upload Section */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Add up to 3 photos (optional)
                 </label>
 
-                {/* Upload Button */}
                 {uploadedImages.length < maxImages && (
                   <div className="mb-3">
                     <input
@@ -498,7 +469,6 @@ function ReviewModal({
                   </div>
                 )}
 
-                {/* Image Previews */}
                 {uploadedImages.length > 0 && (
                   <div className="grid grid-cols-3 gap-3">
                     {uploadedImages.map((img, index) => (
@@ -554,7 +524,6 @@ function ReviewModal({
                 {isUploadingVideo && <p role="status" className="mt-2 text-sm text-gray-500">Uploading video...</p>}
               </div>
 
-              {/* Error Message */}
               {error && (
                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <p className="text-sm text-red-600 dark:text-red-400">
@@ -563,7 +532,6 @@ function ReviewModal({
                 </div>
               )}
 
-              {/* Action Buttons */}
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"
@@ -588,12 +556,10 @@ function ReviewModal({
               </div>
             </form>
           ) : (
-            // View Mode
             <div>
               <ViewRatingBlock label="Seller Rating" rating={rating} />
               <ViewRatingBlock label="Product Rating" rating={productRating} />
 
-              {/* Review Text Display */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Review
@@ -616,7 +582,6 @@ function ReviewModal({
                 </p>
               )}
 
-              {/* Close Button */}
               <div className="flex justify-end">
                 <button
                   onClick={handleClose}

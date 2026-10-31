@@ -26,11 +26,9 @@ function PurchaseHistoryPage() {
   const [error, setError] = useState(false);
   const [searchParams] = useSearchParams();
 
-  // Filter states
   const [selectedSort, setSelectedSort] = useState("Newest First");
   const [dateRange, setDateRange] = useState("All Time");
 
-  // Get review product ID from URL parameter
   const reviewProductId = searchParams.get("review");
 
   useEffect(() => {
@@ -65,7 +63,6 @@ function PurchaseHistoryPage() {
     };
   }, [dateRange, selectedSort]);
 
-  // Sort items
   const getSortedItems = () => {
     const filtered = purchasedItems;
     switch (selectedSort) {
@@ -103,7 +100,6 @@ function PurchaseHistoryPage() {
   return (
     <>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        {/* Filter/Sort Row */}
         <div className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
@@ -180,7 +176,6 @@ function PurchaseHistoryPage() {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">
             Purchase History
@@ -211,7 +206,6 @@ function PurchaseHistoryPage() {
             </div>
           )}
 
-          {/* List of items */}
           {!isFetching && sortedItems.length > 0 && (
             <ul className="grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 lg:grid-cols-2">
               {sortedItems.map((item, index) => (

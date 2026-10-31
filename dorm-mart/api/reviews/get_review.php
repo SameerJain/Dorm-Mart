@@ -18,7 +18,6 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Get the user's review for this product
     $stmt = $conn->prepare(
         'SELECT pr.review_id, pr.product_id, pr.buyer_user_id, pr.seller_user_id, 
                 pr.rating, pr.product_rating, pr.review_text, pr.image1_url, pr.image2_url, pr.image3_url,
@@ -47,7 +46,6 @@ try {
         ]);
     }
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $buyerName = trim(($review['first_name'] ?? '') . ' ' . ($review['last_name'] ?? ''));
     $reviewData = [
         'review_id' => (int)$review['review_id'],

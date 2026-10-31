@@ -63,7 +63,6 @@ function PurchasedItem({
     }
   }, [id]);
 
-  // Fetch review status on mount
   useEffect(() => {
     if (!id) return;
     loadReview().finally(() => {
@@ -71,7 +70,6 @@ function PurchasedItem({
     });
   }, [id, loadReview]);
 
-  // Auto-open review modal if autoOpenReview prop is true and review status is loaded
   useEffect(() => {
     if (autoOpenReview && !isLoadingReview && !hasAutoOpened) {
       setIsModalOpen(true);
@@ -92,7 +90,6 @@ function PurchasedItem({
   return (
     <>
       <li className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 shadow">
-        {/* Left: image */}
         <Link to={detailPath} state={detailState} className="block">
           <img
             src={displayImage}
@@ -102,9 +99,7 @@ function PurchasedItem({
           />
         </Link>
 
-        {/* Middle: details */}
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          {/* Top: title + seller */}
           <div className="mt-2 sm:mt-0 overflow-hidden">
             <h3 className="text-base sm:text-lg font-semibold line-clamp-2 break-words overflow-hidden text-gray-900 dark:text-gray-100">
               <Link
@@ -125,13 +120,11 @@ function PurchasedItem({
             )}
           </div>
 
-          {/* Bottom: date */}
           <p className="mt-2 sm:mt-1 text-sm text-gray-500 dark:text-gray-400">
             Purchased on {date ? formatDateTime(date) : ""}
           </p>
         </div>
 
-        {/* Right: buttons */}
         <div className="flex flex-col gap-2 mt-3 sm:mt-0 w-full sm:w-auto">
           <Link
             to={detailPath}
@@ -141,7 +134,6 @@ function PurchasedItem({
             See Receipt
           </Link>
 
-          {/* Review Button */}
           {!isLoadingReview && (
             <button
               onClick={handleReviewButtonClick}
@@ -158,7 +150,6 @@ function PurchasedItem({
         </div>
       </li>
 
-      {/* Review Modal */}
       <ReviewModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

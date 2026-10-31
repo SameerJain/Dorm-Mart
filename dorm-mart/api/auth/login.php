@@ -36,11 +36,9 @@ if ($email === false || $password === false) {
     json_response(['ok' => false, 'error' => $msg], 400);
 }
 
-// The pattern above already rejects an empty email.
 if ($password === '') {
     json_response(['ok' => false, 'error' => 'Missing required fields'], 400);
 }
-// Validate email format using PHP's built-in validator
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     json_response(['ok' => false, 'error' => 'Invalid email format'], 400);
 }

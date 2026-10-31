@@ -48,17 +48,34 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# AI Agents (CLI tool config/state — local only, each tool discovers these at repo root)
+# AI coding tools: local settings, memory, rules and instruction files
 .claude/
 .codex/
 .agents
+.cursor/
+.windsurf/
+.gemini/
+.continue/
+.roo/
+.kiro/
+.aider*
+.cursorrules
+.cursorignore
+.windsurfrules
+.clinerules
+.mcp.json
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+GEMINI.md
+.github/copilot-instructions.md
 
-# AI assistant working files (glossaries, refactor notes, skill defs) — notes a
-# session produced for itself, not something maintained by hand or shipped with
-# the app. Kept on disk locally; not tracked in git.
-/CONTEXT.md
+# AI working notes kept on disk locally
+CONTEXT.md
+context.md
 /artifacts/
 dorm-mart/code-review-refactor-report.md
+dorm-mart/docs/AGENT_WORKFLOWS.md
 
 # VS Code
 .vscode/

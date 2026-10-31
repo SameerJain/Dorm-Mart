@@ -6,7 +6,6 @@ require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 init_security();
 
-// Handle preflight OPTIONS request
 allow_options_request(200);
 
 try {
@@ -15,7 +14,6 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
     
-    // Query to get all categories from active, unsold items
     $sql = "
         SELECT DISTINCT categories 
         FROM INVENTORY 
@@ -32,7 +30,6 @@ try {
         throw new RuntimeException('Query failed: ' . $conn->error);
     }
     
-    // Aggregate all unique categories
     $categoriesSet = [];
     
     while ($row = $result->fetch_assoc()) {
@@ -49,16 +46,13 @@ try {
         }
     }
     
-    // Convert to array and sort alphabetically
     $categories = array_keys($categoriesSet);
     sort($categories, SORT_STRING | SORT_FLAG_CASE);
     
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $escapedCategories = array_map('escape_html', $categories);
     
     $conn->close();
     
-    // Return the array of active categories
     json_response($escapedCategories);
 
 } catch (Throwable $e) {

@@ -20,7 +20,6 @@ try {
 
     $productId = require_product_id($payload);
 
-    // Validate buyer_user_id
     $buyerId = request_int($payload, 'buyer_user_id');
     if ($buyerId <= 0) {
         json_response(['success' => false, 'error' => 'Invalid buyer_user_id'], 400);
@@ -33,7 +32,6 @@ try {
         'Rating must be in 0.5 increments'
     );
 
-    // Validate review_text (optional, max 250 chars if provided)
     $reviewTextValue = $payload['review_text'] ?? '';
     $reviewText = is_string($reviewTextValue) ? trim($reviewTextValue) : '';
     if ($reviewTextValue !== null && !is_string($reviewTextValue)) {
@@ -54,7 +52,6 @@ try {
 
     $sellerId = (int)$productRow['seller_id'];
 
-    // Verify that the current user is the seller
     if ($sellerId !== $userId) {
         json_response(['success' => false, 'error' => 'You can only rate buyers for your own products'], 403);
     }
@@ -67,7 +64,6 @@ try {
         json_response(['success' => false, 'error' => 'Product must be sold to this buyer'], 403);
     }
 
-    // Check if user has already rated this buyer for this product
     $stmt = $conn->prepare('SELECT rating_id FROM buyer_ratings WHERE seller_user_id = ? AND buyer_user_id = ? AND product_id = ? LIMIT 1');
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare existing rating check');
@@ -82,7 +78,6 @@ try {
         json_response(['success' => false, 'error' => 'You have already rated this buyer for this product'], 409);
     }
 
-    // Insert the buyer rating
     $stmt = $conn->prepare(
         'INSERT INTO buyer_ratings (product_id, seller_user_id, buyer_user_id, rating, review_text) 
          VALUES (?, ?, ?, ?, ?)'
@@ -116,7 +111,6 @@ try {
         $reminderStmt->close();
     }
 
-    // Update buyer's average buyer_rating in user_accounts
     $stmt = $conn->prepare(
         'UPDATE user_accounts SET buyer_rating = (
             SELECT AVG(rating) FROM buyer_ratings WHERE buyer_user_id = ?
@@ -128,7 +122,6 @@ try {
         $stmt->close();
     }
 
-    // Get the created rating
     $stmt = $conn->prepare(
         'SELECT rating_id, product_id, seller_user_id, buyer_user_id, rating, review_text, created_at, updated_at
          FROM buyer_ratings WHERE rating_id = ? LIMIT 1'
@@ -143,7 +136,6 @@ try {
     $stmt->close();
     $conn->close();
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     json_response([
         'success' => true,
         'rating_id' => $ratingId,

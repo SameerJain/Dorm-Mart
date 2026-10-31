@@ -82,8 +82,6 @@ try {
             throw new RuntimeException('Could not obtain lock');
         }
 
-        // Fetch existing conversation if present
-        // Check for conversation with matching product_id (or NULL if no product)
         if ($productId > 0) {
             $stmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_fname, user2_fname, product_id FROM conversations WHERE user1_id = ? AND user2_id = ? AND product_id = ? LIMIT 1');
             $stmt->bind_param('iii', $orderedA, $orderedB, $productId);
@@ -97,7 +95,6 @@ try {
         $stmt->close();
 
         if ($conversationRow) {
-            // Ensure conversation participants exist even for existing conversations
             $convId = (int) $conversationRow['conv_id'];
             chat_ensure_participants($conn, $convId, $orderedA, $orderedB);
             // "Message seller" on a conversation the buyer had hidden brings it
@@ -106,13 +103,11 @@ try {
         }
 
         if (!$conversationRow) {
-            // Need names for both participants
             $names = chat_user_display_names($conn, $orderedA, $orderedB);
 
             $user1Name = $names[$orderedA] ?? ('User ' . $orderedA);
             $user2Name = $names[$orderedB] ?? ('User ' . $orderedB);
 
-            // Insert conversation with product_id if provided
             if ($productId > 0) {
                 $stmt = $conn->prepare('INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname, product_id) VALUES (?, ?, ?, ?, ?)');
                 $stmt->bind_param('iissi', $orderedA, $orderedB, $user1Name, $user2Name, $productId);
@@ -150,12 +145,10 @@ try {
         throw new RuntimeException('Unable to ensure conversation');
     }
 
-    // Add product details to conversation row for consistency with fetch_conversations.php
     if ($productRow) {
         $conversationRow['product_title'] = (string) ($productRow['title'] ?? '');
         $conversationRow['product_seller_id'] = isset($productRow['seller_id']) ? (int) $productRow['seller_id'] : null;
 
-        // Extract first image URL for product_image_url
         $conversationRow['product_image_url'] = inventory_first_photo($productRow['photos'] ?? null);
     } else {
         $conversationRow['product_title'] = null;
