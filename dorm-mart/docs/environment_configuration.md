@@ -23,7 +23,8 @@ Dorm Mart should get deployment-specific values from env vars, not hardcoded hos
 - `GMAIL_USERNAME`, `GMAIL_PASSWORD`, `RESEND_API_KEY`, `MAIL_FROM_*`, `SUPPORT_EMAIL`, `SMTP_*`: mail settings. SMTP certificates are verified by default; set `SMTP_ALLOW_SELF_SIGNED=true` only for a trusted local development mail server using a self-signed certificate.
 - `DATA_UPLOADS_DIR`: upload storage root. The app derives `images/` and `media/` below this path. On Railway, point it at a mounted volume; when it is unset there, the API logs a warning because uploads would be lost on the next deploy.
 - `PROMO_UNSUBSCRIBE_SECRET`: long random string used to sign one-click unsubscribe links (`api/email/unsubscribe.php`) in promotional digests and their `List-Unsubscribe` header. Without it, digests still send but only link to User Preferences.
-- `TRUST_PROXY_GEO_HEADERS`: set to `true` only behind a proxy that overwrites Cloudflare/Vercel geo headers (`CF-IPCity`, `X-Vercel-IP-City`, ...). Off by default, because on Railway those headers come straight from the client; login locations then come from the IP lookup instead.
+- `TRUSTED_PROXY_IPS`: comma-separated immediate proxy IP addresses or IPv4/IPv6 CIDRs. Blank (the default) ignores forwarding headers. Configure this on a proxy deployment before release so rate limits and HTTPS detection use the real client rather than the ingress address. Only allow ingress peers that append/overwrite `X-Forwarded-For` and overwrite `X-Forwarded-Proto`; do not allow all private networks or all addresses. Railway ingress ranges must be confirmed for the deployment, rather than inferred from a client-supplied header. Direct local PHP needs no setting.
+- `TRUST_PROXY_GEO_HEADERS`: requires a peer allowed by `TRUSTED_PROXY_IPS`; set to `true` only behind a proxy that overwrites Cloudflare/Vercel geo headers (`CF-IPCity`, `X-Vercel-IP-City`, ...). Off by default, because on Railway those headers come straight from the client; login locations then come from the IP lookup instead.
 - `WS_TOKEN_SECRET`: chat WebSocket token signing.
 
 ## Stripe payments
@@ -49,3 +50,10 @@ using either payment flow so the database accepts the mock payment mode.
 
 Live payments require an HTTPS `FRONTEND_BASE_URL`. Never commit real Stripe keys or
 webhook secrets to the repository.
+
+## Browser push
+
+See [Browser push setup](BROWSER_PUSH.md) for VAPID keys, browser requirements,
+and the background worker. The server needs `PUSH_VAPID_PUBLIC_KEY`,
+`PUSH_VAPID_PRIVATE_KEY`, and `PUSH_VAPID_SUBJECT`. Users enable alerts in
+User Preferences; granting permission alone does not subscribe another account.

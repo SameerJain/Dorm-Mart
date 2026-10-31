@@ -27,7 +27,7 @@ Run with `npm run test:backend`, or individually:
 
 ## Needs a local database
 
-Run both with `npm run test:backend:integration`. Each creates and drops its own
+Run with `npm run test:backend:integration`. Each creates and drops its own
 randomly named database, starts a private `php -S`, never sends email, and refuses
 non-local hosts. The shared setup is `support/integration_harness.php`; set
 `HARNESS_KEEP_LOG=1` to keep the server's PHP error log after a failure.
@@ -36,6 +36,12 @@ non-local hosts. The shared setup is `support/integration_harness.php`; set
   edits, account deletion and bans.
 - `card_acceptance_test.php` — the acceptance tests from the closed Scrum Board
   cards, turned into adversarial API checks (one block per card number).
+- `recent_searches_test.php` — private account history, newest-ten ordering,
+  deduplication, CSRF, clearing, session persistence, and account-deletion cleanup.
+
+- `browser_push_test.php` — subscriptions, privacy, transaction-safe queueing, delivery retries, and logout; uses a fake sender and never contacts a push service.
+- `browser_push_crypto_test.php` — real Web Push encryption and signing against a
+  mocked HTTP client; included in `test:backend`, with no external delivery.
 
 ## `integration/` (needs a running server + real credentials)
 

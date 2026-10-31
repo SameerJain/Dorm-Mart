@@ -1,0 +1,9 @@
+# Use on a separate Railway worker service from the same repo, sharing DB and VAPID variables.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "php api/utility/send_browser_push.php --watch"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

@@ -1,3 +1,4 @@
+import PageBackButton from "../../components/PageBackButton";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { legalDocuments } from "./legalDocuments";
@@ -54,14 +55,8 @@ export default function LegalDocumentPage({ documentKey }) {
     <main className="min-h-dvh pre-login-bg px-4 py-6 pt-[max(1.5rem,env(safe-area-inset-top))] text-gray-800 sm:px-6 sm:py-10 print:bg-white print:p-0">
       <article className="mx-auto max-w-3xl rounded-2xl bg-white p-5 shadow-xl sm:p-8 md:p-10 print:max-w-none print:rounded-none print:p-0 print:shadow-none">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2 print:hidden">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="inline-flex min-h-[44px] items-center rounded-lg px-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-300"
-          >
-            <span aria-hidden="true" className="mr-2">←</span>
-            Back
-          </button>
+          <PageBackButton
+            onClick={handleBack}>Back</PageBackButton>
           {/* Uses the browser's print dialog ("Save as PDF"), so the copy always
               matches the text on this page. */}
           <button

@@ -23,10 +23,13 @@ export default function ElectronicPaymentModal({ onClose, onStatusChange, schedu
         if (!data?.client_secret || !data?.publishable_key) throw new Error("Payment could not be prepared.");
         const stripeModule = await import("@stripe/stripe-js");
         if (cancelled) return;
-        setSetup(data);
-        setStripePromise(stripeModule.loadStripe(data.publishable_key, {
+        const stripe = await stripeModule.loadStripe(data.publishable_key, {
           stripeAccount: data.connected_account_id,
-        }));
+        });
+        if (cancelled) return;
+        if (!stripe) throw new Error("Payment could not be prepared. Please try again.");
+        setSetup(data);
+        setStripePromise(stripe);
       })
       .catch((setupError) => {
         if (!cancelled) setError(setupError.message || "Payment could not be prepared.");

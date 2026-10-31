@@ -1,3 +1,4 @@
+import PageBackButton from "../../components/PageBackButton";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../../utils/apiConfig";
@@ -58,14 +59,9 @@ export default function SafetySummaryPage() {
   return (
     <main className="min-h-dvh pre-login-bg px-4 py-6 pt-[max(1.5rem,env(safe-area-inset-top))] text-gray-800 sm:px-6 sm:py-10">
       <article className="mx-auto max-w-3xl rounded-2xl bg-white p-5 shadow-xl sm:p-8 md:p-10">
-        <button
-          type="button"
+        <PageBackButton
           onClick={() => navigate(-1)}
-          className="mb-6 inline-flex min-h-[44px] items-center rounded-lg px-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-300"
-        >
-          <span aria-hidden="true" className="mr-2">←</span>
-          Back
-        </button>
+          className="mb-6">Back</PageBackButton>
 
         <header className="border-b border-gray-200 pb-6">
           <h1 className="font-serif text-3xl font-bold text-gray-900 sm:text-4xl">

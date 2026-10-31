@@ -1,3 +1,4 @@
+import PageBackButton from "../../components/PageBackButton";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -171,13 +172,9 @@ function PublicProfilePage() {
           <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">
             Please provide a username to view a public profile.
           </p>
-          <button
-            type="button"
+          <PageBackButton
             onClick={() => navigate(-1)}
-            className="mt-4 rounded-full bg-blue-600 px-4 py-1.5 text-sm font-medium text-white"
-          >
-            Go back
-          </button>
+            className="mt-4">Go back</PageBackButton>
         </div>
       </div>
     );
@@ -201,13 +198,9 @@ function PublicProfilePage() {
           <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">
             {error}
           </p>
-          <button
-            type="button"
+          <PageBackButton
             onClick={() => navigate(-1)}
-            className="mt-4 rounded-full bg-blue-600 px-4 py-1.5 text-sm font-medium text-white"
-          >
-            Go back
-          </button>
+            className="mt-4">Go back</PageBackButton>
         </div>
       </div>
     );
@@ -223,13 +216,9 @@ function PublicProfilePage() {
           <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">
             We couldn't find a user with that username.
           </p>
-          <button
-            type="button"
+          <PageBackButton
             onClick={() => navigate(-1)}
-            className="mt-4 rounded-full bg-blue-600 px-4 py-1.5 text-sm font-medium text-white"
-          >
-            Go back
-          </button>
+            className="mt-4">Go back</PageBackButton>
         </div>
       </div>
     );
@@ -253,13 +242,8 @@ function PublicProfilePage() {
     <div className="min-h-screen w-full bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-3 py-6 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-6">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-medium text-blue-600 shadow-sm transition hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-gray-700"
-          >
-            ← Back
-          </button>
+          <PageBackButton
+            onClick={() => navigate(-1)}>Back</PageBackButton>
         </div>
         {isPreview && (
           <div className="mb-3 p-4 bg-yellow-50 dark:bg-yellow-900/30 border-2 border-yellow-200 dark:border-yellow-700 rounded-lg">

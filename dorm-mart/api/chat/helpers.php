@@ -205,6 +205,8 @@ function chat_unhide_for_user(mysqli $conn, int $conversationId, int $userId): v
 
 function chat_increment_unread(mysqli $conn, int $messageId, int $conversationId, int $receiverId): void
 {
+    require_once __DIR__ . '/../helpers/browser_push.php';
+    browser_push_message($conn, $messageId, $conversationId, $receiverId);
     chat_unhide_for_user($conn, $conversationId, $receiverId);
     $stmt = $conn->prepare(
         'UPDATE conversation_participants

@@ -1,3 +1,4 @@
+import PageBackButton from "../../components/PageBackButton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import PreLoginBranding from "../../components/PreLoginBranding";
@@ -287,12 +288,8 @@ function ResetPasswordForm() {
                         >
                           Request New Reset Link
                         </button>
-                        <button
-                          onClick={() => navigate("/login")}
-                          className="min-h-[44px] bg-white/20 hover:bg-white/30 text-white px-5 py-3 rounded-md transition-colors font-medium text-base sm:text-lg active:scale-95"
-                        >
-                          Back to Login
-                        </button>
+                        <PageBackButton
+                          onClick={() => navigate("/login")}>Back to Login</PageBackButton>
                       </div>
                     </div>
                   )}

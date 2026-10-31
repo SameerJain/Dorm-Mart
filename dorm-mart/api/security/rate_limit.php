@@ -2,6 +2,7 @@
 // Attempt throttling: login, account creation, password confirmation, Turnstile.
 // Endpoints load this through security.php.
 require_once __DIR__ . '/../config/app_config.php';
+require_once __DIR__ . '/transport.php';
 
 
 const ACCOUNT_CREATION_MAX_ATTEMPTS = 4;
@@ -11,29 +12,10 @@ const ACCOUNT_CREATION_LOCKOUT_MINUTES = 3;
 /** Retry-After quoted when the limiter itself is unavailable and refuses the attempt. */
 const RATE_LIMIT_FAILURE_RETRY_SECONDS = 60;
 
-/**
- * Resolve the client IP that rate-limit keys are bucketed by.
- *
- * REMOTE_ADDR is useless behind Railway's edge: each request is proxied by a
- * different node (100.64.0.1-19 in production), so a key built from it lands in
- * a fresh bucket every time and no counter ever accumulates. X-Forwarded-For
- * carries the actual client, so prefer it, keeping REMOTE_ADDR as the fallback
- * for local runs with no proxy in front.
- *
- * Railway's edge APPENDS the connecting address to X-Forwarded-For, so only the
- * LAST entry was written by our proxy. Anything before it arrived in the
- * client's own request and is forgeable; trusting the first entry let a client
- * pick a fresh bucket per request and defeat the limiter entirely.
- */
+/** Resolve the client address using the shared proxy trust policy. */
 function rate_limit_client_ip(): string
 {
-    $chain = array_map('trim', explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '')));
-    $forwarded = (string)end($chain);
-    $remote = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
-
-    return filter_var($forwarded, FILTER_VALIDATE_IP)
-        ? $forwarded
-        : (filter_var($remote, FILTER_VALIDATE_IP) ? $remote : 'unknown');
+    return request_client_ip();
 }
 
 /** Build an opaque account-creation key without using the submitted email. */

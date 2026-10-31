@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/inventory.php';
+require_once __DIR__ . '/browser_push.php';
 
 function notification_first_image(?string $photos): ?string
 {
@@ -34,7 +35,11 @@ function notification_insert(mysqli $conn, array $n): void
     $available = $n['available_at'] ?? gmdate('Y-m-d H:i:s');
     $stmt->bind_param('isiissssssss', $recipient, $type, $product, $request, $title, $message, $image, $severity, $destination, $metadata, $key, $available);
     $stmt->execute();
+    $insertedId = $stmt->affected_rows === 1 ? (int)$stmt->insert_id : 0;
     $stmt->close();
+    if ($insertedId > 0 && preg_match('/^(schedule_|scheduled_purchase_|confirm_|payment_|purchase_|refund_)/', $type)) {
+        browser_push_enqueue($conn, $recipient, 'purchase', $destination ?? '/app/notification', null, $insertedId, $available);
+    }
 }
 
 function notification_wishlist_users(mysqli $conn, int $productId, ?int $excludeUserId = null): array

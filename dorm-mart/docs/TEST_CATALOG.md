@@ -25,7 +25,7 @@ Excluded: vendor tests, SQL seed data, images, test support `api/tests/bootstrap
 
 ## Inventory
 
-### Frontend Jest tests (69 files)
+### Frontend Jest tests (73 files)
 
 <details>
 <summary>src/__tests__/adversarial/apiClient.adversarial.test.js</summary>
@@ -947,6 +947,122 @@ describe("wishlist normalization", () => {
       "Books",
     );
   });
+});
+```
+
+</details>
+
+<details>
+<summary>src/__tests__/components/MainNav/SearchBar.test.jsx</summary>
+
+[Open source](../src/__tests__/components/MainNav/SearchBar.test.jsx)
+
+```jsx
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import SearchBar from "../../../components/MainNav/SearchBar";
+import { apiGetJson, csrfPostJson } from "../../../utils/apiClient";
+
+jest.mock("../../../utils/apiClient", () => ({ apiGetJson: jest.fn(), csrfPostJson: jest.fn() }));
+
+beforeEach(() => {
+  jest.resetAllMocks();
+  apiGetJson.mockResolvedValue({ data: ["desk", "lamp"] });
+  csrfPostJson.mockResolvedValue({ success: true });
+});
+
+test("saved searches can be rerun and cleared", async () => {
+  const onSearch = jest.fn();
+  render(<SearchBar userId={1} onSearch={onSearch} />);
+  const input = screen.getByRole("searchbox", { name: "Search listings" });
+  fireEvent.focus(input);
+  fireEvent.click(await screen.findByRole("button", { name: "desk" }));
+  expect(onSearch).toHaveBeenCalledWith("desk");
+  await waitFor(() => expect(csrfPostJson).toHaveBeenCalledWith(expect.stringMatching(/recent_searches.php$/), { term: "desk" }, expect.objectContaining({ signal: expect.anything() })));
+  fireEvent.focus(input);
+  fireEvent.click(screen.getByRole("button", { name: "Clear history" }));
+  await waitFor(() => expect(csrfPostJson).toHaveBeenLastCalledWith(expect.any(String), { action: "clear" }, expect.objectContaining({ signal: expect.anything() })));
+  expect(screen.queryByRole("button", { name: "lamp" })).toBeNull();
+});
+
+test("submitting searches saves trimmed terms but skips blank searches", async () => {
+  const onSearch = jest.fn();
+  render(<SearchBar userId={1} onSearch={onSearch} />);
+  const input = screen.getByRole("searchbox");
+  fireEvent.change(input, { target: { value: "  chair  " } });
+  fireEvent.submit(input.closest("form"));
+  expect(onSearch).toHaveBeenCalledWith("chair");
+  await waitFor(() => expect(csrfPostJson).toHaveBeenCalledTimes(1));
+  fireEvent.change(input, { target: { value: "   " } });
+  fireEvent.submit(input.closest("form"));
+  expect(onSearch).toHaveBeenLastCalledWith("");
+  expect(csrfPostJson).toHaveBeenCalledTimes(1);
+});
+
+test("history failure does not block a search", async () => {
+  apiGetJson.mockRejectedValue(new Error("Offline"));
+  csrfPostJson.mockRejectedValue(new Error("Offline"));
+  const onSearch = jest.fn();
+  render(<SearchBar userId={1} onSearch={onSearch} />);
+  fireEvent.change(screen.getByRole("searchbox"), { target: { value: "desk" } });
+  fireEvent.click(screen.getByRole("button", { name: "Search" }));
+  expect(onSearch).toHaveBeenCalledWith("desk");
+  fireEvent.focus(screen.getByRole("searchbox"));
+  expect(await screen.findByRole("alert")).toHaveTextContent(/could not save/i);
+});
+
+test("Escape closes history without submitting", async () => {
+  const onSearch = jest.fn();
+  render(<SearchBar userId={1} onSearch={onSearch} />);
+  fireEvent.focus(screen.getByRole("searchbox"));
+  expect(await screen.findByRole("button", { name: "lamp" })).toBeInTheDocument();
+  fireEvent.keyDown(screen.getByRole("searchbox"), { key: "Escape" });
+  expect(screen.queryByRole("button", { name: "lamp" })).toBeNull();
+  expect(onSearch).not.toHaveBeenCalled();
+});
+
+test("a slow initial load cannot overwrite a newly submitted search", async () => {
+  let finishLoad;
+  apiGetJson.mockReturnValue(new Promise((resolve) => { finishLoad = resolve; }));
+  render(<SearchBar userId={1} onSearch={jest.fn()} />);
+  fireEvent.change(screen.getByRole("searchbox"), { target: { value: "chair" } });
+  fireEvent.click(screen.getByRole("button", { name: "Search" }));
+  finishLoad({ data: ["old search"] });
+  await waitFor(() => expect(csrfPostJson).toHaveBeenCalledTimes(1));
+  fireEvent.focus(screen.getByRole("searchbox"));
+  expect(screen.getByRole("button", { name: "chair" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "old search" })).toBeNull();
+});
+
+test("a failed clear restores history and explains the failure", async () => {
+  csrfPostJson.mockRejectedValue(new Error("Offline"));
+  render(<SearchBar userId={1} onSearch={jest.fn()} />);
+  fireEvent.focus(screen.getByRole("searchbox"));
+  fireEvent.click(await screen.findByRole("button", { name: "Clear history" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(/could not clear/i);
+  expect(screen.getByRole("button", { name: "desk" })).toBeInTheDocument();
+});
+
+test("guest searches do not read or write account history", () => {
+  render(<SearchBar onSearch={jest.fn()} />);
+  fireEvent.change(screen.getByRole("searchbox"), { target: { value: "chair" } });
+  fireEvent.click(screen.getByRole("button", { name: "Search" }));
+  expect(apiGetJson).not.toHaveBeenCalled();
+  expect(csrfPostJson).not.toHaveBeenCalled();
+});
+
+test("switching accounts does not display the previous account's history", async () => {
+  apiGetJson.mockResolvedValueOnce({ data: ["private desk search"] });
+  apiGetJson.mockResolvedValueOnce({ data: ["books"] });
+  const { rerender } = render(<SearchBar key={1} userId={1} onSearch={jest.fn()} />);
+  fireEvent.focus(screen.getByRole("searchbox"));
+  expect(await screen.findByRole("button", { name: "private desk search" })).toBeInTheDocument();
+  const oldSignal = apiGetJson.mock.calls[0][1].signal;
+  rerender(<SearchBar key={2} userId={2} onSearch={jest.fn()} />);
+  fireEvent.focus(screen.getByRole("searchbox"));
+  expect(await screen.findByRole("button", { name: "books" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "private desk search" })).toBeNull();
+  expect(oldSignal.aborted).toBe(true);
 });
 ```
 
@@ -2318,6 +2434,36 @@ test("a failed mock payment keeps the error visible and allows retry", async () 
   fireEvent.click(await screen.findByRole("button", { name: "Complete mock transaction" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("The Payment Window is not open");
   expect(screen.getByRole("button", { name: "Complete mock transaction" })).toBeEnabled();
+});
+
+
+test("a failed Stripe SDK load shows a useful error", async () => {
+  const { loadStripe } = require("@stripe/stripe-js");
+  csrfPostJson.mockResolvedValueOnce({ data: { client_secret: "secret", publishable_key: "pk_test", amount_cents: 500 } });
+  loadStripe.mockRejectedValueOnce(new Error("Stripe could not load"));
+  render(<ElectronicPaymentModal scheduledRequestId={7} onClose={jest.fn()} onStatusChange={jest.fn()} />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Stripe could not load");
+  expect(screen.queryByTestId("stripe-card-form")).toBeNull();
+});
+
+
+test("a successful Stripe SDK load renders the card form", async () => {
+  const { loadStripe } = require("@stripe/stripe-js");
+  csrfPostJson.mockResolvedValueOnce({ data: { client_secret: "secret", publishable_key: "pk_test", connected_account_id: "acct_test", amount_cents: 500 } });
+  loadStripe.mockResolvedValueOnce({});
+  render(<ElectronicPaymentModal scheduledRequestId={7} onClose={jest.fn()} onStatusChange={jest.fn()} />);
+  expect(await screen.findByTestId("stripe-card-form")).toBeInTheDocument();
+  expect(loadStripe).toHaveBeenCalledWith("pk_test", { stripeAccount: "acct_test" });
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+test("an unavailable Stripe SDK shows an error instead of an empty checkout", async () => {
+  const { loadStripe } = require("@stripe/stripe-js");
+  csrfPostJson.mockResolvedValueOnce({ data: { client_secret: "secret", publishable_key: "pk_test", amount_cents: 500 } });
+  loadStripe.mockResolvedValueOnce(null);
+  render(<ElectronicPaymentModal scheduledRequestId={7} onClose={jest.fn()} onStatusChange={jest.fn()} />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Payment could not be prepared");
+  expect(screen.queryByTestId("stripe-card-form")).toBeNull();
 });
 ```
 
@@ -6118,6 +6264,70 @@ describe("account information formatting", () => {
 </details>
 
 <details>
+<summary>src/__tests__/pages/Settings/BrowserPushSettings.test.jsx</summary>
+
+[Open source](../src/__tests__/pages/Settings/BrowserPushSettings.test.jsx)
+
+```jsx
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import BrowserPushSettings from "../../../pages/Settings/BrowserPushSettings";
+import { browserPushState, enableBrowserPush, disableBrowserPush } from "../../../utils/browserPush";
+jest.mock("../../../utils/browserPush", () => ({ browserPushState: jest.fn(), enableBrowserPush: jest.fn(), disableBrowserPush: jest.fn() }));
+
+const available = { supported: true, configured: true, enabled: false, publicKey: "public", permission: "default" };
+beforeEach(() => jest.resetAllMocks());
+
+test("permission is requested only after clicking Enable", async () => {
+  browserPushState.mockResolvedValueOnce(available).mockResolvedValueOnce({ ...available, enabled: true });
+  render(<BrowserPushSettings />);
+  const enable = await screen.findByRole("button", { name: "Enable browser notifications" });
+  expect(enableBrowserPush).not.toHaveBeenCalled();
+  fireEvent.click(enable);
+  expect(await screen.findByRole("button", { name: "Disable browser notifications" })).toBeInTheDocument();
+  expect(enableBrowserPush).toHaveBeenCalledWith("public");
+});
+
+test("users can disable notifications on this browser", async () => {
+  browserPushState.mockResolvedValueOnce({ ...available, enabled: true }).mockResolvedValueOnce(available);
+  render(<BrowserPushSettings />);
+  fireEvent.click(await screen.findByRole("button", { name: "Disable browser notifications" }));
+  await waitFor(() => expect(disableBrowserPush).toHaveBeenCalledTimes(1));
+  expect(await screen.findByRole("button", { name: "Enable browser notifications" })).toBeInTheDocument();
+});
+
+test("unsupported and blocked browsers get useful explanations", async () => {
+  browserPushState.mockResolvedValueOnce({ supported: false });
+  const first = render(<BrowserPushSettings />);
+  expect(await screen.findByText(/supported browser and a secure connection/i)).toBeInTheDocument();
+  first.unmount();
+  browserPushState.mockResolvedValueOnce({ ...available, permission: "denied" });
+  render(<BrowserPushSettings />);
+  expect(await screen.findByRole("button", { name: "Enable browser notifications" })).toBeDisabled();
+  expect(screen.getByText(/notifications are blocked/i)).toBeInTheDocument();
+});
+
+test("failed enable keeps the control available and explains the error", async () => {
+  browserPushState.mockResolvedValue(available);
+  enableBrowserPush.mockRejectedValue(new Error("Permission was not granted"));
+  render(<BrowserPushSettings />);
+  fireEvent.click(await screen.findByRole("button", { name: "Enable browser notifications" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Permission was not granted");
+  expect(screen.getByRole("button", { name: "Enable browser notifications" })).toBeEnabled();
+});
+
+test("an unconfigured server never offers a broken permission prompt", async () => {
+  browserPushState.mockResolvedValue({ ...available, configured: false });
+  render(<BrowserPushSettings />);
+  expect(await screen.findByText("Browser notifications are not available yet.")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Enable browser notifications" })).toBeNull();
+  expect(enableBrowserPush).not.toHaveBeenCalled();
+});
+```
+
+</details>
+
+<details>
 <summary>src/__tests__/pages/Settings/ChangePassword.test.jsx</summary>
 
 [Open source](../src/__tests__/pages/Settings/ChangePassword.test.jsx)
@@ -7055,6 +7265,76 @@ describe("csrfPostJson", () => {
     csrfFetch.mockResolvedValueOnce(reply({ error: "Forbidden" }, { ok: false, status: 403 }));
     await expect(csrfPostJson("/api/save", {})).rejects.toThrow("Forbidden");
   });
+});
+```
+
+</details>
+
+<details>
+<summary>src/__tests__/utils/browserPush.test.js</summary>
+
+[Open source](../src/__tests__/utils/browserPush.test.js)
+
+```javascript
+import { enableBrowserPush, disableBrowserPush, browserPushWorkerUrl } from "../../utils/browserPush";
+import { apiGetJson, csrfPostJson } from "../../utils/apiClient";
+jest.mock("../../utils/apiClient", () => ({ apiGetJson: jest.fn(), csrfPostJson: jest.fn() }));
+
+let subscription;
+let registration;
+beforeEach(() => {
+  jest.resetAllMocks();
+  subscription = { endpoint: "https://fcm.googleapis.com/test", toJSON: () => ({ endpoint: "https://fcm.googleapis.com/test", keys: {} }), unsubscribe: jest.fn().mockResolvedValue(true) };
+  registration = { pushManager: { getSubscription: jest.fn().mockResolvedValue(null), subscribe: jest.fn().mockResolvedValue(subscription) } };
+  Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+  window.PushManager = function () {};
+  window.Notification = { permission: "default", requestPermission: jest.fn().mockResolvedValue("granted") };
+  Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: { register: jest.fn().mockResolvedValue(registration), ready: Promise.resolve(registration), getRegistration: jest.fn().mockResolvedValue(registration) } });
+  apiGetJson.mockResolvedValue({ data: { configured: true, publicKey: "BA", endpoints: [] } });
+  csrfPostJson.mockResolvedValue({ success: true });
+});
+
+test("enabling asks permission and saves the real browser subscription", async () => {
+  await enableBrowserPush("BA");
+  expect(Notification.requestPermission).toHaveBeenCalledTimes(1);
+  expect(registration.pushManager.subscribe).toHaveBeenCalledWith(expect.objectContaining({ userVisibleOnly: true }));
+  expect(csrfPostJson).toHaveBeenCalledWith(expect.stringMatching(/push\/subscription.php$/), { subscription: subscription.toJSON() });
+});
+
+test("permission denial never creates a subscription", async () => {
+  Notification.requestPermission.mockResolvedValue("denied");
+  await expect(enableBrowserPush("BA")).rejects.toThrow(/permission/i);
+  expect(registration.pushManager.subscribe).not.toHaveBeenCalled();
+  expect(csrfPostJson).not.toHaveBeenCalled();
+});
+
+test("disabling removes the server subscription before unsubscribing locally", async () => {
+  registration.pushManager.getSubscription.mockResolvedValue(subscription);
+  await disableBrowserPush();
+  expect(csrfPostJson).toHaveBeenCalledWith(expect.any(String), { action: "unsubscribe", endpoint: subscription.endpoint });
+  expect(subscription.unsubscribe).toHaveBeenCalledTimes(1);
+});
+
+test("failed server registration removes the newly created browser subscription", async () => {
+  csrfPostJson.mockRejectedValue(new Error("Offline"));
+  await expect(enableBrowserPush("BA")).rejects.toThrow("Offline");
+  expect(subscription.unsubscribe).toHaveBeenCalledTimes(1);
+});
+
+test("the production root PUBLIC_URL does not become a different hostname", () => {
+  const previous = process.env.PUBLIC_URL;
+  process.env.PUBLIC_URL = "/";
+  expect(browserPushWorkerUrl()).toBe(`${window.location.origin}/push-worker.js`);
+  if (previous === undefined) delete process.env.PUBLIC_URL;
+  else process.env.PUBLIC_URL = previous;
+});
+
+test("reenabling cleans up the old browser subscription before replacing it", async () => {
+  registration.pushManager.getSubscription.mockResolvedValue(subscription);
+  await enableBrowserPush("BA");
+  expect(csrfPostJson).toHaveBeenNthCalledWith(1, expect.any(String), { action: "unsubscribe", endpoint: subscription.endpoint });
+  expect(subscription.unsubscribe).toHaveBeenCalledTimes(1);
+  expect(csrfPostJson).toHaveBeenNthCalledWith(2, expect.any(String), { subscription: subscription.toJSON() });
 });
 ```
 
@@ -8082,7 +8362,53 @@ describe("normalizeProductDetail", () => {
 
 </details>
 
-### Backend CLI checks and manual demonstrations (14 files)
+<details>
+<summary>src/__tests__/utils/pushWorker.test.js</summary>
+
+[Open source](../src/__tests__/utils/pushWorker.test.js)
+
+```javascript
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+
+let handlers;
+let worker;
+beforeEach(() => {
+  handlers = {};
+  worker = {
+    addEventListener: (name, handler) => { handlers[name] = handler; },
+    registration: { scope: "https://dorm.test/market/", showNotification: jest.fn().mockResolvedValue() },
+    clients: { matchAll: jest.fn().mockResolvedValue([]), openWindow: jest.fn().mockResolvedValue() },
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(process.cwd(), "public/push-worker.js"), "utf8"), { self: worker, URL });
+});
+
+test("push displays a notification with an app-relative icon", async () => {
+  let done;
+  handlers.push({ data: { json: () => ({ title: "New message", body: "Open Dorm Mart", path: "/app/chat?conv=7" }) }, waitUntil: (promise) => { done = promise; } });
+  await done;
+  expect(worker.registration.showNotification).toHaveBeenCalledWith("New message", expect.objectContaining({ icon: "https://dorm.test/market/web-app-manifest-192x192.png", data: { path: "/app/chat?conv=7" } }));
+});
+
+test("a notification click opens the right hash route under the app scope", async () => {
+  let done;
+  handlers.notificationclick({ notification: { close: jest.fn(), data: { path: "/app/chat?conv=7" } }, waitUntil: (promise) => { done = promise; } });
+  await done;
+  expect(worker.clients.openWindow).toHaveBeenCalledWith("https://dorm.test/market/#/app/chat?conv=7");
+});
+
+test("notification data cannot navigate outside the app", async () => {
+  let done;
+  handlers.notificationclick({ notification: { close: jest.fn(), data: { path: "https://evil.test/" } }, waitUntil: (promise) => { done = promise; } });
+  await done;
+  expect(worker.clients.openWindow).toHaveBeenCalledWith("https://dorm.test/market/#/app/notification");
+});
+```
+
+</details>
+
+### Backend CLI checks and manual demonstrations (17 files)
 
 <details>
 <summary>api/tests/adversarial_validation_test.php</summary>
@@ -8229,6 +8555,150 @@ echo "Adversarial backend validation passed: {$checks} checks\n";
 </details>
 
 <details>
+<summary>api/tests/browser_push_crypto_test.php</summary>
+
+[Open source](../api/tests/browser_push_crypto_test.php)
+
+```php
+<?php
+declare(strict_types=1);
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+// OpenSSL reads its config when PHP starts, so XAMPP needs it in the child environment.
+if (PHP_OS_FAMILY === 'Windows' && !getenv('OPENSSL_CONF')) {
+    $config = dirname(PHP_BINARY) . '/extras/ssl/openssl.cnf';
+    if (is_file($config)) {
+        $process = proc_open([PHP_BINARY, __FILE__], [STDIN, STDOUT, STDERR], $pipes, null,
+            array_merge(getenv(), ['OPENSSL_CONF' => $config]));
+        exit(proc_close($process));
+    }
+}
+require __DIR__ . '/../helpers/browser_push.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
+$keys = json_decode(file_get_contents(__DIR__ . '/fixtures/push_keys.json'), true);
+putenv('PUSH_VAPID_PUBLIC_KEY=' . $keys['publicKey']);
+putenv('PUSH_VAPID_PRIVATE_KEY=' . $keys['privateKey']);
+putenv('PUSH_VAPID_SUBJECT=mailto:test@example.com');
+$mock = new GuzzleHttp\Handler\MockHandler([new GuzzleHttp\Psr7\Response(201), new GuzzleHttp\Psr7\Response(410)]);
+$handler = GuzzleHttp\HandlerStack::create($mock);
+$history = [];
+$handler->push(GuzzleHttp\Middleware::history($history));
+$send = browser_push_sender(new GuzzleHttp\Client(['handler' => $handler]));
+$row = ['endpoint' => 'https://fcm.googleapis.com/fcm/send/test-device', 'public_key' => $keys['publicKey'],
+    'auth_token' => rtrim(strtr(base64_encode(str_repeat('a', 16)), '+/', '-_'), '=')];
+$result = $send($row, 'test plaintext');
+$request = $history[0]['request'];
+if (!$result['success'] || $result['expired']
+    || $request->getHeaderLine('Content-Encoding') !== 'aes128gcm'
+    || !str_starts_with($request->getHeaderLine('Authorization'), 'vapid ')
+    || str_contains((string)$request->getBody(), 'test plaintext')) {
+    throw new RuntimeException('Push encryption/authentication integration failed');
+}
+if (!$send($row, 'test plaintext')['expired']) throw new RuntimeException('Expired subscription response was not recognized');
+echo "PASS: real Web Push encryption, VAPID signing, successful and expired responses (no network)\n";
+```
+
+</details>
+
+<details>
+<summary>api/tests/browser_push_test.php</summary>
+
+[Open source](../api/tests/browser_push_test.php)
+
+```php
+<?php
+declare(strict_types=1);
+require __DIR__ . '/support/integration_harness.php';
+require __DIR__ . '/../helpers/browser_push.php';
+require __DIR__ . '/../helpers/notifications.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
+// Public test fixture, never used for a real push service.
+$keys = json_decode(file_get_contents(__DIR__ . '/fixtures/push_keys.json'), true);
+putenv('PUSH_VAPID_PUBLIC_KEY=' . $keys['publicKey']);
+putenv('PUSH_VAPID_PRIVATE_KEY=' . $keys['privateKey']);
+putenv('PUSH_VAPID_SUBJECT=mailto:test@example.com');
+harness_start('browserpush', 2);
+$path = 'push/subscription.php';
+$subscription = ['endpoint' => 'https://fcm.googleapis.com/fcm/send/test-device', 'keys' => [
+    'p256dh' => $keys['publicKey'], 'auth' => rtrim(strtr(base64_encode(random_bytes(16)), '+/', '-_'), '='),
+]];
+check(api(harness_guest(), $path, null)['status'] === 401, 'push configuration requires login');
+$configuration = api(1, $path, null)['body'];
+check(($configuration['data']['configured'] ?? false) === true, 'public configuration is available');
+check(!str_contains(json_encode($configuration), $keys['privateKey']), 'configuration never exposes the private signing key');
+check(api(1, $path, ['subscription' => $subscription, 'csrf_token' => 'bad'])['status'] === 403, 'subscription writes require CSRF');
+foreach (['http://fcm.googleapis.com/test', 'https://127.0.0.1/test', 'https://fcm.googleapis.com.evil.test/test', 'https://user@fcm.googleapis.com/test', 'https://fcm.googleapis.com:444/test'] as $endpoint) {
+    $bad = array_replace($subscription, ['endpoint' => $endpoint]);
+    check(api(1, $path, ['subscription' => $bad])['status'] === 400, 'untrusted push endpoint is rejected');
+}
+check(api(1, $path, ['subscription' => ['endpoint' => $subscription['endpoint'], 'keys' => ['p256dh' => 'bad', 'auth' => 'bad']]])['status'] === 400, 'malformed encryption keys are rejected');
+$saved = api(1, $path, ['subscription' => $subscription]);
+check(ok($saved), 'browser subscription can be saved: ' . json_encode($saved['body']));
+check(ok(api(1, $path, ['subscription' => $subscription])), 'saving the same browser is idempotent');
+check((int)row('SELECT COUNT(*) AS n FROM browser_push_subscriptions')['n'] === 1, 'one browser does not create duplicate subscriptions');
+check(ok(api(2, $path, ['action' => 'unsubscribe', 'endpoint' => $subscription['endpoint']])), 'another user cannot unsubscribe this browser');
+check((int)row('SELECT COUNT(*) AS n FROM browser_push_subscriptions')['n'] === 1, 'subscription ownership is preserved');
+$conn->query("INSERT INTO INVENTORY (title,seller_id,listing_price,item_status) VALUES ('Push desk',1,25,'Active')");
+$product = $conn->insert_id;
+$conv = api(2, 'chat/ensure_conversation.php', ['product_id' => $product])['body']['conv_id'];
+// Ignore the intro card: the following assertions target the explicit message.
+$conn->query('DELETE FROM browser_push_queue');
+check(ok(api(2, 'chat/create_message.php', ['conv_id' => $conv, 'receiver_id' => 1, 'content' => 'Private message text'])), 'sending a message queues push');
+$queued = row('SELECT * FROM browser_push_queue');
+check((int)($queued['message_id'] ?? 0) > 0, 'message push is durably queued');
+check(!str_contains($queued['payload'] ?? '', 'Private message text'), 'push does not expose private message previews');
+$sent = [];
+$sender = static function (array $sub, string $payload) use (&$sent): array {
+    $sent[] = json_decode($payload, true);
+    return ['success' => true, 'expired' => false];
+};
+browser_push_process($conn, $sender);
+check(count($sent) === 1 && $sent[0]['path'] === '/app/chat?conv=' . $conv, 'worker delivers an internal chat destination');
+browser_push_process($conn, $sender);
+check(count($sent) === 1, 'successful deliveries are not sent again');
+$event = ['recipient_user_id' => 1, 'type' => 'schedule_accepted', 'title' => 'A private title', 'message' => 'Private purchase details', 'destination' => '/app/seller-dashboard/ongoing-purchases', 'idempotency_key' => 'push-schedule-test'];
+notification_insert($conn, $event);
+notification_insert($conn, $event);
+check((int)row('SELECT COUNT(*) AS n FROM browser_push_queue')['n'] === 1, 'purchase notification duplicates do not enqueue twice');
+browser_push_process($conn, $sender);
+check(count($sent) === 2 && $sent[1]['title'] === 'Purchase update', 'purchase updates reach the browser');
+$conn->begin_transaction();
+notification_insert($conn, array_replace($event, ['idempotency_key' => 'rolled-back-push']));
+$conn->rollback();
+check((int)row('SELECT COUNT(*) AS n FROM browser_push_queue')['n'] === 0, 'rolled-back purchases cannot send push');
+notification_insert($conn, array_replace($event, ['idempotency_key' => 'future-push', 'available_at' => gmdate('Y-m-d H:i:s', time() + 3600)]));
+$conn->query('UPDATE browser_push_queue SET created_at = UTC_TIMESTAMP() - INTERVAL 2 DAY');
+browser_push_process($conn, $sender);
+check(count($sent) === 2, 'future reminders are not sent early');
+check((int)row('SELECT COUNT(*) AS n FROM browser_push_queue')['n'] === 1, 'future reminders survive queue cleanup even when created days ago');
+$conn->query('UPDATE browser_push_queue SET available_at = UTC_TIMESTAMP()');
+browser_push_process($conn, static fn() => ['success' => false, 'expired' => false]);
+check((int)row('SELECT attempts FROM browser_push_queue')['attempts'] === 1, 'temporary delivery failures are retried');
+$conn->query('UPDATE browser_push_queue SET available_at = UTC_TIMESTAMP()');
+browser_push_process($conn, static fn() => ['success' => false, 'expired' => true]);
+check((int)row('SELECT COUNT(*) AS n FROM browser_push_subscriptions')['n'] === 0, 'expired subscriptions are removed');
+api(1, $path, ['subscription' => $subscription]);
+for ($i = 1; $i <= 9; $i++) {
+    api(1, $path, ['subscription' => array_replace($subscription, ['endpoint' => $subscription['endpoint'] . '-' . $i])]);
+}
+check((int)row('SELECT COUNT(*) AS n FROM browser_push_subscriptions')['n'] === 10, 'up to ten browsers can be enabled');
+check(api(1, $path, ['subscription' => array_replace($subscription, ['endpoint' => $subscription['endpoint'] . '-extra'])])['status'] === 409, 'subscription storage is bounded per account');
+$keep = hash('sha256', $subscription['endpoint']);
+$conn->query("DELETE FROM browser_push_subscriptions WHERE endpoint_hash <> '$keep'");
+notification_insert($conn, array_replace($event, ['idempotency_key' => 'already-read-push']));
+$conn->query("UPDATE notifications SET is_read = 1 WHERE idempotency_key = 'already-read-push'");
+browser_push_process($conn, $sender);
+check(count($sent) === 2, 'already-read purchase alerts are not pushed again');
+notification_insert($conn, array_replace($event, ['idempotency_key' => 'logout-push']));
+api(1, 'auth/logout.php');
+browser_push_process($conn, $sender);
+check(count($sent) === 2, 'signed-out browsers receive no queued notifications');
+check((int)row('SELECT COUNT(*) AS n FROM browser_push_subscriptions')['n'] === 0, 'signed-out subscriptions are cleaned up');
+harness_finish();
+```
+
+</details>
+
+<details>
 <summary>api/tests/card_acceptance_test.php</summary>
 
 [Open source](../api/tests/card_acceptance_test.php)
@@ -8298,6 +8768,10 @@ for ($attempt = 1; $attempt <= 4; $attempt++) {
 $locked = login_as($victim, 'Wrong-password-5');
 check(error_is($locked, 429, 'Too many failed attempts. Please try again in 3 minutes.'), '#64 the fifth failure locks the account for 3 minutes');
 check(preg_match('/^Retry-After: 1[0-9]{2}\r?$/mi', $locked['headers']) === 1, '#64 the lockout says when to retry');
+foreach (['198.51.100.1', '198.51.100.2', '1.1.1.1, 198.51.100.3'] as $forgedIp) {
+    $forged = api(harness_guest('forged-ip'), 'auth/login.php', ['email' => $victim, 'password' => $password], ['X-Forwarded-For: ' . $forgedIp]);
+    check($forged['status'] === 429, '#64 forged forwarding headers cannot bypass a lockout');
+}
 check(login_as($victim, $password)['status'] === 429, '#64 the correct password is still refused during the lockout');
 check(login_as(strtoupper($victim), $password)['status'] === 429, '#64 changing the email case does not reach a fresh counter');
 check(ok(login_as(harness_email(3), $password)), '#64 one account\'s lockout does not lock out other accounts from the same network');
@@ -8824,6 +9298,50 @@ expect_same(price_has_blocked_digits('4.20'), true, 'blocked digits are caught a
 expect_same(price_has_blocked_digits('4.2'), false, 'the check reads the digits as typed');
 expect_same(price_has_blocked_digits('$1,337.69'), true, 'formatting characters are ignored');
 
+require_once __DIR__ . '/../security/rate_limit.php';
+require_once __DIR__ . '/../security/transport.php';
+require_once __DIR__ . '/../auth/device_history.php';
+$originalServer = $_SERVER;
+$originalProxies = getenv('TRUSTED_PROXY_IPS');
+putenv('TRUSTED_PROXY_IPS=');
+$_SERVER = ['REMOTE_ADDR' => '198.51.100.10', 'HTTP_X_FORWARDED_FOR' => '203.0.113.99', 'HTTP_X_FORWARDED_PROTO' => 'https'];
+expect_same(rate_limit_client_ip(), '198.51.100.10', 'direct requests cannot forge throttle IPs');
+expect_same(login_request_ip(), '198.51.100.10', 'direct requests cannot forge device IPs');
+expect_same(is_https_request(), false, 'direct requests cannot forge HTTPS');
+expect_same(dm_request_scheme(), 'http', 'request URLs ignore untrusted forwarded scheme');
+putenv('TRUSTED_PROXY_IPS=192.0.2.0/24,2001:db8:1::/48');
+$_SERVER['REMOTE_ADDR'] = '192.0.2.5';
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '1.1.1.1, 203.0.113.7';
+expect_same(rate_limit_client_ip(), '203.0.113.7', 'trusted edge uses appended client address');
+expect_same(login_request_ip(), '203.0.113.7', 'device history shares throttle trust rule');
+expect_same(is_https_request(), true, 'trusted proxy can report HTTPS');
+expect_same(dm_request_scheme(), 'https', 'scheme agrees with HTTPS detection');
+$_SERVER['REMOTE_ADDR'] = '192.0.3.5';
+expect_same(rate_limit_client_ip(), '192.0.3.5', 'neighboring subnet is not trusted');
+$_SERVER['REMOTE_ADDR'] = '2001:db8:1::5';
+expect_same(rate_limit_client_ip(), '203.0.113.7', 'IPv6 proxy range is supported');
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.7, invalid';
+expect_same(rate_limit_client_ip(), '2001:db8:1::5', 'invalid appended hop fails closed');
+putenv('TRUSTED_PROXY_IPS=invalid,0.0.0.0/99');
+expect_same(rate_limit_client_ip(), '2001:db8:1::5', 'malformed proxy configuration fails closed');
+$_SERVER = ['REMOTE_ADDR' => '198.51.100.10', 'HTTPS' => 'on', 'HTTP_X_FORWARDED_PROTO' => 'http'];
+expect_same(is_https_request(), true, 'native TLS takes precedence');
+$_SERVER = $originalServer;
+putenv($originalProxies === false ? 'TRUSTED_PROXY_IPS' : 'TRUSTED_PROXY_IPS=' . $originalProxies);
+$directives = [];
+foreach (explode(';', security_csp_header()) as $directive) {
+    $parts = preg_split('/\s+/', trim($directive));
+    $directives[array_shift($parts)] = $parts;
+}
+foreach (['script-src' => ['https://js.stripe.com', 'https://*.js.stripe.com'],
+          'frame-src' => ['https://js.stripe.com', 'https://*.js.stripe.com', 'https://hooks.stripe.com', 'https://link.com', 'https://*.link.com'],
+          'connect-src' => ['https://api.stripe.com', 'https://link.com', 'https://*.link.com']] as $directive => $origins) {
+    foreach ($origins as $origin) {
+        expect_same(in_array($origin, $directives[$directive] ?? [], true), true, "$directive permits $origin");
+    }
+    expect_same(in_array('*', $directives[$directive], true), false, "$directive does not permit all origins");
+}
+
 echo "PASS: {$checks} helper checks\n";
 ```
 
@@ -8872,8 +9390,12 @@ $_SERVER['HTTP_X_VERCEL_IP_CITY'] = 'New%20York';
 putenv('TRUST_PROXY_GEO_HEADERS');
 check_location(login_request_location() === 'Buffalo, New York, United States', 'client-sent geo headers ignored by default');
 putenv('TRUST_PROXY_GEO_HEADERS=true');
+putenv('TRUSTED_PROXY_IPS=');
+check_location(login_request_location() === 'Buffalo, New York, United States', 'geo opt-in still requires a trusted connecting proxy');
+putenv('TRUSTED_PROXY_IPS=8.8.8.8');
 check_location(login_request_location() === 'New York', 'trusted proxy location preserved');
 putenv('TRUST_PROXY_GEO_HEADERS');
+putenv('TRUSTED_PROXY_IPS');
 
 $failure = static function () use (&$calls): array { $calls++; return ['success' => false]; };
 check_location(login_ip_location('1.1.1.1', $failure) === null, 'provider failure handled');
@@ -9440,6 +9962,49 @@ check((int)row("SELECT COUNT(*) AS c FROM moderation_actions WHERE action='ban_u
 check(ok(api(4, 'moderation/ban_user.php', ['user_id' => 1, 'banned' => false, 'reason' => 'Lifecycle test'])), 'moderator can lift the ban');
 check(api(3, 'product/view_product.php?product_id=' . $product, null)['status'] === 200, 'listings come back once the ban is lifted');
 
+harness_finish();
+```
+
+</details>
+
+<details>
+<summary>api/tests/recent_searches_test.php</summary>
+
+[Open source](../api/tests/recent_searches_test.php)
+
+```php
+<?php
+declare(strict_types=1);
+
+require __DIR__ . '/support/integration_harness.php';
+harness_start('searchhistory', 2);
+
+$path = 'search/recent_searches.php';
+check(api(harness_guest(), $path, null)['status'] === 401, 'history requires login');
+check((api(1, $path, null)['body']['data'] ?? null) === [], 'new account has no history');
+check(api(1, $path, ['term' => 'desk', 'csrf_token' => 'invalid'])['status'] === 403, 'saving requires CSRF');
+foreach (['', '   ', str_repeat('a', 51), ['desk']] as $term) {
+    check(api(1, $path, ['term' => $term])['status'] === 400, 'invalid search is rejected');
+}
+for ($i = 1; $i <= 12; $i++) {
+    check(ok(api(1, $path, ['term' => 'search ' . $i])), 'search can be saved');
+}
+$expected = array_map(fn($i) => 'search ' . $i, range(12, 3));
+check((api(1, $path, null)['body']['data'] ?? null) === $expected, 'only the newest ten searches remain');
+$res = api(1, $path, ['term' => '  SEARCH 5  ', 'user_id' => 2]);
+$terms = $res['body']['data'] ?? [];
+check(count($terms) === 10 && $terms[0] === 'SEARCH 5' && !in_array('search 5', $terms, true), 'repeat search moves to front without duplicate');
+check((api(2, $path, null)['body']['data'] ?? null) === [], 'submitted user ID cannot change another account');
+check(ok(api(2, $path, ['term' => 'private search'])), 'second user saves their own history');
+check(ok(api(1, $path, ['term' => '椅子'])), 'Unicode searches are supported');
+harness_login(1);
+check((api(1, $path, null)['body']['data'][0] ?? null) === '椅子', 'history survives a new login session');
+check(api(1, $path, ['action' => 'clear', 'csrf_token' => 'invalid'])['status'] === 403, 'clearing requires CSRF');
+check(ok(api(1, $path, ['action' => 'clear'])), 'user can clear history');
+check((api(1, $path, null)['body']['data'] ?? null) === [], 'cleared history stays empty');
+check((api(2, $path, null)['body']['data'] ?? null) === ['private search'], 'clearing does not affect another user');
+$conn->query('DELETE FROM user_accounts WHERE user_id = 2');
+check((int)row('SELECT COUNT(*) AS n FROM recent_searches WHERE user_id = 2')['n'] === 0, 'account deletion removes saved searches');
 harness_finish();
 ```
 

@@ -20,7 +20,7 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
   return (
     <div
       className="
-        fixed inset-0 z-50
+        fixed inset-0 z-50 bg-black/40
         flex items-center justify-center
         overscroll-none p-4
       "

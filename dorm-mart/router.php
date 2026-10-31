@@ -145,6 +145,8 @@ if ($resolvedBuildPath !== false
 
     if ($extLower === 'html') {
         header('Content-Security-Policy: ' . security_csp_header());
+    } elseif ($extLower === 'js' && basename($buildPath) === 'push-worker.js') {
+        header('Cache-Control: no-cache');
     } elseif (in_array($extLower, ['js', 'css', 'woff2', 'woff', 'ttf'], true)) {
         header('Cache-Control: public, max-age=31536000, immutable');
     }

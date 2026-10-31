@@ -1,3 +1,4 @@
+import PageBackButton from "../../../components/PageBackButton";
 import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 
 export default function ListingSuccessModal({
@@ -41,18 +42,16 @@ export default function ListingSuccessModal({
           >
             Post another product
           </button>
-          <button
-            type="button"
+          <PageBackButton
             onClick={() => {
               window.scrollTo(0, 0);
               navigate("/app/seller-dashboard");
             }}
-            className="px-4 py-2 coarse:min-h-[44px] rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
           >
             {location.state?.fromDashboard === true
               ? "Go back to Dashboard"
               : "View Dashboard"}
-          </button>
+          </PageBackButton>
         </div>
       </div>
     </div>

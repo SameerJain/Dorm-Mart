@@ -73,4 +73,48 @@ expect_same(price_has_blocked_digits('4.20'), true, 'blocked digits are caught a
 expect_same(price_has_blocked_digits('4.2'), false, 'the check reads the digits as typed');
 expect_same(price_has_blocked_digits('$1,337.69'), true, 'formatting characters are ignored');
 
+require_once __DIR__ . '/../security/rate_limit.php';
+require_once __DIR__ . '/../security/transport.php';
+require_once __DIR__ . '/../auth/device_history.php';
+$originalServer = $_SERVER;
+$originalProxies = getenv('TRUSTED_PROXY_IPS');
+putenv('TRUSTED_PROXY_IPS=');
+$_SERVER = ['REMOTE_ADDR' => '198.51.100.10', 'HTTP_X_FORWARDED_FOR' => '203.0.113.99', 'HTTP_X_FORWARDED_PROTO' => 'https'];
+expect_same(rate_limit_client_ip(), '198.51.100.10', 'direct requests cannot forge throttle IPs');
+expect_same(login_request_ip(), '198.51.100.10', 'direct requests cannot forge device IPs');
+expect_same(is_https_request(), false, 'direct requests cannot forge HTTPS');
+expect_same(dm_request_scheme(), 'http', 'request URLs ignore untrusted forwarded scheme');
+putenv('TRUSTED_PROXY_IPS=192.0.2.0/24,2001:db8:1::/48');
+$_SERVER['REMOTE_ADDR'] = '192.0.2.5';
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '1.1.1.1, 203.0.113.7';
+expect_same(rate_limit_client_ip(), '203.0.113.7', 'trusted edge uses appended client address');
+expect_same(login_request_ip(), '203.0.113.7', 'device history shares throttle trust rule');
+expect_same(is_https_request(), true, 'trusted proxy can report HTTPS');
+expect_same(dm_request_scheme(), 'https', 'scheme agrees with HTTPS detection');
+$_SERVER['REMOTE_ADDR'] = '192.0.3.5';
+expect_same(rate_limit_client_ip(), '192.0.3.5', 'neighboring subnet is not trusted');
+$_SERVER['REMOTE_ADDR'] = '2001:db8:1::5';
+expect_same(rate_limit_client_ip(), '203.0.113.7', 'IPv6 proxy range is supported');
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.7, invalid';
+expect_same(rate_limit_client_ip(), '2001:db8:1::5', 'invalid appended hop fails closed');
+putenv('TRUSTED_PROXY_IPS=invalid,0.0.0.0/99');
+expect_same(rate_limit_client_ip(), '2001:db8:1::5', 'malformed proxy configuration fails closed');
+$_SERVER = ['REMOTE_ADDR' => '198.51.100.10', 'HTTPS' => 'on', 'HTTP_X_FORWARDED_PROTO' => 'http'];
+expect_same(is_https_request(), true, 'native TLS takes precedence');
+$_SERVER = $originalServer;
+putenv($originalProxies === false ? 'TRUSTED_PROXY_IPS' : 'TRUSTED_PROXY_IPS=' . $originalProxies);
+$directives = [];
+foreach (explode(';', security_csp_header()) as $directive) {
+    $parts = preg_split('/\s+/', trim($directive));
+    $directives[array_shift($parts)] = $parts;
+}
+foreach (['script-src' => ['https://js.stripe.com', 'https://*.js.stripe.com'],
+          'frame-src' => ['https://js.stripe.com', 'https://*.js.stripe.com', 'https://hooks.stripe.com', 'https://link.com', 'https://*.link.com'],
+          'connect-src' => ['https://api.stripe.com', 'https://link.com', 'https://*.link.com']] as $directive => $origins) {
+    foreach ($origins as $origin) {
+        expect_same(in_array($origin, $directives[$directive] ?? [], true), true, "$directive permits $origin");
+    }
+    expect_same(in_array('*', $directives[$directive], true), false, "$directive does not permit all origins");
+}
+
 echo "PASS: {$checks} helper checks\n";

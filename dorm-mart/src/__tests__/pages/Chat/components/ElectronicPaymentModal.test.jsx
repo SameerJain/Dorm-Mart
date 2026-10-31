@@ -40,3 +40,33 @@ test("a failed mock payment keeps the error visible and allows retry", async () 
   expect(await screen.findByRole("alert")).toHaveTextContent("The Payment Window is not open");
   expect(screen.getByRole("button", { name: "Complete mock transaction" })).toBeEnabled();
 });
+
+
+test("a failed Stripe SDK load shows a useful error", async () => {
+  const { loadStripe } = require("@stripe/stripe-js");
+  csrfPostJson.mockResolvedValueOnce({ data: { client_secret: "secret", publishable_key: "pk_test", amount_cents: 500 } });
+  loadStripe.mockRejectedValueOnce(new Error("Stripe could not load"));
+  render(<ElectronicPaymentModal scheduledRequestId={7} onClose={jest.fn()} onStatusChange={jest.fn()} />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Stripe could not load");
+  expect(screen.queryByTestId("stripe-card-form")).toBeNull();
+});
+
+
+test("a successful Stripe SDK load renders the card form", async () => {
+  const { loadStripe } = require("@stripe/stripe-js");
+  csrfPostJson.mockResolvedValueOnce({ data: { client_secret: "secret", publishable_key: "pk_test", connected_account_id: "acct_test", amount_cents: 500 } });
+  loadStripe.mockResolvedValueOnce({});
+  render(<ElectronicPaymentModal scheduledRequestId={7} onClose={jest.fn()} onStatusChange={jest.fn()} />);
+  expect(await screen.findByTestId("stripe-card-form")).toBeInTheDocument();
+  expect(loadStripe).toHaveBeenCalledWith("pk_test", { stripeAccount: "acct_test" });
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+test("an unavailable Stripe SDK shows an error instead of an empty checkout", async () => {
+  const { loadStripe } = require("@stripe/stripe-js");
+  csrfPostJson.mockResolvedValueOnce({ data: { client_secret: "secret", publishable_key: "pk_test", amount_cents: 500 } });
+  loadStripe.mockResolvedValueOnce(null);
+  render(<ElectronicPaymentModal scheduledRequestId={7} onClose={jest.fn()} onStatusChange={jest.fn()} />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Payment could not be prepared");
+  expect(screen.queryByTestId("stripe-card-form")).toBeNull();
+});

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../utility/load_env.php';
 load_env();
+require_once __DIR__ . '/../security/transport.php';
 
 function dm_env_string(string $key, string $default = ''): string
 {
@@ -63,11 +64,7 @@ function dm_url_origin(string $url): string
 
 function dm_request_scheme(): string
 {
-    $forwarded = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
-    if ($forwarded !== '') {
-        return strtolower(explode(',', $forwarded)[0]) === 'https' ? 'https' : 'http';
-    }
-    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    return is_https_request() ? 'https' : 'http';
 }
 
 function dm_request_origin(): string
