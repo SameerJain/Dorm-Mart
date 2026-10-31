@@ -62,7 +62,6 @@ try {
 
     $meetingIso = dm_utc_atom($schedRow['meeting_at'] ?? null);
 
-    // XSS PROTECTION: Escape user-generated content
     $scheduledInfo = [
         'request_id' => (int)$schedRow['request_id'],
         'buyer_user_id' => (int)$schedRow['buyer_user_id'],

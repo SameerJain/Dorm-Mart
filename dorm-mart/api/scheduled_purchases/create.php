@@ -145,7 +145,6 @@ try {
         json_response(['success' => false, 'error' => 'This item already has an active scheduled purchase'], 409);
     }
 
-    // Empty optional text is stored as NULL.
     $columns = [
         'inventory_product_id' => ['i', $inventoryId], 'seller_user_id' => ['i', $sellerId],
         'buyer_user_id' => ['i', $buyerId], 'conversation_id' => ['i', $conversationId],
@@ -179,7 +178,6 @@ try {
     $requestId = $stmt->insert_id;
     $stmt->close();
     
-    // Create special message in chat
     if ($conversationId > 0) {
         $sellerDisplayName = scheduled_purchase_user_display_name($conn, $sellerId);
         $messageContent = $sellerDisplayName . ' has scheduled a purchase. Please Accept or Deny.';
@@ -221,7 +219,6 @@ try {
 
     $conn->commit();
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $response = [
         'success' => true,
         'data' => [

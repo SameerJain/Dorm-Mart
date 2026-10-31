@@ -75,10 +75,8 @@ try {
     $destPath   = $imageDirFs . $filename;
     $publicPath = $imageBaseUrl . '/' . $filename;
 
-    // Process and compress image if GD is available
     $processed = process_profile_image($imageInfo['tmp_name'], $imageInfo['mime'], $destPath);
     if (!$processed) {
-        // Fallback: if processing fails, just move the file
         if (!@move_uploaded_file($imageInfo['tmp_name'], $destPath)) {
             json_response(['success' => false, 'error' => 'Could not save uploaded photo'], 500);
         }
@@ -117,7 +115,6 @@ function extract_upload(): ?array
  */
 function process_profile_image(string $sourcePath, ?string $mime, string $destPath): bool
 {
-    // Check if GD extension is available
     if (!extension_loaded('gd')) {
         return false;
     }
@@ -126,7 +123,6 @@ function process_profile_image(string $sourcePath, ?string $mime, string $destPa
     $maxHeight = 800;
     $quality = 85; // JPEG/WebP quality (0-100)
 
-    // Load source image
     $sourceImage = null;
     switch ($mime) {
         case 'image/jpeg':
@@ -146,22 +142,18 @@ function process_profile_image(string $sourcePath, ?string $mime, string $destPa
         return false;
     }
 
-    // Get original dimensions
     $origWidth = imagesx($sourceImage);
     $origHeight = imagesy($sourceImage);
 
-    // Calculate new dimensions (maintain aspect ratio)
     $ratio = min($maxWidth / $origWidth, $maxHeight / $origHeight);
     $newWidth = (int)($origWidth * $ratio);
     $newHeight = (int)($origHeight * $ratio);
 
-    // Only resize if image is larger than max dimensions
     if ($origWidth <= $maxWidth && $origHeight <= $maxHeight) {
         $newWidth = $origWidth;
         $newHeight = $origHeight;
     }
 
-    // Create new image
     $newImage = imagecreatetruecolor($newWidth, $newHeight);
     if ($newImage === false) {
         imagedestroy($sourceImage);
@@ -176,14 +168,12 @@ function process_profile_image(string $sourcePath, ?string $mime, string $destPa
         imagefilledrectangle($newImage, 0, 0, $newWidth, $newHeight, $transparent);
     }
 
-    // Resize image
     if (!imagecopyresampled($newImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $origWidth, $origHeight)) {
         imagedestroy($sourceImage);
         imagedestroy($newImage);
         return false;
     }
 
-    // Save processed image
     $saved = false;
     switch ($mime) {
         case 'image/jpeg':
@@ -198,7 +188,6 @@ function process_profile_image(string $sourcePath, ?string $mime, string $destPa
             break;
     }
 
-    // Clean up
     imagedestroy($sourceImage);
     imagedestroy($newImage);
 

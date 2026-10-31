@@ -19,7 +19,6 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Get all buyer reviews for this user
     $sql = <<<SQL
 SELECT 
     br.rating_id,
@@ -56,7 +55,6 @@ SQL;
             $sellerName = derive_username((string)($row['seller_email'] ?? '')) ?: 'Seller #' . (int)$row['seller_user_id'];
         }
 
-        // XSS PROTECTION: Escape user-generated content before returning in JSON
         $reviews[] = [
             'rating_id'         => (int)$row['rating_id'],
             'product_id'        => (int)$row['product_id'],

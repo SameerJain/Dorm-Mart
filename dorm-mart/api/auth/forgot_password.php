@@ -50,25 +50,20 @@ function restore_password_reset_state(mysqli $conn, array $user, string $request
     }
 }
 
-// Get request data
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 $data = strpos($ct, 'application/json') !== false
     ? json_request_body_or_error(['success' => false, 'error' => 'Invalid JSON payload'])
     : $_POST;
 $emailRaw = is_string($data['email'] ?? null) ? strtolower(trim($data['email'])) : '';
 
-// Load email policy configuration
 require_once __DIR__ . '/../config/email_config.php';
 
-// Email validation based on ALLOW_ALL_EMAILS flag
 if (ALLOW_ALL_EMAILS) {
-    // Accept any valid email format
     $email = validate_input($emailRaw, 255, '/^[^@\s]+@[^@\s]+\.[^@\s]+$/');
     if ($email === false || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         json_response(['success' => false, 'error' => 'Invalid email format'], 400);
     }
 } else {
-    // Only accept @buffalo.edu
     $email = validate_input($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
     if ($email === false || !preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
         json_response(['success' => false, 'error' => 'Email must be @buffalo.edu'], 400);
@@ -107,11 +102,9 @@ try {
         accept_password_reset_request();
     }
 
-    // Generate reset token (same as login system)
     $resetToken = bin2hex(random_bytes(32));
     $hashedToken = password_hash($resetToken, PASSWORD_BCRYPT);
 
-    // Set expiration to 1 hour from now using UTC timezone
     $expiresAt = (new DateTime('+1 hour', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 
     // Claim the ten-minute window and store the token in a single conditional write.

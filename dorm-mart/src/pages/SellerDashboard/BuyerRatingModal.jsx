@@ -78,12 +78,10 @@ function BuyerRatingModal({
     }
   }, [productId]);
 
-  // Fetch existing rating when modal opens
   useEffect(() => {
     if (isOpen && productId && buyerId) {
       fetchExistingRating();
     } else if (!isOpen) {
-      // Reset state when modal closes
       setExistingRating(null);
       setRating(0);
       setReviewText("");
@@ -96,7 +94,6 @@ function BuyerRatingModal({
     }
   }, [isOpen, productId, buyerId, fetchExistingRating]);
 
-  // Reset form when modal opens
   useEffect(() => {
     if (isOpen && !existingRating) {
       setRating(0);
@@ -127,33 +124,25 @@ function BuyerRatingModal({
       return;
     }
 
-    if (isSubmitting || pendingSubmit) return; // Prevent double submission
+    if (isSubmitting || pendingSubmit) return;
 
-    // Set pending submit flag to prevent direct submission
     setPendingSubmit(true);
 
-    // Show confirmation dialog before submitting
     const message =
       "Are you sure you want to submit this rating? Changes cannot be made.";
     setConfirmMessage(message);
 
-    // Create callback function that will be called when user confirms
     const callback = async () => {
-      // Close confirmation modal first
       setShowConfirmModal(false);
       setConfirmMessage("");
-      // Then proceed with submission
       await proceedWithSubmit();
-      // Reset state after submission completes
       setConfirmCallback(null);
       setPendingSubmit(false);
     };
-    // Store the callback function directly
     setConfirmCallback(() => callback);
 
-    // Set state to show confirmation modal
     setShowConfirmModal(true);
-    return; // Important: stop execution here, don't proceed with submission
+    return;
   };
 
   const proceedWithSubmit = async () => {
@@ -175,7 +164,6 @@ function BuyerRatingModal({
         throw new Error(result?.error || "Failed to submit rating");
       }
 
-      // Success!
       if (onRatingSubmitted) {
         onRatingSubmitted(result);
       }
@@ -196,7 +184,6 @@ function BuyerRatingModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
       onClick={(e) => {
-        // Prevent closing main modal when confirmation modal is open
         if (!showConfirmModal && e.target === e.currentTarget) {
           onClose();
         }
@@ -206,7 +193,6 @@ function BuyerRatingModal({
         className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl dark:bg-gray-800"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             {existingRating ? "Buyer Rating" : "Rate Buyer"}
@@ -232,7 +218,6 @@ function BuyerRatingModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           <div className="mb-4 min-w-0">
             <p className="flex min-w-0 items-baseline gap-1 text-sm text-gray-600 dark:text-gray-400">
@@ -247,7 +232,6 @@ function BuyerRatingModal({
           </div>
 
           {existingRating ? (
-            // View existing rating
             <div>
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -260,7 +244,6 @@ function BuyerRatingModal({
                   </span>
                 </div>
               </div>
-              {/* Review Text Display */}
               {existingRating.review_text && (
                 <div className="mb-6 min-w-0">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -292,7 +275,6 @@ function BuyerRatingModal({
               </div>
             </div>
           ) : (
-            // Rating form
             <form onSubmit={handleSubmit}>
               <EditableStarRating
                 label="Rate this Buyer"
@@ -300,7 +282,6 @@ function BuyerRatingModal({
                 onChange={setRating}
               />
 
-              {/* Review Text Section */}
               <div className="mb-6">
                 <ReviewTextArea
                   id="buyer-review-text"
@@ -314,7 +295,6 @@ function BuyerRatingModal({
                 />
               </div>
 
-              {/* Error Message */}
               {error && (
                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <p className="text-sm text-red-600 dark:text-red-400">
@@ -323,7 +303,6 @@ function BuyerRatingModal({
                 </div>
               )}
 
-              {/* Action Buttons */}
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"

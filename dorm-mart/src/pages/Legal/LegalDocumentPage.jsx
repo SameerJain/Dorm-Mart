@@ -11,7 +11,6 @@ export function sectionId(title) {
 }
 
 export default function LegalDocumentPage({ documentKey }) {
-  // Not named `document`: that shadowed the browser global this page needs.
   const legalDoc = legalDocuments[documentKey];
   const location = useLocation();
   const navigate = useNavigate();

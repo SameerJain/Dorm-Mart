@@ -24,7 +24,6 @@ try {
         json_response(['success' => false, 'error' => 'Invalid notification_id'], 400);
     }
 
-    // Mark one of the caller's own notifications read.
     $stmt = $conn->prepare(
         'UPDATE notifications SET is_read = 1
          WHERE recipient_user_id = ? AND notification_id = ?'

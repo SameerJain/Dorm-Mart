@@ -22,7 +22,6 @@ $current = is_string($data['currentPassword'] ?? null) ? $data['currentPassword'
 $next = is_string($data['newPassword'] ?? null) ? $data['newPassword'] : '';
 require_csrf_token($data['csrf_token'] ?? null);
 
-/* Validate inputs */
 $MAX_LEN = 64;
 if ($current === '' || $next === '') {
   json_response(['ok' => false, 'error' => 'Missing required fields'], 400);
@@ -63,7 +62,6 @@ try {
   }
   clear_password_confirm_attempts($userId);
 
-  /* Optional: reject reuse of the same password */
   if (password_verify($next, (string)$row['hash_pass'])) {
     $conn->close();
     json_response(['ok' => false, 'error' => 'New password must differ from current'], 400);
@@ -93,15 +91,12 @@ try {
   $conn = null;
   mark_all_login_devices_signed_out($userId);
 
-  /* Rotate session id and log out to force re-auth */
   session_regenerate_id(true);
 
-  // End the session so the client must log in again (your UI already redirects)
   logout_destroy_session();
 
   json_response(['ok' => true]);
 } catch (Throwable $e) {
-  // Statements are closed where they are used; only the connection can still be open.
   if ($conn instanceof mysqli) {
     try { $conn->close(); } catch (Throwable $_) {}
   }

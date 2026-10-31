@@ -28,9 +28,6 @@ const response = (body) => ({
 const SAVE_WAIT_MS = 4000;
 jest.setTimeout(15000);
 
-// The page auto-saves (debounced) whenever values change, including once right
-// after the initial load, so wait for the save that carries the expected fields
-// rather than whichever call happens to be last.
 const savedBodies = () => csrfFetch.mock.calls.map((call) => JSON.parse(call[1].body));
 const waitForSave = (expected) =>
   waitFor(

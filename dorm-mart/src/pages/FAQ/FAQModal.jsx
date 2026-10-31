@@ -48,7 +48,6 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
           `}
         </style>
 
-        {/* header */}
         <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5 flex-none">
           <h2 className="min-w-0 truncate text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">
             Frequently asked questions
@@ -68,9 +67,7 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
           </button>
         </div>
 
-        {/* body */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 flex-1 min-h-0 min-w-0">
-          {/* sidebar */}
           <div
             className="
               flex flex-row sm:flex-col gap-2
@@ -101,7 +98,6 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
             ))}
           </div>
 
-          {/* content */}
           <div className="flex-1 min-h-0 min-w-0 flex flex-col">
             <div className="flex justify-end mb-3 flex-none">
               <button

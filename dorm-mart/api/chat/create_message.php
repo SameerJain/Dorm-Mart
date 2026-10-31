@@ -17,7 +17,6 @@ $conn->set_charset('utf8mb4');
 
 auth_boot_session();
 
-// --- auth: require a logged-in user ---
 $userId = require_login();
 
 $sender = $userId;
@@ -82,7 +81,6 @@ $lockKey = "conv:$u1:$u2"; // used for advisory lock
 
 $convId = null;
 $msgId  = null;
-/* will hold ISO-8601 UTC string, e.g., 2025-10-31T03:05:06Z */
 $createdIso = null; // <-- will be filled after insert
 
 try {
@@ -114,7 +112,6 @@ try {
         json_response(['success' => false, 'error' => 'Invalid conversation ID'], 403);
     }
 
-    // If item is deleted, block message creation
     if (chat_conversation_is_closed($conn, $convId)) {
         chat_release_lock($conn, $lockKey);
         $conn->rollback();
@@ -135,7 +132,6 @@ try {
     $msgId = $conn->insert_id;
     $stmt->close();
 
-    /* Fetch the DB-assigned created_at in ISO-8601 UTC (matches your readers) */
     $stmt = $conn->prepare(
         'SELECT DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at
            FROM messages
@@ -156,7 +152,6 @@ try {
     chat_release_lock($conn, $lockKey);
 
     if ($createdIso === null) {
-        // Very defensive fallback; should rarely trigger since we SELECTed above.
         $createdIso = gmdate('Y-m-d\TH:i:s\Z'); // UTC "now"
     }
 
@@ -164,7 +159,6 @@ try {
         'success'     => true,
         'conv_id'     => $convId,
         'message_id'  => $msgId,
-        // Return the fields you asked for as a single object for the client
         'message'     => [
             'message_id' => $msgId,
             'content'    => $filteredContent,

@@ -31,28 +31,28 @@ function router_not_found(): void
     exit;
 }
 
-// Route API requests to PHP files
+
 if (strpos($requestPath, '/api/') === 0) {
-    // Remove /api prefix and route to actual PHP file
+
     $apiPath = substr($requestPath, 5); // Remove '/api/'
 
-    // Remove query string for routing
+
     $apiPath = strtok($apiPath, '?');
 
-    // Reject path traversal and null-byte injection
+
     if (strpos($apiPath, '..') !== false || strpos($apiPath, "\0") !== false) {
         router_api_error(400, 'Invalid path');
     }
 
-    // Build full path to API file
+
     $apiFile = __DIR__ . '/api/' . $apiPath;
 
-    // If it's a directory, try index.php
+
     if (is_dir($apiFile)) {
         $apiFile .= '/index.php';
     }
 
-    // If file doesn't exist, try adding .php extension
+
     if (!file_exists($apiFile) && !is_dir($apiFile)) {
         $apiFile = __DIR__ . '/api/' . $apiPath . '.php';
     }
@@ -94,12 +94,12 @@ if (strpos($decodedRequestPath, "\0") !== false
 $buildRoot = realpath(__DIR__ . '/build');
 $buildPath = __DIR__ . '/build' . $decodedRequestPath;
 
-// If requesting root, serve index.html
+
 if ($decodedRequestPath === '/' || $decodedRequestPath === '') {
     $buildPath = __DIR__ . '/build/index.html';
 }
 
-// Shared security headers for all static responses
+
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -110,7 +110,7 @@ if (is_https_request()) {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 }
 
-// If file exists in build directory, serve it
+
 // Only serve an existing file when its resolved path remains inside build/.
 $resolvedBuildPath = $buildRoot !== false ? realpath($buildPath) : false;
 if ($resolvedBuildPath !== false
@@ -118,7 +118,7 @@ if ($resolvedBuildPath !== false
     && str_starts_with($resolvedBuildPath, $buildRoot . DIRECTORY_SEPARATOR)
     && is_file($resolvedBuildPath)) {
     $buildPath = $resolvedBuildPath;
-    // Set appropriate content type
+
     $ext = pathinfo($buildPath, PATHINFO_EXTENSION);
     $mimeTypes = [
         'html' => 'text/html',
@@ -142,7 +142,7 @@ if ($resolvedBuildPath !== false
     $contentType = $mimeTypes[$extLower] ?? 'application/octet-stream';
     header('Content-Type: ' . $contentType);
 
-    // CSP on HTML responses; JS/CSS/fonts get cache headers instead
+
     if ($extLower === 'html') {
         header('Content-Security-Policy: ' . security_csp_header());
     } elseif (in_array($extLower, ['js', 'css', 'woff2', 'woff', 'ttf'], true)) {
@@ -158,7 +158,7 @@ if ($resolvedBuildPath !== false
     exit;
 }
 
-// For React Router (SPA), serve index.html for all non-API routes
+
 $indexPath = __DIR__ . '/build/index.html';
 if (file_exists($indexPath)) {
     header('Content-Type: text/html');

@@ -25,7 +25,7 @@ Excluded: vendor tests, SQL seed data, images, test support `api/tests/bootstrap
 
 ## Inventory
 
-### Frontend Jest tests (58 files)
+### Frontend Jest tests (69 files)
 
 <details>
 <summary>src/__tests__/adversarial/apiClient.adversarial.test.js</summary>
@@ -947,6 +947,116 @@ describe("wishlist normalization", () => {
       "Books",
     );
   });
+});
+```
+
+</details>
+
+<details>
+<summary>src/__tests__/components/MessageDialog.test.jsx</summary>
+
+[Open source](../src/__tests__/components/MessageDialog.test.jsx)
+
+```jsx
+import { fireEvent, render, screen } from "@testing-library/react";
+import { MessageDialog } from "../../components/Dialog";
+
+beforeEach(() => {
+  jest.spyOn(window, "scrollTo").mockImplementation(() => {});
+});
+afterEach(() => jest.restoreAllMocks());
+
+test("shows the message in a labelled dialog with the OK button focused", () => {
+  render(
+    <MessageDialog title="Download failed" message="Please try again." onClose={() => {}} />,
+  );
+  const dialog = screen.getByRole("dialog", { name: "Download failed" });
+  const description = document.getElementById(dialog.getAttribute("aria-describedby"));
+  expect(description.textContent).toBe("Please try again.");
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "OK" }));
+});
+
+test("locks page scroll while open and restores it on close", () => {
+  expect(document.body.style.position).toBe("");
+  const { unmount } = render(<MessageDialog title="Notice" message="Hi" onClose={() => {}} />);
+  expect(document.body.style.position).toBe("fixed");
+  expect(document.documentElement.style.overflow).toBe("hidden");
+  unmount();
+  expect(document.body.style.position).toBe("");
+  expect(document.documentElement.style.overflow).toBe("");
+});
+
+test("OK, Escape and the backdrop each close it", () => {
+  const onClose = jest.fn();
+  render(<MessageDialog title="Notice" message="Hi" onClose={onClose} />);
+  fireEvent.click(screen.getByRole("button", { name: "OK" }));
+  expect(onClose).toHaveBeenCalledTimes(1);
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(onClose).toHaveBeenCalledTimes(2);
+  fireEvent.click(screen.getByRole("dialog").parentElement);
+  expect(onClose).toHaveBeenCalledTimes(3);
+});
+
+test("clicks inside the panel do not close it", () => {
+  const onClose = jest.fn();
+  render(<MessageDialog title="Notice" message="Hi" onClose={onClose} />);
+  fireEvent.click(screen.getByText("Hi"));
+  expect(onClose).not.toHaveBeenCalled();
+});
+
+test("sits above the app's other overlays and widens its button on phones", () => {
+  render(<MessageDialog title="Notice" message="Hi" onClose={() => {}} />);
+  expect(screen.getByRole("dialog").parentElement.className).toContain("z-[70]");
+  const button = screen.getByRole("button", { name: "OK" }).className.split(/\s+/);
+  expect(button).toEqual(expect.arrayContaining(["w-full", "sm:w-auto", "coarse:min-h-[44px]"]));
+});
+```
+
+</details>
+
+<details>
+<summary>src/__tests__/components/SubmitConfirmationDialog.test.jsx</summary>
+
+[Open source](../src/__tests__/components/SubmitConfirmationDialog.test.jsx)
+
+```jsx
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import SubmitConfirmationDialog from "../../components/SubmitConfirmationDialog";
+
+beforeEach(() => {
+  jest.spyOn(window, "scrollTo").mockImplementation(() => {});
+});
+afterEach(() => jest.restoreAllMocks());
+
+test("renders nothing while closed", () => {
+  render(<SubmitConfirmationDialog isOpen={false} message="Submit?" onCancel={() => {}} />);
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("opens as a labelled dialog above the review modals and locks scroll", () => {
+  render(<SubmitConfirmationDialog isOpen message="Post this review?" onCancel={() => {}} />);
+  const dialog = screen.getByRole("dialog", { name: "Ready to Submit?" });
+  expect(dialog.textContent).toContain("Post this review?");
+  expect(dialog.parentElement.className).toContain("z-[70]");
+  expect(document.body.style.position).toBe("fixed");
+});
+
+test("Confirm runs the submit, and a failed submit closes the dialog", async () => {
+  const onCancel = jest.fn();
+  const onConfirm = jest.fn().mockRejectedValue(new Error("server error"));
+  render(<SubmitConfirmationDialog isOpen message="Submit?" onCancel={onCancel} onConfirm={onConfirm} />);
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  });
+  expect(onConfirm).toHaveBeenCalledTimes(1);
+  expect(onCancel).toHaveBeenCalledTimes(1);
+});
+
+test("Escape cancels", () => {
+  const onCancel = jest.fn();
+  render(<SubmitConfirmationDialog isOpen message="Submit?" onCancel={onCancel} onConfirm={jest.fn()} />);
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(onCancel).toHaveBeenCalledTimes(1);
 });
 ```
 
@@ -2017,12 +2127,15 @@ describe("submitAccountRequest details", () => {
 ```jsx
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { MemoryRouter } from "react-router-dom";
 import { ChatContext } from "../../../context/ChatContext";
 import ChatPage from "../../../pages/Chat/ChatPage";
 import { csrfPostJson } from "../../../utils/apiClient";
 
 jest.mock("../../../utils/apiClient", () => ({ csrfPostJson: jest.fn() }));
+jest.mock("react-router-dom", () => ({
+  useNavigate: () => jest.fn(), useLocation: () => ({}),
+  useSearchParams: () => [new URLSearchParams(), jest.fn()],
+}), { virtual: true });
 jest.mock("../../../pages/Chat/components/ChatSidebar", () => () => null);
 jest.mock("../../../pages/Chat/components/MessageList", () => () => null);
 jest.mock("../../../pages/Chat/hooks/useChatTypingStatus", () => () => ({ handleDraftChange: jest.fn(), flushTypingOnSend: jest.fn() }));
@@ -2034,6 +2147,7 @@ jest.mock("../../../pages/Chat/hooks/useChatConversationStatus", () => () => ({
 
 test("the buyer can open and complete mock checkout from the actual chat page", async () => {
   window.scrollTo = jest.fn();
+  window.matchMedia = jest.fn(() => ({ matches: true }));
   const fetchConversation = jest.fn();
   const context = {
     conversations: [{ conv_id: 3, productId: 7, productSellerId: 1, receiverId: 1, receiverName: "Demo Seller", productStatus: "Pending" }],
@@ -2042,7 +2156,7 @@ test("the buyer can open and complete mock checkout from the actual chat page", 
   };
   csrfPostJson.mockResolvedValueOnce({ data: { is_mock: true, amount_cents: 500 } });
   csrfPostJson.mockResolvedValueOnce({ data: { completed: true } });
-  render(<MemoryRouter><ChatContext.Provider value={context}><ChatPage /></ChatContext.Provider></MemoryRouter>);
+  render(<ChatContext.Provider value={context}><ChatPage /></ChatContext.Provider>);
   fireEvent.click(screen.getByRole("button", { name: "Make a mock payment" }));
   fireEvent.click(await screen.findByRole("button", { name: "Complete mock transaction" }));
   await waitFor(() => expect(fetchConversation).toHaveBeenCalledWith(3));
@@ -2106,6 +2220,52 @@ test("gives the seller an edit and publish shortcut for a draft", () => {
   expect(navigate).toHaveBeenCalledWith("/app/product-listing/edit/12", {
     state: { returnTo: "/app/chat?conv=4" },
   });
+});
+```
+
+</details>
+
+<details>
+<summary>src/__tests__/pages/Chat/components/ConfirmMessageCard.test.jsx</summary>
+
+[Open source](../src/__tests__/pages/Chat/components/ConfirmMessageCard.test.jsx)
+
+```jsx
+import { render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import ConfirmMessageCard from "../../../../pages/Chat/components/ConfirmMessageCard";
+
+test.each([
+  ["confirm_request", "pending", true, "Marked Successful", "Action required"],
+  ["confirm_request", "pending", false, "Marked Unsuccessful", "Action required"],
+  ["confirm_request", "buyer_accepted", true, "Marked Successful", "Response sent"],
+  ["confirm_request", "auto_accepted", false, "Marked Unsuccessful", "Response sent"],
+  ["confirm_request", "buyer_declined", true, "Buyer Denied", "Response sent"],
+  ["confirm_request", "seller_cancelled", true, "Cancelled", "Cancelled"],
+  ["confirm_accepted", undefined, true, "Marked Successful", "Buyer accepted"],
+  ["confirm_auto_accepted", undefined, false, "Marked Unsuccessful", "Auto accepted"],
+  ["confirm_denied", undefined, true, "Buyer Denied", "Buyer denied"],
+  ["unknown", undefined, true, "Marked Successful", "Update"],
+])("renders %s with status %s and success %s", (type, status, successful, title, label) => {
+  render(<ConfirmMessageCard message={{ metadata: {
+    type,
+    confirm_request_id: 9,
+    confirm_purchase_status: status,
+    is_successful: successful,
+  } }} isMine={false} />);
+
+  expect(screen.getByText(`Confirm Purchase: ${title}`)).toBeInTheDocument();
+  expect(screen.getByText(label)).toBeInTheDocument();
+});
+
+test("keeps an unanswered request actionable when a response timestamp has no status", () => {
+  render(<ConfirmMessageCard message={{ metadata: {
+    type: "confirm_request",
+    confirm_request_id: 9,
+    buyer_response_at: "2026-10-26T12:00:00Z",
+  } }} isMine={false} />);
+
+  expect(screen.getByRole("button", { name: "Confirm" })).toBeEnabled();
 });
 ```
 
@@ -3082,6 +3242,140 @@ test("still allows saving a draft at the active listing limit", () => {
 </details>
 
 <details>
+<summary>src/__tests__/pages/ItemForms/components/ListingForm.test.jsx</summary>
+
+[Open source](../src/__tests__/pages/ItemForms/components/ListingForm.test.jsx)
+
+```jsx
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import ListingForm from "../../../../pages/ItemForms/components/ListingForm";
+
+function renderForm(overrides = {}) {
+  const props = {
+    acceptTrades: false,
+    atListingCap: false,
+    catFetchError: "",
+    catLoading: false,
+    categories: ["Textbooks"],
+    clearError: jest.fn(),
+    condition: "",
+    description: "",
+    errors: {},
+    fileInputRef: { current: null },
+    formTopRef: { current: null },
+    handleInputChange: jest.fn(),
+    images: [],
+    isEdit: false,
+    isNew: true,
+    itemLocation: "",
+    loadingExisting: false,
+    listingStatus: "",
+    location: { state: {} },
+    navigate: jest.fn(),
+    onFileChange: jest.fn(),
+    price: "",
+    priceNegotiable: false,
+    publishListing: jest.fn(),
+    removeCategory: jest.fn(),
+    removeImage: jest.fn(),
+    scrollPositionRef: { current: 0 },
+    selectableOptions: ["Electronics", "Furniture"],
+    selectedCategory: "",
+    saveDraft: jest.fn(),
+    setAcceptTrades: jest.fn(),
+    setCategories: jest.fn(),
+    setCondition: jest.fn(),
+    setDescription: jest.fn(),
+    setErrors: jest.fn(),
+    setItemLocation: jest.fn(),
+    setPrice: jest.fn(),
+    setPriceNegotiable: jest.fn(),
+    setSelectedCategory: jest.fn(),
+    setTitle: jest.fn(),
+    showTopErrorBanner: false,
+    submitting: false,
+    title: "",
+    ...overrides,
+  };
+  render(<ListingForm {...props} />);
+  return props;
+}
+
+const box = (name) =>
+  screen.getByRole("heading", { level: 2, name: new RegExp(`^${name}`) }).closest("section");
+
+test("basic information, location, pricing and photos are each their own box", () => {
+  renderForm();
+  const basic = box("Basic Information");
+  const location = box("Location");
+  const pricing = box("Pricing");
+  const photos = box("Photos and Videos");
+  expect(new Set([basic, location, pricing, photos]).size).toBe(4);
+
+  for (const label of [/^Item Title/, /^Item Condition/, /^Categories/, /^Description/]) {
+    expect(within(basic).getByLabelText(label)).toBeTruthy();
+  }
+  expect(within(location).getByLabelText(/^Item Location/)).toBeTruthy();
+  for (const label of [/^Price \*/, /Accepting Trades/, /Price Negotiable/]) {
+    expect(within(pricing).getByLabelText(label)).toBeTruthy();
+  }
+  expect(within(photos).getByRole("button", { name: "+ Add a Photo" })).toBeTruthy();
+  expect(within(pricing).queryByLabelText(/^Item Location/)).toBeNull();
+  expect(within(location).queryByLabelText(/^Price \*/)).toBeNull();
+});
+
+test("the boxes come in order: basic information, location, pricing, photos", () => {
+  renderForm();
+  const order = ["Basic Information", "Location", "Pricing", "Photos and Videos"].map(box);
+  for (let i = 1; i < order.length; i += 1) {
+    expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  }
+});
+
+test("item condition and categories sit in the same row", () => {
+  renderForm();
+  const condition = screen.getByLabelText(/^Item Condition/);
+  const categories = screen.getByLabelText(/^Categories/);
+  const row = condition.closest(".grid");
+  expect(row).toBe(categories.closest(".grid"));
+  expect(row.className).toContain("md:grid-cols-2");
+});
+
+test("the trade and negotiation toggles sit side by side under the price", () => {
+  renderForm();
+  const row = screen.getByLabelText(/Accepting Trades/).closest(".grid");
+  expect(row).toBe(screen.getByLabelText(/Price Negotiable/).closest(".grid"));
+  expect(row.className).toContain("md:grid-cols-2");
+});
+
+test("picking a category still adds it", () => {
+  const props = renderForm();
+  fireEvent.change(screen.getByLabelText(/^Categories/), { target: { value: "Electronics" } });
+  expect(props.setCategories).toHaveBeenCalledWith(["Textbooks", "Electronics"]);
+  expect(props.clearError).toHaveBeenCalledWith("categories");
+});
+
+test("a photo error outlines only the photos box", () => {
+  renderForm({ errors: { images: "Add at least one photo" } });
+  expect(box("Photos and Videos").className).toContain("border-red-500");
+  expect(box("Basic Information").className).not.toContain("border-red-500");
+  expect(screen.getByText("Add at least one photo")).toBeTruthy();
+});
+
+test("the publish buttons come after the safety tips on small screens", () => {
+  renderForm();
+  const actions = screen.getByRole("heading", { name: "Publish Your Listing" }).parentElement;
+  const tips = screen.getByRole("heading", { name: "Safety Tips" }).parentElement;
+  expect(actions.parentElement).toBe(tips.parentElement);
+  expect(actions.className).toContain("order-2");
+  expect(tips.className).toContain("order-1");
+  expect(screen.getByRole("button", { name: "Publish Listing" })).toBeTruthy();
+});
+```
+
+</details>
+
+<details>
 <summary>src/__tests__/pages/ItemForms/utils/listingFormConfig.test.js</summary>
 
 [Open source](../src/__tests__/pages/ItemForms/utils/listingFormConfig.test.js)
@@ -3239,6 +3533,33 @@ describe("getPreviewBoxSize", () => {
     expect(at(500)).toBe(420);
     expect(at(600)).toBe(480);
   });
+});
+```
+
+</details>
+
+<details>
+<summary>src/__tests__/pages/ItemForms/utils/listingValidation.test.js</summary>
+
+[Open source](../src/__tests__/pages/ItemForms/utils/listingValidation.test.js)
+
+```javascript
+import { validateDraft, validateListing } from "../../../../pages/ItemForms/utils/listingValidation";
+
+test("allows saving a draft without photos", () => {
+  expect(validateDraft({ title: "Desk", price: "", images: [] })).toEqual({});
+});
+
+test("still requires a photo when publishing", () => {
+  expect(validateListing({
+    title: "Desk",
+    description: "Wooden desk",
+    price: "20",
+    categories: ["Furniture"],
+    itemLocation: "Campus",
+    condition: "Good",
+    images: [],
+  }).images).toMatch(/At least one photo is required/);
 });
 ```
 
@@ -3674,6 +3995,86 @@ test("treats timestamps as UTC whatever shape they arrive in", () => {
 </details>
 
 <details>
+<summary>src/__tests__/pages/Reviews/components/ReviewImageGallery.test.jsx</summary>
+
+[Open source](../src/__tests__/pages/Reviews/components/ReviewImageGallery.test.jsx)
+
+```jsx
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import ReviewImageGallery from "../../../../pages/Reviews/components/ReviewImageGallery";
+
+jest.mock("../../../../utils/logger", () => ({
+  __esModule: true,
+  default: { error: jest.fn(), warn: jest.fn(), log: jest.fn() },
+}));
+
+const review = { image1_url: "/media/review-images/review_u2_test.jpg" };
+
+beforeEach(() => {
+  jest.spyOn(window, "scrollTo").mockImplementation(() => {});
+  jest.spyOn(window, "alert").mockImplementation(() => {});
+});
+afterEach(() => jest.restoreAllMocks());
+
+test("a failed download shows a popup instead of a browser alert", async () => {
+  global.fetch = jest.fn().mockResolvedValue({ ok: false });
+  render(<ReviewImageGallery review={review} viewMode="seller" />);
+  fireEvent.click(screen.getByRole("button", { name: "Download" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "Download failed" });
+  expect(dialog.textContent).toContain("Failed to download image. Please try again.");
+  expect(window.alert).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole("button", { name: "OK" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("the image opens from the keyboard, and Escape closes it and restores focus", () => {
+  render(<ReviewImageGallery review={review} viewMode="seller" />);
+  const opener = screen.getByRole("button", { name: "Enlarge review attachment 1" });
+  opener.focus();
+  fireEvent.click(opener);
+
+  expect(screen.getByRole("dialog", { name: "Review image" })).toBeTruthy();
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close" }));
+  expect(document.body.style.position).toBe("fixed");
+
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(document.activeElement).toBe(opener);
+});
+
+test("Escape on the failure popup closes only the popup, not the lightbox under it", async () => {
+  global.fetch = jest.fn().mockResolvedValue({ ok: false });
+  render(<ReviewImageGallery review={review} viewMode="seller" />);
+  fireEvent.click(screen.getByRole("button", { name: "Enlarge review attachment 1" }));
+  fireEvent.click(screen.getByRole("button", { name: "Download" }));
+  await screen.findByRole("dialog", { name: "Download failed" });
+
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(screen.queryByRole("dialog", { name: "Download failed" })).toBeNull();
+  expect(screen.getByRole("dialog", { name: "Review image" })).toBeTruthy();
+});
+
+test("the failure popup stacks above the lightbox opened while the download ran", async () => {
+  let failDownload;
+  global.fetch = jest.fn(() => new Promise((_, reject) => { failDownload = reject; }));
+  render(<ReviewImageGallery review={review} viewMode="seller" />);
+  fireEvent.click(screen.getByRole("button", { name: "Download" }));
+  fireEvent.click(screen.getByAltText("Review attachment 1"));
+  const lightbox = screen.getByAltText("Selected review attachment").closest(".fixed");
+  expect(lightbox.className).toContain("z-[60]");
+
+  await act(async () => failDownload(new Error("offline")));
+
+  const popup = (await screen.findByRole("dialog", { name: "Download failed" })).parentElement;
+  expect(popup.className).toContain("z-[70]");
+});
+```
+
+</details>
+
+<details>
 <summary>src/__tests__/pages/Reviews/components/ReviewVideo.test.jsx</summary>
 
 [Open source](../src/__tests__/pages/Reviews/components/ReviewVideo.test.jsx)
@@ -3803,6 +4204,307 @@ test("keeps an incomplete purchase image and title non-clickable", () => {
 </details>
 
 <details>
+<summary>src/__tests__/pages/ScheduledPurchases/components/ScheduleCalendar.test.jsx</summary>
+
+[Open source](../src/__tests__/pages/ScheduledPurchases/components/ScheduleCalendar.test.jsx)
+
+```jsx
+import { useState } from "react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import ScheduleDateTimeFields from "../../../../pages/ScheduledPurchases/components/ScheduleDateTimeFields";
+
+// The real form keeps these values in useSchedulePurchaseForm; this holds them
+// the same way so both pickers read and write shared state.
+function Harness({ onSubmit = () => {} }) {
+  const [state, setState] = useState({
+    meetingAmPm: "", meetingDay: "", meetingHour: "",
+    meetingMinute: "", meetingMonth: "", meetingYear: "",
+  });
+  const set = (key) => (value) => setState((prev) => ({ ...prev, [key]: value }));
+  return (
+    <form onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
+      <ScheduleDateTimeFields
+        {...state}
+        setDateTimeError={() => {}}
+        setMeetingAmPm={set("meetingAmPm")}
+        setMeetingDay={set("meetingDay")}
+        setMeetingHour={set("meetingHour")}
+        setMeetingMinute={set("meetingMinute")}
+        setMeetingMonth={set("meetingMonth")}
+        setMeetingYear={set("meetingYear")}
+      />
+    </form>
+  );
+}
+
+function freezeNow(isoInstant) {
+  jest.useFakeTimers("modern");
+  jest.setSystemTime(new Date(isoInstant));
+}
+
+const day = (label) => screen.getByRole("button", { name: label });
+const openCalendar = () => fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+
+beforeEach(() => freezeNow("2026-11-20T15:00:00Z")); // 10:00 Friday, Nov 20 Eastern
+afterEach(() => jest.useRealTimers());
+
+test("the calendar is an option that replaces the date dropdowns and keeps the time fields", () => {
+  render(<Harness />);
+  expect(screen.getByRole("button", { name: "Dropdowns", pressed: true })).toBeTruthy();
+  expect(screen.getByLabelText("Month")).toBeTruthy();
+
+  openCalendar();
+
+  expect(screen.getByRole("button", { name: "Calendar", pressed: true })).toBeTruthy();
+  expect(screen.getByRole("table", { name: "November 2026" })).toBeTruthy();
+  expect(screen.queryByLabelText("Month")).toBeNull();
+  expect(screen.getByLabelText("Hour")).toBeTruthy();
+  expect(screen.getByLabelText("AM/PM")).toBeTruthy();
+});
+
+test("only days inside the three-month window can be picked", () => {
+  render(<Harness />);
+  openCalendar();
+
+  expect(day("Thursday, November 19, 2026").disabled).toBe(true);
+  expect(day("Friday, November 20, 2026").disabled).toBe(false);
+  expect(day("Friday, November 20, 2026").getAttribute("aria-current")).toBe("date");
+  expect(screen.getByRole("button", { name: "Previous month" }).disabled).toBe(true);
+
+  const next = screen.getByRole("button", { name: "Next month" });
+  fireEvent.click(next);
+  fireEvent.click(next);
+  fireEvent.click(next);
+  expect(screen.getByRole("table", { name: "February 2027" })).toBeTruthy();
+  expect(day("Saturday, February 20, 2027").disabled).toBe(false);
+  expect(day("Sunday, February 21, 2027").disabled).toBe(true);
+  expect(next.disabled).toBe(true);
+});
+
+test("picking a day fills the same month, day and year the dropdowns use", () => {
+  render(<Harness />);
+  openCalendar();
+  fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+  fireEvent.click(day("Saturday, December 5, 2026"));
+
+  expect(day("Saturday, December 5, 2026").getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText("Selected: Saturday, December 5, 2026")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Dropdowns" }));
+  expect(screen.getByLabelText("Month").value).toBe("12");
+  expect(screen.getByLabelText("Day").value).toBe("05");
+  expect(screen.getByLabelText("Year").value).toBe("2026");
+});
+
+test("the calendar opens on a date already chosen with the dropdowns", () => {
+  render(<Harness />);
+  fireEvent.change(screen.getByLabelText("Year"), { target: { value: "2027" } });
+  fireEvent.change(screen.getByLabelText("Month"), { target: { value: "01" } });
+  fireEvent.change(screen.getByLabelText("Day"), { target: { value: "15" } });
+
+  openCalendar();
+
+  expect(screen.getByRole("table", { name: "January 2027" })).toBeTruthy();
+  expect(day("Friday, January 15, 2027").getAttribute("aria-pressed")).toBe("true");
+  expect(day("Friday, January 15, 2027").tabIndex).toBe(0);
+});
+
+test("arrow keys move between days and months but stop at the window edge", () => {
+  render(<Harness />);
+  openCalendar();
+  const today = day("Friday, November 20, 2026");
+  expect(today.tabIndex).toBe(0);
+  act(() => today.focus());
+
+  fireEvent.keyDown(today, { key: "ArrowLeft" });
+  expect(document.activeElement).toBe(today);
+
+  fireEvent.keyDown(document.activeElement, { key: "ArrowRight" });
+  expect(document.activeElement).toBe(day("Saturday, November 21, 2026"));
+
+  fireEvent.keyDown(document.activeElement, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(day("Saturday, November 28, 2026"));
+
+  fireEvent.keyDown(document.activeElement, { key: "ArrowDown" });
+  expect(screen.getByRole("table", { name: "December 2026" })).toBeTruthy();
+  expect(document.activeElement).toBe(day("Saturday, December 5, 2026"));
+  expect(document.activeElement.tabIndex).toBe(0);
+});
+
+test("today follows Eastern time, not the device's UTC date", () => {
+  freezeNow("2026-11-21T03:30:00Z"); // still 10:30 PM on Nov 20 in Buffalo
+  render(<Harness />);
+  openCalendar();
+  expect(day("Friday, November 20, 2026").disabled).toBe(false);
+  expect(day("Friday, November 20, 2026").getAttribute("aria-current")).toBe("date");
+  expect(day("Thursday, November 19, 2026").disabled).toBe(true);
+});
+
+test("the picker's buttons never submit the surrounding form", () => {
+  const onSubmit = jest.fn();
+  render(<Harness onSubmit={onSubmit} />);
+  openCalendar();
+  fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+  fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
+  fireEvent.click(day("Monday, November 23, 2026"));
+  fireEvent.click(screen.getByRole("button", { name: "Dropdowns" }));
+  expect(onSubmit).not.toHaveBeenCalled();
+});
+```
+
+</details>
+
+<details>
+<summary>src/__tests__/pages/ScheduledPurchases/formLabels.test.jsx</summary>
+
+[Open source](../src/__tests__/pages/ScheduledPurchases/formLabels.test.jsx)
+
+```jsx
+import { fireEvent, render, screen } from "@testing-library/react";
+import MeetLocationField from "../../../pages/ScheduledPurchases/components/MeetLocationField";
+import NegotiationFields from "../../../pages/ScheduledPurchases/components/NegotiationFields";
+import ScheduleDateTimeFields from "../../../pages/ScheduledPurchases/components/ScheduleDateTimeFields";
+
+const noop = () => {};
+
+test("the meet location select is named by its label", () => {
+  const setChoice = jest.fn();
+  render(
+    <MeetLocationField
+      customMeetLocation=""
+      meetLocationChoice=""
+      selectedListing={null}
+      setCustomMeetLocation={noop}
+      setMeetLocationChoice={setChoice}
+    />,
+  );
+  const select = screen.getByLabelText(/Meet Location/);
+  expect(select.tagName).toBe("SELECT");
+  fireEvent.change(select, { target: { value: "North Campus" } });
+  expect(setChoice).toHaveBeenCalledWith("North Campus");
+});
+
+test("the negotiated price and trade fields are named by their labels", () => {
+  render(
+    <NegotiationFields
+      isTrade
+      negotiatedPrice=""
+      selectedListing={{ priceNegotiable: true, acceptTrades: true, price: 20 }}
+      setIsTrade={noop}
+      setNegotiatedPrice={noop}
+      setTradeItemDescription={noop}
+      tradeItemDescription=""
+    />,
+  );
+  expect(screen.getByLabelText("Negotiated Price (Optional)").tagName).toBe("INPUT");
+  expect(screen.getByLabelText(/Item You Are Trading For/).tagName).toBe("TEXTAREA");
+});
+
+test("the meeting date and time selects form one labelled group", () => {
+  render(
+    <ScheduleDateTimeFields
+      meetingAmPm=""
+      meetingDay=""
+      meetingHour=""
+      meetingMinute=""
+      meetingMonth=""
+      meetingYear=""
+      setDateTimeError={noop}
+      setMeetingAmPm={noop}
+      setMeetingDay={noop}
+      setMeetingHour={noop}
+      setMeetingMinute={noop}
+      setMeetingMonth={noop}
+      setMeetingYear={noop}
+    />,
+  );
+  const group = screen.getByRole("group", { name: /Meeting Date & Time/ });
+  for (const label of ["Month", "Day", "Hour", "Minute", "AM/PM"]) {
+    const select = screen.getByLabelText(label);
+    expect(select.tagName).toBe("SELECT");
+    expect(group.contains(select)).toBe(true);
+  }
+});
+```
+
+</details>
+
+<details>
+<summary>src/__tests__/pages/ScheduledPurchases/purchaseDialogs.test.jsx</summary>
+
+[Open source](../src/__tests__/pages/ScheduledPurchases/purchaseDialogs.test.jsx)
+
+```jsx
+import { fireEvent, render, screen } from "@testing-library/react";
+import CancelPurchaseModal from "../../../pages/ScheduledPurchases/components/CancelPurchaseModal";
+import CloseFormModal from "../../../pages/ScheduledPurchases/components/CloseFormModal";
+
+beforeEach(() => {
+  jest.spyOn(window, "scrollTo").mockImplementation(() => {});
+});
+afterEach(() => jest.restoreAllMocks());
+
+function renderCancel(props = {}) {
+  const handlers = { onClose: jest.fn(), onConfirm: jest.fn() };
+  render(
+    <CancelPurchaseModal
+      actionError=""
+      busyRequestId={null}
+      pendingCancelRequestId={7}
+      {...handlers}
+      {...props}
+    />,
+  );
+  return handlers;
+}
+
+test("the cancel-purchase popup is a labelled dialog that locks page scroll", () => {
+  renderCancel();
+  const dialog = screen.getByRole("dialog", { name: "Cancel Scheduled Purchase?" });
+  expect(dialog.textContent).toContain("This action cannot be undone.");
+  expect(document.body.style.position).toBe("fixed");
+});
+
+test("its buttons keep their labels, and Escape keeps the purchase", () => {
+  const { onClose, onConfirm } = renderCancel();
+  fireEvent.click(screen.getByRole("button", { name: "Yes, Cancel" }));
+  expect(onConfirm).toHaveBeenCalledTimes(1);
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(onClose).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("button", { name: "No, Keep It" }));
+  expect(onClose).toHaveBeenCalledTimes(2);
+});
+
+test("while the cancellation runs, it cannot be dismissed or sent twice", () => {
+  const { onClose } = renderCancel({ busyRequestId: 7 });
+  expect(screen.getByRole("button", { name: "Cancelling..." }).disabled).toBe(true);
+  expect(screen.getByRole("button", { name: "No, Keep It" }).disabled).toBe(true);
+  fireEvent.keyDown(document, { key: "Escape" });
+  fireEvent.click(screen.getByRole("dialog").parentElement);
+  expect(onClose).not.toHaveBeenCalled();
+});
+
+test("a failed cancellation shows its error inside the popup", () => {
+  renderCancel({ actionError: "Purchase already completed" });
+  expect(screen.getByRole("alert").textContent).toBe("Purchase already completed");
+});
+
+test("the close-form popup asks before discarding the form", () => {
+  const onClose = jest.fn();
+  const onConfirm = jest.fn();
+  render(<CloseFormModal onClose={onClose} onConfirm={onConfirm} />);
+  expect(screen.getByRole("dialog", { name: "Close This Form?" })).toBeTruthy();
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Stay" }));
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  expect(onConfirm).toHaveBeenCalledTimes(1);
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+```
+
+</details>
+
+<details>
 <summary>src/__tests__/pages/ScheduledPurchases/utils/ongoingPurchaseViewUtils.test.js</summary>
 
 [Open source](../src/__tests__/pages/ScheduledPurchases/utils/ongoingPurchaseViewUtils.test.js)
@@ -3922,6 +4624,9 @@ import {
   getScheduleMonthOptions,
   getScheduleWindowBounds,
   getScheduleYearOptions,
+  getScheduleCalendarMonths,
+  getScheduleCalendarWeeks,
+  isWithinScheduleWindow,
   validateScheduleDateTime,
 } from "../../../../pages/ScheduledPurchases/utils/scheduleDateTimeUtils";
 
@@ -4180,6 +4885,72 @@ describe("validateScheduleDateTime", () => {
     );
     jest.setSystemTime(new Date("2026-11-15T17:00:00Z")); // noon Eastern
     expect(validateScheduleDateTime(at("01", "10", "2027", "3", "00", "PM"))).toBe("");
+  });
+});
+
+describe("calendar picker helpers", () => {
+  // Window from Friday, November 20 2026 (Eastern wall clock) to February 20 2027.
+  const bounds = getScheduleWindowBounds(new Date(2026, 10, 20, 10, 0, 0));
+  const days = (weeks) => weeks.flat().filter(Boolean);
+  const open = (weeks) => days(weeks).filter((c) => c.selectable).map((c) => c.day);
+
+  test("isWithinScheduleWindow includes both ends and nothing outside them", () => {
+    expect(isWithinScheduleWindow(2026, 11, 19, bounds)).toBe(false);
+    expect(isWithinScheduleWindow(2026, 11, 20, bounds)).toBe(true);
+    expect(isWithinScheduleWindow(2026, 12, 31, bounds)).toBe(true);
+    expect(isWithinScheduleWindow(2027, 1, 1, bounds)).toBe(true);
+    expect(isWithinScheduleWindow(2027, 2, 20, bounds)).toBe(true);
+    expect(isWithinScheduleWindow(2027, 2, 21, bounds)).toBe(false);
+  });
+
+  test("getScheduleCalendarMonths lists each window month across the year change", () => {
+    expect(getScheduleCalendarMonths(bounds)).toEqual([
+      { year: 2026, month: 11 },
+      { year: 2026, month: 12 },
+      { year: 2027, month: 1 },
+      { year: 2027, month: 2 },
+    ]);
+  });
+
+  test("weeks start on Sunday and pad to whole weeks", () => {
+    // November 1 2026 is a Sunday, December 1 a Tuesday, February 1 2027 a Monday.
+    const november = getScheduleCalendarWeeks(2026, 11, bounds);
+    expect(november[0][0]).toEqual({ day: 1, selectable: false });
+    expect(november.at(-1)).toEqual([
+      { day: 29, selectable: true }, { day: 30, selectable: true }, null, null, null, null, null,
+    ]);
+    const december = getScheduleCalendarWeeks(2026, 12, bounds);
+    expect(december[0].slice(0, 3)).toEqual([null, null, { day: 1, selectable: true }]);
+    const february = getScheduleCalendarWeeks(2027, 2, bounds);
+    expect(february[0][0]).toBeNull();
+    expect(february[0][1]).toEqual({ day: 1, selectable: true });
+    for (const weeks of [november, december, february]) {
+      expect(weeks.every((week) => week.length === 7)).toBe(true);
+    }
+    expect(days(february)).toHaveLength(28);
+  });
+
+  test("the first and last window months open only their in-window days", () => {
+    expect(open(getScheduleCalendarWeeks(2026, 11, bounds))).toEqual(range(20, 30));
+    expect(open(getScheduleCalendarWeeks(2027, 2, bounds))).toEqual(range(1, 20));
+  });
+
+  test("months outside the window have no selectable days", () => {
+    expect(open(getScheduleCalendarWeeks(2026, 10, bounds))).toEqual([]);
+    expect(open(getScheduleCalendarWeeks(2027, 3, bounds))).toEqual([]);
+    expect(open(getScheduleCalendarWeeks(2025, 12, bounds))).toEqual([]);
+  });
+
+  test("the calendar offers exactly the days the dropdowns offer, including month-end rollover", () => {
+    // From November 30 the window ends on "February 30", which rolls to March 2.
+    const rollover = getScheduleWindowBounds(new Date(2026, 10, 30, 9, 0, 0));
+    for (const b of [bounds, rollover]) {
+      for (const { year, month } of getScheduleCalendarMonths(b)) {
+        expect(open(getScheduleCalendarWeeks(year, month, b))).toEqual(getScheduleDayOptions(year, month, b));
+      }
+    }
+    expect(getScheduleCalendarMonths(rollover).at(-1)).toEqual({ year: 2027, month: 3 });
+    expect(open(getScheduleCalendarWeeks(2027, 3, rollover))).toEqual([1, 2]);
   });
 });
 ```
@@ -4952,6 +5723,43 @@ describe("normalizeSearchResults", () => {
 </details>
 
 <details>
+<summary>src/__tests__/pages/SellerDashboard/SellerDashboardFilters.test.jsx</summary>
+
+[Open source](../src/__tests__/pages/SellerDashboard/SellerDashboardFilters.test.jsx)
+
+```jsx
+import { fireEvent, render, screen } from "@testing-library/react";
+import SellerDashboardFilters from "../../../pages/SellerDashboard/components/SellerDashboardFilters";
+
+test("each filter select is named by its label and reports changes", () => {
+  const onStatusChange = jest.fn();
+  const onCategoryChange = jest.fn();
+  const onSortChange = jest.fn();
+  render(
+    <SellerDashboardFilters
+      categories={["Books", "Electronics"]}
+      selectedCategory="All Categories"
+      selectedSort="Newest First"
+      selectedStatus="All Status"
+      onCategoryChange={onCategoryChange}
+      onSortChange={onSortChange}
+      onStatusChange={onStatusChange}
+    />,
+  );
+
+  fireEvent.change(screen.getByLabelText("Status"), { target: { value: "Sold" } });
+  fireEvent.change(screen.getByLabelText("Category"), { target: { value: "Books" } });
+  fireEvent.change(screen.getByLabelText("Sort By"), { target: { value: "Price: Low to High" } });
+
+  expect(onStatusChange).toHaveBeenCalledWith("Sold");
+  expect(onCategoryChange).toHaveBeenCalledWith("Books");
+  expect(onSortChange).toHaveBeenCalledWith("Price: Low to High");
+});
+```
+
+</details>
+
+<details>
 <summary>src/__tests__/pages/SellerDashboard/utils/sellerDashboardUtils.test.js</summary>
 
 [Open source](../src/__tests__/pages/SellerDashboard/utils/sellerDashboardUtils.test.js)
@@ -5310,6 +6118,124 @@ describe("account information formatting", () => {
 </details>
 
 <details>
+<summary>src/__tests__/pages/Settings/ChangePassword.test.jsx</summary>
+
+[Open source](../src/__tests__/pages/Settings/ChangePassword.test.jsx)
+
+```jsx
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import ChangePasswordPage from "../../../pages/Settings/ChangePassword";
+import { csrfFetch } from "../../../utils/csrfFetch";
+
+jest.mock("react-router-dom", () => ({
+  useNavigate: () => jest.fn(),
+}), { virtual: true });
+
+jest.mock("../../../pages/Settings/SettingsLayout", () => ({ children }) => <div>{children}</div>);
+jest.mock("../../../utils/csrfFetch", () => ({ csrfFetch: jest.fn() }));
+
+const STRONG = "Newpass1!";
+
+function fill(current, next, confirm) {
+  fireEvent.change(screen.getByLabelText("Current Password"), { target: { value: current } });
+  fireEvent.change(screen.getByLabelText("New Password"), { target: { value: next } });
+  fireEvent.change(screen.getByLabelText("Re-enter New Password"), { target: { value: confirm } });
+}
+
+function rejectedWith(error) {
+  return { ok: false, json: async () => ({ ok: false, error }) };
+}
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  jest.spyOn(window, "scrollTo").mockImplementation(() => {});
+  jest.spyOn(window, "alert").mockImplementation(() => {});
+});
+afterEach(() => jest.restoreAllMocks());
+
+test("an empty form shows a scroll-locking popup instead of a browser alert", async () => {
+  render(<ChangePasswordPage />);
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "Couldn't change password" });
+  expect(dialog.textContent).toContain("Please fill in all password fields.");
+  expect(document.body.style.position).toBe("fixed");
+  expect(window.alert).not.toHaveBeenCalled();
+  expect(csrfFetch).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole("button", { name: "OK" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(document.body.style.position).toBe("");
+});
+
+test("mismatched new passwords are reported in the popup", async () => {
+  render(<ChangePasswordPage />);
+  fill("Oldpass1!", STRONG, "Newpass2!");
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+  expect(await screen.findByText(
+    "The new password that was entered is different from the re-entry of the password.",
+  )).toBeTruthy();
+  expect(csrfFetch).not.toHaveBeenCalled();
+});
+
+test("a weak new password names the first rule it breaks", async () => {
+  render(<ChangePasswordPage />);
+  fill("Oldpass1!", "short", "short");
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+  expect(await screen.findByText("The new password must have at least 8 characters.")).toBeTruthy();
+  expect(csrfFetch).not.toHaveBeenCalled();
+});
+
+test("the server's own error message is shown when it rejects the change", async () => {
+  csrfFetch.mockResolvedValue(rejectedWith("Current password is incorrect"));
+  render(<ChangePasswordPage />);
+  fill("Oldpass1!", STRONG, STRONG);
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "Couldn't change password" });
+  expect(dialog.textContent).toContain("Current password is incorrect");
+  expect(window.alert).not.toHaveBeenCalled();
+});
+
+test("a network failure is reported in the popup", async () => {
+  csrfFetch.mockRejectedValue(new Error("offline"));
+  render(<ChangePasswordPage />);
+  fill("Oldpass1!", STRONG, STRONG);
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+  expect(await screen.findByText(
+    "Network error while changing password. Please try again.",
+  )).toBeTruthy();
+});
+
+test("Enter on the popup closes it without submitting again, and submits once it is closed", async () => {
+  csrfFetch.mockResolvedValue(rejectedWith("Current password is incorrect"));
+  render(<ChangePasswordPage />);
+  fill("Oldpass1!", STRONG, STRONG);
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  await screen.findByRole("dialog", { name: "Couldn't change password" });
+  expect(csrfFetch).toHaveBeenCalledTimes(1);
+
+  // In a browser, Enter on the focused OK button fires keydown, then a click.
+  const ok = screen.getByRole("button", { name: "OK" });
+  expect(document.activeElement).toBe(ok);
+  fireEvent.keyDown(ok, { key: "Enter" });
+  fireEvent.click(ok);
+  await act(async () => {});
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(csrfFetch).toHaveBeenCalledTimes(1);
+
+  fireEvent.keyDown(window, { key: "Enter" });
+  await screen.findByRole("dialog", { name: "Couldn't change password" });
+  expect(csrfFetch).toHaveBeenCalledTimes(2);
+});
+```
+
+</details>
+
+<details>
 <summary>src/__tests__/pages/Settings/LoggedDevicesPage.test.jsx</summary>
 
 [Open source](../src/__tests__/pages/Settings/LoggedDevicesPage.test.jsx)
@@ -5598,9 +6524,6 @@ const response = (body) => ({
 const SAVE_WAIT_MS = 4000;
 jest.setTimeout(15000);
 
-// The page auto-saves (debounced) whenever values change, including once right
-// after the initial load, so wait for the save that carries the expected fields
-// rather than whichever call happens to be last.
 const savedBodies = () => csrfFetch.mock.calls.map((call) => JSON.parse(call[1].body));
 const waitForSave = (expected) =>
   waitFor(
@@ -8120,6 +9043,21 @@ check(ok(fixture_webhook($event)) && (int)row("SELECT sold FROM INVENTORY WHERE 
 check(ok(fixture_webhook($event)) && (int)row("SELECT COUNT(*) AS n FROM confirm_purchase_requests WHERE scheduled_request_id=$realSchedule")['n'] === 1,
     'replayed Stripe success webhook completes the purchase only once');
 
+require_once __DIR__ . '/../database/protect_test_accounts.php';
+$seedEmail = seed_account_emails()[0];
+$stmt = $conn->prepare('UPDATE user_accounts SET email = ?, is_protected = 0 WHERE user_id = 4');
+$stmt->bind_param('s', $seedEmail);
+$stmt->execute();
+$stmt->close();
+[$seedItem, $seedChat] = mock_fixture(4, 5);
+$seedSchedule = mock_schedule($seedItem, $seedChat, 4, 5);
+check(row("SELECT payment_mode FROM scheduled_purchase_requests WHERE request_id=$seedSchedule")['payment_mode'] === 'mock',
+    'fixture email still forces mock mode even if its protection flag is missing');
+$conn->query("UPDATE scheduled_purchase_requests SET meeting_at=UTC_TIMESTAMP() - INTERVAL 10 SECOND WHERE request_id=$seedSchedule");
+check(ok(api(5, 'payments/create_intent.php', ['scheduled_request_id' => $seedSchedule]))
+    && ok(api(5, 'payments/mock_confirm.php', ['scheduled_request_id' => $seedSchedule])),
+    'fixture email with a missing flag can complete only a mock transaction');
+
 harness_cleanup();
 putenv('PAYMENTS_ENABLED=false');
 harness_start('mockdisabled', 2);
@@ -9720,9 +10658,7 @@ echo json_encode([
 ```bash
 #!/bin/bash
 
-# Rate Limiting Test Script
-# Tests that 5 failed login attempts trigger a 5-minute lockout
-# and that attempt 6+ are blocked with 429 status
+# Print the HTTP status from repeated failed login attempts.
 
 echo "=== Rate Limiting Test ==="
 API_BASE="${API_TEST_BASE_URL:-${API_BASE_URL:-http://localhost:8080/api}}"

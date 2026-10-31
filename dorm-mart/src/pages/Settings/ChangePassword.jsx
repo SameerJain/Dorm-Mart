@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SettingsLayout from "./SettingsLayout";
+import { MessageDialog } from "../../components/Dialog";
 import PasswordRequirementRow from "../../components/forms/PasswordRequirementRow";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
@@ -51,6 +52,7 @@ function ChangePasswordPage() {
   const [confirmPw, setConfirmPw] = useState("");
 
   const [showNotice, setShowNotice] = useState(false);
+  const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(5);
   const timerRef = useRef(null);
   const runExclusive = useSubmitLock();
@@ -60,10 +62,11 @@ function ChangePasswordPage() {
   const policy = useMemo(() => buildPasswordPolicy(nextPw), [nextPw]);
 
   // Key auto-repeat fires this for as long as Enter is held, so it has to go
-  // through the same lock as the button.
+  // through the same lock as the button. Enter on an open popup's OK button
+  // only closes it, so it must not submit the form again.
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Enter") runExclusive(handleSubmit);
+      if (e.key === "Enter" && !error && !showNotice) runExclusive(handleSubmit);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -96,11 +99,11 @@ function ChangePasswordPage() {
 
   const handleSubmit = async () => {
     if (!current.trim() || !nextPw.trim() || !confirmPw.trim()) {
-      alert("Please fill in all password fields.");
+      setError("Please fill in all password fields.");
       return;
     }
     if (nextPw !== confirmPw) {
-      alert("The new password that was entered is different from the re-entry of the password.");
+      setError("The new password that was entered is different from the re-entry of the password.");
       return;
     }
     const policyChecks = [
@@ -111,7 +114,7 @@ function ChangePasswordPage() {
       [!policy.special, "The new password must have at least 1 special character."],
     ];
     const failed = policyChecks.find(([bad]) => bad);
-    if (failed) { alert(failed[1]); return; }
+    if (failed) { setError(failed[1]); return; }
 
     try {
       const res = await csrfFetch(`${API_BASE}/auth/change_password.php`, {
@@ -125,10 +128,10 @@ function ChangePasswordPage() {
         setShowNotice(true);
       } else {
         const msg = await safeError(res);
-        alert(msg || "Unable to change password at this time.");
+        setError(msg || "Unable to change password at this time.");
       }
     } catch {
-      alert("Network error while changing password. Please try again.");
+      setError("Network error while changing password. Please try again.");
     }
   };
 
@@ -205,6 +208,14 @@ function ChangePasswordPage() {
           </div>
         </section>
       </div>
+
+      {error && (
+        <MessageDialog
+          title="Couldn't change password"
+          message={error}
+          onClose={() => setError(null)}
+        />
+      )}
 
       {showNotice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">

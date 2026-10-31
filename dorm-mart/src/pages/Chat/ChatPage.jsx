@@ -20,9 +20,7 @@ import {
 import useAutoGrowTextarea from "./hooks/useAutoGrowTextarea";
 import useChatAutoScroll from "./hooks/useChatAutoScroll";
 
-/** Root Chat page: wires context, sidebar, messages, and composer together */
 export default function ChatPage() {
-  /** Chat global state and actions from context */
   const ctx = useContext(ChatContext);
   const {
     conversations,
@@ -58,7 +56,6 @@ export default function ChatPage() {
   useBodyScrollLock(paymentOpen);
   const [attachedImage, setAttachedImage] = useState(null);
 
-  /** Sync textarea height before paint so composer row stays aligned with attach/send */
   const { taRef, autoGrow } = useAutoGrowTextarea(draft);
 
   const navigate = useNavigate();
@@ -76,7 +73,6 @@ export default function ChatPage() {
     if (activeConversation?.item_deleted) setDraft("");
   }, [activeConversation?.item_deleted]);
 
-  /** Compute header label for the active chat */
   const activeLabel = useMemo(() => {
     const c = conversations.find((c) => c.conv_id === activeConvId);
     if (c) return c.receiverName;
@@ -86,13 +82,11 @@ export default function ChatPage() {
     return "Select a chat";
   }, [conversations, activeConvId, navigationState]);
 
-  /** Extract first name for mobile display */
   const activeLabelFirstName = useMemo(() => {
     if (!activeLabel || activeLabel === "Select a chat") return activeLabel;
     return activeLabel.split(" ")[0];
   }, [activeLabel]);
 
-  /** Split activeLabel into first and last name for desktop display */
   const { firstName: activeFirstName, lastName: activeLastName } =
     useMemo(() => {
       if (!activeLabel || activeLabel === "Select a chat") {
@@ -112,10 +106,8 @@ export default function ChatPage() {
     navigate,
   });
 
-  /** Controls which pane is visible on mobile (list vs messages) */
   const [isMobileList, setIsMobileList] = useState(true);
 
-  /** Handle deep-link via ?conv=ID in URL and auto-open that conversation */
   useEffect(() => {
     const convParam = searchParams.get("conv");
     if (convParam) {
@@ -128,12 +120,10 @@ export default function ChatPage() {
     }
   }, [searchParams, activeConvId, fetchConversation, setSearchParams]);
 
-  /** When an active conversation exists, show the message pane on mobile */
   useEffect(() => {
     if (activeConvId) setIsMobileList(false);
   }, [activeConvId]);
 
-  // Derive typing status from context (comes from fetch_new_messages)
   const typingStatus = activeConvId
     ? typingStatusByConv[activeConvId] || {
         is_typing: false,
@@ -223,7 +213,6 @@ export default function ChatPage() {
     !activeConversation?.item_deleted &&
     (Boolean(attachedImage) || draft.trim().length > 0);
 
-  /** Keydown handler for textarea: submit on Enter (without Shift) */
   function handleKeyDown(e) {
     if (activeConversation?.item_deleted) {
       e.preventDefault();
@@ -238,7 +227,6 @@ export default function ChatPage() {
     }
   }
 
-  /** Open delete confirmation modal for a given conversation */
   function handleDeleteClick(convId, e) {
     e.stopPropagation();
     setPendingDeleteConvId(convId);
@@ -246,11 +234,10 @@ export default function ChatPage() {
     setDeleteError("");
   }
 
-  /** Confirm hiding: call the API, then remove the row once the server agrees. */
   async function handleDeleteConfirm() {
     if (!pendingDeleteConvId || isDeleting) return;
 
-    const convId = pendingDeleteConvId; // keep a local copy
+    const convId = pendingDeleteConvId;
 
     setIsDeleting(true);
     setDeleteError("");
@@ -292,14 +279,12 @@ export default function ChatPage() {
     }
   }
 
-  /** Cancel deletion: close modal and clear state */
   function handleDeleteCancel() {
     setDeleteConfirmOpen(false);
     setPendingDeleteConvId(null);
     setDeleteError("");
   }
 
-  /** Determine if current user is the seller (seller perspective) */
   const isSellerPerspective =
     activeConversation?.productId &&
     activeConversation?.productSellerId &&
@@ -321,7 +306,6 @@ export default function ChatPage() {
     myId,
   });
 
-  /** Check if buyer has accepted confirm purchase and should see review prompt - memoized */
   const {
     hasAcceptedConfirm,
     shouldShowReviewPrompt,
@@ -375,13 +359,11 @@ export default function ChatPage() {
     ],
   );
 
-  /** Header background color based on buyer vs seller perspective */
   const headerBgColor = isSellerPerspective
     ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
     : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
   const isListingDraft = activeConversation?.productStatus === "Draft";
 
-  /** Seller-only confirm state (null if not seller perspective) */
   const confirmState = isSellerPerspective
     ? isListingDraft
       ? {
@@ -394,12 +376,9 @@ export default function ChatPage() {
         })
     : null;
 
-  /** Disable Confirm Purchase button if cannot confirm */
   const confirmButtonDisabled = confirmState ? !confirmState.can_confirm : true;
-  /** Tooltip/title text for Confirm Purchase button */
   const confirmButtonTitle = confirmState?.message || "";
 
-  /** Navigate to Schedule Purchase flow for seller */
   function handleSchedulePurchase() {
     if (
       !activeConvId ||
@@ -413,7 +392,6 @@ export default function ChatPage() {
     });
   }
 
-  /** Navigate to Confirm Purchase flow for seller */
   function handleConfirmPurchase() {
     if (!activeConvId || !activeConversation?.productId || isListingDraft)
       return;

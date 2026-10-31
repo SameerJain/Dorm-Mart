@@ -98,7 +98,6 @@ function ProductListingPage() {
     return () => window.removeEventListener("resize", updatePreviewSize);
   }, []);
 
-  // Prevent body scroll when cropper modal is open
   useBodyScrollLock(showCropper);
 
   // Mirror crop geometry in refs so dragging reads the latest values.
@@ -147,7 +146,6 @@ function ProductListingPage() {
     setErrors({});
   }
 
-  // Active listing cap
   useEffect(() => {
     let ignore = false;
     async function checkActiveListingCap() {
@@ -178,7 +176,6 @@ function ProductListingPage() {
     };
   }, []);
 
-  // Existing listing
   useEffect(() => {
     if (!isEdit || !id) return;
 
@@ -207,7 +204,6 @@ function ProductListingPage() {
 
         if (ignore) return;
 
-        // Pending and sold listings must not enter the edit form.
         if (Number(data.sold) === 1 || ["pending", "sold"].includes(String(data.item_status || "").toLowerCase())) {
           setIsEditBlocked(true);
           setLoadError("Cannot edit pending or sold items.");
@@ -215,7 +211,6 @@ function ProductListingPage() {
             "Cannot edit pending or sold items. Please return to the seller dashboard.",
           );
           setLoadingExisting(false);
-          // Redirect to seller dashboard after a short delay
           setTimeout(() => {
             navigate("/app/seller-dashboard", { replace: true });
           }, 2000);
@@ -225,10 +220,8 @@ function ProductListingPage() {
         setIsEditBlocked(false);
         setListingStatus(data.item_status || "Active");
 
-        // Populate form fields
         setTitle(data.title || "");
 
-        // Handle categories (can be tags array or categories JSON)
         let cats = [];
         if (Array.isArray(data.tags)) {
           cats = data.tags;
@@ -254,7 +247,6 @@ function ProductListingPage() {
         setAcceptTrades(data.trades === true || data.trades === 1);
         setPriceNegotiable(data.price_nego === true || data.price_nego === 1);
 
-        // Handle existing photos
         let existingPhotos = [];
         if (Array.isArray(data.photos)) {
           existingPhotos = data.photos;
@@ -265,7 +257,6 @@ function ProductListingPage() {
               existingPhotos = parsed;
             }
           } catch (e) {
-            // If not JSON, treat as comma-separated
             existingPhotos = data.photos
               .split(",")
               .map((s) => s.trim())
@@ -273,23 +264,21 @@ function ProductListingPage() {
           }
         }
 
-        // Convert existing photo URLs to image objects for display
-        // Store original URLs separately so we can send them back
         const imageObjects = existingPhotos.map((url) => {
           return {
-            file: null, // No file object for existing images
+            file: null,
             url: resolveProductPhotoUrl(url, {
               apiBase: API_BASE,
               publicBase: PUBLIC_BASE,
             }),
-            originalUrl: url, // Store original URL for submission
+            originalUrl: url,
             type: isVideoMediaUrl(url) ? "video" : "image",
           };
         });
         setImages(imageObjects);
 
         setSelectedCategory("");
-        setErrors({}); // This already clears all errors including images
+        setErrors({});
       } catch (e) {
         if (!ignore) {
           logger.error("Error loading existing listing:", e);
@@ -309,7 +298,6 @@ function ProductListingPage() {
     };
   }, [id, isEdit, navigate]);
 
-  // Reset form when switching back to new-listing mode.
   useEffect(() => {
     if (isNew) {
       resetFormFields();
@@ -431,7 +419,6 @@ function ProductListingPage() {
       return;
     }
 
-    // Clear file size and type errors if validation passes
     if (
       errors.images &&
       (errors.images.includes("too large") ||
@@ -464,7 +451,6 @@ function ProductListingPage() {
         const w = img.width;
         const h = img.height;
         if (w === h) {
-          // already square
           setImages((prev) => {
             const photo = {
               file,
@@ -473,16 +459,13 @@ function ProductListingPage() {
             };
             return hasListingPhoto(prev) ? [...prev, photo] : [photo, ...prev];
           });
-          // Clear image error when image is added
           clearError("images");
         } else {
-          // Check image limit before opening cropper
           if (images.length >= LIMITS.images) {
             setMediaError(`Maximum ${LIMITS.images} media files allowed.`);
             e.target.value = null;
             return;
           }
-          // open cropper
           setCropImageSrc(ev.target.result);
           setCropImgEl(img);
           setPendingFileName(file.name || "image.png");
@@ -705,11 +688,9 @@ function ProductListingPage() {
     fd.append("acceptTrades", acceptTrades ? "1" : "0");
     fd.append("priceNegotiable", priceNegotiable ? "1" : "0");
 
-    // Separate existing photos (no file) from new uploads (has file)
     const existingPhotoUrls = [];
     images.forEach((img) => {
       if (img?.file) {
-        // New upload - add as file
         fd.append(
           "images[]",
           img.file,
@@ -717,12 +698,10 @@ function ProductListingPage() {
             `${img.type === "video" ? "video" : "image"}_${Date.now()}`,
         );
       } else if (img?.originalUrl) {
-        // Existing photo - store original URL to send back
         existingPhotoUrls.push(img.originalUrl);
       }
     });
 
-    // In edit mode, send existing photos that should be kept
     if (isEdit && existingPhotoUrls.length > 0) {
       existingPhotoUrls.forEach((url) => {
         fd.append("existingPhotos[]", url);
@@ -782,7 +761,6 @@ function ProductListingPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <main className="max-w-6xl mx-auto p-4 sm:p-6">
-        {/* Header */}
         <div className="mb-6 sm:mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
             {headerText}

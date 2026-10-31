@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
+import ScheduleCalendar from "./ScheduleCalendar";
 import {
   getScheduleDayOptions,
   getScheduleMonthOptions,
@@ -87,6 +88,15 @@ export default function ScheduleDateTimeFields({
     }
   };
 
+  const [picker, setPicker] = useState("dropdowns");
+
+  const handleCalendarSelect = ({ year, month, day }) => {
+    setMeetingYear(String(year));
+    setMeetingMonth(String(month).padStart(2, "0"));
+    setMeetingDay(String(day).padStart(2, "0"));
+    setDateTimeError("");
+  };
+
   const handleMonthChange = (value) => {
     setMeetingMonth(value);
     setDateTimeError("");
@@ -103,47 +113,81 @@ export default function ScheduleDateTimeFields({
   };
 
   return (
-    <div>
-      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+    <fieldset>
+      <legend className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
         Meeting Date &amp; Time <span className="text-red-500">*</span>
-      </label>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <SelectField label="Month" value={meetingMonth} onChange={handleMonthChange}>
-          <option value="">Month</option>
-          {monthOptions.map((month) => (
-            <option key={month} value={String(month).padStart(2, "0")}>
-              {MONTH_NAMES[month - 1]}
-            </option>
-          ))}
-        </SelectField>
-        <SelectField
-          label="Day"
-          value={meetingDay}
-          onChange={(value) => {
-            setMeetingDay(value);
-            setDateTimeError("");
-          }}
-        >
-          <option value="">Day</option>
-          {dayOptions.map((day) => (
-            <option key={day} value={String(day).padStart(2, "0")}>
-              {day}
-            </option>
-          ))}
-        </SelectField>
-        {showYearDropdown ? (
-          <SelectField label="Year" value={meetingYear} onChange={handleYearChange}>
-            <option value="">Year</option>
-            {yearOptions.map((year) => (
-              <option key={year} value={String(year)}>
-                {year}
+      </legend>
+      <div
+        role="group"
+        aria-label="Pick the date with"
+        className="mb-3 inline-flex rounded-lg border border-gray-300 p-0.5 dark:border-gray-700"
+      >
+        {[
+          ["dropdowns", "Dropdowns"],
+          ["calendar", "Calendar"],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={picker === value}
+            onClick={() => setPicker(value)}
+            className={`rounded-md px-3 py-1.5 coarse:min-h-[44px] text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+              picker === value
+                ? "bg-blue-600 text-white"
+                : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {picker === "calendar" ? (
+        <ScheduleCalendar
+          bounds={bounds}
+          meetingYear={meetingYear}
+          meetingMonth={meetingMonth}
+          meetingDay={meetingDay}
+          onSelectDate={handleCalendarSelect}
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <SelectField label="Month" value={meetingMonth} onChange={handleMonthChange}>
+            <option value="">Month</option>
+            {monthOptions.map((month) => (
+              <option key={month} value={String(month).padStart(2, "0")}>
+                {MONTH_NAMES[month - 1]}
               </option>
             ))}
           </SelectField>
-        ) : (
-          <StaticField label="Year" value={bounds.currentYear} />
-        )}
-      </div>
+          <SelectField
+            label="Day"
+            value={meetingDay}
+            onChange={(value) => {
+              setMeetingDay(value);
+              setDateTimeError("");
+            }}
+          >
+            <option value="">Day</option>
+            {dayOptions.map((day) => (
+              <option key={day} value={String(day).padStart(2, "0")}>
+                {day}
+              </option>
+            ))}
+          </SelectField>
+          {showYearDropdown ? (
+            <SelectField label="Year" value={meetingYear} onChange={handleYearChange}>
+              <option value="">Year</option>
+              {yearOptions.map((year) => (
+                <option key={year} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </SelectField>
+          ) : (
+            <StaticField label="Year" value={bounds.currentYear} />
+          )}
+        </div>
+      )}
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <SelectField
           label="Hour"
@@ -191,17 +235,20 @@ export default function ScheduleDateTimeFields({
           <option value="PM">PM</option>
         </SelectField>
       </div>
-    </div>
+    </fieldset>
   );
 }
 
 function SelectField({ children, label, onChange, value }) {
+  const selectId = useId();
+
   return (
     <div>
-      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+      <label htmlFor={selectId} className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
         {label}
       </label>
       <select
+        id={selectId}
         value={value}
         onChange={(e) => {
           onChange(e.target.value);

@@ -2,7 +2,7 @@
 
 Last assessed: 2026-09-30, on branch `145-Setup-Railway-Deployment-System`.
 
-This plan lists code smells and technical debt in Dorm Mart. Each item has a priority score, and the plan says in what order to fix them. The status column shows what has been fixed. For earlier refactors, see [`code-review-refactor-report.md`](../code-review-refactor-report.md).
+This plan lists code smells and technical debt in Dorm Mart. Each item has a priority score, and the plan says in what order to fix them. The status column shows what has been fixed.
 
 ## Codebase snapshot
 

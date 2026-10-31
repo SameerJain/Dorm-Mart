@@ -102,9 +102,7 @@ try {
     $updateStmt->execute();
     $updateStmt->close();
     
-    // Update the listing to match the answer.
     if ($nextStatus === 'accepted') {
-        // Hold the listing on the terms it had when the seller scheduled it.
         scheduled_purchase_reserve_listing($conn, $row);
         $title = (string)($row['item_title'] ?? 'Item');
         $image = notification_first_image($row['item_photos'] ?? null);
@@ -175,7 +173,6 @@ try {
         'idempotency_key' => 'schedule-response-' . $requestId,
     ]);
 
-    // Create special message in chat
     $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
     if ($conversationId > 0) {
         $buyerDisplayName = scheduled_purchase_user_display_name($conn, $buyerId);
@@ -192,7 +189,6 @@ try {
                 'request_id' => $requestId,
             ]);
 
-            // If purchase was accepted, send a separate "Next Steps" message
             // Note: This message does NOT increment unread count (no notification for either party)
             if ($action === 'accept') {
                 $usesPayment = ($row['payment_option'] ?? 'manual') === 'stripe' && empty($row['payment_fallback_at']);
@@ -210,7 +206,6 @@ try {
     $meetingAtIso = dm_utc_atom($row['meeting_at'] ?? null);
     $responseAtIso = scheduled_purchase_now_utc_atom();
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $response = [
         'success' => true,
         'data' => [

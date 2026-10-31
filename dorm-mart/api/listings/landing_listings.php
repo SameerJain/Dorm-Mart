@@ -1,9 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// dorm-mart/api/listings/landing_listings.php
 
-// Include security utilities
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../helpers/recommendations.php';
@@ -82,7 +80,6 @@ try {
         $tags = inventory_string_list($row['categories'] ?? null);
         $image = inventory_first_photo($row['photos'] ?? null);
 
-        // status from date_listed
         $status = 'AVAILABLE';
         $createdAt = null;
         if (!empty($row['date_listed'])) {

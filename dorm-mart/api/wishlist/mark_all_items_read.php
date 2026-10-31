@@ -19,7 +19,6 @@ try {
 
     require_csrf_token($input['csrf_token'] ?? null);
 
-    // Mark every delivered notification for the caller as read.
     $stmt = $conn->prepare(
         'UPDATE notifications SET is_read = 1
          WHERE recipient_user_id = ? AND is_read = 0 AND available_at <= NOW()'

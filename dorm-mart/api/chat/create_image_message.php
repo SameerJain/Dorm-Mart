@@ -17,7 +17,6 @@ $conn->set_charset('utf8mb4');
 
 auth_boot_session();
 
-// --- auth: require a logged-in user ---
 $userId = require_login();
 $sender = $userId;
 
@@ -28,10 +27,8 @@ if (empty($_POST) && empty($_FILES) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 
     json_response(['success' => false, 'error' => 'file_too_large'], 413);
 }
 
-// This endpoint expects multipart/form-data with an image or video attachment.
 require_multipart_formdata();
 
-/* Read form fields (sent via FormData on the client) */
 $receiverId = request_int($_POST, 'receiver_id');
 $contentRaw = is_string($_POST['content'] ?? null) ? trim($_POST['content']) : '';
 $convIdParam = array_key_exists('conv_id', $_POST) && $_POST['conv_id'] !== ''
@@ -40,8 +37,6 @@ $convIdParam = array_key_exists('conv_id', $_POST) && $_POST['conv_id'] !== ''
 
 require_csrf_token($_POST['csrf_token'] ?? null);
 
-/* Validate presence of receiver and the uploaded attachment.
-   Caption (contentRaw) is allowed to be empty for media-only messages. */
 if ($receiverId <= 0 || (array_key_exists('conv_id', $_POST) && $_POST['conv_id'] !== '' && $convIdParam === null)) {
     json_response(['success' => false, 'error' => 'missing_receiver'], 400);
 }
@@ -86,7 +81,6 @@ if (moderation_user_is_banned($conn, $receiverId)) {
 
 $content = $contentRaw;
 
-/* Caption length guard (same policy as text messages) */
 $len = function_exists('mb_strlen') ? mb_strlen($content, 'UTF-8') : strlen($content);
 if ($len > 500) {
     json_response([
@@ -97,7 +91,6 @@ if ($len > 500) {
     ], 400);
 }
 
-/* --- Validate and store the uploaded media --- */
 $MAX_BYTES = 25 * 1024 * 1024;
 $allowed = [
     'image/jpeg'      => 'jpg',
@@ -125,7 +118,6 @@ if (!$isVideo && (int)$imageInfo['size'] > 2 * 1024 * 1024) {
 }
 $ext = $imageInfo['extension'];
 
-/* Build destination dir under the configured uploads root. */
 $destDir = data_media_dir('chat-attachments');
 if (!is_dir($destDir)) {
     if (!ensure_upload_directory($destDir)) {
@@ -133,7 +125,6 @@ if (!is_dir($destDir)) {
     }
 }
 
-/* Generate a unique filename to avoid collisions */
 $fname = sprintf(
     'u%s_%s_%s.%s',
     $senderId,
@@ -143,23 +134,18 @@ $fname = sprintf(
 );
 $destPath = $destDir . '/' . $fname;
 
-/* Move the uploaded temp file to the destination */
 if (!@move_uploaded_file($imageInfo['tmp_name'], $destPath)) {
     json_response(['success' => false, 'error' => 'media_save_failed'], 500);
 }
 
-/* Build the public relative URL path that your frontend can render.
-   Assumes /media is web-accessible from the project root. */
 $imageRelUrl = '/media/chat-attachments/' . $fname;
 
-/* --- Conversation plumbing (same as create_message.php) --- */
 $u1 = min($senderId, $receiverId);
 $u2 = max($senderId, $receiverId);
 $lockKey = "conv:$u1:$u2";
 
 $convId = null;
 $msgId  = null;
-/* will hold ISO-8601 UTC string, e.g., 2025-10-31T03:05:06Z */
 $createdIso = null;
 $filteredContent = $content;
 $committed = false;
@@ -167,7 +153,6 @@ $committed = false;
 try {
     $conn->begin_transaction();
 
-    // Acquire advisory lock
     $stmt = $conn->prepare('SELECT GET_LOCK(?, 5) AS got_lock');
     $stmt->bind_param('s', $lockKey);
     $stmt->execute();
@@ -195,7 +180,6 @@ try {
         json_response(['success' => false, 'error' => 'Invalid conversation ID'], 403);
     }
 
-    // If item is deleted, block media message creation
     if (chat_conversation_is_closed($conn, $convId)) {
         chat_release_lock($conn, $lockKey);
         $conn->rollback();
@@ -218,7 +202,6 @@ try {
     $msgId = (int)$conn->insert_id;
     $stmt->close();
 
-    // Fetch created_at in ISO-8601 UTC
     $stmt = $conn->prepare(
         'SELECT DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at
            FROM messages
@@ -243,7 +226,6 @@ try {
         $createdIso = gmdate('Y-m-d\TH:i:s\Z');
     }
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     echo json_encode([
         'success'     => true,
         'conv_id'     => $convId,

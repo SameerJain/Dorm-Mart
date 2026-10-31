@@ -429,7 +429,6 @@ function build_confirm_response_metadata(array $row, string $type): array
         }
     }
 
-    // Determine confirm_purchase_status based on type and row status
     $confirmPurchaseStatus = null;
     if ($type === 'confirm_accepted') {
         $confirmPurchaseStatus = 'buyer_accepted';
@@ -438,7 +437,6 @@ function build_confirm_response_metadata(array $row, string $type): array
     } elseif ($type === 'confirm_denied') {
         $confirmPurchaseStatus = 'buyer_declined';
     } elseif (isset($row['status'])) {
-        // Fallback to row status if type doesn't match
         $status = (string)$row['status'];
         if ($status === 'buyer_accepted') {
             $confirmPurchaseStatus = 'buyer_accepted';

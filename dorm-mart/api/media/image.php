@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 // Serves public product, profile, and review media. Chat media requires participant auth.
 
-// Include security utilities
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../helpers/image_upload.php';
 require_once __DIR__ . '/../helpers/file_stream.php';
@@ -56,7 +55,6 @@ function media_path_in_root(string $root, string $filename): ?string
     return $path !== false && str_starts_with($path, $prefix) && is_file($path) ? $path : null;
 }
 
-// 1) ?file=filename.png
 if (isset($_GET['file']) && $_GET['file'] !== '') {
     if (!is_string($_GET['file'])) {
         media_fail(400, 'Invalid file');
@@ -68,7 +66,6 @@ if (isset($_GET['file']) && $_GET['file'] !== '') {
     stream_media($path);
 }
 
-// 2) ?url=/data/images/filename.png OR /media/review-images/filename.jpg
 if (isset($_GET['url']) && $_GET['url'] !== '') {
     if (!is_string($_GET['url'])) {
         media_fail(400, 'Invalid url');

@@ -2,7 +2,6 @@
 // Input normalization and HTML output escaping.
 // Endpoints load this through security.php.
 
-// INPUT SANITIZATION & VALIDATION
 
 /**
  * Normalize string input before validation or storage.
@@ -20,13 +19,10 @@ function sanitize_string($input, $maxLength = 1000) {
         return '';
     }
     
-    // Trim whitespace
     $input = trim($input);
     
-    // Limit length
     $input = substr($input, 0, $maxLength);
     
-    // Remove null bytes
     $input = str_replace("\0", '', $input);
     
     // Keep existing behavior for callers that expect entity-encoded text.
@@ -35,7 +31,6 @@ function sanitize_string($input, $maxLength = 1000) {
     return $input;
 }
 
-// UTILITY FUNCTIONS
 
 /**
  * Escape values for HTML output.

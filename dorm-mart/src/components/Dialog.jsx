@@ -10,7 +10,8 @@ const FOCUSABLE =
  * returned to the opener on close. Page scroll is locked while it is open.
  *
  * `dismissible={false}` (e.g. while a request is in flight) disables Escape
- * and backdrop close without unmounting the dialog.
+ * and backdrop close without unmounting the dialog. `layerClassName` sets the
+ * stacking layer, for a dialog that must sit above another overlay.
  */
 export default function Dialog({
   title,
@@ -19,6 +20,7 @@ export default function Dialog({
   dismissible = true,
   children,
   className = "",
+  layerClassName = "z-50",
   initialFocusRef,
 }) {
   const titleId = useId();
@@ -74,7 +76,7 @@ export default function Dialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className={`fixed inset-0 ${layerClassName} flex items-center justify-center bg-black/50 p-4`}
       onClick={() => dismissibleRef.current && onCloseRef.current?.()}
     >
       <div
@@ -110,6 +112,36 @@ export default function Dialog({
 }
 
 /**
+ * One-button notice on top of Dialog, used in place of window.alert(). It sits
+ * above the app's other overlays, the button takes focus so Enter dismisses it,
+ * and the button spans the width on phones so it is easy to tap.
+ */
+export function MessageDialog({ title, message, buttonLabel = "OK", onClose }) {
+  const buttonRef = useRef(null);
+
+  return (
+    <Dialog
+      title={title}
+      description={<p className="break-words">{message}</p>}
+      onClose={onClose}
+      layerClassName="z-[70]"
+      initialFocusRef={buttonRef}
+    >
+      <div className="flex justify-end">
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={onClose}
+          className="w-full rounded-lg bg-blue-600 px-4 py-2 coarse:min-h-[44px] text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800 sm:w-auto"
+        >
+          {buttonLabel}
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
+/**
  * Confirm/cancel dialog on top of Dialog. While `busy`, both buttons are
  * disabled and the dialog cannot be dismissed.
  */
@@ -124,6 +156,7 @@ export function ConfirmDialog({
   tone = "danger",
   onConfirm,
   onCancel,
+  layerClassName,
   children,
 }) {
   const cancelRef = useRef(null);
@@ -138,6 +171,7 @@ export function ConfirmDialog({
       description={description}
       onClose={onCancel}
       dismissible={!busy}
+      layerClassName={layerClassName}
       initialFocusRef={cancelRef}
     >
       {children}

@@ -144,7 +144,6 @@ try {
         }
     }
 
-    // Check for any pending confirm purchase requests (block creation if pending)
     // Note: buyer_declined status allows new confirm purchases to be created
     $pendingStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE scheduled_request_id = ? AND status = \'pending\' ORDER BY confirm_request_id DESC LIMIT 1');
     if (!$pendingStmt) {
@@ -163,8 +162,6 @@ try {
         }
     }
     
-    // Also check for already accepted/confirmed status (block creation if already confirmed)
-    // This prevents creating new confirm purchases after a successful confirmation
     $latestStmt = $conn->prepare('SELECT status, is_successful FROM confirm_purchase_requests WHERE scheduled_request_id = ? ORDER BY confirm_request_id DESC LIMIT 1');
     if (!$latestStmt) {
         throw new RuntimeException('Failed to prepare latest confirm lookup');

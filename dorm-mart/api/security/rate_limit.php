@@ -3,7 +3,6 @@
 // Endpoints load this through security.php.
 require_once __DIR__ . '/../config/app_config.php';
 
-// RATE LIMITING FUNCTIONS
 
 const ACCOUNT_CREATION_MAX_ATTEMPTS = 4;
 const ACCOUNT_CREATION_ATTEMPT_WINDOW_MINUTES = 10;

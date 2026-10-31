@@ -1,10 +1,7 @@
-// dorm-mart/src/App.jsx
 
-// essentials
 import { createHashRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
 import { useLayoutEffect } from "react";
 import RootLayout from "./pages/RootLayout";
-// auth
 import LoginPage from "./pages/LoginPage";
 import WelcomePage from "./pages/WelcomePage";
 import LandingPage from "./pages/Home/LandingPage";
@@ -12,7 +9,6 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordConfirmation from "./pages/ResetPassword/ResetPasswordConfirmation.jsx";
 import ForgotPasswordConfirmation from "./pages/ResetPassword/ForgotPasswordConfirmation.jsx";
 import ResetPasswordForm from "./pages/ResetPassword/ResetPasswordForm.jsx";
-// app
 import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
 import ProductListingPage from "./pages/ItemForms/ProductListingPage.jsx";
@@ -38,12 +34,9 @@ import ViewReceipt from "./pages/ItemDetails/ViewReceiptPage.jsx";
 import SearchResults from "./pages/Search/SearchResultsPage.jsx";
 import WishlistPage from "./pages/Wishlist/WishlistPage.jsx";
 import PublicProfilePage from "./pages/PublicProfile/PublicProfilePage.jsx";
-// Chat
 import { ChatProvider } from "./context/ChatContext.jsx";
 import ChatPage from "./pages/Chat/ChatPage.jsx";
-// Notification
 import NotificationPage from "./pages/Notification/NotificationPage.jsx";
-// FAQ
 import FAQPage from "./pages/FAQ/FAQPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import LegalDocumentPage from "./pages/Legal/LegalDocumentPage.jsx";
@@ -88,7 +81,6 @@ function PreLoginLayout() {
 }
 
 export const router = createHashRouter([
-  // Pre-login pages — dark mode suppressed for all children
   {
     element: <PreLoginLayout />,
     children: [
@@ -104,7 +96,6 @@ export const router = createHashRouter([
         path: "/terms-of-service",
         element: <LegalDocumentPage documentKey="terms" />,
       },
-      // Public, anonymous moderation numbers (no login needed).
       { path: "/safety", element: <SafetySummaryPage /> },
       {
         path: "/forgot-password/confirmation",
@@ -117,7 +108,6 @@ export const router = createHashRouter([
       },
     ],
   },
-  // Main app
   {
     path: "/app",
     element: (
@@ -127,9 +117,7 @@ export const router = createHashRouter([
     ),
     children: [
       { index: true, element: <LandingPage /> },
-      // Search Results
       { path: "listings", element: <SearchResults /> },
-      // Product Listing
       {
         path: "product-listing",
         children: [
@@ -138,7 +126,6 @@ export const router = createHashRouter([
           { path: "edit/:id", element: <ProductListingPage key="edit" /> },
         ],
       },
-      // View Product
       { path: "viewProduct", element: <ViewProduct /> },
       { path: "viewProduct/:id", element: <ViewProduct /> },
       { path: "viewproduct", element: <ViewProduct /> },
@@ -163,7 +150,6 @@ export const router = createHashRouter([
         path: "chat",
         children: [{ index: true, element: <ChatPage /> }],
       },
-      // Wishlist
       {
         path: "wishlist",
         element: <WishlistPage />,
@@ -172,7 +158,6 @@ export const router = createHashRouter([
         path: "profile",
         element: <PublicProfilePage />,
       },
-      // Seller Dashboard
       {
         path: "seller-dashboard",
         element: <SellerDashboardPage />,
@@ -193,7 +178,6 @@ export const router = createHashRouter([
         path: "scheduled-purchases/mark-completed/:requestId",
         element: <MarkCompletedPage />,
       },
-// Settings (under /app)
       {
         path: "setting",
         children: [
@@ -204,7 +188,6 @@ export const router = createHashRouter([
           { path: "my-profile", element: <MyProfilePage /> },
           { path: "change-password", element: <ChangePasswordPage /> },
           { path: "buyer-reviews", element: <BuyerReviewsPage /> },
-          // User Preferences
           { path: "user-preferences", element: <UserPreferences /> },
           { path: "personal-information", element: <AccountInfoPage /> },
           { path: "security-options", element: <LoggedDevicesPage /> },

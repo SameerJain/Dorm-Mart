@@ -1,4 +1,5 @@
 export default function ListingActions({
+  className = "",
   atListingCap,
   catFetchError,
   catLoading,
@@ -13,11 +14,12 @@ export default function ListingActions({
   submitting,
 }) {
   return (
-    <div className="bg-white dark:bg-gray-950/30 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 mt-6">
-      <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-6">
+    <div className={`bg-white dark:bg-gray-950/50 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-4 sm:p-6 ${className}`}>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-4">
         Publish Your Listing
-      </h3>
-      <div className="flex flex-col sm:flex-row gap-4">
+      </h2>
+      {/* Side by side under the form; stacked in the narrow column on large screens. */}
+      <div className="flex flex-col sm:flex-row lg:flex-col gap-3">
         <button
           onClick={publishListing}
           disabled={
@@ -42,7 +44,7 @@ export default function ListingActions({
           type="button"
           onClick={saveDraft}
           disabled={submitting || loadingExisting}
-          className="flex-1 py-3 bg-yellow-500 hover:bg-yellow-600 text-gray-900 rounded-lg font-medium transition-colors disabled:opacity-60"
+          className="flex-1 py-3 bg-yellow-500 hover:bg-yellow-600 text-gray-900 dark:bg-yellow-700 dark:hover:bg-yellow-800 dark:text-yellow-50 rounded-lg font-medium transition-colors disabled:opacity-60"
         >
           {submitting ? "Saving..." : "Save as Draft"}
         </button>

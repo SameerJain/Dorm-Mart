@@ -185,6 +185,42 @@ export function getScheduleDayOptions(year, month, bounds) {
   return days;
 }
 
+/** Whether a calendar date falls inside the scheduling window, inclusive. */
+export function isWithinScheduleWindow(year, month, day, bounds) {
+  const key = year * 10000 + month * 100 + day;
+  const first = bounds.currentYear * 10000 + bounds.currentMonth * 100 + bounds.currentDay;
+  const last = bounds.maxYear * 10000 + bounds.maxMonth * 100 + bounds.maxDay;
+  return key >= first && key <= last;
+}
+
+/** Every month the scheduling window touches, in order, as { year, month }. */
+export function getScheduleCalendarMonths(bounds) {
+  return getScheduleYearOptions(bounds).flatMap((year) =>
+    getScheduleMonthOptions(year, bounds).map((month) => ({ year, month })),
+  );
+}
+
+/**
+ * A Sunday-first month grid for the calendar picker: an array of weeks, each
+ * seven cells of null (outside the month) or { day, selectable }. Selectable
+ * days are exactly the ones the dropdowns offer, so both pickers agree.
+ */
+export function getScheduleCalendarWeeks(year, month, bounds) {
+  const inWindow = getScheduleCalendarMonths(bounds).some(
+    (entry) => entry.year === year && entry.month === month,
+  );
+  const allowed = new Set(inWindow ? getScheduleDayOptions(year, month, bounds) : []);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const cells = Array(new Date(year, month - 1, 1).getDay()).fill(null);
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    cells.push({ day, selectable: allowed.has(day) });
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
+}
+
 export function validateScheduleDateTime({
   meetingMonth,
   meetingDay,

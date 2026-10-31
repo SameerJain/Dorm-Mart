@@ -105,10 +105,8 @@ export function ChatProvider({ children }) {
     const id = Number(convId);
     if (!id) return;
 
-    // Remove from conversation list
     setConversations((prev) => prev.filter((c) => c.conv_id !== id));
 
-    // Remove its messages from memory
     setMessagesByConv((prev) => {
       if (!prev[id]) return prev;
       const next = { ...prev };
@@ -116,7 +114,6 @@ export function ChatProvider({ children }) {
       return next;
     });
 
-    // Remove typing status for this conversation
     setTypingStatusByConv((prev) => {
       if (!prev[id]) return prev;
       const next = { ...prev };
@@ -124,12 +121,10 @@ export function ChatProvider({ children }) {
       return next;
     });
 
-    // Drop last-ts tracking for this conv
     if (lastTsRefByConv.current[id]) {
       delete lastTsRefByConv.current[id];
     }
 
-    // If we're currently viewing it, close the active conversation
     setActiveConvId((current) => (current === id ? null : current));
   }
 
@@ -166,9 +161,8 @@ export function ChatProvider({ children }) {
   const lastNavConvRef = useRef(null);
   const refreshInFlightRef = useRef(false);
   const reloadAttemptedForRef = useRef(new Set()); // conv ids already reloaded for
-  const pendingConvFetchesRef = useRef(new Set()); // Track conversations waiting for myId
+  const pendingConvFetchesRef = useRef(new Set());
 
-  // chat
   const [conversations, setConversations] = useState([]);
   const [activeConvId, setActiveConvId] = useState(null);
   const [messagesByConv, setMessagesByConv] = useState({});
@@ -182,7 +176,6 @@ export function ChatProvider({ children }) {
     setActiveConvId(null); // stops new-message polling because the effect below bails when no activeConvId
   }
 
-  // notification
   const [unreadMsgByConv, setUnreadMsgConv] = useState({}); // { conv_id -> count }
   const [unreadMsgTotal, setUnreadMsgTotal] = useState(0); // sum of counts
   const [unreadNotificationsByProduct, setUnreadNotificationsByProduct] =
@@ -351,7 +344,6 @@ export function ChatProvider({ children }) {
     [clearUnreadMsgFor, loadConversations],
   );
 
-  // on context load, fetch all conversations
   useEffect(() => {
     const controller = new AbortController();
 
@@ -385,13 +377,11 @@ export function ChatProvider({ children }) {
     });
   }, [myId, upsertConversationRow]);
 
-  // Retry pending conversation fetches when myId becomes available
   useEffect(() => {
     if (!myId) return;
     const pending = Array.from(pendingConvFetchesRef.current);
     if (pending.length === 0) return;
 
-    // Clear the pending set and retry each conversation
     pendingConvFetchesRef.current.clear();
     pending.forEach((convId) => {
       fetchConversation(convId);
@@ -404,7 +394,6 @@ export function ChatProvider({ children }) {
       return;
     }
 
-    // Guard: Only auto-load conversations when myId is available
     if (!myId) {
       return;
     }
@@ -470,7 +459,7 @@ export function ChatProvider({ children }) {
       const res = await createMessageApi({
         receiverId: convo.receiverId,
         convId,
-        content, // text only
+        content,
         signal: undefined,
       });
 
@@ -551,7 +540,7 @@ export function ChatProvider({ children }) {
 
     if (!file || !activeConvId || !myIdRef.current) return false;
 
-    const caption = (draft ?? "").trim(); // optional; backend can allow empty caption
+    const caption = (draft ?? "").trim();
     const convId = activeConvId;
     const convo = conversationsRef.current.find((c) => c.conv_id === convId);
     if (!convo) {
@@ -563,8 +552,8 @@ export function ChatProvider({ children }) {
       const res = await createImageMessageApi({
         receiverId: convo.receiverId,
         convId,
-        content: caption, // caption (can be empty string)
-        image: file, // native File object
+        content: caption,
+        image: file,
         signal: undefined,
       });
 
@@ -572,10 +561,10 @@ export function ChatProvider({ children }) {
       const newMsg = {
         message_id: saved.message_id,
         sender: "me",
-        content: saved.content ?? "", // caption if any
+        content: saved.content ?? "",
         ts: Date.parse(saved.created_at),
         activityTs: Date.parse(saved.created_at),
-        image_url: saved.image_url, // backend should return this
+        image_url: saved.image_url,
       };
 
       setMessagesByConv((prev) => ({
@@ -781,24 +770,20 @@ export function ChatProvider({ children }) {
   );
 
   const value = {
-    // chat state
     conversations,
     activeConvId,
     messages,
-    messagesByConv, // Expose to check loading state
-    typingStatusByConv, // Typing status per conversation
+    messagesByConv,
+    typingStatusByConv,
     convError,
     chatByConvError,
     sendMsgError,
-    // unread state
     unreadMsgByConv,
     unreadMsgTotal,
     unreadNotificationTotal,
     unreadNotificationsByProduct,
     notificationsStatus,
-    // user info
     myId,
-    // actions
     fetchConversation,
     createMessage,
     editMessage,
@@ -812,7 +797,6 @@ export function ChatProvider({ children }) {
     removeNotificationLocal,
     clearNotificationsLocal,
     removeConversationLocal,
-    // config (optional: useful for tests or dynamic tuning)
     _config: { POLL_MS: NEW_MSG_POLL_MS, UNREAD_MSG_POLL_MS },
   };
 

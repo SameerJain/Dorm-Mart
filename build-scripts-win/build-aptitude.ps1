@@ -9,7 +9,6 @@ $dormMartPath = Join-Path $projectRoot "dorm-mart"
 $prodBuildPath = "C:\xampp\htdocs\prod-build"
 
 Write-Host "Building React app for production..." -ForegroundColor Cyan
-# Change to dorm-mart directory and build
 Set-Location $dormMartPath
 if (Test-Path (Join-Path $dormMartPath "build")) {
     Remove-Item -LiteralPath (Join-Path $dormMartPath "build") -Recurse -Force
@@ -20,38 +19,30 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Creating prod-build directory..." -ForegroundColor Yellow
-# Create prod-build directory if it doesn't exist
 if (!(Test-Path $prodBuildPath)) {
     New-Item -ItemType Directory -Path $prodBuildPath -Force
 } else {
-    # Clear existing directory
     Remove-Item -Path "$prodBuildPath\*" -Recurse -Force
     Write-Host "Cleared existing prod-build directory" -ForegroundColor Yellow
 }
 
 Write-Host "Copying files to prod-build directory..." -ForegroundColor Yellow
 
-# Copy API folder
 Write-Host "Copying api folder..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\api" -Destination $prodBuildPath -Recurse -Force
 
-# Copy data folder
 Write-Host "Copying data folder..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\data" -Destination $prodBuildPath -Recurse -Force
 
-# Copy schema folder (one SQL file per table)
 Write-Host "Copying schema folder..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\schema" -Destination $prodBuildPath -Recurse -Force
 
-# Copy vendor folder
 Write-Host "Copying vendor folder..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\vendor" -Destination $prodBuildPath -Recurse -Force
 
-# Copy .env.production file
 Write-Host "Copying .env.production file..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\.env.production" -Destination $prodBuildPath -Force
 
-# Copy build contents (not the build folder itself)
 Write-Host "Copying build contents..." -ForegroundColor Cyan
 $buildPath = Join-Path $dormMartPath "build"
 if (Test-Path $buildPath) {

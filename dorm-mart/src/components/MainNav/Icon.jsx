@@ -4,9 +4,7 @@ function Icon({ to, src, alt, badge, onClick, liRef, children }) {
   const showBadge = Number(badge) > 0;
 
   return (
-    // liRef lets parent attach a ref (e.g., for click-outside logic)
     <li ref={liRef} className="relative">
-      {/* onClick lets the parent control behavior (like toggling a dropdown) */}
       <Link to={to} className="relative inline-block" onClick={onClick}>
         <img
           src={src}
@@ -24,7 +22,6 @@ function Icon({ to, src, alt, badge, onClick, liRef, children }) {
         )}
       </Link>
 
-      {/* children lets you attach a dropdown underneath the icon */}
       {children}
     </li>
   );

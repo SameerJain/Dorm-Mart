@@ -10,20 +10,16 @@ init_json_endpoint('POST');
 
 auth_boot_session();
 
-// Require a logged-in user
 $userId = require_login();
 require_csrf_token($_POST['csrf_token'] ?? null);
 
-// This endpoint expects multipart/form-data with an image file
 require_multipart_formdata();
 require_upload_quota($userId, 'review_image');
 
-// Validate presence of the uploaded image
 if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
     json_response(['success' => false, 'error' => 'missing_image'], 400);
 }
 
-// Validate file size (2MB max per image)
 $MAX_BYTES = 2 * 1024 * 1024;
 $allowed = [
     'image/jpeg' => 'jpg',
@@ -40,7 +36,6 @@ if (!$imageInfo['ok']) {
 }
 $ext = $imageInfo['extension'];
 
-// Build destination directory
 $destDir = data_media_dir('review-images');
 if (!is_dir($destDir)) {
     if (!ensure_upload_directory($destDir)) {
@@ -48,7 +43,6 @@ if (!is_dir($destDir)) {
     }
 }
 
-// Generate a unique filename to avoid collisions
 $fname = sprintf(
     'review_u%s_%s_%s.%s',
     $userId,
@@ -58,12 +52,10 @@ $fname = sprintf(
 );
 $destPath = $destDir . '/' . $fname;
 
-// Move the uploaded temp file to the destination
 if (!@move_uploaded_file($imageInfo['tmp_name'], $destPath)) {
     json_response(['success' => false, 'error' => 'image_save_failed'], 500);
 }
 
-// Build the public relative URL path that the frontend can use
 $imageRelUrl = '/media/review-images/' . $fname;
 
 json_response([

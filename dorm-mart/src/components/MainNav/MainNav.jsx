@@ -12,7 +12,6 @@ import { ChatContext } from "../../context/ChatContext";
 import { getTabForPath } from "../../pages/FAQ/faqUtils.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
-// Main navigation bar component with search, notifications, chat, and menu dropdowns
 function MainNav() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -46,7 +45,6 @@ function MainNav() {
     };
   }, []);
 
-  // helper: close mobile menu + market submenu together
   const closeMobileMenuAndMarket = () => {
     setShowMobileMenu(false);
     setShowMobileMarketDropdown(false);
@@ -90,7 +88,6 @@ function MainNav() {
     navigate("/app/wishlist");
   };
 
-  // Search state + handlers
   const [searchText, setSearchText] = useState("");
   const inputRef = useRef(null);
 
@@ -121,7 +118,6 @@ function MainNav() {
       className="bg-blue-600 text-slate-100 dark:bg-slate-900 dark:text-gray-100 dark:shadow-sm dark:shadow-black/20 pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
     >
       <div className="mx-auto flex min-w-0 max-w-[100vw] items-center gap-1 sm:gap-2 md:gap-4 px-1.5 py-2 sm:px-2 md:p-3 short:!py-1.5 box-border">
-        {/* Dorm Mart logo - visible on desktop only */}
         <button
           onClick={() => navigate("/app")}
           className="hidden md:block ml-1 sm:ml-2 md:ml-4 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif font-semibold cursor-pointer hover:scale-105 hover:opacity-90 hover:drop-shadow-lg transition-all duration-200 bg-transparent border-none p-0 text-slate-100 whitespace-nowrap flex-shrink-0"
@@ -179,7 +175,6 @@ function MainNav() {
           </div>
         </div>
 
-        {/* Desktop navigation - hidden on mobile */}
         <ul className="mr-1 sm:mr-2 hidden md:flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink-0">
           <Icon
             to="/app/notification"
@@ -194,7 +189,6 @@ function MainNav() {
             badge={unreadMsgTotal}
           />
 
-          {/* Hamburger menu icon for desktop - replaces marketplace icon */}
           <li className="relative" ref={dropdownRef}>
             <button
               onClick={(e) => {
@@ -295,14 +289,12 @@ function MainNav() {
           </li>
         </ul>
 
-        {/* Mobile hamburger menu - visible only on mobile */}
         <div className="mr-1 shrink-0 md:hidden relative" ref={mobileMenuRef}>
           <button
             onClick={() => {
               setShowMobileMenu((prev) => {
                 const next = !prev;
                 if (!next) {
-                  // when closing, also close market dropdown
                   setShowMobileMarketDropdown(false);
                 }
                 return next;
@@ -392,7 +384,6 @@ function MainNav() {
                 )}
               </button>
 
-              {/* "Market" dropdown (mobile) */}
               <div className="relative">
                 <button
                   onClick={() => setShowMobileMarketDropdown((prev) => !prev)}

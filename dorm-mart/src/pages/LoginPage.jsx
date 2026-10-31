@@ -29,7 +29,6 @@ function LoginPage() {
   const { allowAllEmails, emailPolicyLoading } = useEmailPolicy();
   const runExclusive = useSubmitLock();
 
-  // Handle URL parameters
   useEffect(() => {
     const urlError = searchParams.get("error");
     const urlMessage = searchParams.get("message");
@@ -50,10 +49,9 @@ function LoginPage() {
   }, [searchParams]);
 
   const handleLogin = async () => {
-    setError(""); // Clear previous errors
+    setError("");
     setLoading(true);
 
-    // Validate input lengths FIRST (prevent excessively large inputs)
     if (email.length > 255 || password.length > 64) {
       setError("Username or password is too large");
       setLoading(false);
@@ -62,7 +60,6 @@ function LoginPage() {
 
     const emailTrimmed = email.trim();
 
-    // Frontend validation
     if (emailTrimmed === "" && password.trim() === "") {
       setError("Missing required fields");
       setLoading(false);
@@ -75,7 +72,6 @@ function LoginPage() {
       return;
     }
 
-    // Email validation based on ALLOW_ALL_EMAILS flag (for UX, but backend accepts any valid email)
     if (
       !emailPolicyLoading &&
       !allowAllEmails &&
@@ -86,7 +82,6 @@ function LoginPage() {
       return;
     }
 
-    // Basic email format validation if allowAllEmails is true
     if (!emailPolicyLoading && allowAllEmails) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(emailTrimmed)) {
@@ -116,10 +111,9 @@ function LoginPage() {
     }
 
     try {
-      // Call backend login API
       const response = await fetch(`${API_BASE}/auth/login.php`, {
         method: "POST",
-        credentials: "include", // Important: allows cookies to be set
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -130,9 +124,7 @@ function LoginPage() {
         }),
       });
 
-      // Check if response is ok before parsing JSON
       if (!response.ok) {
-        // Try to get error message from response
         let errorMessage = "Network error. Please try again.";
         try {
           const errorData = await response.json();
@@ -141,7 +133,6 @@ function LoginPage() {
             setCaptchaSiteKey(errorData.captcha_site_key);
           }
         } catch (e) {
-          // Response isn't JSON, use status text
           errorMessage = `Server error (${response.status}): ${response.statusText}`;
         }
         setError(errorMessage);
@@ -159,7 +150,6 @@ function LoginPage() {
       }
 
       if (data.ok) {
-        // Auth token is now set server-side as httpOnly cookie
 
         // Cache theme only — do not call applyThemeToDOM here, or the pre-login layout
         // (e.g. left branding card) flashes dark for a moment before navigate("/app").
@@ -176,20 +166,16 @@ function LoginPage() {
             const { user_id: userId } = await fetchMe();
             if (userId) localStorage.setItem(`userTheme_${userId}`, data.theme);
           } catch (e) {
-            // User not authenticated or error - continue anyway
           }
         }
 
-        // Navigate to the main app
         // Login issued a new session, so any cached CSRF token is stale.
         clearCsrfToken();
         navigate(data.role === "moderator" ? "/app/moderation" : "/app");
       } else {
-        // Show error from backend, with improved messaging
         const backendError = data.error || "Login failed";
         let userFriendlyError = backendError;
 
-        // Map backend errors to more user-friendly messages
         if (backendError === "Invalid email format") {
           userFriendlyError = "Please enter a valid email address";
         } else if (backendError === "Invalid credentials") {
@@ -202,7 +188,6 @@ function LoginPage() {
         setError(userFriendlyError);
       }
     } catch (error) {
-      // Handle network or other errors
       logger.error("Login error:", error);
       setError(`Network error: ${error.message || "Please try again."}`);
     } finally {
@@ -289,7 +274,6 @@ function LoginPage() {
       {/* Right side - Login form (full width on mobile, 50% on desktop).
           login-page-right-column: stay visually light even if html.dark (global CSS + brief theme flash). */}
       <div className="login-page-se-mobile-col login-page-right-column w-full lg:w-1/2 flex flex-col items-center justify-start md:justify-center lg:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-16 lg:py-8 pb-8 sm:pb-12 lg:pb-8 pb-[max(2rem,env(safe-area-inset-bottom))] h-dvh pre-login-bg relative overflow-y-auto lg:overflow-hidden">
-        {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="login-page-se-branding lg:hidden mb-6 sm:mb-8 md:mb-10 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
@@ -311,7 +295,6 @@ function LoginPage() {
             ></div>
 
             <div className="relative z-10">
-              {/* Header with dot */}
               <div className="text-center mb-4 sm:mb-6 md:mb-8">
                 <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-3 sm:mb-4"></div>
                 <h2 className="text-2xl sm:text-3xl md:text-5xl font-serif text-white leading-tight">
@@ -319,7 +302,6 @@ function LoginPage() {
                 </h2>
               </div>
 
-              {/* Success message display */}
               {success && (
                 <div className="mb-4 p-3 sm:p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
                   <p className="text-sm sm:text-base leading-relaxed">
@@ -328,7 +310,6 @@ function LoginPage() {
                 </div>
               )}
 
-              {/* Error message display */}
               {error && (
                 <div role="alert" className="mb-4 p-3 sm:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
                   <p className="text-sm sm:text-base leading-relaxed">
@@ -337,7 +318,6 @@ function LoginPage() {
                 </div>
               )}
 
-              {/* Login form - Improved spacing for mobile */}
               {/* scheme-light: keep native inputs light when html gets color-scheme:dark right before navigate */}
               <form
                 onSubmit={(e) => {
@@ -389,7 +369,6 @@ function LoginPage() {
                   </div>
                 ) : (
                   <>
-                {/* Email input */}
                 <div>
                   <label htmlFor="login-email" className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     University Email Address
@@ -407,7 +386,6 @@ function LoginPage() {
                   />
                 </div>
 
-                {/* Password input */}
                 <div>
                   <label htmlFor="login-password" className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     Password
@@ -440,7 +418,6 @@ function LoginPage() {
                   </>
                 )}
 
-                {/* Login button with arrow - Minimum 44px height for touch targets */}
                 <button
                   type="submit"
                   disabled={loading}
@@ -467,7 +444,6 @@ function LoginPage() {
                 </button>
               </form>
 
-              {/* Links - Improved touch targets and spacing */}
               <div className="mt-6 sm:mt-8 text-center">
                 <PreLoginNavLinks
                   className="text-sm sm:text-base md:text-lg"
@@ -497,7 +473,6 @@ function LoginPage() {
             </div>
           </div>
 
-          {/* Tagline - Mobile only, outside login card */}
           <p className="login-page-se-tagline lg:hidden mt-6 sm:mt-8 md:mt-10 text-base sm:text-lg md:text-2xl text-gray-600 opacity-80 max-w-sm md:max-w-lg mx-auto leading-relaxed text-center px-4">
             Your campus marketplace for buying and selling. Connect with fellow
             students and save money.

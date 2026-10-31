@@ -58,12 +58,10 @@ try {
     $sellerId = (int)$row['seller_user_id'];
     $buyerId = (int)$row['buyer_user_id'];
     
-    // Allow both seller and buyer to cancel
     if ($userId !== $sellerId && $userId !== $buyerId) {
         json_response(['success' => false, 'error' => 'Not authorized to cancel this request'], 403);
     }
 
-    // Prevent invalid cancellation states
     $currentStatus = (string)$row['status'];
     if ($currentStatus === 'cancelled') {
         json_response(['success' => false, 'error' => 'Request is already cancelled'], 409);
@@ -159,7 +157,6 @@ try {
         ]);
     }
 
-    // Create special message in chat
     $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
     if ($conversationId > 0) {
         $cancellerDisplayName = scheduled_purchase_user_display_name($conn, $userId);

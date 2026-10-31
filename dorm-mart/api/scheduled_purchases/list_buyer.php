@@ -128,7 +128,6 @@ try {
             $canceledByUserId = (int)$row['canceled_by_user_id'];
             $canceledByFirstName = isset($row['canceled_by_first_name']) ? (string)$row['canceled_by_first_name'] : '';
             $canceledByLastName = isset($row['canceled_by_last_name']) ? (string)$row['canceled_by_last_name'] : '';
-            // XSS PROTECTION: Escape user-generated content
             $canceledBy = [
                 'user_id' => $canceledByUserId,
                 'first_name' => $canceledByFirstName,

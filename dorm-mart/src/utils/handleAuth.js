@@ -7,27 +7,23 @@ import logger from "./logger";
 import { API_BASE } from "./apiConfig";
 import { clearCsrfToken, csrfFetch } from "./csrfFetch";
 
-// Logout function - calls backend to clear auth token
 export async function logout() {
   try {
-    // Get user ID before logout to clear user-specific theme
     let userId = null;
     try {
       const meJson = await fetchMe();
       userId = meJson.user_id;
     } catch (e) {
-      // User not authenticated
     }
 
     const response = await csrfFetch(`${API_BASE}/auth/logout.php`, {
       method: "POST",
-      credentials: "include", // Important: include cookies
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
     });
 
-    // Reset to light theme (class, theme-color, color-scheme, cache) and clear pending toggle
     applyThemeToDOM("light");
     try {
       localStorage.removeItem(THEME_PENDING_KEY);
@@ -57,8 +53,6 @@ export async function logout() {
 
 let inFlightMe = null;
 
-// if user authenticated, return {"success": true, 'user_id': user_id}
-//
 // Concurrent callers share one request. With no live PHP session (e.g. after a
 // browser restart) me.php signs the user back in from the remember-me cookie and
 // rotates it; a second simultaneous call would still carry the old token, get a
@@ -68,7 +62,7 @@ export function fetchMe(signal) {
     inFlightMe = (async () => {
       const r = await fetch(`${API_BASE}/auth/me.php`, {
         method: "GET",
-        credentials: "include", // send cookies (PHP session) with the request
+        credentials: "include",
         headers: { Accept: "application/json" },
       });
       if (!r.ok) throw new Error(`not authenticated`);

@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 export default function SellerDashboardFilters({
   categories,
   selectedCategory,
@@ -7,16 +9,21 @@ export default function SellerDashboardFilters({
   onSortChange,
   onStatusChange,
 }) {
+  const statusId = useId();
+  const categoryId = useId();
+  const sortId = useId();
+
   return (
     <div className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
           <div className="flex items-center w-full sm:w-auto">
-            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+            <label htmlFor={statusId} className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
               Status
             </label>
             <div className="relative ml-1 flex-1 sm:flex-none">
               <select
+                id={statusId}
                 value={selectedStatus}
                 onChange={(e) => onStatusChange(e.target.value)}
                 className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
@@ -32,11 +39,12 @@ export default function SellerDashboardFilters({
           </div>
 
           <div className="flex items-center w-full sm:w-auto">
-            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+            <label htmlFor={categoryId} className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
               Category
             </label>
             <div className="relative ml-1 flex-1 sm:flex-none">
               <select
+                id={categoryId}
                 value={selectedCategory}
                 onChange={(e) => onCategoryChange(e.target.value)}
                 className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
@@ -53,11 +61,12 @@ export default function SellerDashboardFilters({
           </div>
 
           <div className="flex items-center w-full sm:w-auto">
-            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+            <label htmlFor={sortId} className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
               Sort By
             </label>
             <div className="relative ml-1 flex-1 sm:flex-none">
               <select
+                id={sortId}
                 value={selectedSort}
                 onChange={(e) => onSortChange(e.target.value)}
                 className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"

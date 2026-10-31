@@ -1,8 +1,6 @@
 <?php
 declare(strict_types=1);
 
-// dorm-mart/api/product/view_product.php
-// Returns a single product by product_id
 
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
@@ -18,7 +16,6 @@ try {
     auth_boot_session();
     $userId = require_login();
 
-    // Accept product_id from query (supports `id` or `product_id`)
     $productValue = $_GET['product_id'] ?? ($_GET['id'] ?? null);
     $productId = strict_integer_value($productValue);
     if ($productId === null || $productId <= 0) {

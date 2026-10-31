@@ -55,7 +55,6 @@ function UserPreferences() {
       !selectedInterests.includes(category),
   );
 
-  // Hydrate from backend on mount, and again when the user presses Retry.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -100,7 +99,6 @@ function UserPreferences() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadAttempt]);
 
-  // Save changed fields to the backend (debounced). Theme is saved by useTheme.
   useEffect(() => {
     if (!preferencesLoaded || !savedRef.current) return undefined;
 

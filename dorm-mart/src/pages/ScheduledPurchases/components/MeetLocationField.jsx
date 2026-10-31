@@ -1,3 +1,4 @@
+import { useId } from "react";
 import {
   MEET_LOCATION_OPTIONS,
   MEET_LOCATION_OTHER_VALUE,
@@ -10,12 +11,15 @@ export default function MeetLocationField({
   setCustomMeetLocation,
   setMeetLocationChoice,
 }) {
+  const selectId = useId();
+
   return (
     <div className="max-w-xs">
-      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+      <label htmlFor={selectId} className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
         Meet Location <span className="text-red-500">*</span>
       </label>
       <select
+        id={selectId}
         value={meetLocationChoice}
         onChange={(e) => {
           const value = e.target.value;

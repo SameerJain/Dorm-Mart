@@ -86,7 +86,6 @@ export async function tickFetchNewMessages(
     return { messages: [], typingStatus, cursorTs, conversationStatus };
   }
 
-  // Always return typing status, even if no new messages
   if (!raw.length) {
     return { messages: [], typingStatus, cursorTs, conversationStatus };
   }
@@ -103,10 +102,8 @@ export async function tickFetchNewMessages(
       }
     })();
 
-    // be lenient about key names coming from backend
     const imageUrl = m.image_url ?? m.imagePath ?? m.image_path ?? null;
 
-    // base shape
     const base = {
       message_id: m.message_id,
       sender:
@@ -123,7 +120,6 @@ export async function tickFetchNewMessages(
       metadata,
     };
 
-    // only add the flag/field if present
     if (imageUrl) base.image_url = imageUrl;
     // Uncensored text, sent only for the viewer's own messages (used to edit).
     if (typeof m.raw_content === "string") base.rawContent = m.raw_content;
@@ -142,7 +138,6 @@ export async function tickFetchUnreadMessages(signal) {
   const res = await fetchUnreadMessages(signal);
   const raw = res.unreads ?? [];
 
-  // build { conv_id -> count }
   const unreads = {};
   let total = 0;
   for (const u of raw) {
@@ -235,18 +230,17 @@ export async function createMessageApi({
   const r = await csrfFetch(`${API_BASE}/chat/create_message.php`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json", // tells PHP we're sending JSON
+      "Content-Type": "application/json",
       Accept: "application/json",
     },
-    credentials: "include", // sends PHP session cookie if your server uses it
+    credentials: "include",
     body: JSON.stringify(body),
-    signal, // lets you cancel if needed
+    signal,
   });
   if (!r.ok) await throwSendError(r);
-  return r.json(); // expect JSON back from PHP
+  return r.json();
 }
 
-// Image-message endpoint (multipart/form-data)
 export async function createImageMessageApi({
   receiverId,
   convId,
@@ -255,10 +249,10 @@ export async function createImageMessageApi({
   signal,
 }) {
   const form = new FormData(); // browser handles multipart boundary
-  form.append("receiver_id", String(receiverId)); // PHP: $_POST['receiver_id']
+  form.append("receiver_id", String(receiverId));
   if (convId) form.append("conv_id", String(convId));
-  form.append("content", content ?? ""); // optional caption
-  form.append("image", image, image.name); // PHP: $_FILES['image']
+  form.append("content", content ?? "");
+  form.append("image", image, image.name);
 
   const r = await csrfFetch(`${API_BASE}/chat/create_image_message.php`, {
     method: "POST",
@@ -267,13 +261,12 @@ export async function createImageMessageApi({
     signal,
   });
   if (!r.ok) await throwSendError(r);
-  return r.json(); // expects { success, message: { ... , image_url } }
+  return r.json();
 }
 
 export function envBool(value, fallback = false) {
   if (value == null) return fallback;
   const v = String(value).trim().toLowerCase();
-  // Accept common truthy/falsey spellings
   if (v === "true") return true;
   if (v === "false") return false;
   return fallback;
