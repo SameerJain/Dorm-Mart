@@ -4,7 +4,6 @@ How Dorm Mart's automated tests run, the rule every test has to meet, and the re
 
 ## Suites
 
-For the complete first-party test-file source inventory, open [TEST_CATALOG.md](TEST_CATALOG.md). Every file is enclosed in a collapsed section. Regenerate it after editing tests with `node scripts/generate-test-catalog.js` from `dorm-mart/`; `--check` verifies it is current without rewriting it.
 
 | Command (from `dorm-mart/`) | What it runs |
 | --- | --- |

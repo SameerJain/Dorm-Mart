@@ -548,7 +548,7 @@ The card describes an investor login that does not exist. The page is public:
 1. Walk every page in dark mode, including dialogs, receipts, and the payment dialog. No unreadable text.
 
 **Test 4: Automated**
-1. Run `php api/tests/xss_encoding_test.php` and the Jest adversarial tests. All pass.
+1. Run `npm run test:backend:integration` with local MySQL running. `input_fuzz_test.php` sends script and SQL text to every endpoint. All pass.
 
 ### #221 Setup and fix any "Security and Quality" issues: NEW
 
@@ -720,10 +720,7 @@ The card describes an investor login that does not exist. The page is public:
 **Test 1: Every suite runs from one place**
 1. From `dorm-mart/`: `npm test -- --watchAll=false`, `npm run test:backend`, and `npm run test:backend:integration` (with local MySQL running) all pass.
 
-**Test 2: The catalog is current**
-1. `node scripts/generate-test-catalog.js --check` reports the catalog is up to date.
-
-**Test 3: No dead instructions**
+**Test 2: No dead instructions**
 1. Card tests no longer point at personal Postman workspaces (see #139 and #126 above).
 
 ### #192 Refactor codebase for readability: HAS STEPS, add

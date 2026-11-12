@@ -40,7 +40,6 @@ const PUBLIC = {
   "payments/webhook_test.php": "Stripe callback; signature verified",
   "profile/public_profile.php": "public seller page; names, listings and reviews only",
   "redirects/handle_password_reset_token_redirect.php": "forwards an emailed reset link to the app",
-  "redirects/show_password_reset_link_expired_page.php": "static expired-link page",
 };
 
 const LIBRARY = {
@@ -63,13 +62,11 @@ const LIBRARY = {
 
 const NO_CSRF = {
   "auth/me.php": "read-only: returns the signed-in user",
-  "auth/ws_token.php": "read-only: issues a short-lived chat token to the signed-in user",
   "chat/fetch_conversation.php": "read; only marks the caller's own conversation as read",
   "chat/fetch_conversations.php": "read-only",
   "chat/fetch_new_messages.php": "read; only marks the caller's own conversation as read",
   "chat/fetch_unread_messages.php": "read-only",
   "chat/serve_chat_image.php": "read-only; participant check",
-  "purchase_history/fetch_transacted_items.php": "read-only",
 };
 
 function phpFiles(dir, base = "") {

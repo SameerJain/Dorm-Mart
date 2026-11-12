@@ -257,9 +257,3 @@ parameters:
 			identifier: while.alwaysTrue
 			count: 1
 			path: api/utility/hash_password.php
-
-		-
-			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
-			identifier: greater.alwaysTrue
-			count: 1
-			path: api/utility/monitor_user_attempts.php

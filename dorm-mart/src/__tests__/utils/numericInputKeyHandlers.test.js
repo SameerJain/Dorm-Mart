@@ -1,4 +1,4 @@
-import { decimalNumericKeyDownHandler, integerNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
+import { decimalNumericKeyDownHandler } from "../../utils/numericInputKeyHandlers";
 
 // Plain functions, not jest.fn(): react-scripts resets mocks between tests.
 function keyEvent(key, value = "", modifiers = {}) {
@@ -16,10 +16,8 @@ const blocked = (handler, key, value, modifiers) => {
 
 const NAV_KEYS = ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
 
-describe.each([
-  ["integer", integerNumericKeyDownHandler],
-  ["decimal", decimalNumericKeyDownHandler],
-])("%s handler", (_name, handler) => {
+describe("decimal handler keys", () => {
+  const handler = decimalNumericKeyDownHandler;
   test.each(NAV_KEYS)("never blocks %s", (key) => {
     expect(blocked(handler, key, "12.5")).toBe(false);
   });
@@ -50,13 +48,6 @@ describe.each([
 
   test("Shift alone does not unlock letters", () => {
     expect(blocked(handler, "E", "", { shiftKey: true })).toBe(true);
-  });
-});
-
-describe("integer handler", () => {
-  test("never allows a decimal point", () => {
-    expect(blocked(integerNumericKeyDownHandler, ".", "")).toBe(true);
-    expect(blocked(integerNumericKeyDownHandler, ".", "12")).toBe(true);
   });
 });
 

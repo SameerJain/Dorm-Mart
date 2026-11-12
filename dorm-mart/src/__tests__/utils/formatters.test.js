@@ -149,22 +149,6 @@ describe("dateTimestamp and the comparators", () => {
     expect(dateTimestamp(null, 0)).toBe(0);
   });
 
-  test("ascending puts earlier first and undated last; equal is zero", () => {
-    expect(compareDateAsc("2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z")).toBeLessThan(0);
-    expect(compareDateAsc("2026-01-02T00:00:00Z", "2026-01-01T00:00:00Z")).toBeGreaterThan(0);
-    expect(compareDateAsc("2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z")).toBe(0);
-    expect(compareDateAsc("bad", "2026-01-01T00:00:00Z")).toBeGreaterThan(0);
-    expect(compareDateAsc("bad", "worse")).toBe(0);
-    expect(compareDateAsc("bad", "2026-01-01T00:00:00Z", 0)).toBeLessThan(0);
-  });
-
-  test("descending puts later first and undated last; equal is zero", () => {
-    expect(compareDateDesc("2026-01-02T00:00:00Z", "2026-01-01T00:00:00Z")).toBeLessThan(0);
-    expect(compareDateDesc("2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z")).toBeGreaterThan(0);
-    expect(compareDateDesc("2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z")).toBe(0);
-    expect(compareDateDesc("bad", "2026-01-01T00:00:00Z")).toBeGreaterThan(0);
-    expect(compareDateDesc("bad", "worse")).toBe(0);
-  });
 });
 
 describe("formatDate and formatDateTime", () => {

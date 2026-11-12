@@ -111,7 +111,6 @@ Moderator accounts use the normal login page and are sent to `/app/moderation` a
 - Clear forgot password rate limit: `php api/utility/manage_forgot_password_rate_limiting.php` (run from dorm-mart folder)
 - Clear login lockout timer: `php api/utility/reset_session_lockout.php` (run from dorm-mart folder)
 - Browser push worker: `php api/utility/send_browser_push.php --watch` (needs VAPID keys; see `dorm-mart/docs/BROWSER_PUSH.md`)
-- After editing tests: `node scripts/generate-test-catalog.js` from `dorm-mart/` (with `--check` to verify)
 - More docs are in `dorm-mart/docs`
 
 # Windows Powershell Build Scripts Commands

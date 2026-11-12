@@ -37,7 +37,6 @@ The frontend is built by Vite (`vite.config.mjs`). The variable names are the on
 - `PROMO_UNSUBSCRIBE_SECRET`: long random string used to sign one-click unsubscribe links (`api/email/unsubscribe.php`) in promotional digests and their `List-Unsubscribe` header. Without it, digests still send but only link to User Preferences.
 - `TRUSTED_PROXY_IPS`: comma-separated immediate proxy IP addresses or IPv4/IPv6 CIDRs. Blank (the default) ignores forwarding headers. Configure this on a proxy deployment before release so rate limits and HTTPS detection use the real client rather than the ingress address. Only allow ingress peers that append/overwrite `X-Forwarded-For` and overwrite `X-Forwarded-Proto`; do not allow all private networks or all addresses. Railway ingress ranges must be confirmed for the deployment, rather than inferred from a client-supplied header. Direct local PHP needs no setting.
 - `TRUST_PROXY_GEO_HEADERS`: requires a peer allowed by `TRUSTED_PROXY_IPS`; set to `true` only behind a proxy that overwrites Cloudflare/Vercel geo headers (`CF-IPCity`, `X-Vercel-IP-City`, ...). Off by default, because on Railway those headers come straight from the client; login locations then come from the IP lookup instead.
-- `WS_TOKEN_SECRET`: chat WebSocket token signing.
 
 ## Stripe payments
 

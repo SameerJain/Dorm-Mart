@@ -11,7 +11,7 @@
  *
  * Read the rows first. Buckets stuck at an attempt count of 1 mean each request
  * is hashing to a fresh key rather than accumulating -- that is what a bad
- * rate_limit_client_ip() looks like, and how the Railway proxy-node bug was
+ * request_client_ip() looks like, and how the Railway proxy-node bug was
  * found (every request arrived from a different 100.64.0.x node, so keying on
  * REMOTE_ADDR opened a new bucket every time).
  *

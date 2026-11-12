@@ -87,8 +87,6 @@ function fuzz_send(int $user, string $endpoint, bool $isGet, array $fields): arr
     return api($user, $endpoint, $fields);
 }
 
-// Without a signing secret ws_token.php answers 500 before reading any input.
-putenv('WS_TOKEN_SECRET=fuzz-only-secret');
 harness_start('fuzz', 3);
 
 // Real ids for the sweep to aim at, so requests get past "not found" checks.

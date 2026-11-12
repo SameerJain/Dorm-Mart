@@ -29,7 +29,7 @@ const TWO_FACTOR_ENABLE_LOCKOUT_MINUTES = 60;
 function two_factor_issue_keys(int $userId): array
 {
     return [
-        scoped_rate_limit_key('two_factor_issue_ip:' . rate_limit_client_ip(), $userId),
+        scoped_rate_limit_key('two_factor_issue_ip:' . request_client_ip(), $userId),
         scoped_rate_limit_key('two_factor_issue', $userId),
     ];
 }

@@ -6,12 +6,12 @@ This is a quick map of the current PHP `api/` tree. Endpoint folders and PHP fil
 
 ## auth/
 
-User sessions, account creation, login, logout, CSRF, WebSocket auth tokens, and password reset flows.
+User sessions, account creation, login, logout, CSRF, and password reset flows.
 
 - `auth_handle.php` - Shared login/session helpers, including `require_login()`.
 - `create_account.php`, `login.php`, `logout.php`, `me.php` - Core account/session endpoints.
 - `change_password.php`, `forgot_password.php`, `reset_password.php`, `validate_reset_token.php` - Password change and reset endpoints.
-- `get_csrf_token.php`, `ws_token.php` - Security/token helpers.
+- `get_csrf_token.php` - CSRF token for the frontend.
 
 ## chat/
 
@@ -29,7 +29,7 @@ Selling, buying, scheduled purchases, receipts, and purchase history.
 - `scheduled_purchases/` - Create, list, accept/decline, cancel, and expire scheduled purchase requests.
 - `confirm_purchases/` - Seller confirmation requests and buyer responses for completed/failed purchases.
 - `receipt/view_receipt.php` - Receipt detail payload for product or confirmation request.
-- `purchase_history/` - Purchase history list and transacted item test endpoint.
+- `purchase_history/` - Purchase history list.
 - `product/view_product.php` - Product detail endpoint: listing, sold and final-price data for the product, receipt, review and seller flows.
 - `listings/landing_listings.php`, `search/get_search_items.php` - Browse and search listing endpoints.
 
@@ -73,14 +73,7 @@ full breakdown.
 - `purchase_lifecycle_test.php`, `card_acceptance_test.php`,
   `mock_payment_test.php`, `recent_searches_test.php`, `browser_push_test.php`,
   `input_fuzz_test.php` - automated, need a local database; run together via
-  `npm run test:backend:integration`. `input_fuzz_test.php` is still untracked
-  in the working tree.
-- `db_connection_test.php`, `xss_encoding_test.php` - manual diagnostic checks.
-- `bootstrap.php` - shared helpers for the `integration/` scripts.
-- `integration/` - manual, credential-gated scripts that call real endpoints
-  (forgot-password, purchase history, reset-password, SQL injection, XSS, login
-  rate-limiting). Use `API_TEST_BASE_URL` when the default local API base is not
-  correct.
+  `npm run test:backend:integration`.
 
 ## Security Notes
 

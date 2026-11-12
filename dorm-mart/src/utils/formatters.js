@@ -77,18 +77,6 @@ export function dateTimestamp(value, fallback = null) {
   return date ? date.getTime() : fallback;
 }
 
-export function compareDateAsc(a, b, fallback = Infinity) {
-  const left = dateTimestamp(a, fallback);
-  const right = dateTimestamp(b, fallback);
-  return left === right ? 0 : left - right;
-}
-
-export function compareDateDesc(a, b, fallback = 0) {
-  const left = dateTimestamp(a, fallback);
-  const right = dateTimestamp(b, fallback);
-  return left === right ? 0 : right - left;
-}
-
 export function formatDate(value) {
   const date = parseDateValue(value);
   if (!date) return value instanceof Date ? "" : String(value);

@@ -63,7 +63,6 @@ Static images used by the app and README screenshots.
 
 - `icons/` - Navigation and UI icon images.
 - `images/` - General image assets.
-- `product-images/` - Sample product images.
 - `readme-images/` - Documentation screenshots.
 
 ## Routing Notes

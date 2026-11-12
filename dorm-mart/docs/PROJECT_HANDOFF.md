@@ -19,7 +19,7 @@ The current app is still a React frontend with a PHP/MySQL backend. The largest 
 - Sync the database schema before testing newer features: `php api/database/migrate_schema.php` (it reads `schema/`, one SQL file per table).
 - Never load fixtures into shared or production data: `php api/database/migrate_data.php` refuses non-local database hosts, because the fixture accounts have known passwords. Locally it resets only the fixture accounts' data and leaves everyone else's alone.
 - Do not assume a December path still exists. Most PHP endpoints and several React page folders were renamed or moved.
-- Production chat uses HTTP polling. `README.websocket.md` (next to this file) is explicitly archived documentation for a retired Ratchet experiment.
+- Production chat uses HTTP polling.
 
 ## Current application structure
 
@@ -264,7 +264,7 @@ npm run test:backend:integration
 npm run build
 ```
 
-`test:backend` runs nine offline CLI scripts under `api/tests/` with no database and no network: adversarial validation, login location, promotional digest, helpers, profanity, schedule proposal, schema sync, database migrations, and browser-push crypto. `test:backend:integration` runs six suites that each build a scratch database and a private `php -S`: purchase lifecycle, card acceptance, mock payment, recent searches, browser push, and input fuzz. `input_fuzz_test.php` is still untracked in the working tree. Credential-gated scripts under `api/tests/integration/` are not part of either command and are blocked from HTTP access. `npm run check` runs the PHP/JS/a11y lints, the `scripts/check-*.js` guards, `npm test`, and `test:backend`.
+`test:backend` runs nine offline CLI scripts under `api/tests/` with no database and no network: adversarial validation, login location, promotional digest, helpers, profanity, schedule proposal, schema sync, database migrations, and browser-push crypto. `test:backend:integration` runs six suites that each build a scratch database and a private `php -S`: purchase lifecycle, card acceptance, mock payment, recent searches, browser push, and input fuzz. `npm run check` runs the PHP/JS/a11y lints, the `scripts/check-*.js` guards, `npm test`, and `test:backend`.
 
 ### Apache, Aptitude, and Cattle packages
 
@@ -283,7 +283,7 @@ npm run build
 - The deployment script reports the branch, commit, and dirty files; use `-RequireClean` to reject a dirty worktree and `-Detach` only when intentionally queueing without waiting.
 - Railway filesystems are ephemeral. Set `DATA_UPLOADS_DIR` to a mounted persistent volume or uploaded product/profile/chat/review files will disappear after redeploy/restart while database references remain.
 
-Key environment variables are documented in `environment_configuration.md` (next to this file). They include database credentials, frontend/API/public URLs, allowed CORS origins, mail credentials, `ALLOW_ALL_EMAILS`, `DATA_UPLOADS_DIR`, and the legacy WebSocket token secret.
+Key environment variables are documented in `environment_configuration.md` (next to this file). They include database credentials, frontend/API/public URLs, allowed CORS origins, mail credentials, `ALLOW_ALL_EMAILS`, and `DATA_UPLOADS_DIR`.
 
 ## Removed, renamed, or retired since December
 
@@ -295,7 +295,6 @@ Key environment variables are documented in `environment_configuration.md` (next
 - `input_sanitizer.php` and the old blacklist XSS behavior were removed in favor of typed validation plus output escaping.
 - `ReportIssuePage.jsx` and its scheduled-purchase route were removed.
 - Old duplicate migrations, fixture files, copied product images, unused icons, and default Create React App assets were removed or replaced.
-- Root `README.websocket.md` was removed; the remaining WebSocket guide is archived under `dorm-mart/docs` and is not the production architecture.
 
 ## Developer-support artifacts
 

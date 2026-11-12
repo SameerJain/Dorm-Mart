@@ -20,7 +20,7 @@ function mock_fixture(int $seller = 1, int $buyer = 2): array {
     $conn->query("INSERT INTO INVENTORY (title, description, seller_id, item_condition, item_status, item_location, listing_price, price_nego, trades, photos)
                   VALUES ('Demo desk', 'A demo desk', $seller, 'Good', 'Active', 'North Campus', 25, 1, 0, '[\"/test.jpg\"]')");
     $product = (int)$conn->insert_id;
-    $conn->query("INSERT INTO conversations (product_id, user1_id, user2_id) VALUES ($product, $seller, $buyer)");
+    $conn->query("INSERT INTO conversations (product_id, user1_id, user2_id, user1_fname, user2_fname) VALUES ($product, $seller, $buyer, 'Seller', 'Buyer')");
     return [$product, (int)$conn->insert_id];
 }
 
