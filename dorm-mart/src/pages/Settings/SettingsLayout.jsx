@@ -112,6 +112,7 @@ function SettingsLayout({ children }) {
         >
           <div
             className="absolute inset-0 bg-black bg-opacity-50"
+            role="presentation"
             onClick={() => setShowMobileMenu(false)}
           ></div>
 
@@ -152,9 +153,9 @@ function SettingsLayout({ children }) {
           </aside>
         </div>
 
-        <main className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 pb-10 sm:pb-12 shadow overflow-auto overscroll-contain min-h-0">
+        <div className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 pb-10 sm:pb-12 shadow overflow-auto overscroll-contain min-h-0">
           {children}
-        </main>
+        </div>
       </div>
     </div>
   );

@@ -3,8 +3,6 @@ export default function DetailRow({
   value,
   suppressContactDetection = false,
   align = "center",
-  labelClassName = "",
-  valueClassName = "",
 }) {
   const alignClass = align === "start" ? "items-start" : "items-center";
   const labelPadding = align === "start" ? "pt-0.5" : "";
@@ -12,12 +10,12 @@ export default function DetailRow({
   const inner = (
     <div className={`flex ${alignClass} gap-2`}>
       <span
-        className={`text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 ${labelPadding} flex-shrink-0 ${suppressContactDetection ? "no-underline" : ""} ${labelClassName}`.trim()}
+        className={`text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 ${labelPadding} flex-shrink-0 ${suppressContactDetection ? "no-underline" : ""}}`.trim()}
       >
         {label}
       </span>
       <span
-        className={`text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1 truncate ${suppressContactDetection ? "plain-contact-text no-underline" : ""} ${valueClassName}`.trim()}
+        className={`text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1 truncate ${suppressContactDetection ? "plain-contact-text no-underline" : ""}}`.trim()}
       >
         {displayValue}
       </span>

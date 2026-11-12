@@ -12,7 +12,7 @@ $userId = require_login();
 $conn = db();
 
 $input = json_request_body(); // read raw request body and decode JSON
-$year  = isset($input['year']) ? intval($input['year']) : null; // coerce to integer if provided
+$year  = strict_integer_value($input['year'] ?? null); // null unless a whole number
 
 $maxYear = (int) date('Y') + 1;
 if ($year === null || $year < 2016 || $year > $maxYear) {

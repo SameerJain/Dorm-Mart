@@ -57,7 +57,7 @@ export default function SafetySummaryPage() {
   const speed = summary?.response_time;
 
   return (
-    <main className="min-h-dvh pre-login-bg px-4 py-6 pt-[max(1.5rem,env(safe-area-inset-top))] text-gray-800 sm:px-6 sm:py-10">
+    <div className="min-h-dvh pre-login-bg px-4 py-6 pt-[max(1.5rem,env(safe-area-inset-top))] text-gray-800 sm:px-6 sm:py-10">
       <article className="mx-auto max-w-3xl rounded-2xl bg-white p-5 shadow-xl sm:p-8 md:p-10">
         <PageBackButton
           onClick={() => navigate(-1)}
@@ -148,6 +148,6 @@ export default function SafetySummaryPage() {
           </div>
         )}
       </article>
-    </main>
+    </div>
   );
 }

@@ -4,11 +4,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/inventory.php';
 require_once __DIR__ . '/browser_push.php';
 
-function notification_first_image(?string $photos): ?string
-{
-    return inventory_first_photo($photos);
-}
-
 function notification_insert(mysqli $conn, array $n): void
 {
     $sql = 'INSERT IGNORE INTO notifications
@@ -124,7 +119,7 @@ function notification_review_received(
             'message' => $isProduct
                 ? "{$reviewer} left a {$stars}-star review of your item."
                 : "{$reviewer} rated you {$stars} stars as a buyer.",
-            'image_url' => notification_first_image($row['photos'] ?? null),
+            'image_url' => inventory_first_photo($row['photos'] ?? null),
             'severity' => 'success',
             'destination' => $isProduct ? '/app/seller-dashboard' : '/app/setting/buyer-reviews',
             'metadata' => ['rating' => $rating, 'reviewer_user_id' => $reviewerId],
@@ -182,7 +177,7 @@ function notification_stale_listings(mysqli $conn, int $sellerId): void
                     $views,
                     $views === 1 ? 'view' : 'views'
                 ),
-                'image_url' => notification_first_image($row['photos'] ?? null),
+                'image_url' => inventory_first_photo($row['photos'] ?? null),
                 'severity' => 'info',
                 'destination' => '/app/product-listing/edit/' . $productId,
                 'metadata' => ['views' => $views],

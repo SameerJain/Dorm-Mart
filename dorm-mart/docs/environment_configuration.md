@@ -12,10 +12,22 @@ Dorm Mart should get deployment-specific values from env vars, not hardcoded hos
 - Railway uses service environment variables and runs schema migrations through the
   `railway.toml` pre-deploy command. Fixture/data migrations are local-only.
 
+## Frontend build (Vite)
+
+The frontend is built by Vite (`vite.config.mjs`). The variable names are the ones Create React App used, so no deployment variable changed.
+
+- Only `PUBLIC_URL` and variables starting with `REACT_APP_` reach the bundle. They are public. The app reads them as `process.env.<NAME>`, which Vite replaces at build time, together with `process.env.NODE_ENV`.
+- A value already in the environment wins: `env-cmd -f .env.<name>` in the `start-local-*` and `build-*-*` npm scripts, or the `ARG`s in the Dockerfile on Railway. A new `REACT_APP_*` variable must be declared as an `ARG` there too.
+- Otherwise the first file that defines the variable is used: `.env.<mode>.local`, `.env.local`, `.env.<mode>`, `.env`, where the mode is `development` for `npm start` and `production` for a build. Note that `.env.local` comes before `.env.development`, which is why local development uses `npm run start-local-win` or `start-local-mac`.
+- Base path for built assets: `PUBLIC_URL` if set, otherwise `homepage` in `package.json` (`"."`, relative paths, so the build works from any sub-folder such as `/serve/dorm-mart` or the Aptitude and Cattle paths). The Dockerfile sets `PUBLIC_URL=/` for Railway. The dev server serves from `/`.
+- The build goes to `build/`, with hashed files in `build/static/` and no source maps. `router.php`, the Dockerfile and `build-scripts-win/` all read `build/`.
+- The dev server listens on port 3000 and forwards `/api`, `/images`, `/media` and `/data` to the PHP server on `http://localhost:8080`. Set `BROWSER=none` to stop it opening a browser tab.
+
 ## Key Vars
 
 - `PUBLIC_URL`: React build base path.
 - `REACT_APP_API_BASE`: frontend API base.
+- `REACT_APP_CHAT_NOTIFICATION_ON`: turns chat notifications on in the frontend.
 - `FRONTEND_BASE_URL`: backend links into the React app.
 - `API_BASE_URL`: backend self-links into `api/`.
 - `CORS_ALLOWED_ORIGINS`: comma-separated trusted browser origins.
@@ -38,7 +50,8 @@ Real payments are off by default. Enable them only after Stripe Connect, HTTPS,
 payment-domain registration, and webhooks are configured. Run schema sync before
 using either payment flow so the database accepts the mock payment mode.
 
-- `PAYMENTS_ENABLED`: Enables real Stripe payments. Defaults to `false`; mock transactions remain available to seed accounts.
+- `PAYMENTS_ENABLED`: Enables real Stripe payments. Defaults to `false`.
+- `PAYMENTS_DEMO_MODE`: Defaults to `true`. While `PAYMENTS_ENABLED` is `false`, every account (not only seed accounts) uses mock transactions, so scheduling, checkout, receipts, and refunds all work with no Stripe keys and no money moving. Set `false` to hide built-in payment from real accounts until Stripe is live. It has no effect once `PAYMENTS_ENABLED=true`; schedules accepted in demo mode then return to manual confirmation.
 - `STRIPE_TEST_PUBLISHABLE_KEY`, `STRIPE_TEST_SECRET_KEY`: Stripe Sandbox API keys.
 - `STRIPE_LIVE_PUBLISHABLE_KEY`, `STRIPE_LIVE_SECRET_KEY`: Stripe live-mode API keys.
 - `STRIPE_TEST_WEBHOOK_SECRET`: Signing secret for `api/payments/webhook_test.php`.

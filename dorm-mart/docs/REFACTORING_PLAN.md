@@ -2,6 +2,16 @@
 
 Last assessed: 2026-09-30, on branch `145-Setup-Railway-Deployment-System`.
 
+November 2026 note: the snapshot below is history. Since then the tree added
+browser push (`api/push`, `helpers/browser_push.php`, `railway-push.toml`,
+`BROWSER_PUSH.md`), recent searches (`api/search/recent_searches.php`),
+demo-mode payments for every account (`PAYMENTS_DEMO_MODE`,
+`api/tests/mock_payment_test.php`), an untracked input fuzzer
+(`api/tests/input_fuzz_test.php`), paste-ready Backlog card tests
+(`docs/backlog-card-tests.md`, still untracked), the Vite build with standalone
+Jest 30, PHPStan plus the `scripts/check-*.js` guards, and the `npm run check`
+command. X2 below is done. Counts below describe September, not this build.
+
 This plan lists code smells and technical debt in Dorm Mart. Each item has a priority score, and the plan says in what order to fix them. The status column shows what has been fixed.
 
 ## Codebase snapshot
@@ -149,7 +159,7 @@ Ranked with effort ignored:
 | # | Finding | TD | BI | Approach |
 |---|---|---|---|---|
 | X1 | `db()` opens a new MySQL connection on every call, and every caller closes its own. One login request opens about 6 to 8 connections, which puts connection-limit pressure on Railway MySQL. | 6 | 7 | Hold one connection per request in `db()`. First remove per-helper `close()` calls so a helper cannot close a connection someone else is using. This is high risk: it touches almost every endpoint, so land it behind the integration test. |
-| X2 | CRA 5 is frozen. The remaining npm advisories all come from its build chain. | 5 | 6 | Migrate to Vite. The `REACT_APP_*` environment variables and the `proxy` setting need equivalents. |
+| X2 | CRA 5 is frozen. The remaining npm advisories all come from its build chain. | 5 | 6 | Migrate to Vite. The `REACT_APP_*` environment variables and the `proxy` setting need equivalents. **Done:** see "Frontend build (Vite)" in `environment_configuration.md`. |
 | X3 | No static analysis gate: no PHPStan, no ESLint complexity rules, no CI quality gate. | 5 | 5 | Add PHPStan at level 3 with a baseline file and ESLint `complexity` and `max-lines` rules as warnings. Run both, plus `lint:php` and the test suites, in CI. |
 | X4 | Endpoints are scripts that own validation, SQL, and orchestration. | 7 | 4 | Use the Strangler Fig pattern, one flow at a time (purchases first), behind the existing endpoint paths. Do not split into services. |
 

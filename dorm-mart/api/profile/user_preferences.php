@@ -4,7 +4,7 @@ require_once __DIR__ . '/../helpers/request.php';
 
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
-require_once __DIR__ . '/../helpers/promo_email.php';
+require_once __DIR__ . '/../helpers/email.php';
 
 init_json_endpoint();
 
@@ -167,11 +167,11 @@ try {
       $stmt->close();
 
       if ($userDetails) {
-        $emailResult = send_promo_welcome_email([
+        $emailResult = dm_send_email([
           'firstName' => $userDetails['first_name'],
           'lastName' => $userDetails['last_name'],
           'email' => $userDetails['email']
-        ]);
+        ], dm_transactional_promo_welcome_package((string)($userDetails['first_name'] ?? '')));
 
         if (!$emailResult['ok']) {
           error_log("user_preferences: promo welcome email failed for user_id {$userId}: " . $emailResult['error']);

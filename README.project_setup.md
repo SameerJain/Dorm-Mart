@@ -7,6 +7,8 @@
 3. Set up your local database (see `README.project_setup.md` for schema migration details)
 4. Start the development server: `npm run start-local-win` (or `-mac`) and run `npm run start:api` in the `dorm-mart` directory
 
+The frontend is built with Vite: `npm run start-local-win` starts the dev server with hot reload, `npm run build` writes the production bundle to `dorm-mart/build`, `npm test` runs the Jest tests once, and `npm run lint` runs ESLint.
+
 Stop the React development server before running `npm install`, `npm ci`, or dependency-update commands. Replacing files in `node_modules` while the compiler is running can cause temporary missing-module errors.
 
 # POSIX Demo (ssh into Aptitude to user terminal)
@@ -34,7 +36,7 @@ Copy any necessary files to the server:
    1. (`C:\xampp\php\php.exe -S localhost:8080 router.php`)
    2. (You Must be inside the dorm-mart folder for this to work)
    3. (It is recommended you also install PHP locally on your machine in addition to XAMMP)
-3. refer to "proxy" field in package.json to navigate to the local db
+3. The React dev server (Vite) runs on http://localhost:3000. It forwards `/api`, `/images`, `/media` and `/data` to the PHP server on port 8080; see `server.proxy` in `dorm-mart/vite.config.mjs`
 
 # Build Method 2 : Run Apache Server locally
 
@@ -90,7 +92,7 @@ Moderator accounts use the normal login page and are sent to `/app/moderation` a
 # How does the server serve the app?
 
 1. `"homepage": "/CSE442/2025-Fall/cse-442j",`
-   This tells react-scripts what base URL the app is hosted under. It only affects asset paths: CSS, JS, and images get prefixed with `/CSE442/2025-Fall/cse-442j/` so they load correctly from that subpath. It has nothing to do with routing.
+   This tells the build (`dorm-mart/vite.config.mjs`) what base URL the app is hosted under. The current value is `"."`, which makes the paths relative so the same build works under any folder; setting `PUBLIC_URL` overrides it. It only affects asset paths: CSS, JS, and images get prefixed with `/CSE442/2025-Fall/cse-442j/` so they load correctly from that subpath. It has nothing to do with routing.
 
 2. Apache just serves whatever's in that folder: index.html, JS, CSS, etc.
    - Go to `https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/#/login` and Apache hands back the same index.html every time, because that's the only file that's actually there.
@@ -108,6 +110,8 @@ Moderator accounts use the normal login page and are sent to `/app/moderation` a
 
 - Clear forgot password rate limit: `php api/utility/manage_forgot_password_rate_limiting.php` (run from dorm-mart folder)
 - Clear login lockout timer: `php api/utility/reset_session_lockout.php` (run from dorm-mart folder)
+- Browser push worker: `php api/utility/send_browser_push.php --watch` (needs VAPID keys; see `dorm-mart/docs/BROWSER_PUSH.md`)
+- After editing tests: `node scripts/generate-test-catalog.js` from `dorm-mart/` (with `--check` to verify)
 - More docs are in `dorm-mart/docs`
 
 # Windows Powershell Build Scripts Commands

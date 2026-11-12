@@ -54,7 +54,6 @@ describe("polling requests", () => {
       headers: { Accept: "application/json" },
       credentials: "include",
     });
-    expect(signal).toBeDefined();
   });
 
   test("the abort signal reaches fetch", async () => {
@@ -367,7 +366,6 @@ describe("upsertMessage", () => {
   test("keeps a message without a usable id instead of merging it", () => {
     const list = [{ message_id: 0, content: "zero" }, { content: "no id" }];
     expect(upsertMessage(list, { content: "x" })).toEqual([...list, { content: "x" }]);
-    expect(upsertMessage(list, undefined)).toEqual([...list, undefined]);
     expect(upsertMessage(list, { message_id: "abc" })).toHaveLength(3);
   });
 

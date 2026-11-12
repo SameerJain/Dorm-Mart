@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
+import { useModalFocus } from "../../../hooks/useModalFocus";
 import { withFirstFrame } from "../../../utils/videoSrc";
 import {
   MAX_IMAGE_BYTES,
@@ -27,6 +28,9 @@ export default function ImageModal({
   title = "Add photo or video",
 }) {
   const closeBtnRef = useRef(null);
+  const panelRef = useRef(null);
+  // Escape is handled below; this keeps Tab inside the dialog.
+  useModalFocus(panelRef, { active: open, initialFocusRef: closeBtnRef });
   const fileInputRef = useRef(null);
 
   const [file, setFile] = useState(null);
@@ -136,14 +140,16 @@ export default function ImageModal({
   return (
     <div
       className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 p-4 flex items-center justify-center"
-      onClick={handleClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={labelledBy}
+      role="presentation"
+      onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        tabIndex={-1}
         className="w-full max-w-sm max-h-[90dvh] flex flex-col rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <h3

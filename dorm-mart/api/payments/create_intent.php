@@ -15,6 +15,7 @@ try {
     $buyerId = require_login();
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
+    payment_enforce_rate_limit($buyerId);
     $requestId = request_int($payload, 'scheduled_request_id');
     if ($requestId <= 0) json_response(['success' => false, 'error' => 'Scheduled purchase is required'], 400);
 

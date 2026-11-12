@@ -1,8 +1,6 @@
-import { useEffect, useId, useRef } from "react";
+import { useId, useRef } from "react";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
-
-const FOCUSABLE =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+import { useModalFocus } from "../hooks/useModalFocus";
 
 /**
  * Accessible modal shell: role="dialog" with a labelled title, Escape and
@@ -26,58 +24,14 @@ export default function Dialog({
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useRef(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  const dismissibleRef = useRef(dismissible);
-  dismissibleRef.current = dismissible;
-
   useBodyScrollLock(true);
-
-  useEffect(() => {
-    const previouslyFocused = document.activeElement;
-    const panel = panelRef.current;
-    const first =
-      initialFocusRef?.current || panel?.querySelector(FOCUSABLE) || panel;
-    first?.focus?.();
-
-    function onKeyDown(event) {
-      if (event.key === "Escape" && dismissibleRef.current) {
-        event.stopPropagation();
-        onCloseRef.current?.();
-        return;
-      }
-      if (event.key !== "Tab" || !panel) return;
-      const focusable = Array.from(panel.querySelectorAll(FOCUSABLE));
-      if (focusable.length === 0) {
-        event.preventDefault();
-        return;
-      }
-      const firstEl = focusable[0];
-      const lastEl = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === firstEl) {
-        event.preventDefault();
-        lastEl.focus();
-      } else if (!event.shiftKey && document.activeElement === lastEl) {
-        event.preventDefault();
-        firstEl.focus();
-      }
-    }
-
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown, true);
-      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
-        previouslyFocused.focus();
-      }
-    };
-    // Focus handling runs once per open; later prop changes use the refs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useModalFocus(panelRef, { onClose, dismissible, initialFocusRef });
 
   return (
     <div
       className={`fixed inset-0 ${layerClassName} flex items-center justify-center bg-black/50 p-4`}
-      onClick={() => dismissibleRef.current && onCloseRef.current?.()}
+      role="presentation"
+      onClick={(event) => dismissible && event.target === event.currentTarget && onClose?.()}
     >
       <div
         ref={panelRef}
@@ -87,7 +41,6 @@ export default function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={`max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-lg bg-white shadow-xl outline-none dark:bg-gray-800 ${className}`}
-        onClick={(event) => event.stopPropagation()}
       >
         <div className="p-6">
           <h2

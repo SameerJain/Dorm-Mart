@@ -11,7 +11,9 @@ try {
     require_csrf_token($input['csrf_token'] ?? null);
     $id = request_int($input, 'notification_id');
     if ($id <= 0) json_response(['success' => false, 'error' => 'Invalid notification_id'], 400);
-    $stmt = db()->prepare('DELETE FROM notifications WHERE notification_id = ? AND recipient_user_id = ?');
+    // Hold the connection: a temporary db() is closed before the statement runs.
+    $conn = db();
+    $stmt = $conn->prepare('DELETE FROM notifications WHERE notification_id = ? AND recipient_user_id = ?');
     if (!$stmt) throw new RuntimeException('Failed to prepare delete');
     $stmt->bind_param('ii', $id, $userId);
     $stmt->execute();

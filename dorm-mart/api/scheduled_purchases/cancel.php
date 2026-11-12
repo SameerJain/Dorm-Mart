@@ -150,7 +150,7 @@ try {
             'title' => (string)($row['item_title'] ?? 'Scheduled purchase'),
             'message' => scheduled_purchase_user_display_name($conn, $userId)
                 . ' cancelled the scheduled meetup at ' . $row['meet_location'] . '.',
-            'image_url' => notification_first_image($row['item_photos'] ?? null),
+            'image_url' => inventory_first_photo($row['item_photos'] ?? null),
             'severity' => 'urgent',
             'destination' => $cancelledConvId > 0 ? '/app/chat?conv=' . $cancelledConvId : '/app/seller-dashboard/ongoing-purchases',
             'idempotency_key' => 'schedule-cancelled-' . $requestId,

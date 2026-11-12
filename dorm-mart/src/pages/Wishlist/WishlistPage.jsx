@@ -146,7 +146,7 @@ export default function WishlistPage() {
           ) : null}
 
           {loading || error || items.length > 0 ? (
-            <main className="flex flex-col gap-6 min-w-0 lg:col-start-2">
+            <div className="flex flex-col gap-6 min-w-0 lg:col-start-2">
               {loading ? (
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
@@ -190,7 +190,7 @@ export default function WishlistPage() {
                   ))}
                 </div>
               )}
-            </main>
+            </div>
           ) : null}
         </div>
       </div>
@@ -199,6 +199,7 @@ export default function WishlistPage() {
         <>
           <div
             className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+            role="presentation"
             onClick={() => setShowMobileFilters(false)}
           />
           <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl border-t border-gray-200 dark:border-gray-700 max-h-[80dvh] overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">

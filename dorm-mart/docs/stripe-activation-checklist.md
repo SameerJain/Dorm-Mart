@@ -1,6 +1,9 @@
 # Stripe activation checklist
 
-Keep `PAYMENTS_ENABLED=false` until the Sandbox section passes.
+Keep `PAYMENTS_ENABLED=false` until the Sandbox section passes. Until then the
+site runs in demo mode (`PAYMENTS_DEMO_MODE`, on by default): every account can
+use built-in payment as a mock transaction. Setting `PAYMENTS_ENABLED=true` ends
+demo mode; only seed accounts stay on mock transactions.
 
 Seed-account demos do not need this Stripe setup. Run schema sync, sign in with
 seed accounts, select built-in payment when scheduling, and accept the purchase.

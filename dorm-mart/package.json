@@ -2,7 +2,7 @@
   "name": "dorm-mart",
   "version": "0.1.0",
   "private": true,
-  "_comment_homepage": "homepage specifiation allows routing to the project files from server root",
+  "_comment_homepage": "vite.config.mjs reads homepage as the base path for built assets when PUBLIC_URL is unset (\".\" = relative, so the build works from any sub-folder)",
   "homepage": ".",
   "dependencies": {
     "@stripe/react-stripe-js": "^6.12.0",
@@ -11,40 +11,46 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4",
-    "react-scripts": "5.0.1",
     "tailwindcss": "^3.4.19",
     "web-vitals": "^6.2.2"
   },
   "scripts": {
-    "start": "node scripts/start.js",
+    "start": "vite",
     "start:api": "php -d upload_max_filesize=26M -d post_max_size=30M -S localhost:8080 router.php",
     "_commint_start-local": "used to enforce locally running react to load .env.development",
-    "start-local-mac": "env-cmd -f .env.development bash -c 'echo Using $REACT_APP_API_BASE && node scripts/start.js'",
-    "start-local-win": "env-cmd -f .env.development cross-env node scripts/start.js",
-    "start-local-win-clean": "env-cmd -f .env.development cross-env NODE_NO_WARNINGS=1 node scripts/start.js",
-    "build": "cross-env GENERATE_SOURCEMAP=false react-scripts build",
+    "start-local-mac": "env-cmd -f .env.development bash -c 'echo Using $REACT_APP_API_BASE && vite'",
+    "start-local-win": "env-cmd -f .env.development cross-env vite",
+    "start-local-win-clean": "env-cmd -f .env.development cross-env NODE_NO_WARNINGS=1 vite",
+    "build": "vite build",
     "_comment_build-local": "used to build local server app",
-    "build-local-mac": "env-cmd -f .env.local bash -c 'echo Using $REACT_APP_API_BASE && GENERATE_SOURCEMAP=false react-scripts build'",
-    "build-local-win": "env-cmd -f .env.local cross-env GENERATE_SOURCEMAP=false react-scripts build",
+    "build-local-mac": "env-cmd -f .env.local bash -c 'echo Using $REACT_APP_API_BASE && vite build'",
+    "build-local-win": "env-cmd -f .env.local vite build",
     "_comment_build-prod": "used to build prod server app",
-    "build-prod-mac": "env-cmd -f .env.production bash -c 'echo Building prod && GENERATE_SOURCEMAP=false react-scripts build'",
-    "build-prod-win": "env-cmd -f .env.production cross-env GENERATE_SOURCEMAP=false react-scripts build",
-    "build-cattle-mac": "env-cmd -f .env.cattle bash -c 'echo Building prod && GENERATE_SOURCEMAP=false react-scripts build'",
-    "build-cattle-win": "env-cmd -f .env.cattle cross-env GENERATE_SOURCEMAP=false react-scripts build",
-    "test": "react-scripts test --runInBand",
+    "build-prod-mac": "env-cmd -f .env.production bash -c 'echo Building prod && vite build'",
+    "build-prod-win": "env-cmd -f .env.production vite build",
+    "build-cattle-mac": "env-cmd -f .env.cattle bash -c 'echo Building prod && vite build'",
+    "build-cattle-win": "env-cmd -f .env.cattle vite build",
+    "test": "jest --runInBand",
     "test:backend": "php api/tests/adversarial_validation_test.php && php api/tests/login_location_test.php && php api/tests/promotional_digest_test.php && php api/tests/helpers_unit_test.php && php api/tests/profanity_test.php && php api/tests/schedule_proposal_test.php && php api/tests/schema_sync_test.php && php api/tests/database_migrations_test.php && php api/tests/browser_push_crypto_test.php",
-    "test:backend:integration": "php api/tests/purchase_lifecycle_test.php && php api/tests/card_acceptance_test.php && php api/tests/mock_payment_test.php && php api/tests/recent_searches_test.php && php api/tests/browser_push_test.php",
+    "test:backend:integration": "php api/tests/purchase_lifecycle_test.php && php api/tests/card_acceptance_test.php && php api/tests/mock_payment_test.php && php api/tests/recent_searches_test.php && php api/tests/browser_push_test.php && php api/tests/input_fuzz_test.php",
     "test:mutation": "stryker run",
     "lint:php": "node scripts/php-lint.js",
-    "eject": "react-scripts eject",
+    "lint:js": "eslint src --ext .js,.jsx --ignore-pattern \"src/__tests__/**\" --max-warnings 0",
+    "lint": "npm run lint:js",
+    "lint:phpstan": "phpstan analyse --no-progress --memory-limit=1G",
+    "lint:a11y": "eslint --no-eslintrc -c .eslintrc.a11y.json --ext .js,.jsx src --ignore-pattern \"src/__tests__/**\"",
+    "check:form-labels": "node scripts/check-form-labels.js",
+    "check:no-useless-tests": "node scripts/check-no-useless-tests.js",
+    "check:endpoint-guards": "node scripts/check-endpoint-guards.js",
+    "check:secrets": "node scripts/check-no-secrets.js",
+    "check:line-endings": "node scripts/check-line-endings.js",
+    "audit:js": "npm audit --audit-level=high",
+    "audit:php": "composer audit",
+    "audit": "npm run audit:js && npm run audit:php",
+    "_comment_check": "offline checks plus both test suites; needs no network or database. Integration tests and audits run separately",
+    "check": "npm run lint:php && npm run lint:js && npm run lint:a11y && npm run check:form-labels && npm run check:no-useless-tests && npm run check:endpoint-guards && npm run check:secrets && npm run check:line-endings && npm test -- --watchAll=false && npm run test:backend",
+    "preview": "vite preview",
     "build-deploy": "npm run build-local-win && deploy.bat"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ],
-    "rules": {}
   },
   "browserslist": {
     "production": [
@@ -59,38 +65,47 @@
     ]
   },
   "devDependencies": {
+    "@babel/core": "^8.1.0",
+    "@babel/preset-env": "^8.0.7",
+    "@babel/preset-react": "^8.0.1",
     "@stryker-mutator/core": "10.0.0",
     "@stryker-mutator/jest-runner": "10.0.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
+    "@vitejs/plugin-react": "^6.3.0",
     "autoprefixer": "^10.6.1",
+    "babel-jest": "^30.5.2",
     "env-cmd": "^11.0.0",
-    "postcss": "^8.5.28"
+    "eslint": "^8.57.1",
+    "eslint-config-react-app": "^7.0.1",
+    "jest": "^30.5.2",
+    "jest-environment-jsdom": "^30.5.2",
+    "postcss": "^8.5.28",
+    "vite": "^8.3.7",
+    "whatwg-fetch": "^3.6.20"
   },
-  "_comment_overrides": "react-scripts 5.0.1 is frozen; patched transitive packages use scripts/start.js for webpack-dev-server 5 compatibility",
-  "overrides": {
-    "@svgr/webpack": "^8.1.0",
-    "underscore": "^1.13.8",
-    "serialize-javascript": "^7.1.3",
-    "@tootallnate/once": "^2.0.1",
-    "resolve-url-loader": "^5.0.0",
-    "qs": "^6.16.0",
-    "postcss-selector-parser": "^7.1.6",
-    "js-yaml@3": {
-      "argparse": "^2.0.1"
-    },
-    "webpack-dev-server": "5.2.6",
-    "webpack-dev-middleware": "^7.4.6",
-    "sockjs": {
-      "uuid": "^11.1.1"
-    },
-    "body-parser": "^1.20.9"
-  },
-  "_comment_proxy": "used to connect local react to locally running php server",
-  "proxy": "http://localhost:8080",
   "jest": {
-    "globalSetup": "<rootDir>/scripts/jest-global-setup.js"
+    "globalSetup": "<rootDir>/scripts/jest-global-setup.js",
+    "roots": [
+      "<rootDir>/src"
+    ],
+    "testEnvironment": "jsdom",
+    "setupFiles": [
+      "whatwg-fetch"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.{js,jsx}",
+      "**/*.{spec,test}.{js,jsx}"
+    ],
+    "transform": {
+      "^.+\\.(js|jsx|mjs|cjs)$": "<rootDir>/scripts/jest-babel-transform.js",
+      "^(?!.*\\.(js|jsx|mjs|cjs|json)$)": "<rootDir>/scripts/jest-asset-transform.js"
+    },
+    "transformIgnorePatterns": [
+      "[/\\\\]node_modules[/\\\\].+\\.(js|jsx|mjs|cjs)$"
+    ],
+    "resetMocks": true
   }
 }

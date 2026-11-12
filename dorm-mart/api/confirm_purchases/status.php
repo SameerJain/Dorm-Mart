@@ -43,7 +43,6 @@ try {
                 'message' => 'Only the seller can send a Confirm Purchase form.',
             ],
         ]);
-        return;
     }
 
     $schedRow = confirm_purchase_latest_accepted_schedule($conn, $conversationId, $productId, $userId);
@@ -57,7 +56,6 @@ try {
                 'message' => 'First, send the Schedule Purchase form. Then once the exchange is complete, send the Confirm Purchase form.',
             ],
         ]);
-        return;
     }
 
     $meetingIso = dm_utc_atom($schedRow['meeting_at'] ?? null);

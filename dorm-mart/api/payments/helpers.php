@@ -6,10 +6,32 @@ require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../confirm_purchases/helpers.php';
 require_once __DIR__ . '/../config/app_config.php';
 require_once __DIR__ . '/../database/protect_test_accounts.php';
+require_once __DIR__ . '/../security/rate_limit.php';
 
 const PAYMENT_WINDOW_SECONDS = 1800;
 const PAYMENT_MIN_AMOUNT_CENTS = 50;
 const PAYMENT_MAX_AMOUNT_CENTS = 999999;
+
+// Flood cap shared by the endpoints that start, complete, or refund a payment or
+// change a Stripe connection. Far above normal use; status polling is not counted.
+const PAYMENT_ACTION_MAX_PER_WINDOW = 30;
+const PAYMENT_ACTION_WINDOW_MINUTES = 10;
+const PAYMENT_ACTION_LOCKOUT_MINUTES = 2;
+
+function payment_enforce_rate_limit(int $userId): void
+{
+    $limit = consume_rate_limit(
+        scoped_rate_limit_key('payment_action', $userId),
+        PAYMENT_ACTION_MAX_PER_WINDOW,
+        PAYMENT_ACTION_WINDOW_MINUTES,
+        PAYMENT_ACTION_LOCKOUT_MINUTES
+    );
+    if (!$limit['blocked']) return;
+    json_response([
+        'success' => false,
+        'error' => rate_limit_retry_message('Too many payment requests.', (int)$limit['retry_after_seconds']),
+    ], 429);
+}
 
 function payment_amount_cents_from_value(mixed $value): ?int
 {
@@ -30,10 +52,15 @@ function payment_mode_for_protected(bool $isProtected): string
 
 function payment_is_mock_user(array $user): bool
 {
-    if ((int)$user['is_protected'] === 1) return true;
+    if (dm_payments_demo_mode() || (int)$user['is_protected'] === 1) return true;
     static $seedEmails = null;
     $seedEmails ??= array_fill_keys(seed_account_emails(), true);
     return isset($seedEmails[strtolower(trim((string)$user['email']))]);
+}
+
+function payment_user_mode(array $user): string
+{
+    return payment_mode_for_protected(payment_is_mock_user($user));
 }
 
 function payment_user(mysqli $conn, int $userId): ?array
@@ -49,7 +76,6 @@ function payment_user(mysqli $conn, int $userId): ?array
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    if ($row) $row['is_protected'] = payment_is_mock_user($row) ? 1 : 0;
     return $row ?: null;
 }
 
@@ -211,11 +237,19 @@ function payment_schedule(mysqli $conn, int $requestId, bool $forUpdate = false)
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    if ($row) {
-        $row['seller_is_protected'] = payment_is_mock_user(['is_protected' => $row['seller_is_protected'], 'email' => $row['seller_email']]) ? 1 : 0;
-        $row['buyer_is_protected'] = payment_is_mock_user(['is_protected' => $row['buyer_is_protected'], 'email' => $row['buyer_email']]) ? 1 : 0;
-    }
     return $row ?: null;
+}
+
+/** True when either party of a payment_schedule() row pays with mock transactions. */
+function payment_schedule_uses_mock(array $schedule): bool
+{
+    foreach (['seller', 'buyer'] as $party) {
+        if (payment_is_mock_user([
+            'is_protected' => $schedule[$party . '_is_protected'] ?? 0,
+            'email' => $schedule[$party . '_email'] ?? '',
+        ])) return true;
+    }
+    return false;
 }
 
 function payment_window(array $schedule): array
@@ -240,9 +274,8 @@ function payment_window_state(array $schedule, ?DateTimeImmutable $now = null): 
 
 function payment_mock_schedule_error(array $schedule): ?string
 {
-    if (($schedule['payment_mode'] ?? '') !== 'mock'
-        || (!(int)($schedule['seller_is_protected'] ?? 0) && !(int)($schedule['buyer_is_protected'] ?? 0))) {
-        return 'This purchase is not a mock transaction';
+    if (($schedule['payment_mode'] ?? '') !== 'mock' || !payment_schedule_uses_mock($schedule)) {
+        return 'This purchase is not a demo transaction';
     }
     if (($schedule['status'] ?? '') !== 'accepted') return 'Scheduled purchase is not accepted';
     if (($schedule['payment_option'] ?? '') !== 'stripe' || !empty($schedule['payment_fallback_at'])) {
@@ -255,7 +288,7 @@ function payment_mock_schedule_error(array $schedule): ?string
     return null;
 }
 
-function payment_datetime_atom(DateTimeInterface $value): string
+function payment_datetime_atom(DateTime|DateTimeImmutable $value): string
 {
     return $value->setTimezone(new DateTimeZone('UTC'))->format(DateTime::ATOM);
 }
@@ -487,7 +520,7 @@ function payment_finalize_refund_transaction(
             $isLateRefund ? $buyerId : $sellerId,
             $isLateRefund ? $sellerId : $buyerId,
             ($row['payment_mode'] ?? '') === 'mock'
-                ? 'Mock refund completed. No real money was moved.'
+                ? 'Demo refund completed. No real money was moved.'
                 : ($isLateRefund
                 ? 'The electronic payment finished after the deadline and was refunded.'
                 : 'The seller issued a full electronic payment refund.'),

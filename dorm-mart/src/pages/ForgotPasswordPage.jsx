@@ -121,10 +121,11 @@ function ForgotPasswordPage() {
                 className="space-y-4 sm:space-y-5 md:space-y-6"
               >
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
+                  <label htmlFor="forgot-email" className="block text-sm sm:text-base md:text-lg font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     University Email Address
                   </label>
                   <input
+                    id="forgot-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

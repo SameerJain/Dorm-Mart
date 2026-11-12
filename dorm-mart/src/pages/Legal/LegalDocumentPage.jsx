@@ -45,14 +45,14 @@ export default function LegalDocumentPage({ documentKey }) {
 
   if (!legalDoc) {
     return (
-      <main className="min-h-dvh pre-login-bg px-4 py-10 text-center text-gray-800">
+      <div className="min-h-dvh pre-login-bg px-4 py-10 text-center text-gray-800">
         <p className="rounded-2xl bg-white p-8 shadow-xl">This document could not be found.</p>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-dvh pre-login-bg px-4 py-6 pt-[max(1.5rem,env(safe-area-inset-top))] text-gray-800 sm:px-6 sm:py-10 print:bg-white print:p-0">
+    <div className="min-h-dvh pre-login-bg px-4 py-6 pt-[max(1.5rem,env(safe-area-inset-top))] text-gray-800 sm:px-6 sm:py-10 print:bg-white print:p-0">
       <article className="mx-auto max-w-3xl rounded-2xl bg-white p-5 shadow-xl sm:p-8 md:p-10 print:max-w-none print:rounded-none print:p-0 print:shadow-none">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2 print:hidden">
           <PageBackButton
@@ -152,6 +152,6 @@ export default function LegalDocumentPage({ documentKey }) {
           </p>
         )}
       </article>
-    </main>
+    </div>
   );
 }

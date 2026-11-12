@@ -13,6 +13,7 @@ try {
     $buyerId = require_login();
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
+    payment_enforce_rate_limit($buyerId);
     $requestId = request_int($payload, 'scheduled_request_id');
     if ($requestId <= 0) json_response(['success' => false, 'error' => 'Scheduled purchase is required'], 400);
 
@@ -26,7 +27,7 @@ try {
     if ($schedule['payment_mode'] !== 'mock'
         || payment_modes_for_pair($conn, (int)$schedule['seller_user_id'], $buyerId) !== 'mock') {
         $conn->rollback();
-        json_response(['success' => false, 'error' => 'This purchase is not a mock transaction'], 409);
+        json_response(['success' => false, 'error' => 'This purchase is not a demo transaction'], 409);
     }
     $stmt = $conn->prepare('SELECT * FROM electronic_payments WHERE scheduled_request_id = ? LIMIT 1 FOR UPDATE');
     $stmt->bind_param('i', $requestId);
@@ -36,7 +37,7 @@ try {
     if (!$payment || $payment['payment_mode'] !== 'mock'
         || !in_array($payment['status'], ['requires_payment_method', 'succeeded'], true)) {
         $conn->rollback();
-        json_response(['success' => false, 'error' => 'Mock checkout is unavailable'], 409);
+        json_response(['success' => false, 'error' => 'Demo checkout is unavailable'], 409);
     }
     if ($payment['status'] !== 'succeeded') {
         $error = payment_mock_schedule_error($schedule);
@@ -54,5 +55,5 @@ try {
 } catch (Throwable $e) {
     if (isset($conn)) { try { $conn->rollback(); } catch (Throwable $ignored) {} }
     error_log('mock payment error: ' . $e->getMessage());
-    json_response(['success' => false, 'error' => 'Unable to complete the mock transaction'], 500);
+    json_response(['success' => false, 'error' => 'Unable to complete the demo transaction'], 500);
 }

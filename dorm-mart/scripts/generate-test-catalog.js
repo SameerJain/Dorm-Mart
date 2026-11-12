@@ -30,16 +30,16 @@ Run from \`dorm-mart/\`:
 
 | Command | Scope |
 | --- | --- |
-| \`npm test -- --watchAll=false\` | All frontend Jest tests |
-| \`npm test -- --watchAll=false --runTestsByPath src/__tests__/utils/apiClient.test.js\` | One frontend test file; replace the path as needed |
-| \`npm run test:backend\` | Five offline PHP scripts named in package.json |
-| \`npm run test:backend:integration\` | Disposable local database and HTTP purchase lifecycle |
+| \`npm test\` | All frontend Jest tests |
+| \`npm test -- --runTestsByPath src/__tests__/utils/apiClient.test.js\` | One frontend test file; replace the path as needed |
+| \`npm run test:backend\` | Nine offline PHP scripts named in package.json |
+| \`npm run test:backend:integration\` | Six suites that each build a scratch database and a private PHP server |
 | \`npm run lint:php\` | PHP syntax checks, not behavioral tests |
 | \`npm run test:mutation -- --mutate src/pages/Settings/userPreferencesUtils.js\` | Targeted mutation audit; requires installed Stryker |
 
 HTTP scenario scripts require a running local API and may require \`API_TEST_LOGIN_EMAIL\`, \`API_TEST_LOGIN_PASSWORD\`, and \`API_TEST_BASE_URL\`. Inspect them before execution: some send email or affect lockouts/data, and some report verdicts in JSON/HTML rather than a failing process exit. The Bash rate-limit script prints requests and has historical threshold comments; verify current policy in source. Its output alone is not an automated pass/fail verdict.
 
-The XSS encoding file is a manual HTML demonstration; the router blocks direct HTTP access to \`api/tests\`. Do not weaken that guard to run it. \`db_connection_test.php\` needs the configured database. Neither is part of the five offline checks.
+The XSS encoding file is a manual HTML demonstration; the router blocks direct HTTP access to \`api/tests\`. Do not weaken that guard to run it. \`db_connection_test.php\` needs the configured database. Neither is part of the nine offline checks.
 
 Excluded: vendor tests, SQL seed data, images, test support \`api/tests/bootstrap.php\`, and \`api/payments/*webhook*test.php\` (Stripe test-mode endpoint handlers).
 

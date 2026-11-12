@@ -9,6 +9,20 @@ import {
 import { API_BASE } from "../../utils/apiConfig";
 import { formatCurrency } from "../../utils/formatters";
 
+function isInstagramUrl(value) {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value.trim());
+    return (
+      url.protocol === "https:" &&
+      url.hostname.replace(/^www\./i, "").toLowerCase().endsWith("instagram.com") &&
+      url.pathname.length > 1
+    );
+  } catch {
+    return false;
+  }
+}
+
 const useQuery = () => {
   const location = useLocation();
   return useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -307,7 +321,7 @@ function PublicProfilePage() {
                 >
                   @{profile.username}
                 </p>
-                {profile.instagram && (
+                {isInstagramUrl(profile.instagram) && (
                   <a
                     href={profile.instagram}
                     target="_blank"

@@ -61,6 +61,7 @@ export default function MeetLocationField({
       </select>
       {meetLocationChoice === MEET_LOCATION_OTHER_VALUE && (
         <input
+          aria-label="Other meeting location"
           type="text"
           value={customMeetLocation}
           onChange={(e) => setCustomMeetLocation(e.target.value.slice(0, 30))}

@@ -15,6 +15,7 @@ This is a quick map of the current React `src/` tree. React page/component files
 Reusable UI pieces used across pages.
 
 - `DetailRow.jsx`, `PageBackButton.jsx`, `ProfileLink.jsx` - Shared small UI components.
+- `RouteAnnouncer.jsx` - Screen-reader announcements on route changes.
 - `ItemCardNew.jsx`, `Products/PurchasedItem.jsx` - Listing and purchased-item cards.
 - `PreLoginBranding.jsx`, `PreLoginNavLinks.jsx` - Shared pre-login layout pieces.
 - `forms/PasswordRequirementRow.jsx` - Password policy display row.
@@ -25,7 +26,8 @@ Reusable UI pieces used across pages.
 Shared frontend logic.
 
 - `context/ChatContext.jsx`, `context/chatContextUtils.js` - Chat state provider and API helpers.
-- `hooks/useTheme.js`, `hooks/useEmailPolicy.js` - Shared app hooks.
+- `hooks/useTheme.js`, `hooks/useEmailPolicy.js`, `hooks/useModalFocus.js` - Shared app hooks.
+- `utils/browserPush.js` - Browser-push subscription and service-worker registration.
 - `constants/meetLocations.js` - Scheduled purchase meet-location constants.
 - `utils/apiConfig.js` - `PUBLIC_URL` and `REACT_APP_API_BASE` helpers.
 - `utils/formatters.js`, `utils/productDetails.js`, `utils/imageFallback.js` - Display, product, and media helpers.
@@ -49,7 +51,8 @@ Top-level user-facing page areas.
 - `ScheduledPurchases/` - Schedule, confirm, ongoing, completed, and report-issue pages.
 - `PurchaseHistory/` - Purchase history layout, list, and detail page.
 - `Wishlist/WishlistPage.jsx`, `Notification/NotificationPage.jsx` - Wishlist and notification views.
-- `Settings/` - Profile, password, preferences, and buyer reviews.
+- `Settings/` - Profile, password, preferences (including push opt-in), and buyer reviews.
+- `Legal/` - Privacy Policy and Terms of Service pages plus the public Safety summary page.
 - `PublicProfile/PublicProfilePage.jsx` - Public user profile.
 - `Reviews/` - Review modal, star rating, and review image gallery.
 - `FAQ/` - FAQ page and modal sections.
@@ -68,5 +71,6 @@ Static images used by the app and README screenshots.
 - User-facing React routes intentionally keep existing kebab/camel route paths such as `/app/seller-dashboard`, `/app/purchase-history`, and `/app/viewProduct/:id`.
 - Backend API endpoint URLs use snake_case paths such as `/api/seller_dashboard/product_listing.php`.
 - Build base paths come from `PUBLIC_URL` in the target environment file or platform environment, not from hardcoded package scripts.
+- The app is built by Vite and tested by standalone Jest: `npm run build` writes `build/`, `npm test` runs the suites once. See `environment_configuration.md` for the Vite setup.
 
 _Last updated: environment-backed frontend build configuration._

@@ -9,7 +9,9 @@ try {
     $userId = require_login();
     $input = json_request_body();
     require_csrf_token($input['csrf_token'] ?? null);
-    $stmt = db()->prepare('DELETE FROM notifications WHERE recipient_user_id = ? AND available_at <= NOW()');
+    // Hold the connection: a temporary db() is closed before the statement runs.
+    $conn = db();
+    $stmt = $conn->prepare('DELETE FROM notifications WHERE recipient_user_id = ? AND available_at <= NOW()');
     if (!$stmt) throw new RuntimeException('Failed to prepare clear');
     $stmt->bind_param('i', $userId);
     $stmt->execute();

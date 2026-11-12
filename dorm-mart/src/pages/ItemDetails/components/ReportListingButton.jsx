@@ -96,12 +96,10 @@ export default function ReportListingButton({ productId, title }) {
       {open ? (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="report-listing-title"
+          role="presentation"
           onClick={(event) => event.target === event.currentTarget && close()}
         >
-          <div className="min-w-0 w-full max-w-md max-h-[90dvh] overflow-x-hidden overflow-y-auto overscroll-contain bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
+          <div role="dialog" aria-modal="true" aria-labelledby="report-listing-title" className="min-w-0 w-full max-w-md max-h-[90dvh] overflow-x-hidden overflow-y-auto overscroll-contain bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
             {submitted ? (
               <div className="px-6 py-6">
                 <h2 id="report-listing-title" className="text-xl font-bold text-gray-900 dark:text-gray-100">

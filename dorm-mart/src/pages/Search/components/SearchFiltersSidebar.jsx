@@ -154,6 +154,7 @@ export default function SearchFiltersSidebar({
           <div className="flex items-center gap-2">
             <span>Min</span>
             <input
+              aria-label="Minimum price"
               type="text"
               inputMode="decimal"
               maxLength={7}
@@ -170,6 +171,7 @@ export default function SearchFiltersSidebar({
           <div className="flex items-center gap-2">
             <span>Max</span>
             <input
+              aria-label="Maximum price"
               type="text"
               inputMode="decimal"
               maxLength={7}
@@ -196,6 +198,7 @@ export default function SearchFiltersSidebar({
           Item Location
         </p>
         <select
+          aria-label="Item location"
           value={itemLocation}
           onChange={(event) =>
             updateFilter("itemLocation", event.target.value)
@@ -215,6 +218,7 @@ export default function SearchFiltersSidebar({
           Item Condition
         </p>
         <select
+          aria-label="Item condition"
           value={itemCondition}
           onChange={(event) =>
             updateFilter("itemCondition", event.target.value)

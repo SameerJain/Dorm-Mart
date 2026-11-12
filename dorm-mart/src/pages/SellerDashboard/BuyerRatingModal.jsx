@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import StarRating from "../Reviews/StarRating";
 import EditableStarRating from "../Reviews/EditableStarRating";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useModalFocus } from "../../hooks/useModalFocus";
 import { API_BASE } from "../../utils/apiConfig";
 import { apiGetJson, csrfPostJson } from "../../utils/apiClient";
 import { formatDate } from "../../utils/formatters";
@@ -37,6 +38,9 @@ function BuyerRatingModal({
   const [error, setError] = useState(null);
   const [existingRating, setExistingRating] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const panelRef = useRef(null);
+  // The confirmation dialog traps focus itself while it is open.
+  useModalFocus(panelRef, { active: isOpen && !showConfirmModal, onClose });
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmCallback, setConfirmCallback] = useState(null);
   const [pendingSubmit, setPendingSubmit] = useState(false);
@@ -183,6 +187,7 @@ function BuyerRatingModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+      role="presentation"
       onClick={(e) => {
         if (!showConfirmModal && e.target === e.currentTarget) {
           onClose();
@@ -190,11 +195,15 @@ function BuyerRatingModal({
       }}
     >
       <div
-        className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl dark:bg-gray-800"
-        onClick={(e) => e.stopPropagation()}
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="buyer-rating-modal-title"
+        tabIndex={-1}
+        className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl outline-none dark:bg-gray-800"
       >
         <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+          <h2 id="buyer-rating-modal-title" className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             {existingRating ? "Buyer Rating" : "Rate Buyer"}
           </h2>
           <button
@@ -234,9 +243,9 @@ function BuyerRatingModal({
           {existingRating ? (
             <div>
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Your Rating
-                </label>
+                </p>
                 <div className="flex items-center gap-4">
                   <StarRating rating={rating} readOnly={true} size={40} />
                   <span className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
@@ -246,9 +255,9 @@ function BuyerRatingModal({
               </div>
               {existingRating.review_text && (
                 <div className="mb-6 min-w-0">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Review
-                  </label>
+                  </p>
                   <div
                     className="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 min-w-0 overflow-hidden"
                   >

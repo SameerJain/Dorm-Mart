@@ -15,7 +15,7 @@ try {
     $conn = db();
     $user = payment_user($conn, $userId);
     if (!$user) json_response(['success' => false, 'error' => 'User not found'], 404);
-    $mode = payment_mode_for_protected((int)$user['is_protected'] === 1);
+    $mode = payment_user_mode($user);
     if ($mode === 'mock') {
         json_response(['success' => true, 'data' => [
             'feature_enabled' => true, 'payment_mode' => 'mock', 'is_mock' => true,

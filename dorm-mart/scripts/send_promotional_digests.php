@@ -4,7 +4,7 @@ declare(strict_types=1);
 if (php_sapi_name() !== 'cli') { http_response_code(403); exit("Forbidden\n"); }
 
 require_once __DIR__ . '/../api/database/db_connect.php';
-require_once __DIR__ . '/../api/helpers/promo_email.php';
+require_once __DIR__ . '/../api/helpers/email.php';
 require_once __DIR__ . '/../api/helpers/inventory.php';
 require_once __DIR__ . '/../api/helpers/promo_schedule.php';
 require_once __DIR__ . '/../api/helpers/promo_unsubscribe.php';
@@ -101,7 +101,7 @@ while ($user = $users->fetch_assoc()) {
         $items,
         promo_unsubscribe_url((int)$user['user_id'])
     );
-    $outcome = send_promo_welcome_email([
+    $outcome = dm_send_email([
         'firstName' => $user['first_name'], 'lastName' => $user['last_name'], 'email' => $user['email'],
     ], $package);
     if (!$outcome['ok']) { $failed++; error_log('Promotional digest failed for user ' . $user['user_id']); continue; }

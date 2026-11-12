@@ -1,4 +1,4 @@
-import { apiGetJson, apiPostJson, csrfPostJson, readApiError, readJsonResponse } from "../../utils/apiClient";
+import { apiGetJson, csrfPostJson, readApiError, readJsonResponse } from "../../utils/apiClient";
 import { csrfFetch } from "../../utils/csrfFetch";
 
 jest.mock("../../utils/csrfFetch", () => ({ csrfFetch: jest.fn() }));
@@ -107,59 +107,6 @@ describe("apiGetJson", () => {
     await expect(apiGetJson("/api/list")).rejects.toThrow("Nope");
     global.fetch.mockResolvedValueOnce(reply("", { ok: false, status: 502 }));
     await expect(apiGetJson("/api/list")).rejects.toThrow("HTTP 502");
-  });
-});
-
-describe("apiPostJson", () => {
-  test("sends a credentialed JSON POST", async () => {
-    global.fetch.mockResolvedValue(reply({ ok: true }));
-    await expect(apiPostJson("/api/search", { q: "lamp" })).resolves.toEqual({ ok: true });
-    const [url, options] = global.fetch.mock.calls[0];
-    expect(url).toBe("/api/search");
-    expect(options.method).toBe("POST");
-    expect(options.credentials).toBe("include");
-    expect(options.headers.get("Accept")).toBe("application/json");
-    expect(options.headers.get("Content-Type")).toBe("application/json");
-    expect(options.body).toBe('{"q":"lamp"}');
-  });
-
-  test("a missing or empty body is sent as an empty object", async () => {
-    global.fetch.mockResolvedValue(reply({}));
-    await apiPostJson("/api/x");
-    await apiPostJson("/api/x", null);
-    await apiPostJson("/api/x", undefined, {});
-    for (const [, options] of global.fetch.mock.calls) expect(options.body).toBe("{}");
-  });
-
-  test("a falsy-but-real body is still sent as given only when it is an object", async () => {
-    global.fetch.mockResolvedValue(reply({}));
-    await apiPostJson("/api/x", []);
-    expect(global.fetch.mock.calls[0][1].body).toBe("[]");
-    await apiPostJson("/api/x", 0);
-    expect(global.fetch.mock.calls[1][1].body).toBe("{}");
-  });
-
-  test("custom headers and credentials override the defaults; the method cannot be changed", async () => {
-    global.fetch.mockResolvedValue(reply({}));
-    const signal = new AbortController().signal;
-    await apiPostJson("/api/x", { a: 1 }, {
-      method: "DELETE",
-      credentials: "same-origin",
-      signal,
-      headers: { "Content-Type": "application/vnd.api+json", "X-Trace": "abc" },
-    });
-    const options = global.fetch.mock.calls[0][1];
-    expect(options.method).toBe("POST");
-    expect(options.credentials).toBe("same-origin");
-    expect(options.signal).toBe(signal);
-    expect(options.headers.get("Content-Type")).toBe("application/vnd.api+json");
-    expect(options.headers.get("X-Trace")).toBe("abc");
-    expect(options.headers.get("Accept")).toBe("application/json");
-  });
-
-  test("failures throw the server's message", async () => {
-    global.fetch.mockResolvedValue(reply({ message: "Bad input" }, { ok: false, status: 422 }));
-    await expect(apiPostJson("/api/x", {})).rejects.toThrow("Bad input");
   });
 });
 

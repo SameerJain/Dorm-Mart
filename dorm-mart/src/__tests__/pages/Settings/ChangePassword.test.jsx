@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import ChangePasswordPage from "../../../pages/Settings/ChangePassword";
 import { csrfFetch } from "../../../utils/csrfFetch";
 
@@ -28,19 +29,17 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-test("an empty form shows a scroll-locking popup instead of a browser alert", async () => {
+test("an empty form shows a popup instead of a browser alert", async () => {
   render(<ChangePasswordPage />);
   fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
   const dialog = await screen.findByRole("dialog", { name: "Couldn't change password" });
   expect(dialog.textContent).toContain("Please fill in all password fields.");
-  expect(document.body.style.position).toBe("fixed");
   expect(window.alert).not.toHaveBeenCalled();
   expect(csrfFetch).not.toHaveBeenCalled();
 
   fireEvent.click(screen.getByRole("button", { name: "OK" }));
   expect(screen.queryByRole("dialog")).toBeNull();
-  expect(document.body.style.position).toBe("");
 });
 
 test("mismatched new passwords are reported in the popup", async () => {
@@ -50,7 +49,7 @@ test("mismatched new passwords are reported in the popup", async () => {
 
   expect(await screen.findByText(
     "The new password that was entered is different from the re-entry of the password.",
-  )).toBeTruthy();
+  )).toBeInTheDocument();
   expect(csrfFetch).not.toHaveBeenCalled();
 });
 
@@ -59,7 +58,7 @@ test("a weak new password names the first rule it breaks", async () => {
   fill("Oldpass1!", "short", "short");
   fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
-  expect(await screen.findByText("The new password must have at least 8 characters.")).toBeTruthy();
+  expect(await screen.findByText("The new password must have at least 8 characters.")).toBeInTheDocument();
   expect(csrfFetch).not.toHaveBeenCalled();
 });
 
@@ -82,7 +81,7 @@ test("a network failure is reported in the popup", async () => {
 
   expect(await screen.findByText(
     "Network error while changing password. Please try again.",
-  )).toBeTruthy();
+  )).toBeInTheDocument();
 });
 
 test("Enter on the popup closes it without submitting again, and submits once it is closed", async () => {

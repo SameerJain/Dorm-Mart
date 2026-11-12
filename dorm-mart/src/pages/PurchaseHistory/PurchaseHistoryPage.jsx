@@ -104,11 +104,12 @@ function PurchaseHistoryPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
               <div className="flex items-center w-full sm:w-auto">
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                <label htmlFor="purchase-date-range" className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
                   Date Range
                 </label>
                 <div className="relative ml-1 flex-1 sm:flex-none">
                   <select
+                    id="purchase-date-range"
                     value={dateRange}
                     onChange={(e) => setDateRange(e.target.value)}
                     className="w-full bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
@@ -137,11 +138,12 @@ function PurchaseHistoryPage() {
               </div>
 
               <div className="flex items-center w-full sm:w-auto">
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                <label htmlFor="purchase-sort" className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
                   Sort By
                 </label>
                 <div className="relative ml-1 flex-1 sm:flex-none">
                   <select
+                    id="purchase-sort"
                     value={selectedSort}
                     onChange={(e) => setSelectedSort(e.target.value)}
                     className="w-full bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"

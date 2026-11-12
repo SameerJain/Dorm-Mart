@@ -15,6 +15,7 @@ try {
     $sellerId = require_login();
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
+    payment_enforce_rate_limit($sellerId);
     $paymentId = request_int($payload, 'electronic_payment_id');
     $relist = strict_boolean_value($payload['relist'] ?? false);
     if ($paymentId <= 0 || $relist === null) {
@@ -35,10 +36,11 @@ try {
     $mode = (string)$payment['payment_mode'];
     $currentMode = payment_modes_for_pair($conn, $sellerId, (int)$payment['buyer_user_id']);
     $seller = payment_user($conn, $sellerId);
-    if ($mode !== 'mock' && ($currentMode === 'mock' || (int)$seller['is_protected'] === 1)) {
+    if ($mode !== 'mock' && ($currentMode === 'mock' || payment_is_mock_user($seller))) {
         $conn->rollback();
         json_response(['success' => false, 'error' => 'Payment mode does not match these accounts'], 409);
     }
+    $stripe = null;
     if ($mode !== 'mock') {
         if (!dm_payments_enabled() || !payment_stripe_configured($mode)) {
             $conn->rollback();

@@ -129,7 +129,7 @@ function ListingReportRow({ report, working, onResolve, onChangeBan, onConfirm }
                       {LISTING_REPORT_REASONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </label>
-                  <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} disabled={working} placeholder="Optional note to the seller" className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
+                  <input aria-label="Note for the seller and reporters" value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} disabled={working} placeholder="Optional note to the seller" className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
                 </>
               )}
               <div className="flex flex-wrap gap-2">
@@ -229,15 +229,15 @@ export default function ModeratorDashboard() {
   }
 
   if (!dashboard && !error) {
-    return <main className="p-8 text-center text-gray-600 dark:text-gray-300">Loading moderation tools...</main>;
+    return <div className="p-8 text-center text-gray-600 dark:text-gray-300">Loading moderation tools...</div>;
   }
   if (!dashboard) {
     // Nothing loaded: show the failure and a retry, not empty "No reports yet" tables.
     return (
-      <main className="p-8 text-center text-gray-700 dark:text-gray-200">
+      <div className="p-8 text-center text-gray-700 dark:text-gray-200">
         <p role="alert" className="mx-auto max-w-lg rounded-lg bg-red-100 p-4 text-red-800 dark:bg-red-950 dark:text-red-200">{error}</p>
         <button type="button" onClick={load} className="mt-4 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600">Try again</button>
-      </main>
+      </div>
     );
   }
   const pagination = dashboard.pagination || {};
@@ -253,7 +253,7 @@ export default function ModeratorDashboard() {
   ];
 
   return (
-    <main className="min-h-[calc(100dvh-var(--nav-h,64px))] bg-gray-50 px-4 py-8 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <div className="min-h-[calc(100dvh-var(--nav-h,64px))] bg-gray-50 px-4 py-8 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
       <div className="mx-auto max-w-7xl space-y-8">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -358,7 +358,7 @@ export default function ModeratorDashboard() {
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <h2 className="text-xl font-bold">Profanity word list</h2>
           <form className="mt-4 flex max-w-lg gap-2" onSubmit={addWord}>
-            <input value={newWord} onChange={(event) => setNewWord(event.target.value)} maxLength={100} placeholder="Add a word or phrase" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
+            <input aria-label="Word or phrase to block" value={newWord} onChange={(event) => setNewWord(event.target.value)} maxLength={100} placeholder="Add a word or phrase" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
             <ActionButton type="submit" disabled={working}>Add word</ActionButton>
           </form>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -416,6 +416,6 @@ export default function ModeratorDashboard() {
           )}
         </ConfirmDialog>
       )}
-    </main>
+    </div>
   );
 }

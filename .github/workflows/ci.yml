@@ -1,0 +1,102 @@
+name: CI
+
+# Runs the same checks as `npm run check` locally, plus PHPStan and the
+# database-backed integration tests. See dorm-mart/docs/TESTING_AND_RELIABILITY.md.
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: dorm-mart
+
+jobs:
+  frontend:
+    name: Frontend lint and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dorm-mart/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: ESLint (application code)
+        run: npm run lint:js
+      - name: Accessibility lint
+        run: npm run lint:a11y
+      - name: Form fields have labels
+        run: npm run check:form-labels
+      - name: Endpoints require login and CSRF
+        run: npm run check:endpoint-guards
+      - name: No secret files tracked
+        run: npm run check:secrets
+      - name: Consistent line endings
+        run: npm run check:line-endings
+      - name: Jest
+        run: npm test -- --watchAll=false
+
+  backend:
+    name: PHP lint, PHPStan and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mysqli, gd, curl, mbstring
+          tools: composer:v2, phpstan:2
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # vendor/ is committed, but the profanity word list inside it is gitignored.
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - name: PHP syntax
+        run: npm run lint:php
+      - name: PHPStan
+        run: phpstan analyse --no-progress --memory-limit=1G
+      - name: Backend tests (no database)
+        run: npm run test:backend
+
+  integration:
+    name: Integration tests (MySQL)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: ci-only-root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      # The harness creates and drops its own randomly named database.
+      DB_HOST: 127.0.0.1
+      DB_USERNAME: root
+      DB_PASSWORD: ci-only-root
+      DB_NAME: dorm_mart_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mysqli, gd, curl, mbstring
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: npm run test:backend:integration

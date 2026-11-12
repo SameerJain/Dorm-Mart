@@ -44,7 +44,12 @@ export default function ItemCardNew({
 
   return (
     <div
+      role="link"
+      tabIndex={0}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target === e.currentTarget) handleClick();
+      }}
       className={`group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200/90 dark:border-gray-700/70 overflow-hidden
                  ${fixedWidth ? "w-[240px]" : "w-full"} h-[350px] cursor-pointer transition-all duration-200
                  lg:hover:shadow-xl lg:hover:-translate-y-1

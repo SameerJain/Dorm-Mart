@@ -11,8 +11,8 @@ export default function PaymentSystemMessageCard({ message }) {
     payment_refunded: ["Electronic Payment Refunded", amount ? `${amount} was refunded through Stripe.` : "The payment was refunded through Stripe."],
   }[type] || ["Payment Update", message.content];
   if (isMock) {
-    content[0] = type === "payment_refunded" ? "Mock Refund Completed" : "Mock Transaction Completed";
-    content[1] = "This was a mock transaction. No real money was charged or transferred.";
+    content[0] = type === "payment_refunded" ? "Demo Refund Completed" : "Demo Transaction Completed";
+    content[1] = "This was a demo transaction. No real money was charged or transferred.";
   }
 
   return (

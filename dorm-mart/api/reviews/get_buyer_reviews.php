@@ -52,7 +52,7 @@ SQL;
     while ($row = $result->fetch_assoc()) {
         $sellerName = trim(trim((string)$row['seller_first']) . ' ' . trim((string)$row['seller_last']));
         if ($sellerName === '') {
-            $sellerName = derive_username((string)($row['seller_email'] ?? '')) ?: 'Seller #' . (int)$row['seller_user_id'];
+            $sellerName = inventory_username_from_email((string)($row['seller_email'] ?? '')) ?: 'Seller #' . (int)$row['seller_user_id'];
         }
 
         $reviews[] = [
@@ -60,8 +60,7 @@ SQL;
             'product_id'        => (int)$row['product_id'],
             'seller_user_id'    => (int)$row['seller_user_id'],
             'seller_name'       => $sellerName,
-            'seller_email'      => $row['seller_email'] ?? '',
-            'seller_username'   => derive_username((string)($row['seller_email'] ?? '')),
+                'seller_username'   => inventory_username_from_email((string)($row['seller_email'] ?? '')),
             'product_title'     => $row['product_title'] ?? 'Untitled product',
             'review_text'       => $row['review_text'] ?? '',
             'rating'            => (float)$row['rating'],

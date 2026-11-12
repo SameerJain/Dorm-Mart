@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import EditableStarRating from "./EditableStarRating";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useModalFocus } from "../../hooks/useModalFocus";
 import { useSubmitLock } from "../../hooks/useSubmitLock";
 import ReviewImageGallery from "./components/ReviewImageGallery";
 import ReviewVideo from "./components/ReviewVideo";
@@ -59,6 +60,9 @@ function ReviewModal({
   const [videoUrl, setVideoUrl] = useState(null);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const panelRef = useRef(null);
+  // The confirmation dialog traps focus itself while it is open.
+  useModalFocus(panelRef, { active: isOpen && !showConfirmModal, onClose: () => handleClose() });
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmCallback, setConfirmCallback] = useState(null);
   const [pendingSubmit, setPendingSubmit] = useState(false);
@@ -343,6 +347,7 @@ function ReviewModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+      role="presentation"
       onClick={(e) => {
         if (!showConfirmModal && e.target === e.currentTarget) {
           handleClose();
@@ -350,14 +355,18 @@ function ReviewModal({
       }}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="review-modal-title"
+        tabIndex={-1}
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full flex flex-col overflow-hidden outline-none"
         style={{
           maxHeight: "90dvh",
         }}
       >
         <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+          <h2 id="review-modal-title" className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             {mode === "create" ? "Leave a Review" : "Review"}
           </h2>
           <button
@@ -440,9 +449,9 @@ function ReviewModal({
               </div>
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Add up to 3 photos (optional)
-                </label>
+                </p>
 
                 {uploadedImages.length < maxImages && (
                   <div className="mb-3">
@@ -561,9 +570,9 @@ function ReviewModal({
               <ViewRatingBlock label="Product Rating" rating={productRating} />
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Review
-                </label>
+                </p>
                 <div
                   className="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden"
                 >

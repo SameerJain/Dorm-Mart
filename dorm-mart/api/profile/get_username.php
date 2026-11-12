@@ -10,7 +10,7 @@ require_once __DIR__ . '/profile_helpers.php';
 init_json_endpoint('GET');
 
 try {
-    require_login();
+    $userId = require_login();
 
     $requestedId = request_int($_GET, 'user_id');
     if ($requestedId <= 0) {
@@ -20,11 +20,22 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    $stmt = $conn->prepare('SELECT email FROM user_accounts WHERE user_id = ? LIMIT 1');
+    // A username is the local part of an email address, so an id only resolves
+    // for yourself or someone you share a conversation with (the chat header).
+    $stmt = $conn->prepare(
+        'SELECT ua.email
+           FROM user_accounts ua
+          WHERE ua.user_id = ?
+            AND (ua.user_id = ? OR EXISTS (
+                SELECT 1 FROM conversations c
+                 WHERE (c.user1_id = ua.user_id AND c.user2_id = ?)
+                    OR (c.user2_id = ua.user_id AND c.user1_id = ?)))
+          LIMIT 1'
+    );
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare username lookup');
     }
-    $stmt->bind_param('i', $requestedId);
+    $stmt->bind_param('iiii', $requestedId, $userId, $userId, $userId);
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result ? $result->fetch_assoc() : null;
@@ -35,7 +46,7 @@ try {
         json_response(['success' => false, 'error' => 'User not found'], 404);
     }
 
-    $username = derive_username((string)$row['email']);
+    $username = inventory_username_from_email((string)$row['email']);
     json_response([
         'success' => true,
         'user_id' => $requestedId,

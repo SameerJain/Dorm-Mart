@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import LoggedDevicesPage from "../../../pages/Settings/LoggedDevicesPage";
 
 const mockNavigate = jest.fn();
@@ -33,10 +34,10 @@ test("shows device, location, and current-session details", async () => {
 
   render(<LoggedDevicesPage />);
 
-  expect(await screen.findByText("Microsoft Edge on Windows")).toBeTruthy();
-  expect(screen.getByText("Buffalo, NY, US")).toBeTruthy();
-  expect(screen.getByText("203.0.113.10")).toBeTruthy();
-  expect(screen.getByText("Current device")).toBeTruthy();
+  expect(await screen.findByText("Microsoft Edge on Windows")).toBeInTheDocument();
+  expect(screen.getByText("Buffalo, NY, US")).toBeInTheDocument();
+  expect(screen.getByText("203.0.113.10")).toBeInTheDocument();
+  expect(screen.getByText("Current device")).toBeInTheDocument();
 });
 
 test("explains local addresses and lists every session with its sign-out state", async () => {
@@ -58,11 +59,11 @@ test("explains local addresses and lists every session with its sign-out state",
     ok: true, json: async () => ({ success: true, devices }),
   });
   render(<LoggedDevicesPage />);
-  expect(await screen.findByText("Local device · no public location")).toBeTruthy();
-  expect(screen.getByText("Firefox on Linux")).toBeTruthy();
-  expect(screen.getByText("Safari on iOS")).toBeTruthy();
-  expect(screen.getByText("Buffalo, New York, United States")).toBeTruthy();
-  expect(screen.getByText("Current device")).toBeTruthy();
+  expect(await screen.findByText("Local device · no public location")).toBeInTheDocument();
+  expect(screen.getByText("Firefox on Linux")).toBeInTheDocument();
+  expect(screen.getByText("Safari on iOS")).toBeInTheDocument();
+  expect(screen.getByText("Buffalo, New York, United States")).toBeInTheDocument();
+  expect(screen.getByText("Current device")).toBeInTheDocument();
   expect(screen.getAllByText("Signed out").length).toBeGreaterThan(0);
   expect(screen.queryByRole("searchbox")).toBeNull();
   expect(screen.queryByRole("button", { name: "Refresh history" })).toBeNull();
@@ -75,7 +76,7 @@ test("offers Try again, not a refresh button, when loading fails", async () => {
   render(<LoggedDevicesPage />);
   fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
-  expect(await screen.findByText("No login history is available yet.")).toBeTruthy();
+  expect(await screen.findByText("No login history is available yet.")).toBeInTheDocument();
 });
 
 test("keeps history usable when a public IP cannot be located", async () => {
@@ -88,6 +89,6 @@ test("keeps history usable when a public IP cannot be located", async () => {
     }] }),
   });
   render(<LoggedDevicesPage />);
-  expect(await screen.findByText("City could not be determined from this IP")).toBeTruthy();
-  expect(screen.getByText("8.8.8.8")).toBeTruthy();
+  expect(await screen.findByText("City could not be determined from this IP")).toBeInTheDocument();
+  expect(screen.getByText("8.8.8.8")).toBeInTheDocument();
 });

@@ -22,6 +22,16 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
+    // Only the seller's chat view asks this; anyone else would be probing a
+    // stranger's listing for purchase activity.
+    $owner = $conn->prepare('SELECT 1 FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
+    if (!$owner) throw new RuntimeException('Failed to prepare listing owner lookup');
+    $owner->bind_param('ii', $productId, $userId);
+    $owner->execute();
+    $isSeller = $owner->get_result()->fetch_row() !== null;
+    $owner->close();
+    if (!$isSeller) json_response(['success' => false, 'error' => 'Listing not found'], 404);
+
     $hasActive = scheduled_purchase_has_open_request($conn, $productId);
 
     json_response([

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "@testing-library/jest-dom";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import ScheduleDateTimeFields from "../../../../pages/ScheduledPurchases/components/ScheduleDateTimeFields";
 
@@ -39,16 +40,16 @@ afterEach(() => jest.useRealTimers());
 
 test("the calendar is an option that replaces the date dropdowns and keeps the time fields", () => {
   render(<Harness />);
-  expect(screen.getByRole("button", { name: "Dropdowns", pressed: true })).toBeTruthy();
-  expect(screen.getByLabelText("Month")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Dropdowns", pressed: true })).toBeInTheDocument();
+  expect(screen.getByLabelText("Month")).toBeInTheDocument();
 
   openCalendar();
 
-  expect(screen.getByRole("button", { name: "Calendar", pressed: true })).toBeTruthy();
-  expect(screen.getByRole("table", { name: "November 2026" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Calendar", pressed: true })).toBeInTheDocument();
+  expect(screen.getByRole("table", { name: "November 2026" })).toBeInTheDocument();
   expect(screen.queryByLabelText("Month")).toBeNull();
-  expect(screen.getByLabelText("Hour")).toBeTruthy();
-  expect(screen.getByLabelText("AM/PM")).toBeTruthy();
+  expect(screen.getByLabelText("Hour")).toBeInTheDocument();
+  expect(screen.getByLabelText("AM/PM")).toBeInTheDocument();
 });
 
 test("only days inside the three-month window can be picked", () => {
@@ -64,7 +65,7 @@ test("only days inside the three-month window can be picked", () => {
   fireEvent.click(next);
   fireEvent.click(next);
   fireEvent.click(next);
-  expect(screen.getByRole("table", { name: "February 2027" })).toBeTruthy();
+  expect(screen.getByRole("table", { name: "February 2027" })).toBeInTheDocument();
   expect(day("Saturday, February 20, 2027").disabled).toBe(false);
   expect(day("Sunday, February 21, 2027").disabled).toBe(true);
   expect(next.disabled).toBe(true);
@@ -77,7 +78,7 @@ test("picking a day fills the same month, day and year the dropdowns use", () =>
   fireEvent.click(day("Saturday, December 5, 2026"));
 
   expect(day("Saturday, December 5, 2026").getAttribute("aria-pressed")).toBe("true");
-  expect(screen.getByText("Selected: Saturday, December 5, 2026")).toBeTruthy();
+  expect(screen.getByText("Selected: Saturday, December 5, 2026")).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: "Dropdowns" }));
   expect(screen.getByLabelText("Month").value).toBe("12");
@@ -93,7 +94,7 @@ test("the calendar opens on a date already chosen with the dropdowns", () => {
 
   openCalendar();
 
-  expect(screen.getByRole("table", { name: "January 2027" })).toBeTruthy();
+  expect(screen.getByRole("table", { name: "January 2027" })).toBeInTheDocument();
   expect(day("Friday, January 15, 2027").getAttribute("aria-pressed")).toBe("true");
   expect(day("Friday, January 15, 2027").tabIndex).toBe(0);
 });
@@ -115,7 +116,7 @@ test("arrow keys move between days and months but stop at the window edge", () =
   expect(document.activeElement).toBe(day("Saturday, November 28, 2026"));
 
   fireEvent.keyDown(document.activeElement, { key: "ArrowDown" });
-  expect(screen.getByRole("table", { name: "December 2026" })).toBeTruthy();
+  expect(screen.getByRole("table", { name: "December 2026" })).toBeInTheDocument();
   expect(document.activeElement).toBe(day("Saturday, December 5, 2026"));
   expect(document.activeElement.tabIndex).toBe(0);
 });

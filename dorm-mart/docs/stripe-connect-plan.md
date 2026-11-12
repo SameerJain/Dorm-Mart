@@ -44,7 +44,7 @@ PaymentIntents use dynamic payment methods with a card-only Payment Method Confi
 ## Environments and launch gate
 
 - If either participant is a protected seed account, the transaction uses local mock mode. It never uses Stripe credentials, card details, or Stripe APIs, even when real payments are enabled. The server decides the mode from account records, not request fields.
-- Mock checkout uses the same Payment Window, completion, receipt, and refund flows, with explicit mock labels. It does not count toward earnings. Unprotected pairs require live configuration and seller onboarding; missing keys never silently simulate a real account's payment.
+- Mock checkout uses the same Payment Window, completion, receipt, and refund flows, with explicit mock labels. It does not count toward earnings. Unprotected pairs require live configuration and seller onboarding; missing keys never silently simulate a real account's payment once `PAYMENTS_ENABLED=true`. While it is `false`, demo mode (`PAYMENTS_DEMO_MODE`, default on) deliberately gives every pair this same labeled mock flow.
 - Keep `PAYMENTS_ENABLED=false` until migrations, card-only Payment Method Configurations, webhook secrets, HTTPS, and scenario tests are complete.
 - Before enabling live mode, rotate every credential exposed outside the deployment secret store.
 - Direct charges with full Dashboard and Stripe collecting fees/losses are supported, but Dorm Mart is a marketplace storefront. Complete the Connect platform profile truthfully and get Stripe confirmation that this responsibility model fits the live business before launch.

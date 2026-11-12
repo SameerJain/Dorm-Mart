@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE, PUBLIC_BASE } from "../../../utils/apiConfig";
-import { apiPostJson } from "../../../utils/apiClient";
+import { csrfPostJson } from "../../../utils/apiClient";
 import logger from "../../../utils/logger";
 import { normalizeSearchResults } from "../utils/searchResultsUtils";
 
@@ -16,7 +16,7 @@ export function useSearchResults(payload) {
       setLoading(true);
       setError(null);
       try {
-        const data = await apiPostJson(
+        const data = await csrfPostJson(
           `${API_BASE}/search/get_search_items.php`,
           payload,
           { signal: controller.signal },

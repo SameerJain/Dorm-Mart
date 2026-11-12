@@ -363,7 +363,7 @@ try {
     $stmt->execute();
 
     $oldPrice = (float)$existing['listing_price'];
-    $firstImage = notification_first_image($photosJson);
+    $firstImage = inventory_first_photo($photosJson);
     if ($status === 'Active' && abs($oldPrice - (float)$price) >= 0.005) {
       $reduced = (float)$price < $oldPrice;
       notification_supersede_unread($conn, $itemId, ['price_reduced', 'price_increased']);

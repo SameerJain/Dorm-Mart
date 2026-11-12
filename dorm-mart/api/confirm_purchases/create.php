@@ -285,7 +285,7 @@ try {
         'product_id' => $productId, 'scheduled_request_id' => $scheduledRequestId,
         'title' => $itemTitle,
         'message' => $sellerDisplayName . ' sent the Confirm Purchase form. Review it within 24 hours or it will be accepted automatically.',
-        'image_url' => notification_first_image($schedRow['item_photos'] ?? null), 'severity' => 'urgent',
+        'image_url' => inventory_first_photo($schedRow['item_photos'] ?? null), 'severity' => 'urgent',
         'destination' => '/app/chat?conv=' . $conversationId,
         'idempotency_key' => 'confirm-request-' . $confirmRequestId,
     ]);

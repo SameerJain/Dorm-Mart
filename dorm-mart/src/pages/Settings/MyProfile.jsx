@@ -267,6 +267,7 @@ function EditableLinkRow({
         </button>
       </div>
       <input
+        aria-label={label}
         type="url"
         value={value}
         onChange={onChange}
@@ -702,6 +703,7 @@ function MyProfilePage() {
                       </button>
                     </div>
                     <textarea
+                      aria-label="Bio"
                       value={bio}
                       onChange={handleBioChange}
                       maxLength={200}

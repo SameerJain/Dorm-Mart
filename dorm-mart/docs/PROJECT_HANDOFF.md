@@ -5,8 +5,9 @@
 This handoff compares the end-of-sprint snapshot from December 2, 2025 with the current code snapshot.
 
 - **December baseline:** `fec6ac5f9ba28f089e045a2168794218c78a5233` (`Merge pull request #198 from cse442-software-engineering-ub/dev`).
-- **Current code snapshot:** `28500d5041eeb429a408f349d163750bd55238c8` on `145-Setup-Railway-Deployment-System`.
-- **Scale:** 919 tracked files differ when dependency/vendor files are included. Excluding `dorm-mart/vendor` and `package-lock.json`, 617 files differ: 294 added, 164 deleted, 114 modified, and 45 renamed.
+- **Current code snapshot:** `07750435e64b8ff1934fc41bb72008402c244bd3` on `145-Setup-Railway-Deployment-System` (2026-10-30, `adding push notifications`).
+- **Scale:** 2,452 tracked files differ when dependency/vendor files are included. Excluding `dorm-mart/vendor` and `package-lock.json`, 973 files differ: 663 added, 182 deleted, 104 modified, and 24 renamed. That includes the whole declarative `dorm-mart/schema/` directory, which did not exist in December, plus the feature reorganization under `src/pages/`, test images, and new API folders.
+- **Working tree:** 177 changed paths on top of that commit (134 modified and 21 deleted tracked files, plus 22 untracked), including `docs/backlog-card-tests.md`, `api/tests/input_fuzz_test.php`, `vite.config.mjs`, `phpstan.neon`, and the `scripts/check-*.js` guards. The counts below describe the commit. The working tree is noted where it changes the story.
 - **Purpose:** this is a practical guide to the current architecture and behavior, not a file-by-file diff. Generated dependencies, bulk image cleanup, and fixture churn are summarized.
 
 The current app is still a React frontend with a PHP/MySQL backend. The largest changes since December are the feature-based code reorganization, Railway deployment support, personalized recommendations, expanded notifications, account-security pages, moderation, safer authentication/session handling, and a real automated test suite.
@@ -167,10 +168,12 @@ Unknown routes use `NotFoundPage`. The December raw-loader behavior for unfinish
 - Destinations are restricted to internal `/app` paths before insertion and checked again before frontend navigation.
 - The Notifications page supports opening/marking read, deleting one notification, and clearing all notifications.
 - Wishlist add/remove operations also update recommendation behavior and continue to maintain item wishlist counts.
+- Browser push is a separate opt-in channel on top of the same events. Users enable it in Settings > User Preferences; the app registers a Web Push subscription (`api/push/subscription.php`), queues deliveries in `browser_push_queue`, and a worker (`php api/utility/send_browser_push.php`, or the `railway-push.toml` service on Railway) delivers them with a fake sender in tests. Setup, VAPID keys, and verification are in `BROWSER_PUSH.md`.
+- Private per-account search history lives behind `api/search/recent_searches.php` (`recent_searches` table): newest-ten ordering, deduplication, CSRF, clearing, and account-deletion cleanup, covered by `recent_searches_test.php`.
 
 ### Legal pages, responsive UI, and accessibility
 
-- Privacy Policy and Terms of Service are now React pages under `src/pages/Legal`, linked from login, account creation, account information, and moderation.
+- Privacy Policy and Terms of Service are now React pages under `src/pages/Legal`, linked from login, account creation, account information, and moderation. The same folder holds a public Safety summary page with aggregate moderation counts and no personal data.
 - Static PDF copies still exist under `public/pdfs`, but no current source code links to them; treat them as legacy assets unless a deployment still needs them.
 - Public/pre-login pages are grouped under a layout that suppresses authenticated dark-mode state and avoids theme flicker.
 - Modal body-scroll locking, mobile touch targets, small-screen spacing, long-word wrapping, image fallbacks, and dark-mode colors were improved across the app.
@@ -185,7 +188,7 @@ Current feature folders include:
 - `api/auth`, `api/categories`, `api/chat`, `api/confirm_purchases`, `api/listings`;
 - `api/media`, `api/moderation`, `api/product`, `api/profile`, `api/purchase_history`;
 - `api/receipt`, `api/reviews`, `api/scheduled_purchases`, `api/search`;
-- `api/seller_dashboard`, and `api/wishlist`.
+- `api/seller_dashboard`, `api/wishlist`, `api/push`, `api/email`, and `api/user`.
 
 Shared code lives under `api/config`, `api/helpers`, `api/security`, `api/utility`, and `api/database`. These are libraries or CLI tools, not public HTTP endpoints.
 
@@ -210,7 +213,7 @@ Shared code lives under `api/config`, `api/helpers`, `api/security`, `api/utilit
 - `php api/database/migrate_schema.php --dry-run` prints the plan without changing anything (it still creates and drops its scratch database, `<db>__schema`, so it needs permission to create databases). `--prune` also drops tables that no file declares; without it they are only listed as `unmanaged`. `--reseed-profanity` re-runs the word-list import.
 - To add a table, add `schema/<table>.sql` that starts with `CREATE TABLE <table> (...)`. The file name must match the table, tables may `REFERENCES` each other (creation order is worked out automatically), and `INSERT IGNORE` statements after the `CREATE` are starter rows, inserted whenever the table is empty.
 - Name every CHECK constraint, so it keeps one identity across servers and edits.
-- `purchased_items` is still there: nothing writes to it, but Purchase History and account deletion still read it. The Stripe tables (`connected_payment_accounts`, `electronic_payments`, `stripe_webhook_events`) and the `payment_*` columns on `scheduled_purchase_requests` / `confirm_purchase_requests` are part of the normal schema; the scheduling and confirm code writes them even while `dm_payments_enabled()` is false.
+- `purchased_items` is still there: nothing writes to it, but Purchase History and account deletion still read it. The Stripe tables (`connected_payment_accounts`, `electronic_payments`, `stripe_webhook_events`) and the `payment_*` columns on `scheduled_purchase_requests` / `confirm_purchase_requests` are part of the normal schema. While `PAYMENTS_ENABLED=false`, the demo mode (`PAYMENTS_DEMO_MODE`, on by default) lets every account use built-in payment as a mock transaction; scheduling and confirm code write the payment columns in both modes. New since the last handoff: `browser_push_subscriptions`, `browser_push_queue`, and `recent_searches` (27 tables total).
 - **First sync of an older database** (production was built by the retired migration chain): run `migrate_schema.php --dry-run` against a copy first and read the plan. Redundant indexes and renamed CHECK constraints are expected; a `[destructive]` line means a column exists in that database that no file declares. The old ledger table `schema_migrations` (and `data_migrations`, `wishlist_notification`, `account_creation_rate_limits` if present) show up as `unmanaged` until someone runs `--prune`.
 - Railway runs `php api/database/migrate_schema.php` before deployment through `dorm-mart/railway.toml`.
 - Declare nullability on every `TIMESTAMP` column (`TIMESTAMP NOT NULL DEFAULT ...`): MySQL and MariaDB read a bare `TIMESTAMP` differently depending on `explicit_defaults_for_timestamp`, so the same file would build two different tables.
@@ -250,17 +253,18 @@ npm run start:api
 
 ### Tests and build
 
-The old handoff statement that Jest had no matching tests is no longer true. The current tree has 37 frontend test files, including adversarial utility coverage and component tests for account creation, chat, moderation, notifications, listing actions, scheduled purchases, settings, and 2FA.
+The old handoff statement that Jest had no matching tests is no longer true. The commit holds 73 Jest test files, including adversarial utility coverage and component tests for account creation, chat, moderation, notifications, listing actions, scheduled purchases, settings, and 2FA. The working tree consolidates the adversarial suites into their main suite files, so the count there is lower.
 
-From `dorm-mart`:
+From `dorm-mart/`:
 
 ```powershell
-npm test -- --watchAll=false
+npm test
 npm run test:backend
+npm run test:backend:integration
 npm run build
 ```
 
-`test:backend` runs the CLI adversarial validation, login-location, and promotional-digest checks under `api/tests/`. Credential-gated integration scripts live in `api/tests/integration/`; they are not part of that command and are blocked from HTTP access.
+`test:backend` runs nine offline CLI scripts under `api/tests/` with no database and no network: adversarial validation, login location, promotional digest, helpers, profanity, schedule proposal, schema sync, database migrations, and browser-push crypto. `test:backend:integration` runs six suites that each build a scratch database and a private `php -S`: purchase lifecycle, card acceptance, mock payment, recent searches, browser push, and input fuzz. `input_fuzz_test.php` is still untracked in the working tree. Credential-gated scripts under `api/tests/integration/` are not part of either command and are blocked from HTTP access. `npm run check` runs the PHP/JS/a11y lints, the `scripts/check-*.js` guards, `npm test`, and `test:backend`.
 
 ### Apache, Aptitude, and Cattle packages
 
@@ -302,6 +306,9 @@ Key environment variables are documented in `environment_configuration.md` (next
 - The generic media endpoint intentionally refuses chat media. Do not “fix” chat images by routing them through the public product-image endpoint.
 - Uploaded files require persistent Railway storage; a placeholder with a valid database row often means the volume/path is missing, not that the React component is broken.
 - `send_promotional_digests.php` runs from the Railway cron service in `railway.promotional.toml`; a deployment without that service sends no digests.
+- Browser push needs a second Railway service from `railway-push.toml` plus stable VAPID keys on both services; without the worker, subscriptions queue and nothing is delivered. See `BROWSER_PUSH.md`.
+- Demo payments move no money by design. `PAYMENTS_DEMO_MODE=false` hides built-in payment from non-seed accounts until Stripe is live; schedules accepted in demo mode return to manual confirmation once real payments turn on.
+- `docs/backlog-card-tests.md` is still untracked. It holds paste-ready tests for the 59 Backlog board cards, written 2026-11-10. Nothing in it has been posted to GitHub yet.
 - Logged Devices does not currently provide per-device remote sign-out. Password change/reset is the available revoke-all path.
 - Moderator decisions (report resolutions, listing removals, flag clears, word-list edits) are written to `moderation_actions` (created in the baseline; originally migration `028`) and shown as "Recent moderator actions" on the dashboard. Logging is best effort and never blocks the action.
 - Static legal PDFs remain in `public/pdfs` even though the current UI uses native legal pages.

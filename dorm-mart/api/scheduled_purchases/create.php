@@ -212,7 +212,7 @@ try {
         'title' => (string)($itemRow['title'] ?? 'Scheduled purchase'),
         'message' => scheduled_purchase_user_display_name($conn, $sellerId)
             . ' scheduled a meetup at ' . $meetLocation . '. Accept or decline it in chat before it expires.',
-        'image_url' => notification_first_image($itemRow['photos'] ?? null), 'severity' => 'warning',
+        'image_url' => inventory_first_photo($itemRow['photos'] ?? null), 'severity' => 'warning',
         'destination' => '/app/chat?conv=' . $conversationId,
         'idempotency_key' => 'schedule-request-' . $requestId,
     ]);

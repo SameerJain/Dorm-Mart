@@ -88,7 +88,7 @@ try {
             'product_id' => null,
             'title' => $title,
             'message' => $title . ' was removed because the seller deleted their account.',
-            'image_url' => notification_first_image($listing['photos'] ?? null),
+            'image_url' => inventory_first_photo($listing['photos'] ?? null),
             'severity' => 'warning',
             'destination' => null,
             'idempotency_key' => 'account-deleted-' . $productId,

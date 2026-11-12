@@ -10,947 +10,22 @@ Run from `dorm-mart/`:
 
 | Command | Scope |
 | --- | --- |
-| `npm test -- --watchAll=false` | All frontend Jest tests |
-| `npm test -- --watchAll=false --runTestsByPath src/__tests__/utils/apiClient.test.js` | One frontend test file; replace the path as needed |
-| `npm run test:backend` | Five offline PHP scripts named in package.json |
-| `npm run test:backend:integration` | Disposable local database and HTTP purchase lifecycle |
+| `npm test` | All frontend Jest tests |
+| `npm test -- --runTestsByPath src/__tests__/utils/apiClient.test.js` | One frontend test file; replace the path as needed |
+| `npm run test:backend` | Nine offline PHP scripts named in package.json |
+| `npm run test:backend:integration` | Six suites that each build a scratch database and a private PHP server |
 | `npm run lint:php` | PHP syntax checks, not behavioral tests |
 | `npm run test:mutation -- --mutate src/pages/Settings/userPreferencesUtils.js` | Targeted mutation audit; requires installed Stryker |
 
 HTTP scenario scripts require a running local API and may require `API_TEST_LOGIN_EMAIL`, `API_TEST_LOGIN_PASSWORD`, and `API_TEST_BASE_URL`. Inspect them before execution: some send email or affect lockouts/data, and some report verdicts in JSON/HTML rather than a failing process exit. The Bash rate-limit script prints requests and has historical threshold comments; verify current policy in source. Its output alone is not an automated pass/fail verdict.
 
-The XSS encoding file is a manual HTML demonstration; the router blocks direct HTTP access to `api/tests`. Do not weaken that guard to run it. `db_connection_test.php` needs the configured database. Neither is part of the five offline checks.
+The XSS encoding file is a manual HTML demonstration; the router blocks direct HTTP access to `api/tests`. Do not weaken that guard to run it. `db_connection_test.php` needs the configured database. Neither is part of the nine offline checks.
 
 Excluded: vendor tests, SQL seed data, images, test support `api/tests/bootstrap.php`, and `api/payments/*webhook*test.php` (Stripe test-mode endpoint handlers).
 
 ## Inventory
 
-### Frontend Jest tests (73 files)
-
-<details>
-<summary>src/__tests__/adversarial/apiClient.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/apiClient.adversarial.test.js)
-
-```javascript
-import {
-  apiGetJson,
-  apiPostJson,
-  csrfPostJson,
-  readApiError,
-  readJsonResponse,
-} from "../../utils/apiClient";
-import { csrfFetch } from "../../utils/csrfFetch";
-
-jest.mock("../../utils/csrfFetch", () => ({
-  csrfFetch: jest.fn(),
-}));
-
-function response(body, init = {}) {
-  const text = typeof body === "string" ? body : JSON.stringify(body);
-  return {
-    ok: init.ok ?? true,
-    status: init.status ?? 200,
-    headers: new Headers(init.headers || { "content-type": "application/json" }),
-    text: jest.fn().mockResolvedValue(text),
-  };
-}
-
-describe("apiClient adversarial boundaries", () => {
-  beforeEach(() => {
-    global.fetch = jest.fn();
-    csrfFetch.mockReset();
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  test("readJsonResponse parses valid JSON and rejects malformed JSON deliberately", async () => {
-    await expect(readJsonResponse(response({ ok: true }))).resolves.toEqual({
-      ok: true,
-    });
-    await expect(readJsonResponse(response("{bad json"))).rejects.toThrow(
-      "Invalid JSON response",
-    );
-  });
-
-  test("readApiError prefers JSON error fields and falls back to non-JSON body text", async () => {
-    await expect(
-      readApiError(
-        response({ error: "Specific failure" }, { ok: false, status: 400 }),
-      ),
-    ).resolves.toBe("Specific failure");
-
-    await expect(
-      readApiError(
-        response("Plain failure", {
-          ok: false,
-          status: 500,
-          headers: { "content-type": "text/plain" },
-        }),
-        "Fallback failure",
-      ),
-    ).resolves.toBe("Plain failure");
-  });
-
-  test("apiGetJson throws parsed API errors instead of leaking raw status handling", async () => {
-    global.fetch.mockResolvedValueOnce(
-      response({ message: "Nope" }, { ok: false, status: 403 }),
-    );
-
-    await expect(apiGetJson("/api/nope")).rejects.toThrow("Nope");
-  });
-
-  test("apiPostJson sends non-mutating JSON searches through the shared boundary", async () => {
-    global.fetch.mockResolvedValueOnce(response([{ id: 7 }]));
-
-    await expect(apiPostJson("/api/search", { q: "lamp" })).resolves.toEqual([
-      { id: 7 },
-    ]);
-    expect(global.fetch).toHaveBeenCalledWith(
-      "/api/search",
-      expect.objectContaining({
-        method: "POST",
-        credentials: "include",
-        body: JSON.stringify({ q: "lamp" }),
-      }),
-    );
-  });
-
-  test("csrfPostJson sends a JSON CSRF request and returns parsed JSON", async () => {
-    csrfFetch.mockResolvedValueOnce(response({ success: true }));
-
-    await expect(csrfPostJson("/api/save", { title: "Lamp" })).resolves.toEqual(
-      { success: true },
-    );
-
-    expect(csrfFetch).toHaveBeenCalledWith(
-      "/api/save",
-      expect.objectContaining({
-        method: "POST",
-        credentials: "include",
-        body: JSON.stringify({ title: "Lamp" }),
-      }),
-    );
-  });
-});
-```
-
-</details>
-
-<details>
-<summary>src/__tests__/adversarial/csrfFetch.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/csrfFetch.adversarial.test.js)
-
-```javascript
-import { clearCsrfToken, csrfFetch } from "../../utils/csrfFetch";
-
-function jsonResponse(body, init = {}) {
-  const response = {
-    ok: init.ok ?? true,
-    status: init.status ?? 200,
-    headers: new Headers(init.headers || { "content-type": "application/json" }),
-    json: jest.fn().mockResolvedValue(body),
-    text: jest.fn().mockResolvedValue(JSON.stringify(body)),
-  };
-  response.clone = () => jsonResponse(body, init);
-  return response;
-}
-
-describe("csrfFetch adversarial boundaries", () => {
-  beforeEach(() => {
-    clearCsrfToken();
-    global.fetch = jest.fn();
-  });
-
-  afterEach(() => {
-    clearCsrfToken();
-    jest.restoreAllMocks();
-  });
-
-  test("reports malformed JSON request bodies with a deliberate boundary error", async () => {
-    global.fetch.mockResolvedValueOnce(jsonResponse({ csrf_token: "token-1" }));
-
-    await expect(
-      csrfFetch("/api/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: '{"broken"',
-      }),
-    ).rejects.toThrow("Invalid JSON request body");
-
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-  });
-
-  test("refreshes the CSRF token once after a mutating request is rejected for CSRF", async () => {
-    global.fetch
-      .mockResolvedValueOnce(jsonResponse({ csrf_token: "stale-token" }))
-      .mockResolvedValueOnce(
-        jsonResponse({ error: "CSRF token validation failed", code: "csrf_invalid" }, { ok: false, status: 403 }),
-      )
-      .mockResolvedValueOnce(jsonResponse({ csrf_token: "fresh-token" }))
-      .mockResolvedValueOnce(jsonResponse({ ok: true }));
-
-    const response = await csrfFetch("/api/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Lamp" }),
-    });
-
-    expect(response.status).toBe(200);
-    expect(global.fetch).toHaveBeenCalledTimes(4);
-    expect(global.fetch.mock.calls[1][1].body).toContain("stale-token");
-    expect(global.fetch.mock.calls[3][1].body).toContain("fresh-token");
-  });
-
-  test("does not retry a 403 that is a permission denial rather than a CSRF failure", async () => {
-    global.fetch
-      .mockResolvedValueOnce(jsonResponse({ csrf_token: "token-1" }))
-      .mockResolvedValueOnce(jsonResponse({ error: "Forbidden" }, { ok: false, status: 403 }));
-
-    const response = await csrfFetch("/api/moderation/ban_user.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: 7 }),
-    });
-
-    expect(response.status).toBe(403);
-    expect(global.fetch).toHaveBeenCalledTimes(2);
-  });
-});
-```
-
-</details>
-
-<details>
-<summary>src/__tests__/adversarial/formatters.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/formatters.adversarial.test.js)
-
-```javascript
-import {
-  coerceNumber,
-  compareDateAsc,
-  compareDateDesc,
-  dateTimestamp,
-  parseDateValue,
-} from "../../utils/formatters";
-
-describe("formatter adversarial boundaries", () => {
-  test("coerceNumber accepts currency-like numbers without extracting numbers from prose", () => {
-    expect(coerceNumber("$1,234.50")).toBe(1234.5);
-    expect(coerceNumber(" 99.95 ")).toBe(99.95);
-    expect(coerceNumber("abc123")).toBeNull();
-    expect(coerceNumber("12 dollars")).toBeNull();
-    expect(coerceNumber(Infinity)).toBeNull();
-  });
-
-  test("parseDateValue returns null for invalid date-like strings", () => {
-    expect(parseDateValue("not-a-date")).toBeNull();
-    expect(parseDateValue(new Date("bad date"))).toBeNull();
-  });
-
-  test("date timestamp and comparators handle invalid dates without leaking NaN", () => {
-    expect(dateTimestamp("not-a-date", 0)).toBe(0);
-    expect(Number.isFinite(dateTimestamp("2026-01-02T00:00:00Z"))).toBe(true);
-
-    const values = ["2026-01-02T00:00:00Z", "bad", "2026-01-01T00:00:00Z"];
-    expect([...values].sort(compareDateAsc)).toEqual([
-      "2026-01-01T00:00:00Z",
-      "2026-01-02T00:00:00Z",
-      "bad",
-    ]);
-    expect([...values].sort(compareDateDesc)).toEqual([
-      "2026-01-02T00:00:00Z",
-      "2026-01-01T00:00:00Z",
-      "bad",
-    ]);
-  });
-});
-```
-
-</details>
-
-<details>
-<summary>src/__tests__/adversarial/homeFeedUtils.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/homeFeedUtils.adversarial.test.js)
-
-```javascript
-import {
-  buildHomeFeed,
-  getQuickFilterCategories,
-  normalizeLandingItem,
-} from "../../pages/Home/utils/homeFeedUtils";
-
-describe("home feed utility boundaries", () => {
-  test("normalizes landing items with safe defaults", () => {
-    const item = normalizeLandingItem(
-      {
-        id: 9,
-        title: "",
-        price: "abc123",
-        tags: "Electronics, Dorm",
-        seller_email: "seller@example.com",
-        created_at: "bad-date",
-      },
-      0,
-    );
-
-    expect(item.price).toBe(0);
-    expect(item.tags).toEqual(["Electronics", "Dorm"]);
-    expect(item.category).toBe("Electronics");
-    expect(item.sellerUsername).toBe("seller");
-    expect(item.createdAtTs).toBe(0);
-  });
-
-  test("explore includes every listing, including ones matching the user's interests", () => {
-    const items = [
-      { id: 1, category: "Books", tags: ["Books"], createdAtTs: 3 },
-      { id: 2, category: "Tech", tags: ["Tech"], createdAtTs: 2 },
-      { id: 3, category: "Kitchen", tags: ["Kitchen"], createdAtTs: 1 },
-    ];
-
-    const feed = buildHomeFeed(items, 30);
-
-    expect(feed.exploreItems.map((item) => item.id).sort()).toEqual([1, 2, 3]);
-  });
-
-  test("explore keeps the given order when only the limit changes", () => {
-    const items = Array.from({ length: 40 }, (_, i) => ({ id: i + 1 }));
-    const order = [...items].reverse();
-
-    const small = buildHomeFeed(items, 30, order).exploreItems.map((item) => item.id);
-    const large = buildHomeFeed(items, 40, order).exploreItems.map((item) => item.id);
-
-    expect(large.slice(0, small.length)).toEqual(small);
-    expect(small[0]).toBe(40);
-  });
-
-  test("ranks the For You feed by recommendation score without requiring interests", () => {
-    const items = [
-      { id: 1, recommendationScore: 2, createdAtTs: 3 },
-      { id: 2, recommendationScore: 8, createdAtTs: 1 },
-      { id: 3, recommendationScore: 8, createdAtTs: 4 },
-    ];
-
-    const feed = buildHomeFeed(items, 30);
-
-    expect(feed.forYouItems.map((item) => item.id)).toEqual([3, 2, 1]);
-  });
-
-  test("derives quick filters from items when category API is empty", () => {
-    expect(
-      getQuickFilterCategories([], [
-        { category: "Books", tags: ["Textbooks"] },
-        { category: "Books", tags: ["Dorm"] },
-      ]),
-    ).toEqual(["Books", "Textbooks", "Dorm"]);
-  });
-});
-```
-
-</details>
-
-<details>
-<summary>src/__tests__/adversarial/imageFallback.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/imageFallback.adversarial.test.js)
-
-```javascript
-import {
-  FALLBACK_IMAGE_URL,
-  isVideoMediaUrl,
-  resolveProductPhotoUrl,
-  resolveProductPhotoUrls,
-  withFallbackImage,
-} from "../../utils/imageFallback";
-
-describe("image fallback adversarial boundaries", () => {
-  const apiBase = "https://api.example.test/api";
-
-  test("does not proxy external absolute image URLs through the local PHP image endpoint", () => {
-    const externalUrl = "https://cdn.example.test/products/chair.jpg";
-
-    expect(resolveProductPhotoUrl(externalUrl, { apiBase })).toBe(externalUrl);
-  });
-
-  test("proxies absolute URLs only when their path is a locally stored image path", () => {
-    expect(
-      resolveProductPhotoUrl("https://app.example.test/images/chair.jpg", {
-        apiBase,
-      }),
-    ).toBe(`${apiBase}/media/image.php?url=%2Fimages%2Fchair.jpg`);
-  });
-
-  test("drops object-shaped photo entries instead of stringifying them", () => {
-    expect(
-      resolveProductPhotoUrls(
-        JSON.stringify(["/images/good.jpg", { url: "/images/bad.jpg" }, null]),
-        { apiBase },
-      ),
-    ).toEqual([`${apiBase}/media/image.php?url=%2Fimages%2Fgood.jpg`]);
-  });
-
-  test("rejects executable image sources while keeping safe placeholders", () => {
-    expect(withFallbackImage("javascript:alert(1)")).toBe(FALLBACK_IMAGE_URL);
-    expect(withFallbackImage(" data:image/png;base64,abcd ")).toBe(
-      "data:image/png;base64,abcd",
-    );
-  });
-
-  test("recognizes stored and proxied product video URLs", () => {
-    expect(isVideoMediaUrl("/images/item-demo.mp4")).toBe(true);
-    expect(
-      isVideoMediaUrl(
-        `${apiBase}/media/image.php?url=%2Fimages%2Fitem-demo.webm`,
-      ),
-    ).toBe(true);
-    expect(isVideoMediaUrl("/images/item-photo.jpg")).toBe(false);
-  });
-});
-```
-
-</details>
-
-<details>
-<summary>src/__tests__/adversarial/numericInputKeyHandlers.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/numericInputKeyHandlers.adversarial.test.js)
-
-```javascript
-import {
-  decimalNumericKeyDownHandler,
-  integerNumericKeyDownHandler,
-} from "../../utils/numericInputKeyHandlers";
-
-function keyEvent(key, value = "", overrides = {}) {
-  return {
-    key,
-    currentTarget: { value },
-    preventDefault: jest.fn(),
-    ...overrides,
-  };
-}
-
-describe("numeric input key guards", () => {
-  test("integer guard allows navigation, shortcuts, and digits while blocking signs/exponents", () => {
-    const arrow = keyEvent("ArrowLeft");
-    const shortcut = keyEvent("a", "", { ctrlKey: true });
-    const digit = keyEvent("7");
-    const exponent = keyEvent("e");
-    const sign = keyEvent("-");
-
-    integerNumericKeyDownHandler(arrow);
-    integerNumericKeyDownHandler(shortcut);
-    integerNumericKeyDownHandler(digit);
-    integerNumericKeyDownHandler(exponent);
-    integerNumericKeyDownHandler(sign);
-
-    expect(arrow.preventDefault).not.toHaveBeenCalled();
-    expect(shortcut.preventDefault).not.toHaveBeenCalled();
-    expect(digit.preventDefault).not.toHaveBeenCalled();
-    expect(exponent.preventDefault).toHaveBeenCalledTimes(1);
-    expect(sign.preventDefault).toHaveBeenCalledTimes(1);
-  });
-
-  test("decimal guard allows one decimal separator and blocks a second", () => {
-    const firstDecimal = keyEvent(".", "12");
-    const secondDecimal = keyEvent(".", "12.3");
-    const processKey = keyEvent("Process");
-
-    decimalNumericKeyDownHandler(firstDecimal);
-    decimalNumericKeyDownHandler(secondDecimal);
-    decimalNumericKeyDownHandler(processKey);
-
-    expect(firstDecimal.preventDefault).not.toHaveBeenCalled();
-    expect(secondDecimal.preventDefault).toHaveBeenCalledTimes(1);
-    expect(processKey.preventDefault).not.toHaveBeenCalled();
-  });
-});
-```
-
-</details>
-
-<details>
-<summary>src/__tests__/adversarial/productDetails.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/productDetails.adversarial.test.js)
-
-```javascript
-import { normalizeProductDetail } from "../../utils/productDetails";
-
-describe("product detail adversarial normalization", () => {
-  test("uses canonical coercion for booleans and invalid dates", () => {
-    const product = normalizeProductDetail({
-      product_id: "p1",
-      title: "Desk lamp",
-      listing_price: "$12.50",
-      trades: " TRUE ",
-      price_nego: "yes",
-      sold: "0",
-      date_listed: "not-a-date",
-      date_sold: new Date("bad date"),
-    });
-
-    expect(product.price).toBe(12.5);
-    expect(product.trades).toBe(true);
-    expect(product.priceNego).toBe(true);
-    expect(product.sold).toBe(false);
-    expect(product.dateListed).toBeNull();
-    expect(product.dateSold).toBeNull();
-  });
-
-  test("does not derive blank seller usernames from malformed emails", () => {
-    const product = normalizeProductDetail({
-      product_id: "p2",
-      seller_id: 7,
-      email: "   @buffalo.edu",
-    });
-
-    expect(product.sellerName).toBe("Seller #7");
-    expect(product.sellerUsername).toBeNull();
-  });
-});
-```
-
-</details>
-
-<details>
-<summary>src/__tests__/adversarial/scheduledPurchases.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/scheduledPurchases.adversarial.test.js)
-
-```javascript
-import {
-  getCardTone,
-  getRequestState,
-} from "../../pages/ScheduledPurchases/utils/ongoingPurchaseViewUtils";
-import {
-  getScheduleBucket,
-  groupScheduledPurchasesByItem,
-} from "../../pages/ScheduledPurchases/utils/scheduledPurchaseUtils";
-
-describe("scheduled purchase architecture helpers", () => {
-  test("status helpers prioritize confirm-state flags over raw status", () => {
-    expect(getRequestState({ status: "accepted", has_completed_confirm: true })).toBe(
-      "completed",
-    );
-    expect(
-      getCardTone({ status: "accepted", has_unsuccessful_confirm: true }, true)
-        .inactive,
-    ).toBe(true);
-  });
-
-  test("bucket helper handles invalid and relative meeting states", () => {
-    const now = Date.parse("2026-01-02T12:00:00Z");
-
-    expect(getScheduleBucket({ status: "pending" }, now)).toBe("needsResponse");
-    expect(
-      getScheduleBucket(
-        { status: "accepted", meeting_at: "2026-01-02T12:10:00Z" },
-        now,
-      ),
-    ).toBe("upcoming");
-    expect(
-      getScheduleBucket(
-        { status: "accepted", meeting_at: "2026-01-02T11:45:00Z" },
-        now,
-      ),
-    ).toBe("active");
-    expect(
-      getScheduleBucket(
-        { status: "accepted", meeting_at: "2026-01-02T12:00:00Z" },
-        now,
-      ),
-    ).toBe("active");
-    expect(
-      getScheduleBucket(
-        { status: "accepted", meeting_at: "2026-01-02T11:30:00Z" },
-        now,
-      ),
-    ).toBe("past");
-  });
-
-  test("groups buyer and seller requests by item with perspective attached", () => {
-    const groups = groupScheduledPurchasesByItem(
-      [{ request_id: 1, inventory_product_id: 7, status: "pending", item: { title: "Lamp" } }],
-      [{ request_id: 2, inventory_product_id: 7, status: "accepted", item: { title: "Lamp" } }],
-      Date.parse("2026-01-02T12:00:00Z"),
-    );
-
-    expect(groups).toHaveLength(1);
-    expect(groups[0].purchases.map((request) => request.perspective)).toEqual([
-      "buyer",
-      "seller",
-    ]);
-  });
-});
-```
-
-</details>
-
-<details>
-<summary>src/__tests__/adversarial/schedulePurchaseFormUtils.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/schedulePurchaseFormUtils.adversarial.test.js)
-
-```javascript
-import {
-  normalizeScheduleListing,
-  resolveMeetLocation,
-  validateNegotiatedPrice,
-} from "../../pages/ScheduledPurchases/utils/schedulePurchaseFormUtils";
-import { getMaxDayForMeetingMonth } from "../../pages/ScheduledPurchases/utils/scheduleDateTimeUtils";
-
-describe("schedule purchase form utility boundaries", () => {
-  test("normalizes listing booleans from mixed API shapes", () => {
-    expect(
-      normalizeScheduleListing({
-        price_nego: "1",
-        trades: "true",
-      }),
-    ).toEqual(
-      expect.objectContaining({
-        priceNegotiable: true,
-        acceptTrades: true,
-      }),
-    );
-    // Falsy and unrecognised values must come out false, not merely "not false".
-    expect(
-      normalizeScheduleListing({ price_nego: "maybe", trades: "0" }),
-    ).toEqual(
-      expect.objectContaining({ priceNegotiable: false, acceptTrades: false }),
-    );
-    // The camelCase field wins when both shapes are present and disagree.
-    expect(
-      normalizeScheduleListing({ priceNegotiable: false, price_nego: "1" })
-        .priceNegotiable,
-    ).toBe(false);
-  });
-
-  test("resolves custom meet location only for Other", () => {
-    expect(resolveMeetLocation("Other", "  Student Union  ")).toBe(
-      "Student Union",
-    );
-    expect(resolveMeetLocation("North Campus", "Student Union")).toBe(
-      "North Campus",
-    );
-  });
-
-  test("passes missing listings and blank meet locations through as null", () => {
-    expect(normalizeScheduleListing(null)).toBeNull();
-    expect(normalizeScheduleListing({ meet_location: "" }).meet_location).toBeNull();
-    expect(normalizeScheduleListing({ meet_location: "Ellicott" }).meet_location).toBe("Ellicott");
-  });
-
-  test("accepts valid negotiated prices with no error", () => {
-    expect(validateNegotiatedPrice("12.50")).toEqual({ value: 12.5, error: "" });
-    expect(validateNegotiatedPrice("  12.50  ")).toEqual({ value: 12.5, error: "" });
-    expect(validateNegotiatedPrice("   ")).toEqual({ value: null, error: "" });
-    // The ceiling itself is allowed; only amounts above it are rejected.
-    expect(validateNegotiatedPrice("9999.99")).toEqual({ value: 9999.99, error: "" });
-    // Only the literal digits count as a meme: $4.20 is not "420".
-    expect(validateNegotiatedPrice("4.20")).toEqual({ value: 4.2, error: "" });
-  });
-
-  test("rejects invalid negotiated prices with explicit reasons", () => {
-    expect(validateNegotiatedPrice("420").error).toMatch(/meme input/);
-    expect(validateNegotiatedPrice("10", { isTrade: true }).error).toMatch(
-      /Cannot enter a price/,
-    );
-    expect(validateNegotiatedPrice("10000").error).toMatch(/9999.99/);
-    expect(validateNegotiatedPrice("1abc").error).toMatch(/valid price/);
-    expect(validateNegotiatedPrice("1e3").error).toMatch(/valid price/);
-    expect(validateNegotiatedPrice("1.999").error).toMatch(/valid price/);
-  });
-
-  test("calculates month day limits without component-local date math", () => {
-    const leapYear = new Date(2024, 0, 15);
-    const commonYear = new Date(2025, 0, 15);
-
-    expect(getMaxDayForMeetingMonth("02", leapYear)).toBe(29);
-    expect(getMaxDayForMeetingMonth("02", commonYear)).toBe(28);
-    expect(getMaxDayForMeetingMonth("13", commonYear)).toBe(31);
-  });
-});
-```
-
-</details>
-
-<details>
-<summary>src/__tests__/adversarial/searchResultsUtils.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/searchResultsUtils.adversarial.test.js)
-
-```javascript
-import {
-  buildSearchPayload,
-  buildSearchUrl,
-  normalizeSearchResults,
-  readSearchFilters,
-  validateSearchPrices,
-} from "../../pages/Search/utils/searchResultsUtils";
-
-describe("search result normalization", () => {
-  test("rejects malformed prices, dates, and image values at the API boundary", () => {
-    const [item] = normalizeSearchResults(
-      [
-        {
-          product_id: "7",
-          product_title: "Desk lamp",
-          listing_price: "12 dollars",
-          image: { url: "/images/lamp.jpg" },
-          seller_id: 3,
-          created_at: "not-a-date",
-        },
-      ],
-      { apiBase: "/api", publicBase: "", now: Date.UTC(2026, 7, 19) },
-    );
-
-    expect(item).toEqual({
-      id: "7",
-      title: "Desk lamp",
-      price: 0,
-      img: "",
-      seller: "Seller #3",
-      createdAt: null,
-      itemCondition: null,
-      itemLocation: null,
-      status: "AVAILABLE",
-    });
-  });
-
-  test("maps supported URL aliases to the existing backend request fields", () => {
-    const query = new URLSearchParams(
-      "search=lamp&category=Decor&categories=Decor,Lighting&sort=newest" +
-        "&condition=Good&location=North+Campus&minPrice=5&maxPrice=20" +
-        "&status=AVAILABLE&priceNegotiable=true&trades=1",
-    );
-
-    expect(buildSearchPayload(query, true)).toEqual({
-      q: "lamp",
-      category: "Decor",
-      categories: ["Decor", "Lighting"],
-      sort: "newest",
-      condition: "Good",
-      location: "North Campus",
-      minPrice: "5",
-      maxPrice: "20",
-      status: "AVAILABLE",
-      includeDescription: true,
-      priceNego: true,
-      trades: true,
-    });
-  });
-
-  test("hydrates filter state from malformed and aliased URL values", () => {
-    const query = new URLSearchParams(
-      "categories=Books,Books,,Decor&category=Lighting&sort=relevance" +
-        "&minPrice=200&maxPrice=5&location=Other&condition=Fair" +
-        "&priceNegotiable=true&trades=1",
-    );
-
-    expect(readSearchFilters(query)).toEqual({
-      selectedCategories: ["Books", "Decor", "Lighting"],
-      sortOrder: "best",
-      minPrice: "5",
-      maxPrice: "200",
-      itemLocation: "Other",
-      itemCondition: "Fair",
-      priceNegotiable: true,
-      acceptingTrades: true,
-    });
-  });
-
-  test.each([
-    [".", "", "Please enter a valid minimum price"],
-    ["-1", "", "Minimum price cannot be negative"],
-    ["", "10000", "Maximum price cannot exceed $9999.99"],
-    ["10", "2", "Minimum price cannot be greater than maximum price"],
-  ])("validates the visible price range errors", (min, max, error) => {
-    expect(validateSearchPrices(min, max).error).toBe(error);
-  });
-
-  test("builds the existing listings URL after valid filters are applied", () => {
-    expect(
-      buildSearchUrl({
-        query: new URLSearchParams("q=desk"),
-        filters: {
-          selectedCategories: ["Decor", "Lighting"],
-          sortOrder: "new",
-          minPrice: 5,
-          maxPrice: 20,
-          itemLocation: "Other",
-          itemCondition: "Good",
-          priceNegotiable: true,
-          acceptingTrades: true,
-        },
-        includeDescription: true,
-      }),
-    ).toBe(
-      "/app/listings?search=desk&categories=Decor%2CLighting&sort=new" +
-        "&minPrice=5&maxPrice=20&location=Other&condition=Good" +
-        "&priceNego=1&trades=1&desc=1",
-    );
-  });
-});
-```
-
-</details>
-
-<details>
-<summary>src/__tests__/adversarial/sellerDashboardUtils.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/sellerDashboardUtils.adversarial.test.js)
-
-```javascript
-import {
-  calculateSummaryMetrics,
-  filterListings,
-  normalizeSellerListing,
-  readRatingValue,
-  sortListings,
-} from "../../pages/SellerDashboard/utils/sellerDashboardUtils";
-
-describe("seller dashboard utility boundaries", () => {
-  test("normalizes listing shape without trusting nullable API fields", () => {
-    const listing = normalizeSellerListing({
-      id: 1,
-      title: "Lamp",
-      image_url: "/images/lamp.jpg",
-      has_accepted_scheduled_purchase: 1,
-      categories: "not-array",
-      wishlisted: -2,
-      views: "7",
-    });
-
-    expect(listing.categories).toEqual([]);
-    expect(listing.has_accepted_scheduled_purchase).toBe(true);
-    expect(listing.image).toMatch(/\/media\/image\.php\?url=%2Fimages%2Flamp\.jpg$/);
-    expect(listing.wishlisted).toBe(0);
-    expect(listing.views).toBe(7);
-  });
-
-  test("calculates metrics from status values", () => {
-    expect(
-      calculateSummaryMetrics([
-        { status: "Active", views: "4", wishlisted: 2 },
-        { status: "pending", views: 3, wishlisted: -1 },
-        { status: "Sold", views: "bad", wishlisted: 5 },
-        { status: "draft", views: 100, wishlisted: 100 },
-      ]),
-    ).toEqual({
-      totalPosts: 3,
-      activeListings: 1,
-      pendingSales: 1,
-      itemsSold: 1,
-      totalViews: 7,
-      totalWishlists: 7,
-    });
-  });
-
-  test("filters and sorts without leaking invalid dates into comparisons", () => {
-    const listings = [
-      // Input order, newest-first and price-low-to-high all differ, so a sort
-      // that does nothing or uses the wrong key cannot pass.
-      { id: 1, status: "Sold", categories: ["Books"], createdAt: "bad", price: 5 },
-      { id: 2, status: "Sold", categories: ["Books"], createdAt: "2026-01-02", price: 10 },
-      { id: 4, status: "Sold", categories: ["Books"], createdAt: "2026-01-01", price: 7 },
-      { id: 3, status: "Active", categories: ["Tech"], createdAt: "2026-01-03", price: 30 },
-    ];
-
-    const filtered = filterListings(listings, "Sold", "Books");
-    expect(filtered.map((listing) => listing.id)).toEqual([1, 2, 4]);
-    expect(sortListings(filtered, "Newest First").map((listing) => listing.id)).toEqual([2, 4, 1]);
-    expect(sortListings(filtered, "Price: Low to High").map((listing) => listing.id)).toEqual([1, 4, 2]);
-  });
-
-  test("reads rating values from object, scalar, and malformed payloads", () => {
-    expect(readRatingValue({ rating: "4.5" })).toBe(4.5);
-    expect(readRatingValue(3)).toBe(3);
-    expect(readRatingValue("2")).toBe(2);
-    expect(readRatingValue({ rating: "bad" })).toBeNull();
-    expect(readRatingValue({ product_rating: 5 })).toBeNull();
-    expect(readRatingValue(null)).toBeNull();
-  });
-});
-```
-
-</details>
-
-<details>
-<summary>src/__tests__/adversarial/wishlistUtils.adversarial.test.js</summary>
-
-[Open source](../src/__tests__/adversarial/wishlistUtils.adversarial.test.js)
-
-```javascript
-import {
-  filterWishlistItems,
-  getWishlistCategories,
-  normalizeWishlistItems,
-  selectedCategoryAfterRemoval,
-} from "../../pages/Wishlist/utils/wishlistUtils";
-
-describe("wishlist normalization", () => {
-  test("normalizes API-shaped and malformed listing fields", () => {
-    expect(
-      normalizeWishlistItems(
-        {
-          success: true,
-          data: [
-            {
-              product_id: 7,
-              title: "Desk lamp",
-              price: "12 dollars",
-              image_url: { url: "/images/lamp.jpg" },
-              categories: "Decor, Lighting",
-              created_at: "not-a-date",
-              seller_email: "seller@example.edu",
-            },
-          ],
-        },
-        { apiBase: "/api", publicBase: "", now: Date.UTC(2026, 7, 19) },
-      ),
-    ).toEqual([
-      {
-        id: 7,
-        title: "Desk lamp",
-        price: 0,
-        img: "",
-        tags: ["Decor", "Lighting"],
-        status: "AVAILABLE",
-        seller: "Unknown Seller",
-        sellerUsername: "seller",
-        sellerEmail: "seller@example.edu",
-      },
-    ]);
-  });
-
-  test("keeps category filtering stable after an item is removed", () => {
-    const items = [
-      { id: 1, tags: ["Decor", "Lighting"] },
-      { id: 2, tags: ["Books"] },
-      { id: 3, tags: null },
-    ];
-
-    expect(getWishlistCategories(items)).toEqual([
-      "Books",
-      "Decor",
-      "Lighting",
-    ]);
-    expect(filterWishlistItems(items, "decor")).toEqual([items[0]]);
-    expect(selectedCategoryAfterRemoval(items.slice(1), "Decor")).toBeNull();
-    expect(selectedCategoryAfterRemoval(items.slice(0, 2), "Books")).toBe(
-      "Books",
-    );
-  });
-});
-```
-
-</details>
+### Frontend Jest tests (63 files)
 
 <details>
 <summary>src/__tests__/components/MainNav/SearchBar.test.jsx</summary>
@@ -1092,16 +167,6 @@ test("shows the message in a labelled dialog with the OK button focused", () => 
   expect(document.activeElement).toBe(screen.getByRole("button", { name: "OK" }));
 });
 
-test("locks page scroll while open and restores it on close", () => {
-  expect(document.body.style.position).toBe("");
-  const { unmount } = render(<MessageDialog title="Notice" message="Hi" onClose={() => {}} />);
-  expect(document.body.style.position).toBe("fixed");
-  expect(document.documentElement.style.overflow).toBe("hidden");
-  unmount();
-  expect(document.body.style.position).toBe("");
-  expect(document.documentElement.style.overflow).toBe("");
-});
-
 test("OK, Escape and the backdrop each close it", () => {
   const onClose = jest.fn();
   render(<MessageDialog title="Notice" message="Hi" onClose={onClose} />);
@@ -1119,12 +184,126 @@ test("clicks inside the panel do not close it", () => {
   fireEvent.click(screen.getByText("Hi"));
   expect(onClose).not.toHaveBeenCalled();
 });
+```
 
-test("sits above the app's other overlays and widens its button on phones", () => {
-  render(<MessageDialog title="Notice" message="Hi" onClose={() => {}} />);
-  expect(screen.getByRole("dialog").parentElement.className).toContain("z-[70]");
-  const button = screen.getByRole("button", { name: "OK" }).className.split(/\s+/);
-  expect(button).toEqual(expect.arrayContaining(["w-full", "sm:w-auto", "coarse:min-h-[44px]"]));
+</details>
+
+<details>
+<summary>src/__tests__/components/RouteAnnouncer.test.jsx</summary>
+
+[Open source](../src/__tests__/components/RouteAnnouncer.test.jsx)
+
+```jsx
+import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { useLocation } from "react-router-dom";
+import RouteAnnouncer, { MAIN_CONTENT_ID, SkipToContent, pageTitleForPath } from "../../components/RouteAnnouncer";
+
+// react-router-dom 7 cannot be loaded by Jest 27, so the location is supplied directly.
+jest.mock("react-router-dom", () => ({ useLocation: jest.fn() }));
+
+const pages = {
+  "/app": <p>Home content</p>,
+  "/app/chat": <p>Chat content</p>,
+  "/app/setting/payments": <input aria-label="Field the page focuses" autoFocus />,
+};
+
+function Shell({ path }) {
+  useLocation.mockReturnValue({ pathname: path });
+  return (
+    <>
+      <SkipToContent />
+      <RouteAnnouncer />
+      <nav>
+        <button type="button">Chat link</button>
+      </nav>
+      <main id={MAIN_CONTENT_ID} tabIndex={-1}>
+        {pages[path]}
+      </main>
+    </>
+  );
+}
+
+/** Renders the shell at `path`; the returned function navigates to another path. */
+function renderAt(path) {
+  const view = render(<Shell path={path} />);
+  return (nextPath) => view.rerender(<Shell path={nextPath} />);
+}
+
+describe("pageTitleForPath", () => {
+  test.each([
+    ["/", "Welcome"],
+    ["/app", "Home"],
+    ["/app/", "Home"],
+    ["/login", "Log in"],
+    ["/app/chat", "Chat"],
+    ["/app/viewProduct/42", "Listing"],
+    ["/app/viewreceipt", "Receipt"],
+    ["/app/product-listing/edit/7", "Edit listing"],
+    ["/app/product-listing/new", "New listing"],
+    ["/app/purchase-history/item-detail/3", "Purchase details"],
+    ["/app/purchase-history", "Purchase history"],
+    ["/app/seller-dashboard/ongoing-purchases", "Ongoing purchases"],
+    ["/app/seller-dashboard", "Seller dashboard"],
+    ["/app/setting/payments", "Payments"],
+    ["/forgot-password/confirmation", "Check your email"],
+    ["/forgot-password", "Forgot password"],
+    ["/app/does-not-exist", "Page not found"],
+  ])("%s is titled %s", (path, title) => {
+    expect(pageTitleForPath(path)).toBe(title);
+  });
+
+  test("a path that only shares a prefix with a known page is not that page", () => {
+    expect(pageTitleForPath("/app/chatter")).toBe("Page not found");
+    expect(pageTitleForPath("/loginx")).toBe("Page not found");
+  });
+});
+
+describe("RouteAnnouncer", () => {
+  test("the first page sets the tab title without announcing or moving focus", () => {
+    renderAt("/app");
+    expect(document.title).toBe("Home | Dorm Mart");
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    expect(document.getElementById(MAIN_CONTENT_ID)).not.toHaveFocus();
+  });
+
+  test("navigating announces the new page, retitles the tab and moves focus to the content", () => {
+    const navigate = renderAt("/app");
+    screen.getByRole("button", { name: "Chat link" }).focus();
+    navigate("/app/chat");
+
+    expect(screen.getByText("Chat content")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Chat page");
+    expect(document.title).toBe("Chat | Dorm Mart");
+    expect(document.getElementById(MAIN_CONTENT_ID)).toHaveFocus();
+  });
+
+  test("a page that focuses its own field keeps that focus", () => {
+    const navigate = renderAt("/app");
+    navigate("/app/setting/payments");
+
+    expect(screen.getByRole("status")).toHaveTextContent("Payments page");
+    expect(screen.getByLabelText("Field the page focuses")).toHaveFocus();
+  });
+
+  test("the announcement region is polite and read as a whole", () => {
+    renderAt("/app");
+    const region = screen.getByRole("status");
+    expect(region).toHaveAttribute("aria-live", "polite");
+    expect(region).toHaveAttribute("aria-atomic", "true");
+  });
+});
+
+describe("SkipToContent", () => {
+  test("is the first focusable control and jumps to the main content", () => {
+    renderAt("/app");
+    const skip = screen.getByRole("button", { name: "Skip to main content" });
+    expect(document.querySelector("a, button, input")).toBe(skip);
+
+    skip.focus();
+    fireEvent.click(skip);
+    expect(document.getElementById(MAIN_CONTENT_ID)).toHaveFocus();
+  });
 });
 ```
 
@@ -1149,12 +328,10 @@ test("renders nothing while closed", () => {
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
-test("opens as a labelled dialog above the review modals and locks scroll", () => {
+test("opens as a labelled dialog with the message", () => {
   render(<SubmitConfirmationDialog isOpen message="Post this review?" onCancel={() => {}} />);
   const dialog = screen.getByRole("dialog", { name: "Ready to Submit?" });
   expect(dialog.textContent).toContain("Post this review?");
-  expect(dialog.parentElement.className).toContain("z-[70]");
-  expect(document.body.style.position).toBe("fixed");
 });
 
 test("Confirm runs the submit, and a failed submit closes the dialog", async () => {
@@ -1240,7 +417,6 @@ describe("polling requests", () => {
       headers: { Accept: "application/json" },
       credentials: "include",
     });
-    expect(signal).toBeDefined();
   });
 
   test("the abort signal reaches fetch", async () => {
@@ -1553,7 +729,6 @@ describe("upsertMessage", () => {
   test("keeps a message without a usable id instead of merging it", () => {
     const list = [{ message_id: 0, content: "zero" }, { content: "no id" }];
     expect(upsertMessage(list, { content: "x" })).toEqual([...list, { content: "x" }]);
-    expect(upsertMessage(list, undefined)).toEqual([...list, undefined]);
     expect(upsertMessage(list, { message_id: "abc" })).toHaveLength(3);
   });
 
@@ -1889,6 +1064,128 @@ test("reports the server's error message", async () => {
 
   await waitFor(() => expect(result.current.error).toBe("Server error"));
   expect(result.current.loading).toBe(false);
+});
+```
+
+</details>
+
+<details>
+<summary>src/__tests__/hooks/useModalFocus.test.jsx</summary>
+
+[Open source](../src/__tests__/hooks/useModalFocus.test.jsx)
+
+```jsx
+import { useRef, useState } from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { useModalFocus } from "../../hooks/useModalFocus";
+
+function Modal({ onClose, dismissible, focusSecond = false, empty = false }) {
+  const panelRef = useRef(null);
+  const secondRef = useRef(null);
+  useModalFocus(panelRef, { onClose, dismissible, initialFocusRef: focusSecond ? secondRef : undefined });
+  return (
+    <div ref={panelRef} role="dialog" aria-label="Test dialog" tabIndex={-1}>
+      {!empty && (
+        <>
+          <button type="button">First</button>
+          <button type="button" ref={secondRef}>Second</button>
+          <button type="button" disabled>Disabled</button>
+          <button type="button">Last</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Page(props) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>Open</button>
+      <button type="button">Outside</button>
+      {open && <Modal {...props} onClose={props.onClose === undefined ? () => setOpen(false) : props.onClose} />}
+    </>
+  );
+}
+
+function open(props) {
+  render(<Page {...props} />);
+  const opener = screen.getByRole("button", { name: "Open" });
+  opener.focus();
+  fireEvent.click(opener);
+  return opener;
+}
+
+test("opening moves focus to the first control in the dialog", () => {
+  open();
+  expect(screen.getByRole("button", { name: "First" })).toHaveFocus();
+});
+
+test("a requested starting control takes focus instead of the first one", () => {
+  open({ focusSecond: true });
+  expect(screen.getByRole("button", { name: "Second" })).toHaveFocus();
+});
+
+test("a dialog with nothing to focus takes focus itself and swallows Tab", () => {
+  open({ empty: true });
+  const dialog = screen.getByRole("dialog");
+  expect(dialog).toHaveFocus();
+  expect(fireEvent.keyDown(dialog, { key: "Tab" })).toBe(false);
+});
+
+test("Tab from the last control wraps to the first, skipping disabled controls", () => {
+  open();
+  const last = screen.getByRole("button", { name: "Last" });
+  last.focus();
+  expect(fireEvent.keyDown(last, { key: "Tab" })).toBe(false);
+  expect(screen.getByRole("button", { name: "First" })).toHaveFocus();
+});
+
+test("Shift+Tab from the first control wraps to the last", () => {
+  open();
+  const first = screen.getByRole("button", { name: "First" });
+  expect(fireEvent.keyDown(first, { key: "Tab", shiftKey: true })).toBe(false);
+  expect(screen.getByRole("button", { name: "Last" })).toHaveFocus();
+});
+
+test("Tab in the middle of the dialog is left to the browser", () => {
+  open({ focusSecond: true });
+  expect(fireEvent.keyDown(screen.getByRole("button", { name: "Second" }), { key: "Tab" })).toBe(true);
+});
+
+test("Escape closes the dialog and returns focus to the control that opened it", () => {
+  const opener = open();
+  fireEvent.keyDown(document.activeElement, { key: "Escape" });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(opener).toHaveFocus();
+});
+
+test("Escape is ignored while the dialog is not dismissible", () => {
+  const onClose = jest.fn();
+  open({ onClose, dismissible: false });
+  fireEvent.keyDown(document.activeElement, { key: "Escape" });
+  expect(onClose).not.toHaveBeenCalled();
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+});
+
+test("without onClose the hook leaves Escape to the dialog's own handler", () => {
+  const outer = jest.fn();
+  document.addEventListener("keydown", outer);
+  open({ onClose: null });
+  fireEvent.keyDown(document.activeElement, { key: "Escape" });
+  expect(outer).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  document.removeEventListener("keydown", outer);
+});
+
+test("Escape handled by the hook does not reach other key handlers", () => {
+  const outer = jest.fn();
+  document.addEventListener("keydown", outer);
+  open();
+  fireEvent.keyDown(document.activeElement, { key: "Escape" });
+  expect(outer).not.toHaveBeenCalled();
+  document.removeEventListener("keydown", outer);
 });
 ```
 
@@ -2261,7 +1558,7 @@ jest.mock("../../../pages/Chat/hooks/useChatConversationStatus", () => () => ({
   checkPaymentStatus: jest.fn(), checkActiveScheduledPurchase: jest.fn(), checkConfirmStatus: jest.fn(),
 }));
 
-test("the buyer can open and complete mock checkout from the actual chat page", async () => {
+test("the buyer can open and complete demo checkout from the actual chat page", async () => {
   window.scrollTo = jest.fn();
   window.matchMedia = jest.fn(() => ({ matches: true }));
   const fetchConversation = jest.fn();
@@ -2273,10 +1570,10 @@ test("the buyer can open and complete mock checkout from the actual chat page", 
   csrfPostJson.mockResolvedValueOnce({ data: { is_mock: true, amount_cents: 500 } });
   csrfPostJson.mockResolvedValueOnce({ data: { completed: true } });
   render(<ChatContext.Provider value={context}><ChatPage /></ChatContext.Provider>);
-  fireEvent.click(screen.getByRole("button", { name: "Make a mock payment" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Complete mock transaction" }));
+  fireEvent.click(screen.getByRole("button", { name: "Make a demo payment" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Complete demo transaction" }));
   await waitFor(() => expect(fetchConversation).toHaveBeenCalledWith(3));
-  expect(await screen.findByText(/mock transaction completed/i)).toBeInTheDocument();
+  expect(await screen.findByText(/demo transaction completed/i)).toBeInTheDocument();
 });
 ```
 
@@ -2415,7 +1712,7 @@ test("demo checkout clearly labels the transaction and never loads Stripe", asyn
   csrfPostJson.mockResolvedValueOnce({ data: { is_mock: true, amount_cents: 2750, scheduled_request_id: 7 } });
   csrfPostJson.mockResolvedValueOnce({ data: { completed: true, is_mock: true } });
   render(<ElectronicPaymentModal scheduledRequestId={7} onClose={jest.fn()} onStatusChange={onStatusChange} />);
-  const complete = await screen.findByRole("button", { name: "Complete mock transaction" });
+  const complete = await screen.findByRole("button", { name: "Complete demo transaction" });
   expect(screen.getByText(/no real money/i)).toBeInTheDocument();
   expect(screen.queryByTestId("stripe-card-form")).toBeNull();
   expect(loadStripe).not.toHaveBeenCalled();
@@ -2423,17 +1720,17 @@ test("demo checkout clearly labels the transaction and never loads Stripe", asyn
   await waitFor(() => expect(onStatusChange).toHaveBeenCalledTimes(1));
   expect(csrfPostJson.mock.calls[1][0]).toMatch(/payments\/mock_confirm.php$/);
   expect(csrfPostJson.mock.calls[1][1]).toEqual({ scheduled_request_id: 7 });
-  expect(await screen.findByText(/mock transaction completed/i)).toBeInTheDocument();
+  expect(await screen.findByText(/demo transaction completed/i)).toBeInTheDocument();
   expect(loadStripe).not.toHaveBeenCalled();
 });
 
-test("a failed mock payment keeps the error visible and allows retry", async () => {
+test("a failed demo payment keeps the error visible and allows retry", async () => {
   csrfPostJson.mockResolvedValueOnce({ data: { is_mock: true, amount_cents: 500, scheduled_request_id: 7 } });
   csrfPostJson.mockRejectedValueOnce(new Error("The Payment Window is not open"));
   render(<ElectronicPaymentModal scheduledRequestId={7} onClose={jest.fn()} onStatusChange={jest.fn()} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Complete mock transaction" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Complete demo transaction" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("The Payment Window is not open");
-  expect(screen.getByRole("button", { name: "Complete mock transaction" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Complete demo transaction" })).toBeEnabled();
 });
 
 
@@ -2489,7 +1786,7 @@ const actions = [
 beforeEach(() => jest.spyOn(window, "scrollTo").mockImplementation(() => {}));
 afterEach(() => jest.restoreAllMocks());
 
-test("the touch sheet blocks page scrolling while open and releases it on close", () => {
+test("the touch sheet opens on right-click and closes on Cancel", () => {
   render(
     <MessageActions actions={actions}>
       <p>hello</p>
@@ -2498,25 +1795,9 @@ test("the touch sheet blocks page scrolling while open and releases it on close"
 
   fireEvent.contextMenu(screen.getByText("hello"));
   expect(screen.getByRole("menu", { name: "Message actions" })).toBeInTheDocument();
-  expect(document.body.style.position).toBe("fixed");
-  expect(document.documentElement.style.overflow).toBe("hidden");
 
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-  expect(document.body.style.position).toBe("");
-  expect(document.documentElement.style.overflow).toBe("");
-});
-
-test("the sheet is capped to the viewport and scrolls on short screens", () => {
-  render(
-    <MessageActions actions={actions}>
-      <p>hello</p>
-    </MessageActions>,
-  );
-  fireEvent.contextMenu(screen.getByText("hello"));
-
-  const sheet = screen.getByRole("menu", { name: "Message actions" });
-  expect(sheet).toHaveClass("max-h-[85dvh]", "overflow-y-auto", "overscroll-contain");
 });
 
 test("right-click or long-press inside a dialog rendered in the message does not open the menu", () => {
@@ -2531,7 +1812,6 @@ test("right-click or long-press inside a dialog rendered in the message does not
 
   fireEvent.contextMenu(screen.getByRole("button", { name: "Report" }));
   expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-  expect(document.body.style.position).toBe("");
 
   jest.useFakeTimers();
   fireEvent.touchStart(screen.getByRole("button", { name: "Report" }), {
@@ -3220,7 +2500,6 @@ test.each(["iPhone", "Android", "Macintosh"])("%s supports dots and bounded swip
   swipe(50);
   expect(media).toHaveAttribute("src", "/second.jpg");
   expect(screen.getByRole("button", { name: "Show media 2" })).toHaveAttribute("aria-current", "true");
-  expect(screen.getByRole("button", { name: "Show media 2" }).firstChild).toHaveClass("bg-blue-600");
   fireEvent.click(screen.getByRole("button", { name: "Show media 3" }));
   swipe(50);
   expect(media).toHaveAttribute("src", "/third.jpg");
@@ -3239,7 +2518,6 @@ test("videos use the site-styled player instead of native controls", () => {
   const play = jest.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
   render(<ProductImageGallery photoUrls={["/clip.mp4", "/first.jpg"]} title="Desk" />);
   const video = screen.getByLabelText("Desk");
-  expect(video.tagName).toBe("VIDEO");
   expect(video).not.toHaveAttribute("controls");
   expect(screen.getByRole("slider", { name: "Seek video" })).toBeInTheDocument();
   fireEvent.click(screen.getAllByRole("button", { name: "Play video" })[0]);
@@ -3393,7 +2671,8 @@ test("still allows saving a draft at the active listing limit", () => {
 [Open source](../src/__tests__/pages/ItemForms/components/ListingForm.test.jsx)
 
 ```jsx
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import ListingForm from "../../../../pages/ItemForms/components/ListingForm";
 
 function renderForm(overrides = {}) {
@@ -3447,53 +2726,6 @@ function renderForm(overrides = {}) {
   return props;
 }
 
-const box = (name) =>
-  screen.getByRole("heading", { level: 2, name: new RegExp(`^${name}`) }).closest("section");
-
-test("basic information, location, pricing and photos are each their own box", () => {
-  renderForm();
-  const basic = box("Basic Information");
-  const location = box("Location");
-  const pricing = box("Pricing");
-  const photos = box("Photos and Videos");
-  expect(new Set([basic, location, pricing, photos]).size).toBe(4);
-
-  for (const label of [/^Item Title/, /^Item Condition/, /^Categories/, /^Description/]) {
-    expect(within(basic).getByLabelText(label)).toBeTruthy();
-  }
-  expect(within(location).getByLabelText(/^Item Location/)).toBeTruthy();
-  for (const label of [/^Price \*/, /Accepting Trades/, /Price Negotiable/]) {
-    expect(within(pricing).getByLabelText(label)).toBeTruthy();
-  }
-  expect(within(photos).getByRole("button", { name: "+ Add a Photo" })).toBeTruthy();
-  expect(within(pricing).queryByLabelText(/^Item Location/)).toBeNull();
-  expect(within(location).queryByLabelText(/^Price \*/)).toBeNull();
-});
-
-test("the boxes come in order: basic information, location, pricing, photos", () => {
-  renderForm();
-  const order = ["Basic Information", "Location", "Pricing", "Photos and Videos"].map(box);
-  for (let i = 1; i < order.length; i += 1) {
-    expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  }
-});
-
-test("item condition and categories sit in the same row", () => {
-  renderForm();
-  const condition = screen.getByLabelText(/^Item Condition/);
-  const categories = screen.getByLabelText(/^Categories/);
-  const row = condition.closest(".grid");
-  expect(row).toBe(categories.closest(".grid"));
-  expect(row.className).toContain("md:grid-cols-2");
-});
-
-test("the trade and negotiation toggles sit side by side under the price", () => {
-  renderForm();
-  const row = screen.getByLabelText(/Accepting Trades/).closest(".grid");
-  expect(row).toBe(screen.getByLabelText(/Price Negotiable/).closest(".grid"));
-  expect(row.className).toContain("md:grid-cols-2");
-});
-
 test("picking a category still adds it", () => {
   const props = renderForm();
   fireEvent.change(screen.getByLabelText(/^Categories/), { target: { value: "Electronics" } });
@@ -3501,21 +2733,9 @@ test("picking a category still adds it", () => {
   expect(props.clearError).toHaveBeenCalledWith("categories");
 });
 
-test("a photo error outlines only the photos box", () => {
+test("a photo error is announced", () => {
   renderForm({ errors: { images: "Add at least one photo" } });
-  expect(box("Photos and Videos").className).toContain("border-red-500");
-  expect(box("Basic Information").className).not.toContain("border-red-500");
-  expect(screen.getByText("Add at least one photo")).toBeTruthy();
-});
-
-test("the publish buttons come after the safety tips on small screens", () => {
-  renderForm();
-  const actions = screen.getByRole("heading", { name: "Publish Your Listing" }).parentElement;
-  const tips = screen.getByRole("heading", { name: "Safety Tips" }).parentElement;
-  expect(actions.parentElement).toBe(tips.parentElement);
-  expect(actions.className).toContain("order-2");
-  expect(tips.className).toContain("order-1");
-  expect(screen.getByRole("button", { name: "Publish Listing" })).toBeTruthy();
+  expect(screen.getByText("Add at least one photo")).toBeInTheDocument();
 });
 ```
 
@@ -3761,12 +2981,6 @@ describe("LegalDocumentPage", () => {
     render(<LegalDocumentPage documentKey="nope" />);
     expect(screen.getByText(/could not be found/i)).toBeInTheDocument();
   });
-
-  test("policy text matches how account deletion actually works", () => {
-    const text = JSON.stringify(legalDocuments);
-    expect(text).not.toMatch(/DELETE MY ACCOUNT/);
-    expect(text).toMatch(/typing your account email/);
-  });
 });
 
 test("section ids are stable slugs", () => {
@@ -3832,6 +3046,7 @@ test("explains when the numbers can't load", async () => {
 
 ```jsx
 import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import LoginPage from "../../pages/LoginPage";
 
 jest.mock("react-router-dom", () => ({
@@ -3874,10 +3089,10 @@ test("lets the user leave the verification-code step", async () => {
   fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Password1!" } });
   fireEvent.click(screen.getByRole("button", { name: "Login" }));
 
-  expect(await screen.findByLabelText("Verification code")).toBeTruthy();
+  expect(await screen.findByLabelText("Verification code")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: /sign in again or use a different account/i }));
 
-  expect(screen.getByLabelText("University Email Address")).toBeTruthy();
+  expect(screen.getByLabelText("University Email Address")).toBeInTheDocument();
   expect(screen.queryByLabelText("Verification code")).toBeNull();
   global.fetch.mockRestore();
 });
@@ -4146,7 +3361,8 @@ test("treats timestamps as UTC whatever shape they arrive in", () => {
 [Open source](../src/__tests__/pages/Reviews/components/ReviewImageGallery.test.jsx)
 
 ```jsx
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import ReviewImageGallery from "../../../../pages/Reviews/components/ReviewImageGallery";
 
 jest.mock("../../../../utils/logger", () => ({
@@ -4181,9 +3397,8 @@ test("the image opens from the keyboard, and Escape closes it and restores focus
   opener.focus();
   fireEvent.click(opener);
 
-  expect(screen.getByRole("dialog", { name: "Review image" })).toBeTruthy();
+  expect(screen.getByRole("dialog", { name: "Review image" })).toBeInTheDocument();
   expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close" }));
-  expect(document.body.style.position).toBe("fixed");
 
   fireEvent.keyDown(window, { key: "Escape" });
   expect(screen.queryByRole("dialog")).toBeNull();
@@ -4199,22 +3414,7 @@ test("Escape on the failure popup closes only the popup, not the lightbox under 
 
   fireEvent.keyDown(document, { key: "Escape" });
   expect(screen.queryByRole("dialog", { name: "Download failed" })).toBeNull();
-  expect(screen.getByRole("dialog", { name: "Review image" })).toBeTruthy();
-});
-
-test("the failure popup stacks above the lightbox opened while the download ran", async () => {
-  let failDownload;
-  global.fetch = jest.fn(() => new Promise((_, reject) => { failDownload = reject; }));
-  render(<ReviewImageGallery review={review} viewMode="seller" />);
-  fireEvent.click(screen.getByRole("button", { name: "Download" }));
-  fireEvent.click(screen.getByAltText("Review attachment 1"));
-  const lightbox = screen.getByAltText("Selected review attachment").closest(".fixed");
-  expect(lightbox.className).toContain("z-[60]");
-
-  await act(async () => failDownload(new Error("offline")));
-
-  const popup = (await screen.findByRole("dialog", { name: "Download failed" })).parentElement;
-  expect(popup.className).toContain("z-[70]");
+  expect(screen.getByRole("dialog", { name: "Review image" })).toBeInTheDocument();
 });
 ```
 
@@ -4227,6 +3427,7 @@ test("the failure popup stacks above the lightbox opened while the download ran"
 
 ```jsx
 import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import ReviewVideo from "../../../../pages/Reviews/components/ReviewVideo";
 
 beforeEach(() => {
@@ -4239,7 +3440,7 @@ test("opens a review video popup and removes the player on close", () => {
   const { container } = render(<ReviewVideo url="/media/review-images/review_u2_test.webm" />);
   expect(container.querySelector("video")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Play review video" }));
-  expect(screen.getByRole("dialog", { name: "Review video" })).toBeTruthy();
+  expect(screen.getByRole("dialog", { name: "Review video" })).toBeInTheDocument();
   expect(container.querySelector("video").src).toContain("media/image.php?url=");
   fireEvent.click(screen.getByRole("button", { name: "Close video" }));
   expect(container.querySelector("video")).toBeNull();
@@ -4356,6 +3557,7 @@ test("keeps an incomplete purchase image and title non-clickable", () => {
 
 ```jsx
 import { useState } from "react";
+import "@testing-library/jest-dom";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import ScheduleDateTimeFields from "../../../../pages/ScheduledPurchases/components/ScheduleDateTimeFields";
 
@@ -4396,16 +3598,16 @@ afterEach(() => jest.useRealTimers());
 
 test("the calendar is an option that replaces the date dropdowns and keeps the time fields", () => {
   render(<Harness />);
-  expect(screen.getByRole("button", { name: "Dropdowns", pressed: true })).toBeTruthy();
-  expect(screen.getByLabelText("Month")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Dropdowns", pressed: true })).toBeInTheDocument();
+  expect(screen.getByLabelText("Month")).toBeInTheDocument();
 
   openCalendar();
 
-  expect(screen.getByRole("button", { name: "Calendar", pressed: true })).toBeTruthy();
-  expect(screen.getByRole("table", { name: "November 2026" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Calendar", pressed: true })).toBeInTheDocument();
+  expect(screen.getByRole("table", { name: "November 2026" })).toBeInTheDocument();
   expect(screen.queryByLabelText("Month")).toBeNull();
-  expect(screen.getByLabelText("Hour")).toBeTruthy();
-  expect(screen.getByLabelText("AM/PM")).toBeTruthy();
+  expect(screen.getByLabelText("Hour")).toBeInTheDocument();
+  expect(screen.getByLabelText("AM/PM")).toBeInTheDocument();
 });
 
 test("only days inside the three-month window can be picked", () => {
@@ -4421,7 +3623,7 @@ test("only days inside the three-month window can be picked", () => {
   fireEvent.click(next);
   fireEvent.click(next);
   fireEvent.click(next);
-  expect(screen.getByRole("table", { name: "February 2027" })).toBeTruthy();
+  expect(screen.getByRole("table", { name: "February 2027" })).toBeInTheDocument();
   expect(day("Saturday, February 20, 2027").disabled).toBe(false);
   expect(day("Sunday, February 21, 2027").disabled).toBe(true);
   expect(next.disabled).toBe(true);
@@ -4434,7 +3636,7 @@ test("picking a day fills the same month, day and year the dropdowns use", () =>
   fireEvent.click(day("Saturday, December 5, 2026"));
 
   expect(day("Saturday, December 5, 2026").getAttribute("aria-pressed")).toBe("true");
-  expect(screen.getByText("Selected: Saturday, December 5, 2026")).toBeTruthy();
+  expect(screen.getByText("Selected: Saturday, December 5, 2026")).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: "Dropdowns" }));
   expect(screen.getByLabelText("Month").value).toBe("12");
@@ -4450,7 +3652,7 @@ test("the calendar opens on a date already chosen with the dropdowns", () => {
 
   openCalendar();
 
-  expect(screen.getByRole("table", { name: "January 2027" })).toBeTruthy();
+  expect(screen.getByRole("table", { name: "January 2027" })).toBeInTheDocument();
   expect(day("Friday, January 15, 2027").getAttribute("aria-pressed")).toBe("true");
   expect(day("Friday, January 15, 2027").tabIndex).toBe(0);
 });
@@ -4472,7 +3674,7 @@ test("arrow keys move between days and months but stop at the window edge", () =
   expect(document.activeElement).toBe(day("Saturday, November 28, 2026"));
 
   fireEvent.keyDown(document.activeElement, { key: "ArrowDown" });
-  expect(screen.getByRole("table", { name: "December 2026" })).toBeTruthy();
+  expect(screen.getByRole("table", { name: "December 2026" })).toBeInTheDocument();
   expect(document.activeElement).toBe(day("Saturday, December 5, 2026"));
   expect(document.activeElement.tabIndex).toBe(0);
 });
@@ -4508,8 +3710,6 @@ test("the picker's buttons never submit the surrounding form", () => {
 ```jsx
 import { fireEvent, render, screen } from "@testing-library/react";
 import MeetLocationField from "../../../pages/ScheduledPurchases/components/MeetLocationField";
-import NegotiationFields from "../../../pages/ScheduledPurchases/components/NegotiationFields";
-import ScheduleDateTimeFields from "../../../pages/ScheduledPurchases/components/ScheduleDateTimeFields";
 
 const noop = () => {};
 
@@ -4525,51 +3725,8 @@ test("the meet location select is named by its label", () => {
     />,
   );
   const select = screen.getByLabelText(/Meet Location/);
-  expect(select.tagName).toBe("SELECT");
   fireEvent.change(select, { target: { value: "North Campus" } });
   expect(setChoice).toHaveBeenCalledWith("North Campus");
-});
-
-test("the negotiated price and trade fields are named by their labels", () => {
-  render(
-    <NegotiationFields
-      isTrade
-      negotiatedPrice=""
-      selectedListing={{ priceNegotiable: true, acceptTrades: true, price: 20 }}
-      setIsTrade={noop}
-      setNegotiatedPrice={noop}
-      setTradeItemDescription={noop}
-      tradeItemDescription=""
-    />,
-  );
-  expect(screen.getByLabelText("Negotiated Price (Optional)").tagName).toBe("INPUT");
-  expect(screen.getByLabelText(/Item You Are Trading For/).tagName).toBe("TEXTAREA");
-});
-
-test("the meeting date and time selects form one labelled group", () => {
-  render(
-    <ScheduleDateTimeFields
-      meetingAmPm=""
-      meetingDay=""
-      meetingHour=""
-      meetingMinute=""
-      meetingMonth=""
-      meetingYear=""
-      setDateTimeError={noop}
-      setMeetingAmPm={noop}
-      setMeetingDay={noop}
-      setMeetingHour={noop}
-      setMeetingMinute={noop}
-      setMeetingMonth={noop}
-      setMeetingYear={noop}
-    />,
-  );
-  const group = screen.getByRole("group", { name: /Meeting Date & Time/ });
-  for (const label of ["Month", "Day", "Hour", "Minute", "AM/PM"]) {
-    const select = screen.getByLabelText(label);
-    expect(select.tagName).toBe("SELECT");
-    expect(group.contains(select)).toBe(true);
-  }
 });
 ```
 
@@ -4582,6 +3739,7 @@ test("the meeting date and time selects form one labelled group", () => {
 
 ```jsx
 import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import CancelPurchaseModal from "../../../pages/ScheduledPurchases/components/CancelPurchaseModal";
 import CloseFormModal from "../../../pages/ScheduledPurchases/components/CloseFormModal";
 
@@ -4604,11 +3762,10 @@ function renderCancel(props = {}) {
   return handlers;
 }
 
-test("the cancel-purchase popup is a labelled dialog that locks page scroll", () => {
+test("the cancel-purchase popup is a labelled dialog", () => {
   renderCancel();
   const dialog = screen.getByRole("dialog", { name: "Cancel Scheduled Purchase?" });
   expect(dialog.textContent).toContain("This action cannot be undone.");
-  expect(document.body.style.position).toBe("fixed");
 });
 
 test("its buttons keep their labels, and Escape keeps the purchase", () => {
@@ -4639,7 +3796,7 @@ test("the close-form popup asks before discarding the form", () => {
   const onClose = jest.fn();
   const onConfirm = jest.fn();
   render(<CloseFormModal onClose={onClose} onConfirm={onConfirm} />);
-  expect(screen.getByRole("dialog", { name: "Close This Form?" })).toBeTruthy();
+  expect(screen.getByRole("dialog", { name: "Close This Form?" })).toBeInTheDocument();
   expect(document.activeElement).toBe(screen.getByRole("button", { name: "Stay" }));
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
   expect(onConfirm).toHaveBeenCalledTimes(1);
@@ -6149,59 +5306,6 @@ describe("readRatingValue", () => {
 </details>
 
 <details>
-<summary>src/__tests__/pages/Settings/AboutUs.test.jsx</summary>
-
-[Open source](../src/__tests__/pages/Settings/AboutUs.test.jsx)
-
-```jsx
-import { render, screen, within } from "@testing-library/react";
-import AboutUs from "../../../pages/Settings/AboutUs";
-
-jest.mock("../../../pages/Settings/SettingsLayout", () => ({ children }) => <div>{children}</div>);
-jest.mock("react-router-dom", () => ({ useNavigate: () => jest.fn() }), { virtual: true });
-
-test("shows each developer and their contact links", () => {
-  render(<AboutUs />);
-
-  [
-    {
-      name: "Sameer Jain",
-      email: "sameerjain501@gmail.com",
-      linkedin: "https://www.linkedin.com/in/sameer-jain1/",
-    },
-    {
-      name: "Anish Banerjee",
-      email: "anishbancse312@gmail.com",
-      linkedin: "https://www.linkedin.com/in/anish-banerjee-71aba9290/",
-    },
-    {
-      name: "Chris (Sooseok) Kim",
-      email: "sooseokkim99@gmail.com",
-      linkedin: "https://www.linkedin.com/in/kim-chris-sooseok/",
-    },
-  ].forEach(({ name, email, linkedin }) => {
-    const card = screen.getByRole("heading", { name }).closest("article");
-    const cardContent = within(card);
-
-    expect(cardContent.getByRole("img", { name: new RegExp(name.replace(/[()]/g, "\\$&")) })).toBeTruthy();
-    expect(cardContent.getByText(email)).toBeTruthy();
-    expect(cardContent.getByRole("link", { name: "Email" }).getAttribute("href")).toBe(
-      `mailto:${email}`,
-    );
-    expect(
-      cardContent.getByRole("link", { name: "LinkedIn" }).getAttribute("href"),
-    ).toBe(linkedin);
-  });
-
-  expect(screen.getAllByRole("link", { name: "Email" })).toHaveLength(3);
-  expect(screen.getAllByRole("link", { name: "LinkedIn" })).toHaveLength(3);
-  expect(screen.getAllByRole("link", { name: "GitHub" })).toHaveLength(3);
-});
-```
-
-</details>
-
-<details>
 <summary>src/__tests__/pages/Settings/accountInfoUtils.test.js</summary>
 
 [Open source](../src/__tests__/pages/Settings/accountInfoUtils.test.js)
@@ -6334,6 +5438,7 @@ test("an unconfigured server never offers a broken permission prompt", async () 
 
 ```jsx
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import ChangePasswordPage from "../../../pages/Settings/ChangePassword";
 import { csrfFetch } from "../../../utils/csrfFetch";
 
@@ -6363,19 +5468,17 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-test("an empty form shows a scroll-locking popup instead of a browser alert", async () => {
+test("an empty form shows a popup instead of a browser alert", async () => {
   render(<ChangePasswordPage />);
   fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
   const dialog = await screen.findByRole("dialog", { name: "Couldn't change password" });
   expect(dialog.textContent).toContain("Please fill in all password fields.");
-  expect(document.body.style.position).toBe("fixed");
   expect(window.alert).not.toHaveBeenCalled();
   expect(csrfFetch).not.toHaveBeenCalled();
 
   fireEvent.click(screen.getByRole("button", { name: "OK" }));
   expect(screen.queryByRole("dialog")).toBeNull();
-  expect(document.body.style.position).toBe("");
 });
 
 test("mismatched new passwords are reported in the popup", async () => {
@@ -6385,7 +5488,7 @@ test("mismatched new passwords are reported in the popup", async () => {
 
   expect(await screen.findByText(
     "The new password that was entered is different from the re-entry of the password.",
-  )).toBeTruthy();
+  )).toBeInTheDocument();
   expect(csrfFetch).not.toHaveBeenCalled();
 });
 
@@ -6394,7 +5497,7 @@ test("a weak new password names the first rule it breaks", async () => {
   fill("Oldpass1!", "short", "short");
   fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
-  expect(await screen.findByText("The new password must have at least 8 characters.")).toBeTruthy();
+  expect(await screen.findByText("The new password must have at least 8 characters.")).toBeInTheDocument();
   expect(csrfFetch).not.toHaveBeenCalled();
 });
 
@@ -6417,7 +5520,7 @@ test("a network failure is reported in the popup", async () => {
 
   expect(await screen.findByText(
     "Network error while changing password. Please try again.",
-  )).toBeTruthy();
+  )).toBeInTheDocument();
 });
 
 test("Enter on the popup closes it without submitting again, and submits once it is closed", async () => {
@@ -6452,6 +5555,7 @@ test("Enter on the popup closes it without submitting again, and submits once it
 
 ```jsx
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import LoggedDevicesPage from "../../../pages/Settings/LoggedDevicesPage";
 
 const mockNavigate = jest.fn();
@@ -6486,10 +5590,10 @@ test("shows device, location, and current-session details", async () => {
 
   render(<LoggedDevicesPage />);
 
-  expect(await screen.findByText("Microsoft Edge on Windows")).toBeTruthy();
-  expect(screen.getByText("Buffalo, NY, US")).toBeTruthy();
-  expect(screen.getByText("203.0.113.10")).toBeTruthy();
-  expect(screen.getByText("Current device")).toBeTruthy();
+  expect(await screen.findByText("Microsoft Edge on Windows")).toBeInTheDocument();
+  expect(screen.getByText("Buffalo, NY, US")).toBeInTheDocument();
+  expect(screen.getByText("203.0.113.10")).toBeInTheDocument();
+  expect(screen.getByText("Current device")).toBeInTheDocument();
 });
 
 test("explains local addresses and lists every session with its sign-out state", async () => {
@@ -6511,11 +5615,11 @@ test("explains local addresses and lists every session with its sign-out state",
     ok: true, json: async () => ({ success: true, devices }),
   });
   render(<LoggedDevicesPage />);
-  expect(await screen.findByText("Local device · no public location")).toBeTruthy();
-  expect(screen.getByText("Firefox on Linux")).toBeTruthy();
-  expect(screen.getByText("Safari on iOS")).toBeTruthy();
-  expect(screen.getByText("Buffalo, New York, United States")).toBeTruthy();
-  expect(screen.getByText("Current device")).toBeTruthy();
+  expect(await screen.findByText("Local device · no public location")).toBeInTheDocument();
+  expect(screen.getByText("Firefox on Linux")).toBeInTheDocument();
+  expect(screen.getByText("Safari on iOS")).toBeInTheDocument();
+  expect(screen.getByText("Buffalo, New York, United States")).toBeInTheDocument();
+  expect(screen.getByText("Current device")).toBeInTheDocument();
   expect(screen.getAllByText("Signed out").length).toBeGreaterThan(0);
   expect(screen.queryByRole("searchbox")).toBeNull();
   expect(screen.queryByRole("button", { name: "Refresh history" })).toBeNull();
@@ -6528,7 +5632,7 @@ test("offers Try again, not a refresh button, when loading fails", async () => {
   render(<LoggedDevicesPage />);
   fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
-  expect(await screen.findByText("No login history is available yet.")).toBeTruthy();
+  expect(await screen.findByText("No login history is available yet.")).toBeInTheDocument();
 });
 
 test("keeps history usable when a public IP cannot be located", async () => {
@@ -6541,8 +5645,8 @@ test("keeps history usable when a public IP cannot be located", async () => {
     }] }),
   });
   render(<LoggedDevicesPage />);
-  expect(await screen.findByText("City could not be determined from this IP")).toBeTruthy();
-  expect(screen.getByText("8.8.8.8")).toBeTruthy();
+  expect(await screen.findByText("City could not be determined from this IP")).toBeInTheDocument();
+  expect(screen.getByText("8.8.8.8")).toBeInTheDocument();
 });
 ```
 
@@ -6624,12 +5728,105 @@ describe("logged device timestamps", () => {
 </details>
 
 <details>
+<summary>src/__tests__/pages/Settings/PaymentsPage.test.jsx</summary>
+
+[Open source](../src/__tests__/pages/Settings/PaymentsPage.test.jsx)
+
+```jsx
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import PaymentsPage from "../../../pages/Settings/PaymentsPage";
+import { apiGetJson, csrfPostJson } from "../../../utils/apiClient";
+
+jest.mock("../../../utils/apiClient", () => ({ apiGetJson: jest.fn(), csrfPostJson: jest.fn() }));
+jest.mock("../../../pages/Settings/SettingsLayout", () => ({ children }) => <div>{children}</div>);
+
+const stripeAccount = {
+  feature_enabled: true, payment_mode: "live", is_test_mode: false, connected: false,
+  details_submitted: false, charges_enabled: false, payouts_enabled: false, ready: false,
+  dashboard_url: "https://dashboard.stripe.com/",
+};
+
+beforeEach(() => jest.resetAllMocks());
+
+test("demo mode says no money moves and offers no Stripe controls", async () => {
+  apiGetJson.mockResolvedValueOnce({ data: { feature_enabled: true, payment_mode: "mock", is_mock: true, connected: false, ready: true } });
+  render(<PaymentsPage />);
+  expect(await screen.findByText("Demo transactions are ready")).toBeInTheDocument();
+  expect(screen.getByText(/Payments are in demo mode.*no real money is charged or transferred/i)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Connect Stripe" })).not.toBeInTheDocument();
+  expect(screen.queryByText("Before you connect")).not.toBeInTheDocument();
+  expect(apiGetJson.mock.calls[0][0]).toMatch(/payments\/account_status\.php$/);
+});
+
+test("with payments switched off the page explains manual confirmation still works", async () => {
+  apiGetJson.mockResolvedValueOnce({ data: { ...stripeAccount, feature_enabled: false, payment_mode: null } });
+  render(<PaymentsPage />);
+  expect(await screen.findByText(/Real payments are not available on this installation yet/i)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Connect Stripe" })).not.toBeInTheDocument();
+  expect(screen.queryByText("Demo transactions are ready")).not.toBeInTheDocument();
+});
+
+test("an unconnected real account can start Stripe onboarding", async () => {
+  apiGetJson.mockResolvedValueOnce({ data: stripeAccount });
+  csrfPostJson.mockResolvedValueOnce({ data: { url: null } });
+  render(<PaymentsPage />);
+  expect(await screen.findByText("Not connected")).toBeInTheDocument();
+  expect(screen.getByText("Before you connect")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Disconnect" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Connect Stripe" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Stripe did not return an onboarding link.");
+  expect(csrfPostJson.mock.calls[0][0]).toMatch(/payments\/onboard\.php$/);
+  expect(screen.getByRole("button", { name: "Connect Stripe" })).toBeEnabled();
+});
+
+test("a ready account shows its status and can disconnect only after confirming", async () => {
+  const ready = { ...stripeAccount, connected: true, details_submitted: true, charges_enabled: true, payouts_enabled: true, ready: true };
+  apiGetJson.mockResolvedValueOnce({ data: ready }).mockResolvedValueOnce({ data: stripeAccount });
+  csrfPostJson.mockResolvedValueOnce({ success: true });
+  const confirm = jest.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+  render(<PaymentsPage />);
+  expect(await screen.findByText("Ready to accept payments")).toBeInTheDocument();
+  expect(screen.getAllByText("Ready")).toHaveLength(3);
+  expect(screen.queryByRole("button", { name: "Connect Stripe" })).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Open Stripe Dashboard" })).toHaveAttribute("href", "https://dashboard.stripe.com/");
+
+  fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+  expect(csrfPostJson).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+  await waitFor(() => expect(csrfPostJson.mock.calls[0][0]).toMatch(/payments\/disconnect\.php$/));
+  expect(await screen.findByText("Not connected")).toBeInTheDocument();
+  confirm.mockRestore();
+});
+
+test("onboarding in progress offers to continue setup and marks test mode", async () => {
+  apiGetJson.mockResolvedValueOnce({ data: { ...stripeAccount, payment_mode: "test", is_test_mode: true, connected: true, details_submitted: true } });
+  render(<PaymentsPage />);
+  expect(await screen.findByText("Onboarding incomplete")).toBeInTheDocument();
+  expect(screen.getByText("Test Mode")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Continue Stripe Setup" })).toBeInTheDocument();
+  expect(screen.getAllByText("Required")).toHaveLength(2);
+});
+
+test("a failed load shows the error instead of payment controls", async () => {
+  apiGetJson.mockRejectedValueOnce(new Error("Unable to load payment settings"));
+  render(<PaymentsPage />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load payment settings");
+  expect(screen.queryByRole("button", { name: "Connect Stripe" })).not.toBeInTheDocument();
+});
+```
+
+</details>
+
+<details>
 <summary>src/__tests__/pages/Settings/TwoFactorAuthentication.test.jsx</summary>
 
 [Open source](../src/__tests__/pages/Settings/TwoFactorAuthentication.test.jsx)
 
 ```jsx
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import TwoFactorAuthentication from "../../../pages/Settings/TwoFactorAuthentication";
 import { csrfFetch } from "../../../utils/csrfFetch";
 
@@ -6665,8 +5862,8 @@ test("enables email two-factor authentication and updates the button", async () 
   fireEvent.click(screen.getByRole("button", { name: "Enable 2FA" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
-  expect(await screen.findByText("Two-Factor Authentication Enabled Successfully.")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Disable 2FA" })).toBeTruthy();
+  expect(await screen.findByText("Two-Factor Authentication Enabled Successfully.")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Disable 2FA" })).toBeInTheDocument();
   expect(csrfFetch).toHaveBeenCalledWith(
     expect.stringContaining("/auth/two_factor.php"),
     expect.objectContaining({ body: JSON.stringify({ action: "enable", password: "" }) }),
@@ -6691,8 +5888,8 @@ test("requires the current password when disabling two-factor authentication", a
   fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
   await waitFor(() => expect(csrfFetch).toHaveBeenCalled());
-  expect(await screen.findByText("Two-Factor Authentication Disabled Successfully.")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Enable 2FA" })).toBeTruthy();
+  expect(await screen.findByText("Two-Factor Authentication Disabled Successfully.")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Enable 2FA" })).toBeInTheDocument();
 });
 ```
 
@@ -7073,7 +6270,7 @@ describe("selectedCategoryAfterRemoval", () => {
 [Open source](../src/__tests__/utils/apiClient.test.js)
 
 ```javascript
-import { apiGetJson, apiPostJson, csrfPostJson, readApiError, readJsonResponse } from "../../utils/apiClient";
+import { apiGetJson, csrfPostJson, readApiError, readJsonResponse } from "../../utils/apiClient";
 import { csrfFetch } from "../../utils/csrfFetch";
 
 jest.mock("../../utils/csrfFetch", () => ({ csrfFetch: jest.fn() }));
@@ -7182,59 +6379,6 @@ describe("apiGetJson", () => {
     await expect(apiGetJson("/api/list")).rejects.toThrow("Nope");
     global.fetch.mockResolvedValueOnce(reply("", { ok: false, status: 502 }));
     await expect(apiGetJson("/api/list")).rejects.toThrow("HTTP 502");
-  });
-});
-
-describe("apiPostJson", () => {
-  test("sends a credentialed JSON POST", async () => {
-    global.fetch.mockResolvedValue(reply({ ok: true }));
-    await expect(apiPostJson("/api/search", { q: "lamp" })).resolves.toEqual({ ok: true });
-    const [url, options] = global.fetch.mock.calls[0];
-    expect(url).toBe("/api/search");
-    expect(options.method).toBe("POST");
-    expect(options.credentials).toBe("include");
-    expect(options.headers.get("Accept")).toBe("application/json");
-    expect(options.headers.get("Content-Type")).toBe("application/json");
-    expect(options.body).toBe('{"q":"lamp"}');
-  });
-
-  test("a missing or empty body is sent as an empty object", async () => {
-    global.fetch.mockResolvedValue(reply({}));
-    await apiPostJson("/api/x");
-    await apiPostJson("/api/x", null);
-    await apiPostJson("/api/x", undefined, {});
-    for (const [, options] of global.fetch.mock.calls) expect(options.body).toBe("{}");
-  });
-
-  test("a falsy-but-real body is still sent as given only when it is an object", async () => {
-    global.fetch.mockResolvedValue(reply({}));
-    await apiPostJson("/api/x", []);
-    expect(global.fetch.mock.calls[0][1].body).toBe("[]");
-    await apiPostJson("/api/x", 0);
-    expect(global.fetch.mock.calls[1][1].body).toBe("{}");
-  });
-
-  test("custom headers and credentials override the defaults; the method cannot be changed", async () => {
-    global.fetch.mockResolvedValue(reply({}));
-    const signal = new AbortController().signal;
-    await apiPostJson("/api/x", { a: 1 }, {
-      method: "DELETE",
-      credentials: "same-origin",
-      signal,
-      headers: { "Content-Type": "application/vnd.api+json", "X-Trace": "abc" },
-    });
-    const options = global.fetch.mock.calls[0][1];
-    expect(options.method).toBe("POST");
-    expect(options.credentials).toBe("same-origin");
-    expect(options.signal).toBe(signal);
-    expect(options.headers.get("Content-Type")).toBe("application/vnd.api+json");
-    expect(options.headers.get("X-Trace")).toBe("abc");
-    expect(options.headers.get("Accept")).toBe("application/json");
-  });
-
-  test("failures throw the server's message", async () => {
-    global.fetch.mockResolvedValue(reply({ message: "Bad input" }, { ok: false, status: 422 }));
-    await expect(apiPostJson("/api/x", {})).rejects.toThrow("Bad input");
   });
 });
 
@@ -8408,7 +7552,7 @@ test("notification data cannot navigate outside the app", async () => {
 
 </details>
 
-### Backend CLI checks and manual demonstrations (17 files)
+### Backend CLI checks and manual demonstrations (18 files)
 
 <details>
 <summary>api/tests/adversarial_validation_test.php</summary>
@@ -9348,6 +8492,164 @@ echo "PASS: {$checks} helper checks\n";
 </details>
 
 <details>
+<summary>api/tests/input_fuzz_test.php</summary>
+
+[Open source](../api/tests/input_fuzz_test.php)
+
+```php
+<?php
+declare(strict_types=1);
+
+// Input validation sweep over real HTTP: every routable endpoint is sent wrong
+// types, oversized text, SQL- and script-shaped strings, and out-of-range
+// numbers in every field it reads. Bad input must be answered with a clear
+// 4xx (or handled normally), never a 5xx, and JSON endpoints must still answer
+// in JSON. A 500 here means a field reached code that assumed it was valid.
+//
+// Field names are read from each endpoint's source, so a new endpoint or a new
+// field is covered without editing this file.
+require __DIR__ . '/support/integration_harness.php';
+
+// Never served by router.php (see $blockedDirs there).
+const FUZZ_BLOCKED_DIRS = ['tests', 'database', 'helpers', 'security', 'utility', 'config'];
+const FUZZ_SKIP = [
+    // Would end or destroy the session this sweep depends on.
+    'auth/logout.php', 'auth/delete_account.php',
+    // Signed Stripe callbacks: they answer 503 by design while payments are off,
+    // and mock_payment_test.php covers their signature and payload handling.
+    'payments/webhook_live.php', 'payments/webhook_test.php',
+    'payments/account_webhook_live.php', 'payments/account_webhook_test.php',
+];
+// A query string longer than this is refused by the test server before PHP runs.
+const FUZZ_MAX_QUERY_TEXT = 2000;
+
+function fuzz_values(): array
+{
+    return [
+        'nested array' => ['a' => ['b' => ['c']]],
+        'empty array' => [],
+        'sql text' => "' OR '1'='1'; DROP TABLE user_accounts; --",
+        'script text' => '<script>alert(1)</script><img src=x onerror=alert(1)>',
+        'long text' => str_repeat('A', 70000),
+        'four-byte text' => "\u{1F600}\u{1F4A9} \u{202E}reversed",
+        'null byte' => "abc\0def",
+        'negative' => -1,
+        'huge number' => 99999999999999999999,
+        'numeric overflow text' => '1e309',
+        'null' => null,
+        'true' => true,
+        'whitespace' => "  \t\n ",
+    ];
+}
+
+/** Routable endpoint paths relative to api/. */
+function fuzz_endpoints(string $apiRoot): array
+{
+    $found = [];
+    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($apiRoot, FilesystemIterator::SKIP_DOTS));
+    foreach ($iterator as $file) {
+        $relative = str_replace('\\', '/', substr($file->getPathname(), strlen($apiRoot) + 1));
+        if (!str_ends_with($relative, '.php')) continue;
+        if (in_array(explode('/', $relative)[0], FUZZ_BLOCKED_DIRS, true)) continue;
+        if (in_array($relative, FUZZ_SKIP, true)) continue;
+        $found[] = $relative;
+    }
+    sort($found);
+    return $found;
+}
+
+/** Request field names an endpoint reads, taken from its source. */
+function fuzz_fields(string $source): array
+{
+    $patterns = [
+        '/\$(?:payload|input|body|data|json|request|params|_GET|_POST|_REQUEST)\[\s*[\'"]([A-Za-z_][A-Za-z0-9_]*)[\'"]\s*\]/',
+        '/(?:request_int|require_product_id)\(\s*\$\w+\s*,\s*[\'"]([A-Za-z_][A-Za-z0-9_]*)[\'"]/',
+    ];
+    $fields = str_contains($source, 'require_product_id(') ? ['product_id' => true] : [];
+    foreach ($patterns as $pattern) {
+        preg_match_all($pattern, $source, $matches);
+        foreach ($matches[1] as $name) $fields[$name] = true;
+    }
+    unset($fields['csrf_token']);
+    return array_keys($fields);
+}
+
+function fuzz_send(int $user, string $endpoint, bool $isGet, array $fields): array
+{
+    if ($isGet) {
+        $fields = array_map(
+            static fn($value) => is_string($value) ? substr($value, 0, FUZZ_MAX_QUERY_TEXT) : $value,
+            $fields
+        );
+        return api($user, $endpoint . ($fields ? '?' . http_build_query($fields) : ''), null);
+    }
+    return api($user, $endpoint, $fields);
+}
+
+// Without a signing secret ws_token.php answers 500 before reading any input.
+putenv('WS_TOKEN_SECRET=fuzz-only-secret');
+harness_start('fuzz', 3);
+
+// Real ids for the sweep to aim at, so requests get past "not found" checks.
+$conn->query("INSERT INTO INVENTORY (title, description, seller_id, item_condition, item_status, item_location, listing_price, price_nego, trades, photos)
+              VALUES ('Fuzz desk', 'A desk', 1, 'Good', 'Active', 'North Campus', 25, 1, 0, '[\"/test.jpg\"]')");
+$productId = (int)$conn->insert_id;
+$conversation = api(2, 'chat/ensure_conversation.php', ['product_id' => $productId]);
+if (!ok($conversation)) throw new RuntimeException('Fuzz fixture conversation failed: ' . json_encode($conversation));
+
+$apiRoot = dirname(__DIR__);
+$endpoints = fuzz_endpoints($apiRoot);
+$values = fuzz_values();
+$requests = 0;
+
+foreach ($endpoints as $endpoint) {
+    $source = (string)file_get_contents($apiRoot . '/' . $endpoint);
+    $isJsonEndpoint = str_contains($source, 'init_json_endpoint(');
+    $isGet = (bool)preg_match("/init_json_endpoint\\(\\s*'GET'/", $source) || !$isJsonEndpoint;
+    $fields = fuzz_fields($source);
+    $problems = [];
+
+    $cases = ['no fields' => []];
+    foreach ($values as $label => $value) {
+        if ($fields) $cases["every field = $label"] = array_fill_keys($fields, $value);
+        // One bad field among otherwise plausible ids reaches deeper checks.
+        foreach ($fields as $field) {
+            $cases["$field = $label"] = [$field => $value] + array_fill_keys($fields, 1);
+        }
+    }
+
+    foreach ($cases as $label => $payload) {
+        // The seller sends everything; the buyer repeats only the all-fields cases.
+        foreach (str_starts_with($label, 'every field') || $label === 'no fields' ? [1, 2] : [1] as $user) {
+            $response = fuzz_send($user, $endpoint, $isGet, $payload);
+            $requests++;
+            if ($response['status'] >= 500 || $response['status'] === 0) {
+                $problems[] = "user $user, $label: HTTP " . $response['status'];
+            } elseif ($isJsonEndpoint && !is_array($response['body'])) {
+                $problems[] = "user $user, $label: HTTP " . $response['status'] . ' with a non-JSON body';
+            }
+        }
+    }
+
+    check($problems === [], "$endpoint answers bad input without a server error (" . count($fields) . ' fields)');
+    foreach (array_slice($problems, 0, 6) as $problem) echo "     $problem" . PHP_EOL;
+    if (count($problems) > 6) echo '     ... and ' . (count($problems) - 6) . ' more' . PHP_EOL;
+
+    // A sweep that silently lost its session would only be testing the login check.
+    foreach ([1, 2] as $user) {
+        if (!ok(api($user, 'auth/me.php', null))) harness_login($user);
+    }
+}
+
+check($requests > 1000, "the sweep sent a meaningful number of requests ($requests)");
+check((int)row('SELECT COUNT(*) AS n FROM user_accounts')['n'] === 3, 'no account was created or deleted by bad input');
+check((int)row("SELECT COUNT(*) AS n FROM INVENTORY WHERE product_id=$productId AND title='Fuzz desk'")['n'] === 1, 'the fixture listing survived the sweep unchanged');
+harness_finish();
+```
+
+</details>
+
+<details>
 <summary>api/tests/login_location_test.php</summary>
 
 [Open source](../api/tests/login_location_test.php)
@@ -9565,6 +8867,22 @@ check(ok(fixture_webhook($event)) && (int)row("SELECT sold FROM INVENTORY WHERE 
 check(ok(fixture_webhook($event)) && (int)row("SELECT COUNT(*) AS n FROM confirm_purchase_requests WHERE scheduled_request_id=$realSchedule")['n'] === 1,
     'replayed Stripe success webhook completes the purchase only once');
 
+// Going live: a schedule accepted in demo mode must return to manual
+// confirmation, never complete as mock or reach Stripe, once real payments are on.
+[$item, $chat] = mock_fixture(4, 5);
+$conn->query("INSERT INTO scheduled_purchase_requests (inventory_product_id,seller_user_id,buyer_user_id,conversation_id,
+    meet_location,meeting_at,verification_code,status,payment_option,payment_mode,payment_amount_cents)
+    VALUES ($item,4,5,$chat,'North Campus',UTC_TIMESTAMP() - INTERVAL 10 SECOND,'DEMO','accepted','stripe','mock',2500)");
+$stale = (int)$conn->insert_id;
+check(api(5, 'payments/create_intent.php', ['scheduled_request_id' => $stale])['status'] === 409, 'a demo-mode schedule cannot start checkout after real payments are enabled');
+check(api(5, 'payments/mock_confirm.php', ['scheduled_request_id' => $stale])['status'] === 409
+    && (int)row("SELECT sold FROM INVENTORY WHERE product_id=$item")['sold'] === 0, 'a demo-mode schedule cannot be mock-completed after real payments are enabled');
+$staleStatus = api(5, 'payments/status.php', ['conversation_id' => $chat, 'product_id' => $item])['body']['data'] ?? [];
+check(($staleStatus['fallback'] ?? false) === true && ($staleStatus['fallback_reason'] ?? '') === 'account_mode_changed'
+    && ($staleStatus['can_pay'] ?? true) === false, 'a demo-mode schedule falls back to manual confirmation after real payments are enabled');
+check((api(4, 'payments/status.php', ['conversation_id' => $chat, 'product_id' => $item])['body']['data']['manual_confirm_available'] ?? false) === true,
+    'the seller can confirm manually after the demo-mode fallback');
+
 require_once __DIR__ . '/../database/protect_test_accounts.php';
 $seedEmail = seed_account_emails()[0];
 $stmt = $conn->prepare('UPDATE user_accounts SET email = ?, is_protected = 0 WHERE user_id = 4');
@@ -9582,7 +8900,7 @@ check(ok(api(5, 'payments/create_intent.php', ['scheduled_request_id' => $seedSc
 
 harness_cleanup();
 putenv('PAYMENTS_ENABLED=false');
-harness_start('mockdisabled', 2);
+harness_start('mockdisabled', 4);
 $conn->query('UPDATE user_accounts SET is_protected = 1 WHERE user_id IN (1,2)');
 [$item, $chat] = mock_fixture();
 $disabledSchedule = mock_schedule($item, $chat);
@@ -9591,6 +8909,49 @@ check(ok(api(2, 'payments/create_intent.php', ['scheduled_request_id' => $disabl
 check(ok(api(2, 'payments/mock_confirm.php', ['scheduled_request_id' => $disabledSchedule])), 'mock completion works with real payments switched off');
 $disabledPayment = (int)row("SELECT electronic_payment_id FROM electronic_payments WHERE scheduled_request_id=$disabledSchedule")['electronic_payment_id'];
 check(ok(api(1, 'payments/refund.php', ['electronic_payment_id' => $disabledPayment])), 'mock refund works with real payments switched off');
+
+// Demo mode: with real payments off, ordinary accounts get the same mock flow.
+[$item, $chat] = mock_fixture(3, 4);
+$demoEligibility = api(3, 'payments/schedule_eligibility.php', ['product_id' => $item, 'conversation_id' => $chat])['body']['data'] ?? [];
+check(($demoEligibility['eligible'] ?? false) === true && ($demoEligibility['payment_mode'] ?? '') === 'mock',
+    'demo mode makes an unprotected pair eligible for mock payment');
+if (empty($demoEligibility['eligible'])) harness_finish();
+$demoSchedule = mock_schedule($item, $chat, 3, 4);
+check(row("SELECT payment_mode FROM scheduled_purchase_requests WHERE request_id=$demoSchedule")['payment_mode'] === 'mock',
+    'demo mode schedules an unprotected pair as a mock transaction');
+check(ok(api(3, 'payments/account_status.php', null)) && (api(3, 'payments/account_status.php', null)['body']['data']['is_mock'] ?? false),
+    'demo mode shows mock payment settings to an unprotected account');
+$conn->query("UPDATE scheduled_purchase_requests SET meeting_at=UTC_TIMESTAMP() - INTERVAL 10 SECOND WHERE request_id=$demoSchedule");
+$demoSetup = api(4, 'payments/create_intent.php', ['scheduled_request_id' => $demoSchedule]);
+check(ok($demoSetup) && ($demoSetup['body']['data']['is_mock'] ?? false) && !array_key_exists('client_secret', $demoSetup['body']['data']),
+    'demo mode checkout is mock and exposes no Stripe credentials');
+check(ok(api(4, 'payments/mock_confirm.php', ['scheduled_request_id' => $demoSchedule]))
+    && (int)row("SELECT sold FROM INVENTORY WHERE product_id=$item")['sold'] === 1, 'demo mode completes the purchase for an unprotected pair');
+$demoPayment = row("SELECT electronic_payment_id AS id, payment_mode, stripe_payment_intent_id AS intent FROM electronic_payments WHERE scheduled_request_id=$demoSchedule");
+check($demoPayment['payment_mode'] === 'mock' && str_starts_with($demoPayment['intent'], 'mock_'), 'demo mode records a mock payment, never a Stripe intent');
+check((float)(api(3, 'seller_dashboard/seller_stats.php', null)['body']['data']['earnings'] ?? -1) === 0.0, 'demo mode payments do not count as earnings');
+check(ok(api(3, 'payments/refund.php', ['electronic_payment_id' => (int)$demoPayment['id'], 'relist' => true]))
+    && (int)row("SELECT sold FROM INVENTORY WHERE product_id=$item")['sold'] === 0, 'demo mode refund relists without Stripe');
+
+harness_cleanup();
+putenv('PAYMENTS_DEMO_MODE=false');
+harness_start('demooff', 2);
+[$item, $chat] = mock_fixture();
+$off = api(1, 'payments/schedule_eligibility.php', ['product_id' => $item, 'conversation_id' => $chat]);
+check(ok($off) && empty($off['body']['data']['eligible']), 'with demo mode off, an unprotected pair cannot use built-in payment');
+check(ok(api(1, 'payments/account_status.php', null)) && empty(api(1, 'payments/account_status.php', null)['body']['data']['is_mock']),
+    'with demo mode off, an unprotected account is not shown mock payments');
+
+// Flood cap on payment actions: per user, and never on the polled status endpoint.
+$lastAllowed = null;
+for ($i = 0; $i < 30; $i++) $lastAllowed = api(2, 'payments/onboard.php');
+check($lastAllowed['status'] === 503, 'the 30th payment action in a window is still processed');
+$throttled = api(2, 'payments/onboard.php');
+check($throttled['status'] === 429 && str_contains((string)($throttled['body']['error'] ?? ''), 'Too many payment requests'),
+    'the 31st payment action in a window is refused with 429');
+check(api(2, 'payments/create_intent.php', ['scheduled_request_id' => 1])['status'] === 429, 'the cap is shared across payment action endpoints');
+check(api(1, 'payments/onboard.php')['status'] === 503, 'one user reaching the cap does not block another user');
+check(ok(api(2, 'payments/status.php', ['conversation_id' => $chat, 'product_id' => $item])), 'the polled payment status endpoint is not rate limited');
 harness_finish();
 ```
 
@@ -9938,6 +9299,52 @@ $outsider = http_get(4, 'chat/serve_chat_image.php?message_id=' . $introMessage)
 check(error_is($outsider, 403, 'forbidden'), 'non-participant cannot fetch chat media');
 check(str_starts_with($outsider['type'], 'application/json'), 'chat media errors are sent as JSON');
 check((http_get(2, 'chat/serve_chat_image.php?message_id=' . $introMessage)['body']['error'] ?? '') === 'no_image', 'participant gets no_image for a text message');
+
+// Whether a listing has an open purchase is the seller's to know.
+[$product, $conversation] = fixture();
+check((api(1, 'scheduled_purchases/check_active.php', ['product_id' => $product])['body']['has_active'] ?? null) === false, 'seller sees no open purchase before scheduling');
+accepted($product, $conversation);
+check((api(1, 'scheduled_purchases/check_active.php', ['product_id' => $product])['body']['has_active'] ?? null) === true, 'seller sees the open purchase on their listing');
+foreach ([2 => 'the buyer', 4 => 'an outsider'] as $other => $who) {
+    $probe = api($other, 'scheduled_purchases/check_active.php', ['product_id' => $product]);
+    check($probe['status'] === 404 && !array_key_exists('has_active', $probe['body'] ?? []), "$who cannot probe another seller's listing for open purchases");
+}
+check(ok(api(1, 'scheduled_purchases/cancel.php', ['request_id' => (int)row("SELECT request_id FROM scheduled_purchase_requests WHERE inventory_product_id=$product")['request_id']])), 'seller releases the probe fixture');
+
+// Usernames come from email addresses, so a user id only resolves for yourself
+// or someone you share a conversation with.
+check(is_string(api(2, 'profile/get_username.php?user_id=1', null)['body']['username'] ?? null), 'a chat partner can look up the other username');
+check((api(4, 'profile/get_username.php?user_id=4', null)['body']['username'] ?? '') === 'lifecycle4', 'a user can look up their own username');
+$stranger = api(4, 'profile/get_username.php?user_id=2', null);
+check($stranger['status'] === 404 && !array_key_exists('username', $stranger['body'] ?? []), 'a stranger cannot turn a user id into a username');
+
+// Reports are capped per reporter so one account cannot flood the moderators.
+[$product] = fixture();
+$lastReport = null;
+for ($i = 0; $i < 10; $i++) $lastReport = api(2, 'moderation/report_listing.php', ['product_id' => $product, 'reason' => 'spam']);
+check(ok($lastReport), 'the 10th listing report in a window is accepted');
+check((int)row("SELECT COUNT(*) AS c FROM listing_reports WHERE product_id=$product AND reporter_id=2")['c'] === 1, 'repeated reports of one listing stay a single report');
+check(api(2, 'moderation/report_listing.php', ['product_id' => $product, 'reason' => 'spam'])['status'] === 429, 'the 11th listing report in a window is refused');
+check(ok(api(3, 'moderation/report_listing.php', ['product_id' => $product, 'reason' => 'scam'])), "one reporter's cap does not block another reporter");
+check(api(1, 'moderation/report_listing.php', ['product_id' => $product, 'reason' => 'spam'])['status'] === 409, 'a seller cannot report their own listing');
+
+// Notifications: delete one, clear all, and never touch another user's.
+$conn->query("INSERT INTO notifications (recipient_user_id,type,title,message,idempotency_key) VALUES
+    (2,'test','Mine A','m','lifecycle-n1'), (2,'test','Mine B','m','lifecycle-n2'), (3,'test','Theirs','m','lifecycle-n3')");
+$mineA = (int)row("SELECT notification_id AS id FROM notifications WHERE idempotency_key='lifecycle-n1'")['id'];
+$theirs = (int)row("SELECT notification_id AS id FROM notifications WHERE idempotency_key='lifecycle-n3'")['id'];
+check(api(2, 'wishlist/delete_notification.php', ['notification_id' => $theirs])['status'] === 404
+    && (int)row("SELECT COUNT(*) AS c FROM notifications WHERE notification_id=$theirs")['c'] === 1, "a user cannot delete another user's notification");
+check(ok(api(2, 'wishlist/delete_notification.php', ['notification_id' => $mineA]))
+    && (int)row("SELECT COUNT(*) AS c FROM notifications WHERE notification_id=$mineA")['c'] === 0, 'a user can delete one of their own notifications');
+check(api(2, 'wishlist/delete_notification.php', ['notification_id' => $mineA])['status'] === 404, 'deleting the same notification twice reports not found');
+// Notifications scheduled for later are not visible yet, so clear all leaves them.
+$visible = 'recipient_user_id=2 AND available_at <= NOW()';
+$before = (int)row("SELECT COUNT(*) AS c FROM notifications WHERE $visible")['c'];
+$cleared = api(2, 'wishlist/clear_notifications.php');
+check($before > 0 && ok($cleared) && ($cleared['body']['rows_affected'] ?? null) === $before
+    && (int)row("SELECT COUNT(*) AS c FROM notifications WHERE $visible")['c'] === 0, "clear all removes every visible notification the user has");
+check((int)row("SELECT COUNT(*) AS c FROM notifications WHERE notification_id=$theirs")['c'] === 1, "clear all leaves other users' notifications alone");
 
 // Last: this deletes buyer 2.
 [$product, $conversation] = fixture();

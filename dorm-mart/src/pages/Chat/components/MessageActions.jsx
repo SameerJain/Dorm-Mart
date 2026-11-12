@@ -254,6 +254,7 @@ export default function MessageActions({ actions, align = "start", preview, chil
           ref={menuRef}
           role="menu"
           aria-label="Message actions"
+          tabIndex={-1}
           onKeyDown={onMenuKeyDown}
           style={{ ...menuPos, width: MENU_WIDTH }}
           className="fixed z-[60] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-xl dark:border-gray-600 dark:bg-gray-800"
@@ -278,6 +279,7 @@ export default function MessageActions({ actions, align = "start", preview, chil
       {sheetOpen && createPortal(
         <div
           className="fixed inset-0 z-[60] flex items-end bg-black/40"
+          role="presentation"
           onPointerDownCapture={() => { sheetArmedRef.current = true; }}
           onClickCapture={(e) => {
             if (!sheetArmedRef.current && e.detail !== 0) {

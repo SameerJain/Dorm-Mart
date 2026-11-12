@@ -36,7 +36,7 @@ function listing_delete(mysqli $conn, int $productId, int $sellerId, array $item
     notification_for_wishlist($conn, $productId, [
         'type' => 'item_deleted', 'product_id' => null, 'title' => (string)$item['title'],
         'message' => (string)$item['title'] . ' was deleted and is no longer available.',
-        'image_url' => notification_first_image($item['photos'] ?? null),
+        'image_url' => inventory_first_photo($item['photos'] ?? null),
         'severity' => 'warning', 'destination' => null,
         'idempotency_key' => 'deleted-' . $productId,
     ]);

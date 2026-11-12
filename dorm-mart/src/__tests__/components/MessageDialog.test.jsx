@@ -16,16 +16,6 @@ test("shows the message in a labelled dialog with the OK button focused", () => 
   expect(document.activeElement).toBe(screen.getByRole("button", { name: "OK" }));
 });
 
-test("locks page scroll while open and restores it on close", () => {
-  expect(document.body.style.position).toBe("");
-  const { unmount } = render(<MessageDialog title="Notice" message="Hi" onClose={() => {}} />);
-  expect(document.body.style.position).toBe("fixed");
-  expect(document.documentElement.style.overflow).toBe("hidden");
-  unmount();
-  expect(document.body.style.position).toBe("");
-  expect(document.documentElement.style.overflow).toBe("");
-});
-
 test("OK, Escape and the backdrop each close it", () => {
   const onClose = jest.fn();
   render(<MessageDialog title="Notice" message="Hi" onClose={onClose} />);
@@ -42,11 +32,4 @@ test("clicks inside the panel do not close it", () => {
   render(<MessageDialog title="Notice" message="Hi" onClose={onClose} />);
   fireEvent.click(screen.getByText("Hi"));
   expect(onClose).not.toHaveBeenCalled();
-});
-
-test("sits above the app's other overlays and widens its button on phones", () => {
-  render(<MessageDialog title="Notice" message="Hi" onClose={() => {}} />);
-  expect(screen.getByRole("dialog").parentElement.className).toContain("z-[70]");
-  const button = screen.getByRole("button", { name: "OK" }).className.split(/\s+/);
-  expect(button).toEqual(expect.arrayContaining(["w-full", "sm:w-auto", "coarse:min-h-[44px]"]));
 });

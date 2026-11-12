@@ -280,6 +280,16 @@ function dm_payments_enabled(): bool
     return dm_env_bool('PAYMENTS_ENABLED', false);
 }
 
+/**
+ * Demo mode: every account uses mock transactions, so the whole payment flow
+ * works with no Stripe keys and no money moving. It ends the moment real
+ * payments are enabled; PAYMENTS_DEMO_MODE=false hides built-in payment instead.
+ */
+function dm_payments_demo_mode(): bool
+{
+    return !dm_payments_enabled() && dm_env_bool('PAYMENTS_DEMO_MODE', true);
+}
+
 function dm_stripe_secret_key(string $mode): string
 {
     return dm_env_string($mode === 'live' ? 'STRIPE_LIVE_SECRET_KEY' : 'STRIPE_TEST_SECRET_KEY');

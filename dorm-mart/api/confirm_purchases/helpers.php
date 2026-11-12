@@ -235,7 +235,7 @@ function mark_inventory_as_sold(mysqli $conn, array $row): void
     $item = $itemStmt->get_result()->fetch_assoc();
     $itemStmt->close();
     $title = (string)($item['title'] ?? 'Item');
-    $image = notification_first_image($item['photos'] ?? null);
+    $image = inventory_first_photo($item['photos'] ?? null);
 
     $status = 'Sold';
     $updateSql = 'UPDATE INVENTORY SET item_status = ?, sold = 1, wishlisted = 0, final_price = ?, date_sold = CURDATE(), sold_to = ? WHERE product_id = ?';
@@ -519,7 +519,7 @@ function notify_seller_confirm_outcome(mysqli $conn, array $row, string $outcome
             'scheduled_request_id' => !empty($row['scheduled_request_id']) ? (int)$row['scheduled_request_id'] : null,
             'title' => (string)($item['title'] ?? 'Your sale'),
             'message' => $message,
-            'image_url' => notification_first_image($item['photos'] ?? null),
+            'image_url' => inventory_first_photo($item['photos'] ?? null),
             'severity' => $severity,
             'destination' => $conversationId > 0 ? '/app/chat?conv=' . $conversationId : '/app/seller-dashboard',
             'idempotency_key' => 'confirm-outcome-' . $confirmId,
