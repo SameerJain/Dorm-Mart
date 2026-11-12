@@ -106,7 +106,7 @@ function scheduled_purchase_release_listing(mysqli $conn, int $productId, int $e
     $title = (string)($item['title'] ?? 'Item');
     notification_for_wishlist($conn, $productId, [
         'type' => 'item_back_on_sale', 'title' => $title, 'message' => $title . ' is back on sale.',
-        'image_url' => notification_first_image($item['photos'] ?? null),
+        'image_url' => inventory_first_photo($item['photos'] ?? null),
         'severity' => 'success', 'destination' => '/app/viewProduct/' . $productId,
         'idempotency_key' => 'back-on-sale-' . $reason . '-' . $endedRequestId,
     ], $skipUserId);
@@ -257,7 +257,7 @@ function scheduled_purchase_cancel_all_for_user(mysqli $conn, int $userId, strin
 
         $productId = (int)($schedule['inventory_product_id'] ?? 0);
         $title = (string)($schedule['title'] ?? 'Scheduled purchase');
-        $image = notification_first_image($schedule['photos'] ?? null);
+        $image = inventory_first_photo($schedule['photos'] ?? null);
         $counterpartId = (int)$schedule['seller_user_id'] === $userId
             ? (int)$schedule['buyer_user_id']
             : (int)$schedule['seller_user_id'];

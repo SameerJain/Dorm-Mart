@@ -62,6 +62,10 @@ for ($attempt = 1; $attempt <= 4; $attempt++) {
 $locked = login_as($victim, 'Wrong-password-5');
 check(error_is($locked, 429, 'Too many failed attempts. Please try again in 3 minutes.'), '#64 the fifth failure locks the account for 3 minutes');
 check(preg_match('/^Retry-After: 1[0-9]{2}\r?$/mi', $locked['headers']) === 1, '#64 the lockout says when to retry');
+foreach (['198.51.100.1', '198.51.100.2', '1.1.1.1, 198.51.100.3'] as $forgedIp) {
+    $forged = api(harness_guest('forged-ip'), 'auth/login.php', ['email' => $victim, 'password' => $password], ['X-Forwarded-For: ' . $forgedIp]);
+    check($forged['status'] === 429, '#64 forged forwarding headers cannot bypass a lockout');
+}
 check(login_as($victim, $password)['status'] === 429, '#64 the correct password is still refused during the lockout');
 check(login_as(strtoupper($victim), $password)['status'] === 429, '#64 changing the email case does not reach a fresh counter');
 check(ok(login_as(harness_email(3), $password)), '#64 one account\'s lockout does not lock out other accounts from the same network');

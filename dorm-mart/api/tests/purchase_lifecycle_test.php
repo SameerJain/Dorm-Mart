@@ -185,6 +185,52 @@ check(error_is($outsider, 403, 'forbidden'), 'non-participant cannot fetch chat 
 check(str_starts_with($outsider['type'], 'application/json'), 'chat media errors are sent as JSON');
 check((http_get(2, 'chat/serve_chat_image.php?message_id=' . $introMessage)['body']['error'] ?? '') === 'no_image', 'participant gets no_image for a text message');
 
+// Whether a listing has an open purchase is the seller's to know.
+[$product, $conversation] = fixture();
+check((api(1, 'scheduled_purchases/check_active.php', ['product_id' => $product])['body']['has_active'] ?? null) === false, 'seller sees no open purchase before scheduling');
+accepted($product, $conversation);
+check((api(1, 'scheduled_purchases/check_active.php', ['product_id' => $product])['body']['has_active'] ?? null) === true, 'seller sees the open purchase on their listing');
+foreach ([2 => 'the buyer', 4 => 'an outsider'] as $other => $who) {
+    $probe = api($other, 'scheduled_purchases/check_active.php', ['product_id' => $product]);
+    check($probe['status'] === 404 && !array_key_exists('has_active', $probe['body'] ?? []), "$who cannot probe another seller's listing for open purchases");
+}
+check(ok(api(1, 'scheduled_purchases/cancel.php', ['request_id' => (int)row("SELECT request_id FROM scheduled_purchase_requests WHERE inventory_product_id=$product")['request_id']])), 'seller releases the probe fixture');
+
+// Usernames come from email addresses, so a user id only resolves for yourself
+// or someone you share a conversation with.
+check(is_string(api(2, 'profile/get_username.php?user_id=1', null)['body']['username'] ?? null), 'a chat partner can look up the other username');
+check((api(4, 'profile/get_username.php?user_id=4', null)['body']['username'] ?? '') === 'lifecycle4', 'a user can look up their own username');
+$stranger = api(4, 'profile/get_username.php?user_id=2', null);
+check($stranger['status'] === 404 && !array_key_exists('username', $stranger['body'] ?? []), 'a stranger cannot turn a user id into a username');
+
+// Reports are capped per reporter so one account cannot flood the moderators.
+[$product] = fixture();
+$lastReport = null;
+for ($i = 0; $i < 10; $i++) $lastReport = api(2, 'moderation/report_listing.php', ['product_id' => $product, 'reason' => 'spam']);
+check(ok($lastReport), 'the 10th listing report in a window is accepted');
+check((int)row("SELECT COUNT(*) AS c FROM listing_reports WHERE product_id=$product AND reporter_id=2")['c'] === 1, 'repeated reports of one listing stay a single report');
+check(api(2, 'moderation/report_listing.php', ['product_id' => $product, 'reason' => 'spam'])['status'] === 429, 'the 11th listing report in a window is refused');
+check(ok(api(3, 'moderation/report_listing.php', ['product_id' => $product, 'reason' => 'scam'])), "one reporter's cap does not block another reporter");
+check(api(1, 'moderation/report_listing.php', ['product_id' => $product, 'reason' => 'spam'])['status'] === 409, 'a seller cannot report their own listing');
+
+// Notifications: delete one, clear all, and never touch another user's.
+$conn->query("INSERT INTO notifications (recipient_user_id,type,title,message,idempotency_key) VALUES
+    (2,'test','Mine A','m','lifecycle-n1'), (2,'test','Mine B','m','lifecycle-n2'), (3,'test','Theirs','m','lifecycle-n3')");
+$mineA = (int)row("SELECT notification_id AS id FROM notifications WHERE idempotency_key='lifecycle-n1'")['id'];
+$theirs = (int)row("SELECT notification_id AS id FROM notifications WHERE idempotency_key='lifecycle-n3'")['id'];
+check(api(2, 'wishlist/delete_notification.php', ['notification_id' => $theirs])['status'] === 404
+    && (int)row("SELECT COUNT(*) AS c FROM notifications WHERE notification_id=$theirs")['c'] === 1, "a user cannot delete another user's notification");
+check(ok(api(2, 'wishlist/delete_notification.php', ['notification_id' => $mineA]))
+    && (int)row("SELECT COUNT(*) AS c FROM notifications WHERE notification_id=$mineA")['c'] === 0, 'a user can delete one of their own notifications');
+check(api(2, 'wishlist/delete_notification.php', ['notification_id' => $mineA])['status'] === 404, 'deleting the same notification twice reports not found');
+// Notifications scheduled for later are not visible yet, so clear all leaves them.
+$visible = 'recipient_user_id=2 AND available_at <= NOW()';
+$before = (int)row("SELECT COUNT(*) AS c FROM notifications WHERE $visible")['c'];
+$cleared = api(2, 'wishlist/clear_notifications.php');
+check($before > 0 && ok($cleared) && ($cleared['body']['rows_affected'] ?? null) === $before
+    && (int)row("SELECT COUNT(*) AS c FROM notifications WHERE $visible")['c'] === 0, "clear all removes every visible notification the user has");
+check((int)row("SELECT COUNT(*) AS c FROM notifications WHERE notification_id=$theirs")['c'] === 1, "clear all leaves other users' notifications alone");
+
 // Last: this deletes buyer 2.
 [$product, $conversation] = fixture();
 accepted($product, $conversation);

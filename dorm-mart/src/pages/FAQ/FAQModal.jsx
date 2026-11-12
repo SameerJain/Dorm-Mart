@@ -1,5 +1,7 @@
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useModalFocus } from "../../hooks/useModalFocus";
 import { TABS } from "./faqUtils";
 import { FAQ_CONTENT } from "./faqContent";
 
@@ -7,6 +9,8 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
   const navigate = useNavigate();
 
   useBodyScrollLock(isOpen);
+  const panelRef = useRef(null);
+  useModalFocus(panelRef, { active: isOpen, onClose });
 
   if (!isOpen) {
     return null;
@@ -20,13 +24,19 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
   return (
     <div
       className="
-        fixed inset-0 z-50
+        fixed inset-0 z-50 bg-black/40
         flex items-center justify-center
         overscroll-none p-4
       "
-      onClick={onClose}
+      role="presentation"
+      onClick={(e) => e.target === e.currentTarget && onClose?.()}
     >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="faq-modal-title"
+        tabIndex={-1}
         className="
           bg-white dark:bg-gray-800
           rounded-lg shadow-lg
@@ -38,7 +48,6 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
           flex flex-col
           min-w-0
         "
-        onClick={(e) => e.stopPropagation()}
       >
         <style>
           {`
@@ -49,7 +58,7 @@ function FAQModal({ isOpen, onClose, activeView, onTabChange }) {
         </style>
 
         <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5 flex-none">
-          <h2 className="min-w-0 truncate text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">
+          <h2 id="faq-modal-title" className="min-w-0 truncate text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">
             Frequently asked questions
           </h2>
           <button

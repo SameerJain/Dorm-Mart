@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import TwoFactorAuthentication from "../../../pages/Settings/TwoFactorAuthentication";
 import { csrfFetch } from "../../../utils/csrfFetch";
 
@@ -34,8 +35,8 @@ test("enables email two-factor authentication and updates the button", async () 
   fireEvent.click(screen.getByRole("button", { name: "Enable 2FA" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
-  expect(await screen.findByText("Two-Factor Authentication Enabled Successfully.")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Disable 2FA" })).toBeTruthy();
+  expect(await screen.findByText("Two-Factor Authentication Enabled Successfully.")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Disable 2FA" })).toBeInTheDocument();
   expect(csrfFetch).toHaveBeenCalledWith(
     expect.stringContaining("/auth/two_factor.php"),
     expect.objectContaining({ body: JSON.stringify({ action: "enable", password: "" }) }),
@@ -60,6 +61,6 @@ test("requires the current password when disabling two-factor authentication", a
   fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
   await waitFor(() => expect(csrfFetch).toHaveBeenCalled());
-  expect(await screen.findByText("Two-Factor Authentication Disabled Successfully.")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Enable 2FA" })).toBeTruthy();
+  expect(await screen.findByText("Two-Factor Authentication Disabled Successfully.")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Enable 2FA" })).toBeInTheDocument();
 });

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/login_location.php';
+require_once __DIR__ . '/../security/transport.php';
 
 function login_device_details(string $userAgent): array
 {
@@ -51,23 +52,8 @@ function login_device_details(string $userAgent): array
 
 function login_request_ip(): string
 {
-    // Same trust rule as rate_limit_client_ip(): Railway appends the real client
-    // to X-Forwarded-For, so only the last entry is ours. CF-Connecting-IP and
-    // X-Real-IP are not set by Railway and would arrive client-controlled.
-    $forwarded = array_map('trim', explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '')));
-    $candidates = [
-        (string)end($forwarded),
-        $_SERVER['REMOTE_ADDR'] ?? '',
-    ];
-
-    foreach ($candidates as $candidate) {
-        $ip = trim((string)$candidate);
-        if (filter_var($ip, FILTER_VALIDATE_IP)) {
-            return $ip;
-        }
-    }
-
-    return 'Unknown';
+    $ip = request_client_ip();
+    return $ip === 'unknown' ? 'Unknown' : $ip;
 }
 
 /**
@@ -88,7 +74,7 @@ function login_trust_proxy_geo_headers(): bool
 
 function login_request_location(): ?string
 {
-    if (!login_trust_proxy_geo_headers()) {
+    if (!login_trust_proxy_geo_headers() || !request_from_trusted_proxy()) {
         return login_ip_location(login_request_ip());
     }
 

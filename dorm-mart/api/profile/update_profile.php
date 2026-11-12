@@ -203,7 +203,7 @@ function fetch_updated_fields(mysqli $conn, int $userId): array
     }
 
     return [
-        'image_url' => format_profile_photo_url($row['profile_photo'] ?? null),
+        'image_url' => format_profile_media_url($row['profile_photo'] ?? null),
         'bio'       => $row['bio'] ?? '',
         'instagram' => $row['instagram'] ?? '',
     ];

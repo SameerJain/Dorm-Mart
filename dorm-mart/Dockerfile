@@ -6,7 +6,7 @@
 # so routing and security headers are unchanged.
 
 # ---------------------------------------------------------------------------
-# Stage 1: React production bundle
+# Stage 1: React production bundle (Vite)
 # ---------------------------------------------------------------------------
 FROM node:22-bookworm-slim AS frontend
 WORKDIR /app
@@ -14,20 +14,19 @@ WORKDIR /app
 # Railway passes service variables to Docker builds only when declared as ARG.
 ARG REACT_APP_API_BASE
 ARG REACT_APP_CHAT_NOTIFICATION_ON
-# PUBLIC_URL=/ keeps asset paths absolute. package.json's "homepage": "."
-# would emit ./static/..., which 404s (as index.html) when a nested route such
-# as /app/listings is loaded directly. Railway's old build command set this.
+# vite.config.mjs reads these. PUBLIC_URL=/ keeps asset paths absolute.
+# package.json's "homepage": "." would emit ./static/..., which 404s (as
+# index.html) when a nested route such as /app/listings is loaded directly.
 ENV REACT_APP_API_BASE=$REACT_APP_API_BASE \
     REACT_APP_CHAT_NOTIFICATION_ON=$REACT_APP_CHAT_NOTIFICATION_ON \
-    GENERATE_SOURCEMAP=false \
     PUBLIC_URL=/
 
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY public ./public
 COPY src ./src
-COPY tailwind.config.js postcss.config.js .eslintrc.json ./
-# Same script Railway ran before (source maps off). Fail the image if any map slips in.
+COPY index.html vite.config.mjs tailwind.config.js postcss.config.js ./
+# Source maps are off in vite.config.mjs. Fail the image if any map slips in.
 RUN npm run build \
  && if find build -name '*.map' | grep -q .; then echo 'source maps found in build' >&2; exit 1; fi
 

@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useModalFocus } from "../../hooks/useModalFocus";
 import PreLoginBranding from "../../components/PreLoginBranding";
 import PreLoginNavLinks from "../../components/PreLoginNavLinks";
 import { useEmailPolicy } from "../../hooks/useEmailPolicy";
@@ -64,6 +65,8 @@ function CreateAccountPage() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
+  const noticeRef = useRef(null);
+  useModalFocus(noticeRef, { active: showNotice, onClose: () => setShowNotice(false) });
   const [rateLimitBlockedUntil, setRateLimitBlockedUntil] = useState(
     () => getAccountRequestRateLimit().blockedUntil,
   );
@@ -290,10 +293,11 @@ function CreateAccountPage() {
                 }
               >
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
+                  <label htmlFor="create-first-name" className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     First Name
                   </label>
                   <input
+                    id="create-first-name"
                     type="text"
                     name="firstName"
                     value={formData.firstName}
@@ -305,10 +309,11 @@ function CreateAccountPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
+                  <label htmlFor="create-last-name" className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     Last Name
                   </label>
                   <input
+                    id="create-last-name"
                     type="text"
                     name="lastName"
                     value={formData.lastName}
@@ -320,11 +325,12 @@ function CreateAccountPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
+                  <p id="create-grad-label" className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     Graduation Date (Month / Year)
-                  </label>
-                  <div className="flex gap-3 sm:gap-4 md:gap-3">
+                  </p>
+                  <div role="group" aria-labelledby="create-grad-label" className="flex gap-3 sm:gap-4 md:gap-3">
                     <select
+                      aria-label="Graduation month"
                       name="gradMonth"
                       value={formData.gradMonth}
                       onChange={handleChange}
@@ -338,6 +344,7 @@ function CreateAccountPage() {
                       ))}
                     </select>
                     <select
+                      aria-label="Graduation year"
                       name="gradYear"
                       value={formData.gradYear}
                       onChange={handleChange}
@@ -355,10 +362,11 @@ function CreateAccountPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
+                  <label htmlFor="create-email" className="block text-sm sm:text-base md:text-lg lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">
                     University Email Address
                   </label>
                   <input
+                    id="create-email"
                     type="email"
                     name="email"
                     value={formData.email}
@@ -478,11 +486,19 @@ function CreateAccountPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
           <div
             className="absolute inset-0 bg-black bg-opacity-50"
+            role="presentation"
             onClick={() => setShowNotice(false)}
           />
-          <div className="relative z-10 w-full max-w-lg rounded-xl shadow-2xl border border-white/10 bg-blue-600">
+          <div
+            ref={noticeRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="account-notice-title"
+            tabIndex={-1}
+            className="relative z-10 w-full max-w-lg rounded-xl shadow-2xl border border-white/10 bg-blue-600 outline-none"
+          >
             <div className="p-6 sm:p-8">
-              <h3 className="text-2xl sm:text-3xl font-serif text-white mb-4 sm:mb-5 text-center leading-tight">
+              <h3 id="account-notice-title" className="text-2xl sm:text-3xl font-serif text-white mb-4 sm:mb-5 text-center leading-tight">
                 Check Your Email
               </h3>
               <p className="text-white/90 text-center leading-relaxed text-sm sm:text-base mb-6 sm:mb-8">

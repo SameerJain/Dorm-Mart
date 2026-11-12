@@ -102,6 +102,7 @@ export default function SearchResults() {
           className={`absolute inset-0 bg-black/40 transition-opacity ${
             showFiltersPanel ? "opacity-100" : "opacity-0"
           }`}
+          role="presentation"
           onClick={() => setShowFiltersPanel(false)}
         />
         <div

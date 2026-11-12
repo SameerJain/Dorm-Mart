@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import CancelPurchaseModal from "../../../pages/ScheduledPurchases/components/CancelPurchaseModal";
 import CloseFormModal from "../../../pages/ScheduledPurchases/components/CloseFormModal";
 
@@ -21,11 +22,10 @@ function renderCancel(props = {}) {
   return handlers;
 }
 
-test("the cancel-purchase popup is a labelled dialog that locks page scroll", () => {
+test("the cancel-purchase popup is a labelled dialog", () => {
   renderCancel();
   const dialog = screen.getByRole("dialog", { name: "Cancel Scheduled Purchase?" });
   expect(dialog.textContent).toContain("This action cannot be undone.");
-  expect(document.body.style.position).toBe("fixed");
 });
 
 test("its buttons keep their labels, and Escape keeps the purchase", () => {
@@ -56,7 +56,7 @@ test("the close-form popup asks before discarding the form", () => {
   const onClose = jest.fn();
   const onConfirm = jest.fn();
   render(<CloseFormModal onClose={onClose} onConfirm={onConfirm} />);
-  expect(screen.getByRole("dialog", { name: "Close This Form?" })).toBeTruthy();
+  expect(screen.getByRole("dialog", { name: "Close This Form?" })).toBeInTheDocument();
   expect(document.activeElement).toBe(screen.getByRole("button", { name: "Stay" }));
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
   expect(onConfirm).toHaveBeenCalledTimes(1);

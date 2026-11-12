@@ -5,7 +5,9 @@
     "phpmailer/phpmailer": "^6.11",
     "stripe/stripe-php": "^21.2",
     "ext-curl": "*",
-    "snipe/banbuilder": "^2.3"
+    "snipe/banbuilder": "^2.3",
+    "minishlink/web-push": "^11.0",
+    "guzzlehttp/guzzle": "^8.3"
   },
   "config": {
     "platform": {

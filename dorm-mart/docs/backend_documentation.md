@@ -6,12 +6,12 @@ This is a quick map of the current PHP `api/` tree. Endpoint folders and PHP fil
 
 ## auth/
 
-User sessions, account creation, login, logout, CSRF, WebSocket auth tokens, and password reset flows.
+User sessions, account creation, login, logout, CSRF, and password reset flows.
 
 - `auth_handle.php` - Shared login/session helpers, including `require_login()`.
 - `create_account.php`, `login.php`, `logout.php`, `me.php` - Core account/session endpoints.
 - `change_password.php`, `forgot_password.php`, `reset_password.php`, `validate_reset_token.php` - Password change and reset endpoints.
-- `get_csrf_token.php`, `ws_token.php` - Security/token helpers.
+- `get_csrf_token.php` - CSRF token for the frontend.
 
 ## chat/
 
@@ -29,8 +29,8 @@ Selling, buying, scheduled purchases, receipts, and purchase history.
 - `scheduled_purchases/` - Create, list, accept/decline, cancel, and expire scheduled purchase requests.
 - `confirm_purchases/` - Seller confirmation requests and buyer responses for completed/failed purchases.
 - `receipt/view_receipt.php` - Receipt detail payload for product or confirmation request.
-- `purchase_history/` - Purchase history list and transacted item test endpoint.
-- `product/view_product.php`, `product/get_item_info.php` - Product detail endpoints.
+- `purchase_history/` - Purchase history list.
+- `product/view_product.php` - Product detail endpoint: listing, sold and final-price data for the product, receipt, review and seller flows.
 - `listings/landing_listings.php`, `search/get_search_items.php` - Browse and search listing endpoints.
 
 ## user data
@@ -40,6 +40,9 @@ Profile, preferences, reviews, wishlist, notifications, and category data.
 - `profile/` - Current profile, public profile, username lookup, profile updates, profile photo upload, and user preferences.
 - `reviews/` - Product reviews, buyer ratings, review lookup, and review image upload.
 - `wishlist/` - Wishlist add/remove/status/list endpoints plus unread notification tracking.
+- `push/` - Web Push subscription save/delete plus the public VAPID key endpoint.
+- `search/` - Listing search plus private per-account recent-search history.
+- `email/` - Signed promotional-digest unsubscribe handling.
 - `user/me.php` - Lightweight landing-page user payload.
 - `utility/get_categories.php`, `utility/get_active_categories.php`, `utility/categories.json` - Category data.
 
@@ -50,6 +53,8 @@ Shared backend support code.
 - `database/` - Database connection, schema migration, data migration, and DB test script.
 - `security/security.php` - Security headers, CORS, sanitization helpers, and rate-limit support.
 - `helpers/request.php`, `helpers/response.php` - Shared request/response helpers.
+- `helpers/browser_push.php`, `helpers/notifications.php` - Web Push delivery plus the shared notification insert/queue helpers.
+- `utility/send_browser_push.php` - Queue worker (or cron) that delivers pending push messages with retries.
 - `config/app_config.php`, `config/email_config.php`, `config/email_policy.php` - Environment-backed app configuration and allowed-domain policy.
 - `media/image.php` - Safe image proxy for uploaded or stored media paths.
 - `redirects/` - Password reset redirect and expired-link page.
@@ -61,14 +66,14 @@ All backend tests, blocked from HTTP access. See `api/tests/README.md` for the
 full breakdown.
 
 - `adversarial_validation_test.php`, `login_location_test.php`,
-  `promotional_digest_test.php` - automated, offline; run together via
-  `npm run test:backend`.
-- `db_connection_test.php`, `xss_encoding_test.php` - manual diagnostic checks.
-- `bootstrap.php` - shared helpers for the `integration/` scripts.
-- `integration/` - manual, credential-gated scripts that call real endpoints
-  (forgot-password, purchase history, reset-password, SQL injection, XSS, login
-  rate-limiting). Use `API_TEST_BASE_URL` when the default local API base is not
-  correct.
+  `promotional_digest_test.php`, `helpers_unit_test.php`, `profanity_test.php`,
+  `schedule_proposal_test.php`, `schema_sync_test.php`,
+  `database_migrations_test.php`, `browser_push_crypto_test.php` - automated,
+  offline; run together via `npm run test:backend`.
+- `purchase_lifecycle_test.php`, `card_acceptance_test.php`,
+  `mock_payment_test.php`, `recent_searches_test.php`, `browser_push_test.php`,
+  `input_fuzz_test.php` - automated, need a local database; run together via
+  `npm run test:backend:integration`.
 
 ## Security Notes
 

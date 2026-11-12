@@ -1,3 +1,4 @@
+import PageBackButton from "../components/PageBackButton";
 import { useContext } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import MainNav from "../components/MainNav/MainNav";
@@ -28,11 +29,13 @@ export default function NotFoundPage() {
   const location = useLocation();
   const isInsideRootLayout = useContext(RootLayoutContext);
   const homePath = location.pathname.startsWith("/app") ? "/app" : "/";
+  // Inside the app shell the layout already provides the page's <main>.
+  const Shell = isInsideRootLayout ? "div" : "main";
 
   return (
     <>
       {!isInsideRootLayout && <MainNav />}
-      <main className="min-h-[calc(100dvh-var(--nav-h,64px))] bg-gray-50 px-4 py-16 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+      <Shell className="min-h-[calc(100dvh-var(--nav-h,64px))] bg-gray-50 px-4 py-16 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
         <section className="mx-auto flex max-w-2xl flex-col items-center text-center">
           <div
             className="flex items-center justify-center font-black leading-none tracking-tighter"
@@ -58,16 +61,11 @@ export default function NotFoundPage() {
             >
               Go home
             </Link>
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-gray-300 px-5 text-sm font-semibold text-gray-700 transition hover:bg-white active:scale-95 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-            >
-              Go back
-            </button>
+            <PageBackButton
+              onClick={() => navigate(-1)}>Go back</PageBackButton>
           </div>
         </section>
-      </main>
+      </Shell>
     </>
   );
 }

@@ -1,0 +1,259 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Offset ''domain'' on array\{lifetime\: int\<0, max\>, path\: non\-falsy\-string, domain\: string, secure\: bool, httponly\: bool, samesite\: ''Lax''\|''lax''\|''None''\|''none''\|''Strict''\|''strict''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/auth/auth_handle.php
+
+		-
+			message: '#^Offset ''httponly'' on array\{lifetime\: int\<0, max\>, path\: non\-falsy\-string, domain\: string, secure\: bool, httponly\: bool, samesite\: ''Lax''\|''lax''\|''None''\|''none''\|''Strict''\|''strict''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/auth/auth_handle.php
+
+		-
+			message: '#^Offset ''path'' on array\{lifetime\: int\<0, max\>, path\: non\-falsy\-string, domain\: string, secure\: bool, httponly\: bool, samesite\: ''Lax''\|''lax''\|''None''\|''none''\|''Strict''\|''strict''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/auth/auth_handle.php
+
+		-
+			message: '#^Offset ''secure'' on array\{lifetime\: int\<0, max\>, path\: non\-falsy\-string, domain\: string, secure\: bool, httponly\: bool, samesite\: ''Lax''\|''lax''\|''None''\|''none''\|''Strict''\|''strict''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/auth/auth_handle.php
+
+		-
+			message: '#^Constant ALLOW_ALL_EMAILS not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: api/auth/create_account.php
+
+		-
+			message: '#^Constant ALLOW_ALL_EMAILS not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: api/auth/forgot_password.php
+
+		-
+			message: '#^Variable \$destPath in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.variable
+			count: 1
+			path: api/chat/create_image_message.php
+
+		-
+			message: '#^Variable \$lockKey in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: api/chat/create_image_message.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: api/chat/create_message.php
+
+		-
+			message: '#^Call to function is_string\(\) with non\-falsy\-string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: api/chat/ensure_conversation.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: api/chat/ensure_conversation.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 2
+			path: api/chat/ensure_conversation.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-falsy\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: api/chat/ensure_conversation.php
+
+		-
+			message: '#^Variable \$lockKey in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.variable
+			count: 1
+			path: api/chat/ensure_conversation.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 2
+			path: api/chat/fetch_new_messages.php
+
+		-
+			message: '#^Constant ALLOW_ALL_EMAILS not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: api/config/email_policy.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: api/confirm_purchases/helpers.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between non\-empty\-array\<string, string\>\|non\-falsy\-string and false will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: api/database/db_connect.php
+
+		-
+			message: '#^Offset ''mime'' on array\{0\: int\<0, max\>, 1\: int\<0, max\>, 2\: int, 3\: string, mime\: string, channels\?\: int, bits\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: api/helpers/image_upload.php
+
+		-
+			message: '#^Offset 0 on array\{0\: int\<0, max\>, 1\: int\<0, max\>, 2\: int, 3\: string, mime\: string, channels\?\: int, bits\?\: int\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: api/helpers/image_upload.php
+
+		-
+			message: '#^Offset 1 on array\{0\: int\<0, max\>, 1\: int\<0, max\>, 2\: int, 3\: string, mime\: string, channels\?\: int, bits\?\: int\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: api/helpers/image_upload.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: api/helpers/profanity.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: api/moderation/report_listing.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: api/moderation/resolve_listing_report.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: api/payments/account_status.php
+
+		-
+			message: '#^Access to an undefined property Stripe\\StripeObject\:\:\$amount_received\.$#'
+			identifier: property.notFound
+			count: 2
+			path: api/payments/webhook_processor.php
+
+		-
+			message: '#^Access to an undefined property Stripe\\StripeObject\:\:\$currency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: api/payments/webhook_processor.php
+
+		-
+			message: '#^Access to an undefined property Stripe\\StripeObject\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: api/payments/webhook_processor.php
+
+		-
+			message: '#^Variable \$conn in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.variable
+			count: 1
+			path: api/profile/user_preferences.php
+
+		-
+			message: '#^Function load_inventory_metadata\(\) should return array\<int, array\<string, string\>\> but returns array\<int, array\<string, array\|float\|int\|string\|null\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: api/purchase_history/purchase_history.php
+
+		-
+			message: '#^Function load_legacy_purchased_items\(\) should return array\<int, array\<string, int\|string\>\> but returns list\<array\<string, array\|float\|int\|string\|null\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: api/purchase_history/purchase_history.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: api/purchase_history/purchase_history.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: api/push/subscription.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: api/reviews/submit_buyer_rating.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments ''accepted''\|''pending'', array\{''pending'', ''accepted''\} and true will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: api/scheduled_purchases/cancel.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 3
+			path: api/scheduled_purchases/list_buyer.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 3
+			path: api/scheduled_purchases/list_seller.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: api/scheduled_purchases/proposal.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between literal\-string&lowercase\-string&non\-falsy\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: api/search/get_search_items.php
+
+		-
+			message: '#^Variable \$_POST on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: api/search/get_search_items.php
+
+		-
+			message: '#^Variable \$parts in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: api/search/get_search_items.php
+
+		-
+			message: '#^Variable \$where in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: api/search/get_search_items.php
+
+		-
+			message: '#^While loop condition is always true\.$#'
+			identifier: while.alwaysTrue
+			count: 1
+			path: api/utility/hash_password.php

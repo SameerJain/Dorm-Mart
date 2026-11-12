@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import LoginPage from "../../pages/LoginPage";
 
 jest.mock("react-router-dom", () => ({
@@ -41,10 +42,10 @@ test("lets the user leave the verification-code step", async () => {
   fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Password1!" } });
   fireEvent.click(screen.getByRole("button", { name: "Login" }));
 
-  expect(await screen.findByLabelText("Verification code")).toBeTruthy();
+  expect(await screen.findByLabelText("Verification code")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: /sign in again or use a different account/i }));
 
-  expect(screen.getByLabelText("University Email Address")).toBeTruthy();
+  expect(screen.getByLabelText("University Email Address")).toBeInTheDocument();
   expect(screen.queryByLabelText("Verification code")).toBeNull();
   global.fetch.mockRestore();
 });

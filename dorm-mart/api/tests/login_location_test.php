@@ -35,8 +35,12 @@ $_SERVER['HTTP_X_VERCEL_IP_CITY'] = 'New%20York';
 putenv('TRUST_PROXY_GEO_HEADERS');
 check_location(login_request_location() === 'Buffalo, New York, United States', 'client-sent geo headers ignored by default');
 putenv('TRUST_PROXY_GEO_HEADERS=true');
+putenv('TRUSTED_PROXY_IPS=');
+check_location(login_request_location() === 'Buffalo, New York, United States', 'geo opt-in still requires a trusted connecting proxy');
+putenv('TRUSTED_PROXY_IPS=8.8.8.8');
 check_location(login_request_location() === 'New York', 'trusted proxy location preserved');
 putenv('TRUST_PROXY_GEO_HEADERS');
+putenv('TRUSTED_PROXY_IPS');
 
 $failure = static function () use (&$calls): array { $calls++; return ['success' => false]; };
 check_location(login_ip_location('1.1.1.1', $failure) === null, 'provider failure handled');

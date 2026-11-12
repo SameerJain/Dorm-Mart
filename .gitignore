@@ -42,6 +42,7 @@ railway.toml
 nixpacks.toml
 !dorm-mart/railway.toml
 !dorm-mart/railway.promotional.toml
+!dorm-mart/railway-push.toml
 
 # Logs
 npm-debug.log*

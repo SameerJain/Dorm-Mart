@@ -18,71 +18,11 @@
  * - Use this during development/testing to reset rate limits
  */
 
-function check_forgot_password_rate_limit(string $email): array
-{
-    require_once __DIR__ . '/../database/db_connect.php';
-
-    $conn = db();
-
-    $rateLimitMinutes = get_forgot_password_rate_limit_minutes();
-
-    $stmt = $conn->prepare('SELECT user_id, last_reset_request FROM user_accounts WHERE email = ?');
-    $stmt->bind_param('s', $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows === 0) {
-        $stmt->close();
-        $conn->close();
-        return ['allowed' => false, 'error' => 'Email not found'];
-    }
-
-    $user = $result->fetch_assoc();
-    $stmt->close();
-
-    if (!$user['last_reset_request']) {
-        return ['allowed' => true, 'message' => 'First request allowed'];
-    }
-
-    $conn = db();
-    $stmt = $conn->prepare('SELECT TIMESTAMPDIFF(MINUTE, ?, NOW()) as minutes_passed');
-    $stmt->bind_param('s', $user['last_reset_request']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $minutesPassed = (int)$row['minutes_passed'];
-    $stmt->close();
-    $conn->close();
-
-    if ($minutesPassed < $rateLimitMinutes) {
-        $remainingMinutes = $rateLimitMinutes - $minutesPassed;
-        return [
-            'allowed' => false,
-            'error' => "Please wait {$remainingMinutes} minutes before requesting another reset link"
-        ];
-    }
-
-    $conn->close();
-    return ['allowed' => true, 'message' => 'Rate limit passed'];
-}
-
-function update_reset_request_timestamp(string $email): void
-{
-    require_once __DIR__ . '/../database/db_connect.php';
-
-    $conn = db();
-    $stmt = $conn->prepare('UPDATE user_accounts SET last_reset_request = NOW() WHERE email = ?');
-    $stmt->bind_param('s', $email);
-    $stmt->execute();
-    $stmt->close();
-    $conn->close();
-}
-
-function get_forgot_password_rate_limit_minutes(): int
-{
-    // 10 minutes between requests for all environments (local, Aptitude, Cattle)
-    return 10;
-}
+// NOTE: The per-email check helpers that used to live here were deleted.
+// forgot_password.php enforces its own atomic 10-minute limiter in SQL, and
+// nothing called check_forgot_password_rate_limit(),
+// update_reset_request_timestamp() or get_forgot_password_rate_limit_minutes().
+// What remains below is the CLI that clears last_reset_request for all users.
 
 if (basename(__FILE__) === basename($_SERVER['SCRIPT_NAME'])) {
     if (php_sapi_name() !== 'cli') {

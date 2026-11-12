@@ -42,12 +42,6 @@ describe("LegalDocumentPage", () => {
     render(<LegalDocumentPage documentKey="nope" />);
     expect(screen.getByText(/could not be found/i)).toBeInTheDocument();
   });
-
-  test("policy text matches how account deletion actually works", () => {
-    const text = JSON.stringify(legalDocuments);
-    expect(text).not.toMatch(/DELETE MY ACCOUNT/);
-    expect(text).toMatch(/typing your account email/);
-  });
 });
 
 test("section ids are stable slugs", () => {

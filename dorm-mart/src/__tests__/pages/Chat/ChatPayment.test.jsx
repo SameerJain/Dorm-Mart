@@ -18,7 +18,7 @@ jest.mock("../../../pages/Chat/hooks/useChatConversationStatus", () => () => ({
   checkPaymentStatus: jest.fn(), checkActiveScheduledPurchase: jest.fn(), checkConfirmStatus: jest.fn(),
 }));
 
-test("the buyer can open and complete mock checkout from the actual chat page", async () => {
+test("the buyer can open and complete demo checkout from the actual chat page", async () => {
   window.scrollTo = jest.fn();
   window.matchMedia = jest.fn(() => ({ matches: true }));
   const fetchConversation = jest.fn();
@@ -30,8 +30,8 @@ test("the buyer can open and complete mock checkout from the actual chat page", 
   csrfPostJson.mockResolvedValueOnce({ data: { is_mock: true, amount_cents: 500 } });
   csrfPostJson.mockResolvedValueOnce({ data: { completed: true } });
   render(<ChatContext.Provider value={context}><ChatPage /></ChatContext.Provider>);
-  fireEvent.click(screen.getByRole("button", { name: "Make a mock payment" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Complete mock transaction" }));
+  fireEvent.click(screen.getByRole("button", { name: "Make a demo payment" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Complete demo transaction" }));
   await waitFor(() => expect(fetchConversation).toHaveBeenCalledWith(3));
-  expect(await screen.findByText(/mock transaction completed/i)).toBeInTheDocument();
+  expect(await screen.findByText(/demo transaction completed/i)).toBeInTheDocument();
 });

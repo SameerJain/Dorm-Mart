@@ -142,7 +142,7 @@ function payment_complete_purchase_transaction(
             $conversationId,
             $buyerId,
             $sellerId,
-            $source === 'mock' ? 'Mock transaction completed. No real money was moved.' : 'Electronic payment completed this purchase.',
+            $source === 'mock' ? 'Demo transaction completed. No real money was moved.' : 'Electronic payment completed this purchase.',
             [
                 'type' => 'payment_completed',
                 'confirm_purchase_status' => 'payment_completed',

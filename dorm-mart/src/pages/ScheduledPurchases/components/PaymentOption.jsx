@@ -30,7 +30,7 @@ export default function PaymentOption({
         <span>
           <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
             Use built-in payment
-            {eligibility?.is_mock && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">Mock transaction</span>}
+            {eligibility?.is_mock && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">Demo transaction</span>}
             {eligibility?.is_test_mode && (
               <span className="ml-2 inline-block whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
                 Test Mode

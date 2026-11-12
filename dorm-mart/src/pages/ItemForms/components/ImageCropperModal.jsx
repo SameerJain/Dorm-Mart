@@ -27,6 +27,7 @@ export default function ImageCropperModal({
         <div className="flex justify-center">
           <div
             ref={cropContainerRef}
+            role="presentation"
             onMouseMove={onCropMouseMove}
             onMouseUp={onCropMouseUp}
             onMouseLeave={onCropMouseUp}
@@ -50,6 +51,7 @@ export default function ImageCropperModal({
                 />
 
                 <div
+                  role="presentation"
                   onMouseDown={startDrag}
                   onTouchStart={startDrag}
                   style={{

@@ -15,10 +15,11 @@ try {
     $userId = require_login();
     $payload = json_request_body_or_error();
     require_csrf_token($payload['csrf_token'] ?? null);
+    payment_enforce_rate_limit($userId);
     $conn = db();
     $user = payment_user($conn, $userId);
     if (!$user) json_response(['success' => false, 'error' => 'User not found'], 404);
-    $mode = payment_mode_for_protected((int)$user['is_protected'] === 1);
+    $mode = payment_user_mode($user);
     if ($mode === 'mock') {
         json_response(['success' => true, 'data' => ['is_mock' => true]]);
     }

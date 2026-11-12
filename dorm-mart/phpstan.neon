@@ -1,0 +1,21 @@
+# PHPStan static analysis for the PHP API. Run with: npm run lint:phpstan
+# (needs PHPStan on PATH: `composer global require phpstan/phpstan`; CI installs it).
+#
+# Existing findings are recorded in phpstan-baseline.neon so the check fails only
+# on new problems. Fix a baselined finding, then regenerate the baseline with:
+#   phpstan analyse --generate-baseline phpstan-baseline.neon
+includes:
+    - phpstan-baseline.neon
+
+parameters:
+    level: 5
+    paths:
+        - api
+        - router.php
+    excludePaths:
+        # CLI test programs share global helper names across files.
+        - api/tests
+    scanDirectories:
+        - vendor
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: true

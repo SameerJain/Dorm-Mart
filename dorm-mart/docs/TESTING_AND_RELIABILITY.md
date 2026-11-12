@@ -4,21 +4,31 @@ How Dorm Mart's automated tests run, the rule every test has to meet, and the re
 
 ## Suites
 
-For the complete first-party test-file source inventory, open [TEST_CATALOG.md](TEST_CATALOG.md). Every file is enclosed in a collapsed section. Regenerate it after editing tests with `node scripts/generate-test-catalog.js` from `dorm-mart/`; `--check` verifies it is current without rewriting it.
 
 | Command (from `dorm-mart/`) | What it runs |
 | --- | --- |
-| `npm test -- --watchAll=false` | Jest (react-scripts 5 / Jest 27): frontend tests under `src/__tests__/`, including adversarial tests under `src/__tests__/adversarial/` |
-| `npm run test:backend` | Six CLI PHP scripts under `api/tests/` (no database, no network) |
-| `npm run test:backend:integration` | `purchase_lifecycle_test.php` and `card_acceptance_test.php` over real HTTP (needs local MySQL) |
+| `npm test` | Jest 30 with jsdom, run once: frontend tests under `src/__tests__/` |
+| `npm run test:backend` | Nine offline CLI PHP scripts under `api/tests/` (no database, no network) |
+| `npm run test:backend:integration` | Six suites that each build a scratch database and a private `php -S` (needs local MySQL): purchase lifecycle, card acceptance, mock payment, recent searches, browser push, and input fuzz |
 | `npm run test:mutation` | Stryker mutation run over the pure frontend helpers (see below) |
 | `npm run lint:php` | `php -l` over every first-party PHP file |
+| `npm run lint` | ESLint (`.eslintrc.json`, `react-app` rules) over the app source in `src/`, tests excluded |
+
+**Jest runs on its own, not through the build tool.** The app is built by Vite, but the tests stay on Jest so `jest.mock` and the existing suites work unchanged. The whole setup is the `jest` block in `package.json`, which reproduces what `react-scripts test` used to provide:
+
+- `scripts/jest-babel-transform.js` compiles JSX and ES modules with Babel. The options live in that file, not in a `babel.config.js`, so nothing else picks them up.
+- `scripts/jest-asset-transform.js` turns a stylesheet import into `{}` and any other asset import into its file name.
+- `setupFiles: ["whatwg-fetch"]` gives jsdom a `fetch`, which tests replace with `jest.spyOn(global, "fetch")`.
+- `resetMocks: true` resets every mock before each test.
+- `testMatch` has no `<rootDir>` prefix on purpose. With the prefix, Jest finds no tests when the checkout sits under a dot-directory, such as a `.claude/worktrees/` worktree on Windows.
+
+Tests read `process.env.REACT_APP_*` from the real environment. In the built app, `vite.config.mjs` replaces `process.env` with the same names (see [environment_configuration.md](environment_configuration.md)).
 
 **Jest always runs in UTC.** `scripts/jest-global-setup.js`, wired as Jest's `globalSetup` in `package.json`, sets `TZ` before any worker starts, so it applies to `npm test`, IDE runners and Stryker alike. The team and the scheduling code both use Eastern time. On an Eastern machine, a date missing its offset is read as local time and happens to be right, which hid a broken daylight-time branch (see the 2026-10-01 log). Write expectations as UTC instants or Eastern wall-clock values. Setting `process.env.TZ` in a test file does nothing, because Jest gives each file its own copy of `process.env`.
 
 ### HTTP integration suites
 
-Both integration suites share `api/tests/support/integration_harness.php`. It creates a randomly named local database, migrates it, adds fixture users and logs them in, and starts a private `php -S`. It blanks the mail credentials, so no test can send email, and it drops the database on exit, even after an exception. A suite calls `harness_start('name', $users)` and then uses `api()`, `api_multipart()`, `http_get()`, `check()`, `error_is()` and `row()`, ending with `harness_finish()`. Set `HARNESS_KEEP_LOG=1` to keep the test server's PHP error log after a failed run; a 500 in a check is explained there.
+All six integration suites share `api/tests/support/integration_harness.php`. It creates a randomly named local database, migrates it, adds fixture users and logs them in, and starts a private `php -S`. It blanks the mail credentials, so no test can send email, and it drops the database on exit, even after an exception. A suite calls `harness_start('name', $users)` and then uses `api()`, `api_multipart()`, `http_get()`, `check()`, `error_is()` and `row()`, ending with `harness_finish()`. Set `HARNESS_KEEP_LOG=1` to keep the test server's PHP error log after a failed run; a 500 in a check is explained there.
 
 `card_acceptance_test.php` turns the acceptance tests on the closed Scrum Board cards into API checks, one block per card. Where a card was written as a manual UI script, the check targets the API rule behind it and tries to break it: boundary values, other users' resources, forged CSRF tokens and origins, repeated requests. Two cards describe behavior that has since changed on purpose. `#60` expected an error for an unknown email, but forgot-password now answers every address the same way. `#37` expected deleting a chat on both sides to erase it, but messages are now kept for records. The suite pins the current contract and says so in a comment.
 
@@ -61,7 +71,7 @@ Configuration: [`stryker.config.json`](../stryker.config.json). Run it with `npm
 
 - **Scope.** The `mutate` list holds only the pure helper modules that have their own unit or adversarial tests. Components are covered by the manual method above. Mutating them under jsdom is slow and mostly produces rendering-only survivors.
 - **Timeouts and process cleanup.** `timeoutMS` is 10000 and `timeoutFactor` is 2. When a mutant times out (an infinite loop, say), Stryker kills that worker's whole process tree with `tree-kill` (`taskkill /T /F` on Windows), so no orphaned Jest processes are left. After a run, check that no stray `node` processes remain.
-- **Delivery.** Stryker copies the project into `stryker-tmp/` and runs Jest there. It must **not** be the default `.stryker-tmp`: Jest 27 skips dot-directories, finds no tests, and the dry run fails with "No tests were executed". Before trusting a run, check that the dry run reports tests executed and that mutants already killed by hand (see the log below) show as *Killed*.
+- **Delivery.** Stryker copies the project into `stryker-tmp/` and runs Jest there. It uses the Jest settings in `package.json` (`"projectType": "custom"` in the Stryker config). Keep the directory name without a leading dot: under Jest 27 the default `.stryker-tmp` found no tests and the dry run failed with "No tests were executed". Before trusting a run, check that the dry run reports tests executed and that mutants already killed by hand (see the log below) show as *Killed*.
 - **Triage, not a defect list.** Classify every survivor as a **real gap** (fix the test), **equivalent** (the change isn't observable; record it and skip) or **covered elsewhere** (say where).
 
 ## Audit log

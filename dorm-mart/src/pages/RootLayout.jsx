@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation, useMatches } from "react-router-dom";
 import { useEffect, useState, useContext, createContext } from "react";
 import MainNav from "../components/MainNav/MainNav";
+import RouteAnnouncer, { MAIN_CONTENT_ID, SkipToContent } from "../components/RouteAnnouncer";
 import { fetchMe } from "../utils/handleAuth.js";
 import { loadUserTheme } from "../utils/loadTheme.js";
 import { ChatContext } from "../context/ChatContext.jsx";
@@ -71,7 +72,7 @@ function RootLayout() {
 
   if (isChecking) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div role="status" className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Loading...</p>
@@ -87,6 +88,8 @@ function RootLayout() {
   return (
     <RootLayoutContext.Provider value={true}>
       <AuthContext.Provider value={currentUser}>
+        <SkipToContent />
+        <RouteAnnouncer />
         {/* Show navbar on mobile for chat list, hide for individual conversations.
             404 routes render their own MainNav, so suppress it here. */}
         {!isNotFoundRoute && (
@@ -97,9 +100,13 @@ function RootLayout() {
           </div>
         )}
         {/* Keep content clear of the notch / camera cutout in landscape. */}
-        <div className="pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
+        <main
+          id={MAIN_CONTENT_ID}
+          tabIndex={-1}
+          className="pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] outline-none"
+        >
           <Outlet />
-        </div>
+        </main>
 
       {/* FAQ button + modal on md and larger, hidden on the FAQ page itself.
           Phones in landscape reach FAQ from the menu instead, since a floating

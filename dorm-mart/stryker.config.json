@@ -4,11 +4,11 @@
   "packageManager": "npm",
   "testRunner": "jest",
   "jest": {
-    "projectType": "create-react-app",
+    "projectType": "custom",
     "enableFindRelatedTests": true
   },
   "coverageAnalysis": "perTest",
-  "tempDirName_comment": "Not the default .stryker-tmp: Jest 27 skips dot-directories, so it found no tests in the sandbox.",
+  "tempDirName_comment": "Not the default .stryker-tmp: under Jest 27 a dot-directory sandbox found no tests. Kept after the move to Jest 30.",
   "tempDirName": "stryker-tmp",
   "mutate": [
     "src/utils/formatters.js",

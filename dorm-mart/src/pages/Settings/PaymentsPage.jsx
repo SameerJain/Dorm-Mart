@@ -61,15 +61,15 @@ export default function PaymentsPage() {
           )}
         </div>
         <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-          {account?.is_mock ? "This demo account uses mock transactions. No real money is charged or transferred." : "Connect Stripe to offer card and eligible wallet payments for Scheduled Purchases. You receive funds directly and pay Stripe’s processing fees."}
+          {account?.is_mock ? "Payments are in demo mode. No real money is charged or transferred." : "Connect Stripe to offer card and eligible wallet payments for Scheduled Purchases. You receive funds directly and pay Stripe’s processing fees."}
         </p>
 
         {!account ? (
           <p className="mt-8 text-sm text-gray-500">Loading payment settings…</p>
         ) : account.is_mock ? (
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
-            <h2 className="font-semibold">Mock transactions are ready</h2>
-            <p className="mt-2">Choose built-in payment when scheduling a demo purchase. The buyer can complete the mock transaction from chat during the Payment Window. No Stripe account or card details are needed.</p>
+            <h2 className="font-semibold">Demo transactions are ready</h2>
+            <p className="mt-2">Choose built-in payment when scheduling a demo purchase. The buyer can complete the demo transaction from chat during the Payment Window. No Stripe account or card details are needed.</p>
           </div>
         ) : !account.feature_enabled ? (
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">

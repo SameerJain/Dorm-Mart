@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useLocation } from "react-router-dom";
 import logger from "../utils/logger";
+import { dateTimestamp } from "../utils/formatters";
 import {
   createImageMessageApi,
   createMessageApi,
@@ -297,10 +298,10 @@ export function ChatProvider({ children }) {
               sender: "them",
               content: m.content,
               image_url: m.image_url,
-              ts: Date.parse(m.created_at),
-              editedAt: m.edited_at ? Date.parse(m.edited_at) : null,
-              deletedAt: m.deleted_at ? Date.parse(m.deleted_at) : null,
-              activityTs: Date.parse(m.deleted_at || m.edited_at || m.created_at),
+              ts: dateTimestamp(m.created_at, 0),
+              editedAt: dateTimestamp(m.edited_at),
+              deletedAt: dateTimestamp(m.deleted_at),
+              activityTs: dateTimestamp(m.deleted_at || m.edited_at || m.created_at, 0),
               metadata,
             };
           }
@@ -311,10 +312,10 @@ export function ChatProvider({ children }) {
             // Uncensored text of the viewer's own messages, used to edit them.
             rawContent: typeof m.raw_content === "string" ? m.raw_content : undefined,
             image_url: m.image_url,
-            ts: Date.parse(m.created_at),
-            editedAt: m.edited_at ? Date.parse(m.edited_at) : null,
-            deletedAt: m.deleted_at ? Date.parse(m.deleted_at) : null,
-            activityTs: Date.parse(m.deleted_at || m.edited_at || m.created_at),
+            ts: dateTimestamp(m.created_at, 0),
+            editedAt: dateTimestamp(m.edited_at),
+            deletedAt: dateTimestamp(m.deleted_at),
+            activityTs: dateTimestamp(m.deleted_at || m.edited_at || m.created_at, 0),
             metadata,
           };
         });
@@ -469,8 +470,8 @@ export function ChatProvider({ children }) {
         sender: "me",
         content: saved.content,
         rawContent: content,
-        ts: Date.parse(saved.created_at),
-        activityTs: Date.parse(saved.created_at),
+        ts: dateTimestamp(saved.created_at, 0),
+        activityTs: dateTimestamp(saved.created_at, 0),
       };
 
       setMessagesByConv((prev) => ({
@@ -487,7 +488,7 @@ export function ChatProvider({ children }) {
 
   async function editMessage(messageId, content) {
     const saved = await editLastMessageApi(messageId, content);
-    const editedAt = Date.parse(saved.edited_at);
+    const editedAt = dateTimestamp(saved.edited_at);
     setMessagesByConv((prev) => ({
       ...prev,
       [activeConvId]: (prev[activeConvId] || []).map((message) =>
@@ -511,7 +512,7 @@ export function ChatProvider({ children }) {
 
   async function deleteMessage(messageId) {
     const saved = await deleteMessageApi(messageId);
-    const deletedAt = Date.parse(saved.deleted_at) || Date.now();
+    const deletedAt = dateTimestamp(saved.deleted_at, Date.now());
     // Mirror what fetch_conversation.php returns for a deleted row.
     setMessagesByConv((prev) => ({
       ...prev,
@@ -562,8 +563,8 @@ export function ChatProvider({ children }) {
         message_id: saved.message_id,
         sender: "me",
         content: saved.content ?? "",
-        ts: Date.parse(saved.created_at),
-        activityTs: Date.parse(saved.created_at),
+        ts: dateTimestamp(saved.created_at, 0),
+        activityTs: dateTimestamp(saved.created_at, 0),
         image_url: saved.image_url,
       };
 

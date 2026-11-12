@@ -68,7 +68,7 @@ try {
         'recipient_user_id' => (int)$product['seller_id'], 'type' => 'wishlist_added',
         'product_id' => $productId, 'title' => (string)$product['title'],
         'message' => 'A buyer saved this listing to their wishlist.',
-        'image_url' => notification_first_image($product['photos'] ?? null),
+        'image_url' => inventory_first_photo($product['photos'] ?? null),
         'destination' => '/app/viewProduct/' . $productId,
         // One notice per buyer per listing: keyed on the wishlist row id, every
         // remove-and-re-add pinged the seller again.

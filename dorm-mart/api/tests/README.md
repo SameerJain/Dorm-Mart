@@ -5,7 +5,7 @@ and the local `.htaccess`) — everything here runs from the command line only.
 
 ## Automated (no setup required)
 
-Run with `npm run test:backend`, or individually:
+Run with `npm run test:backend`, or individually (nine scripts):
 
 - `adversarial_validation_test.php` — boundary/validation checks for request helpers,
   image upload, and payment helpers.
@@ -19,15 +19,14 @@ Run with `npm run test:backend`, or individually:
 - `schedule_proposal_test.php` — the Scheduled Purchase proposal rules in
   `scheduled_purchases/proposal.php` (meeting window, price, trade, meet location)
   at their exact edges, with a fixed clock.
-- `db_connection_test.php` — one-off manual check that the configured database is
-  reachable (`php api/tests/db_connection_test.php`).
-- `xss_encoding_test.php` — manual browser check that output encoding is applied;
-  open `api/tests/xss_encoding_test.php?test=<script>` from a browser on a local/CLI
-  host (blocked everywhere else via `require_local_or_cli_access()`).
+- `schema_sync_test.php` — the declarative `schema/` directory builds and converges.
+- `database_migrations_test.php` — fixture resets leave real users and table sizes alone.
+- `browser_push_crypto_test.php` — real Web Push encryption and signing against a
+  mocked HTTP client, with no external delivery.
 
 ## Needs a local database
 
-Run both with `npm run test:backend:integration`. Each creates and drops its own
+Run with `npm run test:backend:integration`. Each creates and drops its own
 randomly named database, starts a private `php -S`, never sends email, and refuses
 non-local hosts. The shared setup is `support/integration_harness.php`; set
 `HARNESS_KEEP_LOG=1` to keep the server's PHP error log after a failure.
@@ -36,19 +35,9 @@ non-local hosts. The shared setup is `support/integration_harness.php`; set
   edits, account deletion and bans.
 - `card_acceptance_test.php` — the acceptance tests from the closed Scrum Board
   cards, turned into adversarial API checks (one block per card number).
-
-## `integration/` (needs a running server + real credentials)
-
-These hit a live API over HTTP, so they need a server running first (`npm run
-start:api` or equivalent) and, for anything gated behind a login, real
-credentials via environment variables:
-
-```
-API_TEST_LOGIN_EMAIL=you@buffalo.edu
-API_TEST_LOGIN_PASSWORD=your-password
-API_TEST_BASE_URL=http://localhost:8080/api   # optional override
-```
-
-Endpoint- or scenario-specific integration checks (reset password, purchase
-history, SQL/XSS injection probes, login rate limiting). Not run by `npm run
-test:backend` — run them individually as needed.
+- `mock_payment_test.php` — demo-mode checkout, double-submit safety, refunds,
+  earnings exclusion, and access rules with no Stripe keys and no money moving.
+- `recent_searches_test.php` — private account history, newest-ten ordering,
+  deduplication, CSRF, clearing, session persistence, and account-deletion cleanup.
+- `browser_push_test.php` — subscriptions, privacy, transaction-safe queueing, delivery retries, and logout; uses a fake sender and never contacts a push service.
+- `input_fuzz_test.php` — malformed-type fuzz over the same harness.

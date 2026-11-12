@@ -50,6 +50,8 @@ function stream_media(string $path): void
 
 function media_path_in_root(string $root, string $filename): ?string
 {
+    // realpath() throws on a null byte, which would surface as a 500.
+    if (str_contains($filename, "\x00")) return null;
     $path = realpath($root . DIRECTORY_SEPARATOR . basename($filename));
     $prefix = rtrim($root, '/\\') . DIRECTORY_SEPARATOR;
     return $path !== false && str_starts_with($path, $prefix) && is_file($path) ? $path : null;

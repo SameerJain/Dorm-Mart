@@ -2,6 +2,7 @@
 // Attempt throttling: login, account creation, password confirmation, Turnstile.
 // Endpoints load this through security.php.
 require_once __DIR__ . '/../config/app_config.php';
+require_once __DIR__ . '/transport.php';
 
 
 const ACCOUNT_CREATION_MAX_ATTEMPTS = 4;
@@ -11,35 +12,10 @@ const ACCOUNT_CREATION_LOCKOUT_MINUTES = 3;
 /** Retry-After quoted when the limiter itself is unavailable and refuses the attempt. */
 const RATE_LIMIT_FAILURE_RETRY_SECONDS = 60;
 
-/**
- * Resolve the client IP that rate-limit keys are bucketed by.
- *
- * REMOTE_ADDR is useless behind Railway's edge: each request is proxied by a
- * different node (100.64.0.1-19 in production), so a key built from it lands in
- * a fresh bucket every time and no counter ever accumulates. X-Forwarded-For
- * carries the actual client, so prefer it, keeping REMOTE_ADDR as the fallback
- * for local runs with no proxy in front.
- *
- * Railway's edge APPENDS the connecting address to X-Forwarded-For, so only the
- * LAST entry was written by our proxy. Anything before it arrived in the
- * client's own request and is forgeable; trusting the first entry let a client
- * pick a fresh bucket per request and defeat the limiter entirely.
- */
-function rate_limit_client_ip(): string
-{
-    $chain = array_map('trim', explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '')));
-    $forwarded = (string)end($chain);
-    $remote = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
-
-    return filter_var($forwarded, FILTER_VALIDATE_IP)
-        ? $forwarded
-        : (filter_var($remote, FILTER_VALIDATE_IP) ? $remote : 'unknown');
-}
-
 /** Build an opaque account-creation key without using the submitted email. */
 function account_creation_rate_limit_key(): string
 {
-    return hash('sha256', "account_creation\0" . rate_limit_client_ip());
+    return hash('sha256', "account_creation\0" . request_client_ip());
 }
 
 /**
@@ -59,13 +35,13 @@ function consume_account_creation_attempt(): array
 /** Build a stable, non-reversible key without storing an email address or raw IP. */
 function login_rate_limit_key(string $normalizedEmail): string
 {
-    return hash('sha256', strtolower(trim($normalizedEmail)) . "\0" . rate_limit_client_ip());
+    return hash('sha256', strtolower(trim($normalizedEmail)) . "\0" . request_client_ip());
 }
 
 /** Count login attempts from one client across every email it tries. */
 function login_client_rate_limit_key(): string
 {
-    return hash('sha256', "login_client\0" . rate_limit_client_ip());
+    return hash('sha256', "login_client\0" . request_client_ip());
 }
 
 const LOGIN_MAX_ATTEMPTS = 4;
@@ -107,7 +83,7 @@ function verify_turnstile_token(string $token): bool
         'secret' => dm_env_string('TURNSTILE_SECRET_KEY'),
         'response' => $token,
     ];
-    $ip = rate_limit_client_ip();
+    $ip = request_client_ip();
     if ($ip !== 'unknown') {
         $fields['remoteip'] = $ip;
     }
@@ -393,69 +369,6 @@ function password_confirm_retry_error(array $limit): array
     ];
 }
 
-/**
- * Read-only view of a login bucket for the local rate-limit dashboards.
- * Uses the same window as consume_login_attempt() so the two cannot disagree.
- */
-function check_rate_limit(string $rateLimitKey): array
-{
-    $window = (int)LOGIN_ATTEMPT_WINDOW_MINUTES;
-    try {
-        require_once __DIR__ . '/../database/db_connect.php';
-        $conn = db();
-        $stmt = $conn->prepare(
-            'SELECT failed_login_attempts, lockout_until,
-                    lockout_until > UTC_TIMESTAMP() AS is_blocked,
-                    last_failed_attempt < DATE_SUB(UTC_TIMESTAMP(), INTERVAL ' . $window . ' MINUTE) AS window_expired
-             FROM login_rate_limits
-             WHERE session_id = ?
-             LIMIT 1'
-        );
-        $stmt->bind_param('s', $rateLimitKey);
-        $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-
-        if (!$row) {
-            $conn->close();
-            return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
-        }
-
-        if ((int)$row['is_blocked'] === 1) {
-            $conn->close();
-            return [
-                'blocked' => true,
-                'attempts' => (int)$row['failed_login_attempts'],
-                'lockout_until' => $row['lockout_until'],
-            ];
-        }
-
-        if ((int)$row['window_expired'] === 1 || $row['lockout_until'] !== null) {
-            $reset = $conn->prepare(
-                'UPDATE login_rate_limits
-                 SET failed_login_attempts = 0, last_failed_attempt = NULL, lockout_until = NULL
-                 WHERE session_id = ? AND (lockout_until <= UTC_TIMESTAMP()
-                    OR last_failed_attempt < DATE_SUB(UTC_TIMESTAMP(), INTERVAL ' . $window . ' MINUTE))'
-            );
-            $reset->bind_param('s', $rateLimitKey);
-            $reset->execute();
-            $reset->close();
-            $conn->close();
-            return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
-        }
-
-        $conn->close();
-        return [
-            'blocked' => false,
-            'attempts' => (int)$row['failed_login_attempts'],
-            'lockout_until' => null,
-        ];
-    } catch (Throwable $e) {
-        error_log('login rate-limit check failed: ' . $e->getMessage());
-        return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
-    }
-}
-
 /** Drop a throttle bucket entirely, e.g. after the caller proves who they are. */
 function clear_rate_limit(string $rateLimitKey): void
 {
@@ -466,31 +379,5 @@ function clear_rate_limit(string $rateLimitKey): void
     $stmt->execute();
     $stmt->close();
     $conn->close();
-}
-
-
-/**
- * Get remaining lockout minutes
- * @param string $lockoutUntil Lockout end time
- * @return int Remaining minutes
- */
-function get_remaining_lockout_minutes($lockoutUntil) {
-    if (empty($lockoutUntil)) {
-        return 0;
-    }
-    
-    // Use MySQL to calculate remaining time to avoid timezone issues
-    require_once __DIR__ . '/../database/db_connect.php';
-    $conn = db();
-    $stmt = $conn->prepare("SELECT TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), ?) as remaining_seconds");
-    $stmt->bind_param('s', $lockoutUntil);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $stmt->close();
-    $conn->close();
-    
-    $remainingSeconds = (int)$row['remaining_seconds'];
-    return max(0, ceil($remainingSeconds / 60));
 }
 

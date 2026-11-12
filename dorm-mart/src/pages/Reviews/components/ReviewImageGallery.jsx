@@ -122,17 +122,19 @@ export default function ReviewImageGallery({ review, viewMode }) {
       {viewMode === "seller" && selectedImage && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-75 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Review image"
-          onClick={() => setSelectedImage(null)}
+          role="presentation"
+          onClick={(e) => e.target === e.currentTarget && setSelectedImage(null)}
         >
-          <div className="relative flex max-h-[90vh] max-w-[min(100%,90vw)] items-center justify-center">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Review image"
+            className="relative flex max-h-[90vh] max-w-[min(100%,90vw)] items-center justify-center"
+          >
             <img
               src={reviewImageUrl(selectedImage)}
               alt="Selected review attachment"
               className="max-h-[85vh] max-w-full w-auto h-auto object-contain rounded-lg"
-              onClick={(e) => e.stopPropagation()}
             />
             <button
               ref={closeButtonRef}

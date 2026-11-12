@@ -105,7 +105,7 @@ try {
     if ($nextStatus === 'accepted') {
         scheduled_purchase_reserve_listing($conn, $row);
         $title = (string)($row['item_title'] ?? 'Item');
-        $image = notification_first_image($row['item_photos'] ?? null);
+        $image = inventory_first_photo($row['item_photos'] ?? null);
         notification_for_wishlist($conn, $inventoryProductId, [
             'type' => 'item_pending', 'title' => $title,
             'message' => $title . ' is not currently for sale because another purchase is scheduled.',
@@ -167,7 +167,7 @@ try {
             . ($accepted
                 ? ' accepted your scheduled meetup at ' . $row['meet_location'] . '.'
                 : ' declined your scheduled meetup. You can propose a new time in chat.'),
-        'image_url' => notification_first_image($row['item_photos'] ?? null),
+        'image_url' => inventory_first_photo($row['item_photos'] ?? null),
         'severity' => $accepted ? 'success' : 'warning',
         'destination' => $respondedConvId > 0 ? '/app/chat?conv=' . $respondedConvId : '/app/seller-dashboard/ongoing-purchases',
         'idempotency_key' => 'schedule-response-' . $requestId,

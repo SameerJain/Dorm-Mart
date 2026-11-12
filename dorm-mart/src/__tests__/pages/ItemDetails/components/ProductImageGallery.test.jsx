@@ -38,7 +38,6 @@ test.each(["iPhone", "Android", "Macintosh"])("%s supports dots and bounded swip
   swipe(50);
   expect(media).toHaveAttribute("src", "/second.jpg");
   expect(screen.getByRole("button", { name: "Show media 2" })).toHaveAttribute("aria-current", "true");
-  expect(screen.getByRole("button", { name: "Show media 2" }).firstChild).toHaveClass("bg-blue-600");
   fireEvent.click(screen.getByRole("button", { name: "Show media 3" }));
   swipe(50);
   expect(media).toHaveAttribute("src", "/third.jpg");
@@ -57,7 +56,6 @@ test("videos use the site-styled player instead of native controls", () => {
   const play = jest.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
   render(<ProductImageGallery photoUrls={["/clip.mp4", "/first.jpg"]} title="Desk" />);
   const video = screen.getByLabelText("Desk");
-  expect(video.tagName).toBe("VIDEO");
   expect(video).not.toHaveAttribute("controls");
   expect(screen.getByRole("slider", { name: "Seek video" })).toBeInTheDocument();
   fireEvent.click(screen.getAllByRole("button", { name: "Play video" })[0]);

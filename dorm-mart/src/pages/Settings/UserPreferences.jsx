@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import SettingsLayout from "./SettingsLayout";
+import BrowserPushSettings from "./BrowserPushSettings";
 import { useTheme } from "../../hooks/useTheme";
 import useCategories from "../../hooks/useCategories";
 import logger from "../../utils/logger";
@@ -196,6 +197,7 @@ function UserPreferences() {
             </select>
             <p className="text-xs text-slate-500 dark:text-gray-400">Receive active listings matched to your selected interests.</p>
           </div>
+          <BrowserPushSettings />
         </div>
 
         <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">

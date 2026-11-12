@@ -2,6 +2,7 @@
 import { createHashRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
 import { useLayoutEffect } from "react";
 import RootLayout from "./pages/RootLayout";
+import RouteAnnouncer, { MAIN_CONTENT_ID, SkipToContent } from "./components/RouteAnnouncer";
 import LoginPage from "./pages/LoginPage";
 import WelcomePage from "./pages/WelcomePage";
 import LandingPage from "./pages/Home/LandingPage";
@@ -77,7 +78,15 @@ function PreLoginLayout() {
     };
   }, []);
 
-  return <Outlet />;
+  return (
+    <>
+      <SkipToContent />
+      <RouteAnnouncer />
+      <main id={MAIN_CONTENT_ID} tabIndex={-1} className="outline-none">
+        <Outlet />
+      </main>
+    </>
+  );
 }
 
 export const router = createHashRouter([

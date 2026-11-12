@@ -1,35 +1,6 @@
 <?php
-// Input normalization and HTML output escaping.
+// Input validation and HTML output escaping.
 // Endpoints load this through security.php.
-
-
-/**
- * Normalize string input before validation or storage.
- *
- * This helper trims, length-limits, removes null bytes, and preserves the
- * existing HTML entity behavior for current call sites. Prefer escape_html()
- * when encoding values specifically for HTML output.
- *
- * @param string $input The input string to sanitize
- * @param int $maxLength Maximum allowed length (default: 1000)
- * @return string Sanitized string
- */
-function sanitize_string($input, $maxLength = 1000) {
-    if (!is_string($input)) {
-        return '';
-    }
-    
-    $input = trim($input);
-    
-    $input = substr($input, 0, $maxLength);
-    
-    $input = str_replace("\0", '', $input);
-    
-    // Keep existing behavior for callers that expect entity-encoded text.
-    $input = htmlspecialchars($input, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    
-    return $input;
-}
 
 
 /**

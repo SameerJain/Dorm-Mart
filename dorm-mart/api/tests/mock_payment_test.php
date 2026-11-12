@@ -20,7 +20,7 @@ function mock_fixture(int $seller = 1, int $buyer = 2): array {
     $conn->query("INSERT INTO INVENTORY (title, description, seller_id, item_condition, item_status, item_location, listing_price, price_nego, trades, photos)
                   VALUES ('Demo desk', 'A demo desk', $seller, 'Good', 'Active', 'North Campus', 25, 1, 0, '[\"/test.jpg\"]')");
     $product = (int)$conn->insert_id;
-    $conn->query("INSERT INTO conversations (product_id, user1_id, user2_id) VALUES ($product, $seller, $buyer)");
+    $conn->query("INSERT INTO conversations (product_id, user1_id, user2_id, user1_fname, user2_fname) VALUES ($product, $seller, $buyer, 'Seller', 'Buyer')");
     return [$product, (int)$conn->insert_id];
 }
 
@@ -145,6 +145,22 @@ check(ok(fixture_webhook($event)) && (int)row("SELECT sold FROM INVENTORY WHERE 
 check(ok(fixture_webhook($event)) && (int)row("SELECT COUNT(*) AS n FROM confirm_purchase_requests WHERE scheduled_request_id=$realSchedule")['n'] === 1,
     'replayed Stripe success webhook completes the purchase only once');
 
+// Going live: a schedule accepted in demo mode must return to manual
+// confirmation, never complete as mock or reach Stripe, once real payments are on.
+[$item, $chat] = mock_fixture(4, 5);
+$conn->query("INSERT INTO scheduled_purchase_requests (inventory_product_id,seller_user_id,buyer_user_id,conversation_id,
+    meet_location,meeting_at,verification_code,status,payment_option,payment_mode,payment_amount_cents)
+    VALUES ($item,4,5,$chat,'North Campus',UTC_TIMESTAMP() - INTERVAL 10 SECOND,'DEMO','accepted','stripe','mock',2500)");
+$stale = (int)$conn->insert_id;
+check(api(5, 'payments/create_intent.php', ['scheduled_request_id' => $stale])['status'] === 409, 'a demo-mode schedule cannot start checkout after real payments are enabled');
+check(api(5, 'payments/mock_confirm.php', ['scheduled_request_id' => $stale])['status'] === 409
+    && (int)row("SELECT sold FROM INVENTORY WHERE product_id=$item")['sold'] === 0, 'a demo-mode schedule cannot be mock-completed after real payments are enabled');
+$staleStatus = api(5, 'payments/status.php', ['conversation_id' => $chat, 'product_id' => $item])['body']['data'] ?? [];
+check(($staleStatus['fallback'] ?? false) === true && ($staleStatus['fallback_reason'] ?? '') === 'account_mode_changed'
+    && ($staleStatus['can_pay'] ?? true) === false, 'a demo-mode schedule falls back to manual confirmation after real payments are enabled');
+check((api(4, 'payments/status.php', ['conversation_id' => $chat, 'product_id' => $item])['body']['data']['manual_confirm_available'] ?? false) === true,
+    'the seller can confirm manually after the demo-mode fallback');
+
 require_once __DIR__ . '/../database/protect_test_accounts.php';
 $seedEmail = seed_account_emails()[0];
 $stmt = $conn->prepare('UPDATE user_accounts SET email = ?, is_protected = 0 WHERE user_id = 4');
@@ -162,7 +178,7 @@ check(ok(api(5, 'payments/create_intent.php', ['scheduled_request_id' => $seedSc
 
 harness_cleanup();
 putenv('PAYMENTS_ENABLED=false');
-harness_start('mockdisabled', 2);
+harness_start('mockdisabled', 4);
 $conn->query('UPDATE user_accounts SET is_protected = 1 WHERE user_id IN (1,2)');
 [$item, $chat] = mock_fixture();
 $disabledSchedule = mock_schedule($item, $chat);
@@ -171,4 +187,47 @@ check(ok(api(2, 'payments/create_intent.php', ['scheduled_request_id' => $disabl
 check(ok(api(2, 'payments/mock_confirm.php', ['scheduled_request_id' => $disabledSchedule])), 'mock completion works with real payments switched off');
 $disabledPayment = (int)row("SELECT electronic_payment_id FROM electronic_payments WHERE scheduled_request_id=$disabledSchedule")['electronic_payment_id'];
 check(ok(api(1, 'payments/refund.php', ['electronic_payment_id' => $disabledPayment])), 'mock refund works with real payments switched off');
+
+// Demo mode: with real payments off, ordinary accounts get the same mock flow.
+[$item, $chat] = mock_fixture(3, 4);
+$demoEligibility = api(3, 'payments/schedule_eligibility.php', ['product_id' => $item, 'conversation_id' => $chat])['body']['data'] ?? [];
+check(($demoEligibility['eligible'] ?? false) === true && ($demoEligibility['payment_mode'] ?? '') === 'mock',
+    'demo mode makes an unprotected pair eligible for mock payment');
+if (empty($demoEligibility['eligible'])) harness_finish();
+$demoSchedule = mock_schedule($item, $chat, 3, 4);
+check(row("SELECT payment_mode FROM scheduled_purchase_requests WHERE request_id=$demoSchedule")['payment_mode'] === 'mock',
+    'demo mode schedules an unprotected pair as a mock transaction');
+check(ok(api(3, 'payments/account_status.php', null)) && (api(3, 'payments/account_status.php', null)['body']['data']['is_mock'] ?? false),
+    'demo mode shows mock payment settings to an unprotected account');
+$conn->query("UPDATE scheduled_purchase_requests SET meeting_at=UTC_TIMESTAMP() - INTERVAL 10 SECOND WHERE request_id=$demoSchedule");
+$demoSetup = api(4, 'payments/create_intent.php', ['scheduled_request_id' => $demoSchedule]);
+check(ok($demoSetup) && ($demoSetup['body']['data']['is_mock'] ?? false) && !array_key_exists('client_secret', $demoSetup['body']['data']),
+    'demo mode checkout is mock and exposes no Stripe credentials');
+check(ok(api(4, 'payments/mock_confirm.php', ['scheduled_request_id' => $demoSchedule]))
+    && (int)row("SELECT sold FROM INVENTORY WHERE product_id=$item")['sold'] === 1, 'demo mode completes the purchase for an unprotected pair');
+$demoPayment = row("SELECT electronic_payment_id AS id, payment_mode, stripe_payment_intent_id AS intent FROM electronic_payments WHERE scheduled_request_id=$demoSchedule");
+check($demoPayment['payment_mode'] === 'mock' && str_starts_with($demoPayment['intent'], 'mock_'), 'demo mode records a mock payment, never a Stripe intent');
+check((float)(api(3, 'seller_dashboard/seller_stats.php', null)['body']['data']['earnings'] ?? -1) === 0.0, 'demo mode payments do not count as earnings');
+check(ok(api(3, 'payments/refund.php', ['electronic_payment_id' => (int)$demoPayment['id'], 'relist' => true]))
+    && (int)row("SELECT sold FROM INVENTORY WHERE product_id=$item")['sold'] === 0, 'demo mode refund relists without Stripe');
+
+harness_cleanup();
+putenv('PAYMENTS_DEMO_MODE=false');
+harness_start('demooff', 2);
+[$item, $chat] = mock_fixture();
+$off = api(1, 'payments/schedule_eligibility.php', ['product_id' => $item, 'conversation_id' => $chat]);
+check(ok($off) && empty($off['body']['data']['eligible']), 'with demo mode off, an unprotected pair cannot use built-in payment');
+check(ok(api(1, 'payments/account_status.php', null)) && empty(api(1, 'payments/account_status.php', null)['body']['data']['is_mock']),
+    'with demo mode off, an unprotected account is not shown mock payments');
+
+// Flood cap on payment actions: per user, and never on the polled status endpoint.
+$lastAllowed = null;
+for ($i = 0; $i < 30; $i++) $lastAllowed = api(2, 'payments/onboard.php');
+check($lastAllowed['status'] === 503, 'the 30th payment action in a window is still processed');
+$throttled = api(2, 'payments/onboard.php');
+check($throttled['status'] === 429 && str_contains((string)($throttled['body']['error'] ?? ''), 'Too many payment requests'),
+    'the 31st payment action in a window is refused with 429');
+check(api(2, 'payments/create_intent.php', ['scheduled_request_id' => 1])['status'] === 429, 'the cap is shared across payment action endpoints');
+check(api(1, 'payments/onboard.php')['status'] === 503, 'one user reaching the cap does not block another user');
+check(ok(api(2, 'payments/status.php', ['conversation_id' => $chat, 'product_id' => $item])), 'the polled payment status endpoint is not rate limited');
 harness_finish();

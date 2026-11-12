@@ -79,7 +79,7 @@ Use Dorm Mart to browse student listings, search and filter items, post goods fo
 ### Pay, keep receipts, and leave reviews
 
 - Where built-in payments are enabled, sellers can connect Stripe and offer payment on eligible scheduled purchases. Buyers pay from chat during the payment window, and a successful payment completes the purchase automatically.
-- Seed accounts can demonstrate checkout and refunds without Stripe keys. These transactions are clearly labeled as mock transactions and never charge or transfer real money.
+- Seed accounts can demonstrate checkout and refunds without Stripe keys. These transactions are clearly labeled as demo transactions and never charge or transfer real money.
 - Use manual purchase confirmation for exchanges arranged directly between buyer and seller, including trades.
 - Find completed purchases in purchase history, with receipts that distinguish the listing price, final price, and trades.
 - Sellers can issue a full refund for a successful Stripe payment from the receipt and choose whether to relist the item.
@@ -145,16 +145,19 @@ For setup, deployment, and production build steps, see the [project setup guide]
 Run these from `dorm-mart`:
 
 ```sh
-npm test -- --watchAll=false
+npm test
 npm run test:backend
+npm run test:backend:integration
 npm run build
 ```
 
-Frontend tests use Jest and React Testing Library. The backend command runs the PHP validation, login-location, and promotional-digest checks. See the [backend test guide](dorm-mart/api/tests/README.md) for separate integration scripts.
+Frontend tests use Jest and React Testing Library. The backend command runs nine offline PHP checks with no database and no network. The integration command runs six suites that each build a scratch database and a private PHP server (needs local MySQL), including purchase lifecycle, card acceptance, mock payment, recent searches, browser push, and input fuzz. See the [backend test guide](dorm-mart/api/tests/README.md) for the full list. `npm run check` adds the PHP/JS/a11y lints and the `scripts/check-*.js` guards.
 
 ## More documentation
 
 - [Environment configuration](dorm-mart/docs/environment_configuration.md)
+- [Browser push setup](dorm-mart/docs/BROWSER_PUSH.md)
+- [Backlog card tests](dorm-mart/docs/backlog-card-tests.md)
 - [Documentation index](dorm-mart/docs/README.md)
 - [Project handoff and architecture notes](dorm-mart/docs/PROJECT_HANDOFF.md)
 - [Transactional email setup](dorm-mart/docs/RESEND_SETUP.md)

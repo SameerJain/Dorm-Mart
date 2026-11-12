@@ -4,7 +4,7 @@ import chatIcon from "../../assets/icons/icons8-chat-96.png";
 import notificationIcon from "../../assets/icons/icons8-notification-96.png";
 import settingIcon from "../../assets/icons/icons8-setting-96.png";
 import marketIcon from "../../assets/icons/icons8-market-96.png";
-import searchIcon from "../../assets/icons/icons8-search-96.png";
+import SearchBar from "./SearchBar";
 import homeIcon from "../../assets/icons/icons8-home-96.png";
 import questionIcon from "../../assets/icons/icons8-question-mark-96.png";
 import Icon from "./Icon";
@@ -88,9 +88,6 @@ function MainNav() {
     navigate("/app/wishlist");
   };
 
-  const [searchText, setSearchText] = useState("");
-  const inputRef = useRef(null);
-
   const handleSearchSubmit = (value) => {
     const term = (value || "").trim();
     let includeDesc = false;
@@ -124,56 +121,11 @@ function MainNav() {
         >
           Dorm Mart
         </button>
-        <div className="flex-1 min-w-0 mx-0.5 sm:mx-2 md:mx-3 lg:mx-5">
-          <div className="flex h-10 sm:h-11 md:h-15 min-w-0 items-center overflow-hidden rounded-full bg-white shadow-inner focus-within:ring-2 focus-within:ring-blue-300">
-            <input
-              type="search"
-              aria-label="Search listings"
-              placeholder="Search"
-              value={searchText}
-              ref={inputRef}
-              maxLength={50}
-              onChange={(e) => setSearchText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleSearchSubmit(searchText);
-                }
-              }}
-              className="h-full w-full pl-4 pr-2 sm:pl-5 sm:pr-3 text-sm md:text-base text-slate-900 placeholder-slate-400 focus:outline-none min-w-0"
-            />
-
-            {searchText ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchText("");
-                  inputRef.current?.focus();
-                }}
-                aria-label="Clear search"
-                className="px-3 h-full text-slate-500 hover:text-slate-700"
-              >
-                ×
-              </button>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                handleSearchSubmit(searchText);
-              }}
-              aria-label="Search"
-              className="flex h-full w-9 shrink-0 items-center justify-center border-l border-slate-200 focus:outline-none focus-visible:bg-slate-100 sm:w-12 md:w-16 lg:w-20"
-            >
-              <img
-                src={searchIcon}
-                alt=""
-                className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8"
-              />
-            </button>
-          </div>
-        </div>
+        <SearchBar
+          key={currentUser?.user_id ?? "guest"}
+          userId={currentUser?.user_id}
+          onSearch={handleSearchSubmit}
+        />
 
         <ul className="mr-1 sm:mr-2 hidden md:flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink-0">
           <Icon

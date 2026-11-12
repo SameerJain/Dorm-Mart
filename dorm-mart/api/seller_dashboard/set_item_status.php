@@ -96,7 +96,7 @@ try {
         notification_supersede_unread($conn, $id, ['item_pending', 'item_back_on_sale', 'item_sold']);
         notification_for_wishlist($conn, $id, [
             'type' => $type, 'title' => (string)$existing['title'], 'message' => $message,
-            'image_url' => notification_first_image($existing['photos'] ?? null), 'severity' => $severity,
+            'image_url' => inventory_first_photo($existing['photos'] ?? null), 'severity' => $severity,
             'destination' => $status === 'Active' ? '/app/viewProduct/' . $id : null,
             'idempotency_key' => $type . '-' . $id . '-' . bin2hex(random_bytes(6)),
         ]);

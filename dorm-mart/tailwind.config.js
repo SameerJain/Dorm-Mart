@@ -2,7 +2,7 @@ import plugin from "tailwindcss/plugin";
 
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ["./public/index.html", "./src/**/*.{js,jsx}"],
+  content: ["./index.html", "./src/**/*.{js,jsx}"],
   darkMode: "class",
   // Scope hover: styles to real hover devices so a tap on a phone or tablet
   // doesn't leave a button stuck in its hover color.

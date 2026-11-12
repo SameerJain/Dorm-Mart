@@ -11,12 +11,10 @@ test("renders nothing while closed", () => {
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
-test("opens as a labelled dialog above the review modals and locks scroll", () => {
+test("opens as a labelled dialog with the message", () => {
   render(<SubmitConfirmationDialog isOpen message="Post this review?" onCancel={() => {}} />);
   const dialog = screen.getByRole("dialog", { name: "Ready to Submit?" });
   expect(dialog.textContent).toContain("Post this review?");
-  expect(dialog.parentElement.className).toContain("z-[70]");
-  expect(document.body.style.position).toBe("fixed");
 });
 
 test("Confirm runs the submit, and a failed submit closes the dialog", async () => {

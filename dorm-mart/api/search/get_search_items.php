@@ -34,6 +34,7 @@ try {
     if (empty($body)) {
         $body = $_POST ?? [];
     }
+    require_csrf_token($body['csrf_token'] ?? null);
 
     $queryValue = $body['q'] ?? ($body['search'] ?? '');
     $categoryValue = $body['category'] ?? '';

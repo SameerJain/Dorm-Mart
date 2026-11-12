@@ -68,13 +68,6 @@ export function apiGetJson(url, options = {}) {
   });
 }
 
-export function apiPostJson(url, body = {}, options = {}) {
-  return requestJson(fetch, url, {
-    ...jsonRequestOptions(options, body),
-    method: "POST",
-  });
-}
-
 export function csrfPostJson(url, body = {}, options = {}) {
   return requestJson(csrfFetch, url, {
     ...jsonRequestOptions(options, body),

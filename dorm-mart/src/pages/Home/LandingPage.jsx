@@ -65,7 +65,7 @@ export default function LandingPage() {
 
       <div className="w-full flex-1 px-1 sm:px-2 md:px-3 py-5 pb-10">
         <div className="grid grid-cols-1 gap-3 items-start">
-          <main className="flex flex-col gap-6 min-w-0">
+          <div className="flex flex-col gap-6 min-w-0">
             {activeTab === "forYou" && (
               <ForYouSection
                 hasPersonalization={hasPersonalization}
@@ -100,7 +100,7 @@ export default function LandingPage() {
                 </p>
               )}
             </div>
-          </main>
+          </div>
         </div>
       </div>
 

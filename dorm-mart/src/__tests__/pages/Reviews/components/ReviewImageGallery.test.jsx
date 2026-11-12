@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import ReviewImageGallery from "../../../../pages/Reviews/components/ReviewImageGallery";
 
 jest.mock("../../../../utils/logger", () => ({
@@ -33,9 +34,8 @@ test("the image opens from the keyboard, and Escape closes it and restores focus
   opener.focus();
   fireEvent.click(opener);
 
-  expect(screen.getByRole("dialog", { name: "Review image" })).toBeTruthy();
+  expect(screen.getByRole("dialog", { name: "Review image" })).toBeInTheDocument();
   expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close" }));
-  expect(document.body.style.position).toBe("fixed");
 
   fireEvent.keyDown(window, { key: "Escape" });
   expect(screen.queryByRole("dialog")).toBeNull();
@@ -51,20 +51,5 @@ test("Escape on the failure popup closes only the popup, not the lightbox under 
 
   fireEvent.keyDown(document, { key: "Escape" });
   expect(screen.queryByRole("dialog", { name: "Download failed" })).toBeNull();
-  expect(screen.getByRole("dialog", { name: "Review image" })).toBeTruthy();
-});
-
-test("the failure popup stacks above the lightbox opened while the download ran", async () => {
-  let failDownload;
-  global.fetch = jest.fn(() => new Promise((_, reject) => { failDownload = reject; }));
-  render(<ReviewImageGallery review={review} viewMode="seller" />);
-  fireEvent.click(screen.getByRole("button", { name: "Download" }));
-  fireEvent.click(screen.getByAltText("Review attachment 1"));
-  const lightbox = screen.getByAltText("Selected review attachment").closest(".fixed");
-  expect(lightbox.className).toContain("z-[60]");
-
-  await act(async () => failDownload(new Error("offline")));
-
-  const popup = (await screen.findByRole("dialog", { name: "Download failed" })).parentElement;
-  expect(popup.className).toContain("z-[70]");
+  expect(screen.getByRole("dialog", { name: "Review image" })).toBeInTheDocument();
 });

@@ -5,22 +5,6 @@ require_once __DIR__ . '/../config/app_config.php';
 require_once __DIR__ . '/transport.php';
 
 
-function require_local_or_cli_access(): void {
-    if (php_sapi_name() === 'cli') {
-        return;
-    }
-
-    $host = (string)($_SERVER['HTTP_HOST'] ?? '');
-    if (dm_is_local_host($host)) {
-        return;
-    }
-
-    http_response_code(404);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['ok' => false, 'error' => 'Not found']);
-    exit;
-}
-
 function dm_enforce_https(): void
 {
     if (php_sapi_name() === 'cli') return;
@@ -44,7 +28,7 @@ function dm_enforce_https(): void
 }
 
 /**
- * Set comprehensive security headers for all API endpoints
+ * Set security headers for all API endpoints
  * This function should be called at the start of every API endpoint
  */
 function set_security_headers() {
