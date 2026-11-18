@@ -18,7 +18,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     // A username is the local part of an email address, so an id only resolves
     // for yourself or someone you share a conversation with (the chat header).
@@ -32,9 +31,6 @@ try {
                     OR (c.user2_id = ua.user_id AND c.user1_id = ?)))
           LIMIT 1'
     );
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare username lookup');
-    }
     $stmt->bind_param('iiii', $requestedId, $userId, $userId, $userId);
     $stmt->execute();
     $result = $stmt->get_result();

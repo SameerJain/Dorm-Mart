@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 
-
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../helpers/request.php';
@@ -151,7 +150,6 @@ try {
         json_response(['ok' => false, 'error' => 'Invalid result limit'], 400);
     }
 
-    mysqli_report(MYSQLI_REPORT_OFF);
     $mysqli = db();
 
     $selectCols = "
@@ -326,9 +324,7 @@ try {
         $stmt->bind_param($typesWithLimit, ...$paramsWithLimit);
     }
 
-    if (!$stmt->execute()) {
-        throw new Exception('Execute failed: ' . $stmt->error);
-    }
+    $stmt->execute();
 
     $res = $stmt->get_result();
     $out = [];

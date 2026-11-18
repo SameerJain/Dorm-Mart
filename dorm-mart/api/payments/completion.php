@@ -19,7 +19,6 @@ function payment_complete_purchase_transaction(
           LIMIT 1
           FOR UPDATE'
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare payment completion lookup');
     $stmt->bind_param('i', $electronicPaymentId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -28,7 +27,6 @@ function payment_complete_purchase_transaction(
 
     $inventoryId = (int)$row['inventory_product_id'];
     $inventoryStmt = $conn->prepare('SELECT product_id, sold FROM INVENTORY WHERE product_id = ? LIMIT 1 FOR UPDATE');
-    if (!$inventoryStmt) throw new RuntimeException('Failed to lock inventory for payment completion');
     $inventoryStmt->bind_param('i', $inventoryId);
     $inventoryStmt->execute();
     $inventoryRow = $inventoryStmt->get_result()->fetch_assoc();
@@ -46,7 +44,6 @@ function payment_complete_purchase_transaction(
           LIMIT 1
           FOR UPDATE"
     );
-    if (!$existingStmt) throw new RuntimeException('Failed to prepare completed purchase lookup');
     $existingStmt->bind_param('i', $scheduleId);
     $existingStmt->execute();
     $existing = $existingStmt->get_result()->fetch_assoc();
@@ -89,7 +86,6 @@ function payment_complete_purchase_transaction(
              buyer_response_at, auto_processed_at, payload_snapshot)
          VALUES (?, ?, ?, ?, ?, 1, ?, 'payment_completed', ?, ?, NOW(), ?, ?, ?)"
     );
-    if (!$insert) throw new RuntimeException('Failed to prepare payment confirmation insert');
     $sellerId = (int)$row['seller_user_id'];
     $buyerId = (int)$row['buyer_user_id'];
     $conversationId = (int)$row['conversation_id'];
@@ -169,7 +165,6 @@ function payment_complete_purchase_transaction(
           WHERE electronic_payment_id = ?
             AND status NOT IN ('refund_pending','refund_failed','refunded','canceled')"
     );
-    if (!$paymentUpdate) throw new RuntimeException('Failed to prepare completed payment update');
     $paymentUpdate->bind_param('ssi', $succeededDb, $stripeChargeId, $electronicPaymentId);
     $paymentUpdate->execute();
     $paymentUpdate->close();

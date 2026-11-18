@@ -10,13 +10,11 @@ require_once __DIR__ . '/../database/db_connect.php';
 try {
     $userId = require_login();
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $stmt = $conn->prepare(
         'SELECT first_name, last_name, email, grad_month, grad_year, join_date
          FROM user_accounts WHERE user_id = ? LIMIT 1'
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare account lookup');
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();

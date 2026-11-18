@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../chat/helpers.php';
 require_once __DIR__ . '/../helpers/notifications.php';
+require_once __DIR__ . '/../helpers/inventory.php';
 
 function scheduled_purchase_has_active_accepted(mysqli $conn, int $productId, int $excludeRequestId): bool
 {
@@ -23,9 +24,6 @@ function scheduled_purchase_has_active_accepted(mysqli $conn, int $productId, in
             LIMIT 1
           ), 1) = 1
     ');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare active accepted check');
-    }
 
     $stmt->bind_param('ii', $productId, $excludeRequestId);
     $stmt->execute();
@@ -60,9 +58,6 @@ function scheduled_purchase_reserve_listing(mysqli $conn, array $request): void
 
     $assignments = implode(', ', array_map(static fn(string $column): string => "$column = ?", array_keys($set)));
     $stmt = $conn->prepare("UPDATE INVENTORY SET $assignments WHERE product_id = ? AND item_status <> 'Sold'");
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare listing reservation');
-    }
     $values = array_column($set, 1);
     $values[] = (int)$request['inventory_product_id'];
     $stmt->bind_param(implode('', array_column($set, 0)) . 'i', ...$values);
@@ -83,9 +78,6 @@ function scheduled_purchase_release_listing(mysqli $conn, int $productId, int $e
     }
 
     $stmt = $conn->prepare("UPDATE INVENTORY SET item_status = 'Active' WHERE product_id = ? AND item_status = 'Pending'");
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare listing release');
-    }
     $stmt->bind_param('i', $productId);
     $stmt->execute();
     $released = $stmt->affected_rows > 0;
@@ -95,9 +87,6 @@ function scheduled_purchase_release_listing(mysqli $conn, int $productId, int $e
     }
 
     $itemStmt = $conn->prepare('SELECT title, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
-    if (!$itemStmt) {
-        throw new RuntimeException('Failed to prepare released listing lookup');
-    }
     $itemStmt->bind_param('i', $productId);
     $itemStmt->execute();
     $item = $itemStmt->get_result()->fetch_assoc() ?: [];
@@ -140,9 +129,6 @@ function scheduled_purchase_has_open_request(mysqli $conn, int $productId): bool
             )
           )
     ");
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare open request check');
-    }
     $stmt->bind_param('i', $productId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -160,9 +146,6 @@ function scheduled_purchase_latest_confirm_status(mysqli $conn, int $requestId):
           ORDER BY confirm_request_id DESC
           LIMIT 1'
     );
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare confirm status lookup');
-    }
     $stmt->bind_param('i', $requestId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -176,6 +159,92 @@ function scheduled_purchase_now_utc_atom(): string
     return (new DateTime('now', new DateTimeZone('UTC')))->format(DateTime::ATOM);
 }
 
+/**
+ * Every scheduled purchase the user takes part in as $role ('buyer' or
+ * 'seller'), newest first. The other party's name comes back under their role
+ * name; only the buyer's list says whether the item was reviewed.
+ */
+function scheduled_purchase_list(mysqli $conn, int $userId, string $role): array
+{
+    $other = $role === 'buyer' ? 'seller' : 'buyer';
+    $role = $other === 'seller' ? 'buyer' : 'seller';
+    $confirmExists = 'EXISTS (SELECT 1 FROM confirm_purchase_requests cpr WHERE cpr.scheduled_request_id = spr.request_id AND ';
+    $reviewColumn = $role === 'buyer'
+        ? ', EXISTS (SELECT 1 FROM product_reviews pr WHERE pr.product_id = spr.inventory_product_id
+                AND pr.buyer_user_id = spr.buyer_user_id) AS has_review'
+        : '';
+
+    $stmt = $conn->prepare(
+        "SELECT spr.request_id, spr.inventory_product_id, spr.seller_user_id, spr.buyer_user_id,
+                spr.conversation_id, spr.meet_location, spr.meeting_at, spr.verification_code,
+                spr.description, spr.status, spr.buyer_response_at, spr.created_at, spr.updated_at,
+                spr.negotiated_price, spr.is_trade, spr.trade_item_description, spr.canceled_by_user_id,
+                inv.title AS item_title, inv.photos AS item_photos, inv.listing_price AS item_listing_price,
+                other.first_name AS other_first_name, other.last_name AS other_last_name,
+                canceler.first_name AS canceled_by_first_name, canceler.last_name AS canceled_by_last_name,
+                {$confirmExists} cpr.status IN ('buyer_accepted', 'auto_accepted', 'payment_completed')
+                    AND cpr.is_successful = 1) AS has_completed_confirm,
+                {$confirmExists} cpr.status IN ('buyer_accepted', 'auto_accepted')
+                    AND cpr.is_successful = 0) AS has_unsuccessful_confirm
+                {$reviewColumn}
+           FROM scheduled_purchase_requests spr
+           LEFT JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
+           LEFT JOIN user_accounts other ON other.user_id = spr.{$other}_user_id
+           LEFT JOIN user_accounts canceler ON canceler.user_id = spr.canceled_by_user_id
+          WHERE spr.{$role}_user_id = ?
+          ORDER BY spr.created_at DESC"
+    );
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    $nullableInt = static fn($value): ?int => $value !== null ? (int)$value : null;
+    $records = [];
+    while ($row = $res->fetch_assoc()) {
+        $record = [
+            'request_id' => (int)$row['request_id'],
+            'inventory_product_id' => $nullableInt($row['inventory_product_id']),
+            'seller_user_id' => $nullableInt($row['seller_user_id']),
+            'buyer_user_id' => $nullableInt($row['buyer_user_id']),
+            'conversation_id' => $nullableInt($row['conversation_id']),
+            'meet_location' => $row['meet_location'] ?? '',
+            'meeting_at' => dm_utc_atom($row['meeting_at']),
+            'verification_code' => (string)$row['verification_code'],
+            'description' => isset($row['description']) ? (string)$row['description'] : null,
+            'status' => (string)$row['status'],
+            'buyer_response_at' => dm_utc_atom($row['buyer_response_at']),
+            'created_at' => dm_utc_atom($row['created_at']) ?? $row['created_at'],
+            'updated_at' => $row['updated_at'],
+            'negotiated_price' => isset($row['negotiated_price']) ? (float)$row['negotiated_price'] : null,
+            'is_trade' => (int)$row['is_trade'] === 1,
+            'trade_item_description' => isset($row['trade_item_description']) ? (string)$row['trade_item_description'] : null,
+            'canceled_by' => $row['canceled_by_user_id'] === null ? null : [
+                'user_id' => (int)$row['canceled_by_user_id'],
+                'first_name' => (string)($row['canceled_by_first_name'] ?? ''),
+                'last_name' => (string)($row['canceled_by_last_name'] ?? ''),
+            ],
+            'has_completed_confirm' => (int)$row['has_completed_confirm'] === 1,
+            'has_unsuccessful_confirm' => (int)$row['has_unsuccessful_confirm'] === 1,
+        ];
+        if ($role === 'buyer') {
+            $record['has_review'] = (int)$row['has_review'] === 1;
+        }
+        $record['item'] = [
+            'title' => $row['item_title'] ?? 'Deleted listing',
+            'photos' => inventory_json_array($row['item_photos'] ?? null),
+            'listing_price' => isset($row['item_listing_price']) ? (float)$row['item_listing_price'] : null,
+        ];
+        $record[$other] = [
+            'first_name' => $row['other_first_name'] ?? 'Deleted User',
+            'last_name' => $row['other_last_name'] ?? '',
+        ];
+        $records[] = $record;
+    }
+    $stmt->close();
+
+    return $records;
+}
+
 function scheduled_purchase_user_display_name(mysqli $conn, int $userId): string
 {
     $names = chat_display_names($conn, [$userId]);
@@ -185,9 +254,6 @@ function scheduled_purchase_user_display_name(mysqli $conn, int $userId): string
 function scheduled_purchase_conversation_participants(mysqli $conn, int $conversationId): ?array
 {
     $stmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? LIMIT 1');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare conversation lookup');
-    }
 
     $stmt->bind_param('i', $conversationId);
     $stmt->execute();
@@ -220,7 +286,6 @@ function scheduled_purchase_cancel_all_for_user(mysqli $conn, int $userId, strin
             AND spr.status IN ('pending', 'accepted')
           FOR UPDATE"
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare open schedule lookup');
     $stmt->bind_param('ii', $userId, $userId);
     $stmt->execute();
     $schedules = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

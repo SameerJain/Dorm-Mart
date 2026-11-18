@@ -34,7 +34,6 @@ moderation_require_report_quota('report_listing', $reporterId);
 
 try {
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $stmt = $conn->prepare('SELECT seller_id, title, item_status FROM INVENTORY WHERE product_id = ? LIMIT 1');
     $stmt->bind_param('i', $productId);

@@ -3,6 +3,7 @@ import {
   MEET_LOCATION_OPTIONS,
   MEET_LOCATION_OTHER_VALUE,
 } from "../../../constants/meetLocations";
+import { WarningIcon } from "../../../components/Icons";
 
 export default function MeetLocationField({
   customMeetLocation,
@@ -84,19 +85,7 @@ export default function MeetLocationField({
               className="mt-1 flex min-w-0 items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400"
               title={`Different from the location on your listing (${selectedListing.meet_location})`}
             >
-              <svg
-                className="w-4 h-4 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
+              <WarningIcon className="w-4 h-4 flex-shrink-0" />
               <span className="ml-0.5 shrink-0 whitespace-nowrap">Differs from listing:</span>
               <span className="min-w-0 truncate">{selectedListing.meet_location}</span>
             </div>

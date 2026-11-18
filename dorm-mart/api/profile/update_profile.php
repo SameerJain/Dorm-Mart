@@ -69,7 +69,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     // Remember the current photo so the replaced file can be removed afterwards;
     // otherwise every re-upload leaves an orphan on the persistent volume.
@@ -84,9 +83,6 @@ try {
 
     $sql = 'UPDATE user_accounts SET ' . implode(', ', $setClauses) . ' WHERE user_id = ? LIMIT 1';
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare profile update');
-    }
 
     $types   .= 'i';
     $params[] = $userId;
@@ -189,9 +185,6 @@ function sanitize_profile_photo_value($value, int $userId): ?string
 function fetch_updated_fields(mysqli $conn, int $userId): array
 {
     $stmt = $conn->prepare('SELECT profile_photo, bio, instagram FROM user_accounts WHERE user_id = ? LIMIT 1');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to load updated profile');
-    }
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $result = $stmt->get_result();

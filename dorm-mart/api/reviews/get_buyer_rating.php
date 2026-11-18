@@ -17,7 +17,6 @@ try {
     $productId = require_product_id($_GET);
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $productRow = review_product($conn, $productId);
 
@@ -36,9 +35,6 @@ try {
          WHERE seller_user_id = ? AND product_id = ?
          LIMIT 1'
     );
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare buyer rating lookup');
-    }
     $stmt->bind_param('ii', $userId, $productId);
     $stmt->execute();
     $result = $stmt->get_result();

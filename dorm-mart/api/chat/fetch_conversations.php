@@ -8,7 +8,6 @@ require_once __DIR__ . '/../database/db_connect.php';
 init_json_endpoint();
 
 $conn = db();
-$conn->set_charset('utf8mb4');
 
 $userId = require_login();
 // Read-only; release the session lock so parallel requests aren't queued.
@@ -38,10 +37,6 @@ $sql = "
 ";
 
 $stmt = $conn->prepare($sql);
-if (!$stmt) {
-  error_log('fetch_conversations: prepare failed: ' . $conn->error);
-  json_response(['success' => false, 'error' => 'Server error'], 500);
-}
 
 $stmt->bind_param('ii', $userId, $userId);
 $stmt->execute();

@@ -20,12 +20,10 @@ try {
     $productId = require_product_id($payload);
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     // Only the seller's chat view asks this; anyone else would be probing a
     // stranger's listing for purchase activity.
     $owner = $conn->prepare('SELECT 1 FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1');
-    if (!$owner) throw new RuntimeException('Failed to prepare listing owner lookup');
     $owner->bind_param('ii', $productId, $userId);
     $owner->execute();
     $isSeller = $owner->get_result()->fetch_row() !== null;

@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 
-
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../helpers/recommendations.php';
@@ -15,7 +14,6 @@ try {
     auth_boot_session();
     $userId = require_login();
 
-    mysqli_report(MYSQLI_REPORT_OFF);
     $mysqli = db();
 
     $recommendationContext = recommendation_build_context($mysqli, $userId);
@@ -50,9 +48,6 @@ try {
     ";
 
     $stmt = $mysqli->prepare($sql);
-    if (!$stmt) {
-        throw new Exception('SQL prepare failed: ' . $mysqli->error);
-    }
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $res = $stmt->get_result();

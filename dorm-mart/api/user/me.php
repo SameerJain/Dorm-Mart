@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 
-
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 
 init_json_endpoint('GET', ['ok' => false, 'error' => 'Method Not Allowed']);
@@ -25,9 +24,6 @@ try {
         WHERE user_id = ?
         LIMIT 1
     ");
-    if (!$stmt) {
-    throw new Exception("SQL prepare failed: " . $mysqli->error);
-}
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $res = $stmt->get_result();

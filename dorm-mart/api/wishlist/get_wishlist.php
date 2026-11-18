@@ -18,7 +18,6 @@ try {
     $userId = require_login();
     
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $sql = "SELECT 
                 w.wishlist_id,
@@ -46,9 +45,6 @@ try {
             ORDER BY w.created_at DESC";
     
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare query');
-    }
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $result = $stmt->get_result();

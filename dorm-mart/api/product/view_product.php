@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 
-
 require_once __DIR__ . '/../helpers/api_bootstrap.php';
 require_once __DIR__ . '/../helpers/inventory.php';
 require_once __DIR__ . '/../helpers/recommendations.php';
@@ -22,9 +21,7 @@ try {
         json_response(['ok' => false, 'error' => 'Invalid or missing product_id'], 400);
     }
 
-    mysqli_report(MYSQLI_REPORT_OFF);
     $mysqli = db();
-    $mysqli->set_charset('utf8mb4');
 
     $sql = "
         SELECT
@@ -56,15 +53,8 @@ try {
     ";
 
     $stmt = $mysqli->prepare($sql);
-    if (!$stmt) {
-        throw new Exception('DB prepare failed: ' . $mysqli->error);
-    }
     $stmt->bind_param('i', $productId);  // 'i' = integer type, safely bound as parameter
-    if (!$stmt->execute()) {
-        $err = $stmt->error;
-        $stmt->close();
-        throw new Exception('DB execute failed: ' . $err);
-    }
+    $stmt->execute();
     $res = $stmt->get_result();
     $row = $res ? $res->fetch_assoc() : null;
     $stmt->close();
@@ -94,9 +84,6 @@ try {
              ORDER BY COALESCE(updated_at, buyer_response_at) DESC, request_id DESC
              LIMIT 1"
         );
-        if (!$buyerStmt) {
-            throw new Exception('DB prepare failed: ' . $mysqli->error);
-        }
         $buyerStmt->bind_param('i', $productId);
         $buyerStmt->execute();
         $buyerRow = $buyerStmt->get_result()->fetch_assoc();
@@ -113,21 +100,19 @@ try {
     if (request_is_same_origin_fetch()) {
         // Count successful views of published listings by users other than the seller.
         // View tracking is best-effort and must not prevent the product from loading.
-        $viewStmt = $mysqli->prepare(
-            "UPDATE INVENTORY
-             SET view_count = view_count + 1
-             WHERE product_id = ?
-               AND seller_id <> ?
-               AND item_status IN ('Active', 'Pending', 'Sold')"
-        );
-        if ($viewStmt) {
+        try {
+            $viewStmt = $mysqli->prepare(
+                "UPDATE INVENTORY
+                 SET view_count = view_count + 1
+                 WHERE product_id = ?
+                   AND seller_id <> ?
+                   AND item_status IN ('Active', 'Pending', 'Sold')"
+            );
             $viewStmt->bind_param('ii', $productId, $userId);
-            if (!$viewStmt->execute()) {
-                error_log('view_product view count update failed: ' . $viewStmt->error);
-            }
+            $viewStmt->execute();
             $viewStmt->close();
-        } else {
-            error_log('view_product view count prepare failed: ' . $mysqli->error);
+        } catch (Throwable $e) {
+            error_log('view_product view count update failed: ' . $e->getMessage());
         }
 
         if ((int)$row['seller_id'] !== $userId && ($row['item_status'] ?? '') !== 'Draft') {

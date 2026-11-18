@@ -16,7 +16,6 @@ try {
     $productId = require_product_id($_GET);
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $stmt = $conn->prepare(
         'SELECT pr.review_id, pr.product_id, pr.buyer_user_id, pr.seller_user_id, 
@@ -28,9 +27,6 @@ try {
          WHERE pr.buyer_user_id = ? AND pr.product_id = ?
          LIMIT 1'
     );
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare review lookup');
-    }
     $stmt->bind_param('ii', $userId, $productId);
     $stmt->execute();
     $result = $stmt->get_result();

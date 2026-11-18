@@ -13,7 +13,6 @@ try {
     $userId = require_login();
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $input = json_request_body();
 
@@ -23,9 +22,6 @@ try {
         'UPDATE notifications SET is_read = 1
          WHERE recipient_user_id = ? AND is_read = 0 AND available_at <= NOW()'
     );
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare update');
-    }
 
     $stmt->bind_param('i', $userId);
     $stmt->execute();

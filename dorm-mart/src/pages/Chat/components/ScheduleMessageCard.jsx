@@ -3,6 +3,7 @@ import { API_BASE } from "../../../utils/apiConfig";
 import { csrfFetch } from "../../../utils/csrfFetch";
 import logger from "../../../utils/logger";
 import { formatCurrency, formatDateTime } from "../../../utils/formatters";
+import { CloseIcon, WarningIcon } from "../../../components/Icons";
 
 function ScheduleMessageCard({ message, isMine, onRespond }) {
   const metadata = message.metadata || {};
@@ -225,19 +226,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
             </svg>
           ) : messageType === "schedule_cancelled" ||
             localResponseStatus === "declined" ? (
-            <svg
-              className={`w-5 h-5 ${config.iconColor} flex-shrink-0`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <CloseIcon className={`w-5 h-5 ${config.iconColor} flex-shrink-0`} />
           ) : (
             <svg
               className={`w-5 h-5 ${config.iconColor} flex-shrink-0`}
@@ -275,19 +264,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               >
                 <div className="flex items-center gap-2">
                   {isPriceHigher && (
-                    <svg
-                      className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                      />
-                    </svg>
+                    <WarningIcon className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0" />
                   )}
                   {isPriceLower && (
                     <svg
@@ -362,19 +339,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {hasLocationChange && (
-                    <svg
-                      className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                      />
-                    </svg>
+                    <WarningIcon className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0" />
                   )}
                   <p
                     className={`text-sm ${hasLocationChange ? "text-orange-600 dark:text-orange-300" : config.textColor} min-w-0 flex-1 break-words`}

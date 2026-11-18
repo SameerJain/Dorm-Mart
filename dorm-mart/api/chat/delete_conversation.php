@@ -20,7 +20,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
     $conn->begin_transaction();
 
     $stmt = $conn->prepare(

@@ -5,10 +5,10 @@ import {
   hasListingPhoto,
 } from "./listingFormConfig";
 
-export const DRAFT_PHOTO_ERROR =
+const DRAFT_PHOTO_ERROR =
   "At least one photo is required. Videos are optional and count toward the 6-media limit.";
 
-export function validateTitle(title) {
+function validateTitle(title) {
   if (!title.trim()) return "Title is required";
   if (title.length > LIMITS.title)
     return `Title must be ${LIMITS.title} characters or fewer`;
@@ -16,7 +16,7 @@ export function validateTitle(title) {
 }
 
 /** Price error message, or null when valid. Drafts allow an empty price. */
-export function validatePrice(price, { required = true } = {}) {
+function validatePrice(price, { required = true } = {}) {
   if (price === "") return required ? "Price is required" : null;
   if (containsMemePrice(price))
     return "The price has a meme input in it. Please try a different price.";

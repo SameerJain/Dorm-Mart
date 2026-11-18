@@ -16,7 +16,6 @@ try {
     $userId = require_login();
     
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $input = json_request_body();
 
@@ -38,9 +37,6 @@ try {
     $activeCount = listing_cap_locked_active_count($conn, $userId, $id);
 
     $checkStmt = $conn->prepare('SELECT sold, item_status, title, photos FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1 FOR UPDATE');
-    if (!$checkStmt) {
-        throw new RuntimeException('Failed to prepare sold-state check');
-    }
     $checkStmt->bind_param('ii', $id, $userId);
     $checkStmt->execute();
     $existing = $checkStmt->get_result()->fetch_assoc();
@@ -73,7 +69,6 @@ try {
         'UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND seller_id = ?'
         . ' AND (sold IS NULL OR sold = 0) AND (item_status IS NULL OR item_status <> \'Sold\')'
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare update');
     $stmt->bind_param('sii', $status, $id, $userId);  // 's'=string, 'i'=integer, all safely bound
     $stmt->execute();
 
@@ -103,12 +98,10 @@ try {
     }
     if ($status === 'Sold') {
         $wishlistDelete = $conn->prepare('DELETE FROM wishlist WHERE product_id = ?');
-        if (!$wishlistDelete) throw new RuntimeException('Failed to remove sold item from wishlists');
         $wishlistDelete->bind_param('i', $id);
         $wishlistDelete->execute();
         $wishlistDelete->close();
         $resetCount = $conn->prepare('UPDATE INVENTORY SET sold = 1, wishlisted = 0, date_sold = CURDATE() WHERE product_id = ?');
-        if (!$resetCount) throw new RuntimeException('Failed to finalize sold listing');
         $resetCount->bind_param('i', $id);
         $resetCount->execute();
         $resetCount->close();

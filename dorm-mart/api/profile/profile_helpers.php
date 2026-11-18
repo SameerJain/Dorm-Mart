@@ -67,9 +67,6 @@ if (!function_exists('fetch_rating_stats')) {
                 FROM product_reviews WHERE seller_user_id = ?';
 
         $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            throw new RuntimeException('Failed to prepare rating stats lookup');
-        }
         $stmt->bind_param('i', $userId);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -115,9 +112,6 @@ ORDER BY pr.created_at DESC
 SQL;
 
         $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            throw new RuntimeException('Failed to prepare reviews lookup');
-        }
         $stmt->bind_param('i', $userId);
         $stmt->execute();
         $result = $stmt->get_result();

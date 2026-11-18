@@ -85,12 +85,6 @@ parameters:
 			path: api/chat/ensure_conversation.php
 
 		-
-			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
-			identifier: greater.alwaysTrue
-			count: 2
-			path: api/chat/fetch_new_messages.php
-
-		-
 			message: '#^Constant ALLOW_ALL_EMAILS not found\.$#'
 			identifier: constant.notFound
 			count: 1
@@ -209,18 +203,6 @@ parameters:
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: api/scheduled_purchases/cancel.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 3
-			path: api/scheduled_purchases/list_buyer.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 3
-			path: api/scheduled_purchases/list_seller.php
 
 		-
 			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'

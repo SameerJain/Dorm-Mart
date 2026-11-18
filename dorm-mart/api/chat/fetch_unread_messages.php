@@ -11,7 +11,6 @@ $userId = require_login();
 session_write_close();
 
 $conn = db();
-$conn->set_charset('utf8mb4');
 
 // Conversations the user hid are excluded: counting them made the badge show
 // messages the user could not open, and the client kept reloading the list
@@ -26,9 +25,6 @@ $sql = 'SELECT cp.conv_id, cp.unread_count, cp.first_unread_msg_id
          ORDER BY cp.conv_id DESC';
 
 $stmt = $conn->prepare($sql);
-if (!$stmt) {
-    json_response(['success' => false, 'error' => 'Failed to prepare statement'], 500);
-}
 
 $stmt->bind_param('i', $userId);
 $stmt->execute();

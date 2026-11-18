@@ -26,15 +26,11 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $productRow = null;
 
     if ($productId > 0) {
         $stmt = $conn->prepare("SELECT product_id, seller_id, title, photos FROM INVENTORY WHERE product_id = ? AND item_status = 'Active' AND (sold IS NULL OR sold = 0) LIMIT 1");
-        if (!$stmt) {
-            throw new RuntimeException('Failed to prepare product lookup');
-        }
         $stmt->bind_param('i', $productId);
         $stmt->execute();
         $res = $stmt->get_result();

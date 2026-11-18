@@ -33,9 +33,6 @@ function moderation_page_query(mysqli $conn, string $sql, int $page): array
     $limit = MODERATION_PAGE_SIZE + 1;
     $offset = $page * MODERATION_PAGE_SIZE;
     $stmt = $conn->prepare($sql . ' LIMIT ? OFFSET ?');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare moderation list');
-    }
     $stmt->bind_param('ii', $limit, $offset);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -51,7 +48,6 @@ function moderation_page_query(mysqli $conn, string $sql, int $page): array
 
 try {
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $statsResult = $conn->query(
         "SELECT

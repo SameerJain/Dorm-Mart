@@ -13,7 +13,6 @@ $moderatorId = require_moderator();
 
 try {
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $result = $conn->query('SELECT word FROM profanity_words ORDER BY word');

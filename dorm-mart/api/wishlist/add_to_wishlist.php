@@ -15,7 +15,6 @@ try {
     $userId = require_login();
     
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $input = json_request_body();
     
@@ -24,9 +23,6 @@ try {
     $productId = require_product_id($input);
 
     $checkStmt = $conn->prepare("SELECT product_id, seller_id, title, photos FROM INVENTORY WHERE product_id = ? AND item_status = 'Active' AND (sold IS NULL OR sold = 0)");
-    if (!$checkStmt) {
-        throw new RuntimeException('Failed to prepare product check');
-    }
     $checkStmt->bind_param('i', $productId);
     $checkStmt->execute();
     $result = $checkStmt->get_result();
@@ -42,9 +38,6 @@ try {
     // Let the unique key decide duplicates, so a double-click gets a 400, not a 500.
     $conn->begin_transaction();
     $stmt = $conn->prepare('INSERT IGNORE INTO wishlist (user_id, product_id) VALUES (?, ?)');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare insert');
-    }
     $stmt->bind_param('ii', $userId, $productId);
     $stmt->execute();
     $inserted = $stmt->affected_rows === 1;

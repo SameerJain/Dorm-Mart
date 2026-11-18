@@ -53,9 +53,6 @@ function moderation_log_action(mysqli $conn, int $moderatorId, string $action, a
             'INSERT INTO moderation_actions (moderator_id, action, target_user_id, target_type, target_id, details)
              VALUES (?, ?, ?, ?, ?, ?)'
         );
-        if (!$stmt) {
-            throw new RuntimeException('prepare failed');
-        }
         $stmt->bind_param('isisis', $moderatorId, $action, $targetUserId, $targetType, $targetId, $details);
         $stmt->execute();
         $stmt->close();
@@ -71,9 +68,6 @@ function moderation_user_is_banned(mysqli $conn, int $userId): bool
         return false;
     }
     $stmt = $conn->prepare('SELECT is_banned FROM user_accounts WHERE user_id = ? LIMIT 1');
-    if (!$stmt) {
-        return false;
-    }
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();

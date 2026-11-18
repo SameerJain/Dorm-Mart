@@ -10,6 +10,7 @@ import {
   getWishlistCategories,
   selectedCategoryAfterRemoval,
 } from "./utils/wishlistUtils";
+import { CloseIcon, HeartIcon } from "../../components/Icons";
 
 export default function WishlistPage() {
   const navigate = useNavigate();
@@ -109,19 +110,7 @@ export default function WishlistPage() {
 
           {!loading && !error && items.length === 0 ? (
             <div className="w-full flex flex-col items-center justify-center text-center py-12 mx-auto lg:col-start-1 lg:col-span-2">
-              <svg
-                className="mx-auto h-24 w-24 text-gray-400 dark:text-gray-500 mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
-              </svg>
+              <HeartIcon className="mx-auto h-24 w-24 text-gray-400 dark:text-gray-500 mb-4" />
               <p className="text-gray-500 dark:text-gray-400 text-lg mb-2">
                 {selectedCategory
                   ? `No items in ${selectedCategory}`
@@ -212,19 +201,7 @@ export default function WishlistPage() {
                 className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 aria-label="Close filters"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <CloseIcon className="w-6 h-6" />
               </button>
             </div>
             <div className="p-4">

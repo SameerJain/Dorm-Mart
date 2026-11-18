@@ -11,7 +11,6 @@ function notification_insert(mysqli $conn, array $n): void
        image_url, severity, destination, metadata, idempotency_key, available_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
     $stmt = $conn->prepare($sql);
-    if (!$stmt) throw new RuntimeException('Failed to prepare notification');
     $recipient = (int)$n['recipient_user_id'];
     $product = isset($n['product_id']) ? (int)$n['product_id'] : null;
     $request = isset($n['scheduled_request_id']) ? (int)$n['scheduled_request_id'] : null;
@@ -41,7 +40,6 @@ function notification_wishlist_users(mysqli $conn, int $productId, ?int $exclude
 {
     $sql = 'SELECT user_id FROM wishlist WHERE product_id = ?' . ($excludeUserId ? ' AND user_id != ?' : '');
     $stmt = $conn->prepare($sql);
-    if (!$stmt) throw new RuntimeException('Failed to fetch wishlist recipients');
     if ($excludeUserId) $stmt->bind_param('ii', $productId, $excludeUserId);
     else $stmt->bind_param('i', $productId);
     $stmt->execute();
@@ -71,7 +69,6 @@ function notification_for_wishlist(mysqli $conn, int $productId, array $base, ?i
 function notification_clear_prompt(mysqli $conn, int $requestId, string $type): void
 {
     $stmt = $conn->prepare('DELETE FROM notifications WHERE scheduled_request_id = ? AND type = ?');
-    if (!$stmt) throw new RuntimeException('Failed to clear notification prompt');
     $stmt->bind_param('is', $requestId, $type);
     $stmt->execute();
     $stmt->close();
@@ -100,7 +97,6 @@ function notification_review_received(
                LEFT JOIN user_accounts u ON u.user_id = ?
               WHERE i.product_id = ? LIMIT 1'
         );
-        if (!$stmt) throw new RuntimeException('Failed to prepare review notification lookup');
         $stmt->bind_param('ii', $reviewerId, $productId);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc() ?: [];
@@ -156,7 +152,6 @@ function notification_stale_listings(mysqli $conn, int $sellerId): void
                      WHERE s.inventory_product_id = i.product_id
                 )"
         );
-        if (!$stmt) throw new RuntimeException('Failed to prepare stale listing lookup');
         $stmt->bind_param('i', $sellerId);
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -192,7 +187,6 @@ function notification_stale_listings(mysqli $conn, int $sellerId): void
 function notification_cancel_schedule(mysqli $conn, int $requestId): void
 {
     $stmt = $conn->prepare("DELETE FROM notifications WHERE scheduled_request_id = ? AND available_at > NOW()");
-    if (!$stmt) throw new RuntimeException('Failed to cancel reminders');
     $stmt->bind_param('i', $requestId);
     $stmt->execute();
     $stmt->close();
@@ -210,7 +204,6 @@ function notification_supersede_unread(mysqli $conn, int $productId, array $type
     $stmt = $conn->prepare(
         "DELETE FROM notifications WHERE product_id = ? AND is_read = 0 AND type IN ($placeholders)"
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare notification supersede');
     $stmt->bind_param('i' . str_repeat('s', count($types)), $productId, ...$types);
     $stmt->execute();
     $stmt->close();

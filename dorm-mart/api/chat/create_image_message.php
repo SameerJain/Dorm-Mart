@@ -13,7 +13,6 @@ require_once __DIR__ . '/../database/db_connect.php';
 init_json_endpoint();
 
 $conn = db();
-$conn->set_charset('utf8mb4');
 
 auth_boot_session();
 

@@ -17,7 +17,6 @@ const SAFETY_SUMMARY_WINDOW_DAYS = 90;
 
 try {
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $messageReports = $conn->query(
         "SELECT COUNT(*) AS total,

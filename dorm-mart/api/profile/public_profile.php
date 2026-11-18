@@ -26,7 +26,6 @@ try {
     $normalizedUsername = strtolower($usernameParam);
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $userRow = fetch_public_profile_row($conn, $normalizedUsername);
     if (!$userRow) {
@@ -74,9 +73,6 @@ function fetch_public_profile_row(mysqli $conn, string $username): ?array
               AND is_banned = 0
             LIMIT 1';
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare username lookup');
-    }
     $stmt->bind_param('s', $username);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -93,9 +89,6 @@ function fetch_active_listings(mysqli $conn, int $userId): array
             ORDER BY date_listed DESC, product_id DESC
             LIMIT 30';
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare listings lookup');
-    }
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $result = $stmt->get_result();

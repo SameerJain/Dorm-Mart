@@ -122,7 +122,6 @@ try {
                 SET status = 'refund_failed', stripe_refund_id = ?, last_error_code = ?
               WHERE electronic_payment_id = ? AND status <> 'refunded'"
         );
-        if (!$failed) throw new RuntimeException('Failed to prepare refund failure update');
         $failed->bind_param('ssi', $refundId, $failureReason, $paymentId);
         $failed->execute();
         $failed->close();

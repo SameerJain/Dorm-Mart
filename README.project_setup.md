@@ -118,7 +118,7 @@ Moderator accounts use the normal login page and are sent to `/app/moderation` a
 Run the supported development launcher from the repository root:
 `C:\xampp\htdocs\f25-no-brainers\build-scripts-win\dev.bat`
 
-The repository root intentionally has no `package.json`, so do not run `npm start` there. Manual npm and PHP commands must be run from the `dorm-mart` directory. The launcher resolves its own repository path and will leave services alone when their expected ports are already in use.
+The repository root intentionally has no `package.json`, so do not run `npm start` there. Manual npm and PHP commands must be run from the `dorm-mart` directory. The launcher resolves its own repository path and will leave services alone when their expected ports are already in use. Each start also runs `php api/database/migrate_schema.php` and `php api/database/migrate_data.php`, so the tables match `schema/` and the seed accounts' data is reset (other local accounts are left alone).
 
 **Build Method 1: Local Development:**
 `C:\xampp\htdocs\f25-no-brainers\build-scripts-win\dev.bat`

@@ -6,6 +6,7 @@ import {
 } from "../utils/imageFallback";
 import { API_BASE } from "../utils/apiConfig";
 import { formatCurrency } from "../utils/formatters";
+import { CloseIcon, HeartIcon } from "./Icons";
 
 export default function ItemCardNew({
   id,
@@ -73,20 +74,7 @@ export default function ItemCardNew({
             aria-label="Remove from wishlist"
             title="Remove from wishlist"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <CloseIcon className="w-4 h-4" />
           </button>
         )}
 
@@ -100,17 +88,7 @@ export default function ItemCardNew({
             {isWishlisted && (
               <div className="bg-purple-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow flex items-center gap-1">
                 <span>Wishlisted</span>
-                <svg
-                  className="w-3 h-3 fill-current"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <HeartIcon className="w-3 h-3" filled />
               </div>
             )}
           </div>

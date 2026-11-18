@@ -16,7 +16,6 @@ init_json_endpoint('GET');
 try {
     $userId = require_login();
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $profileRow = fetch_profile_row($conn, $userId);
     if (!$profileRow) {
@@ -61,9 +60,6 @@ function fetch_profile_row(mysqli $conn, int $userId): ?array
             FROM user_accounts WHERE user_id = ? LIMIT 1';
 
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare profile lookup');
-    }
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $result = $stmt->get_result();

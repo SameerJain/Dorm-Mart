@@ -14,7 +14,6 @@ try {
     // Hold the connection: a temporary db() is closed before the statement runs.
     $conn = db();
     $stmt = $conn->prepare('DELETE FROM notifications WHERE notification_id = ? AND recipient_user_id = ?');
-    if (!$stmt) throw new RuntimeException('Failed to prepare delete');
     $stmt->bind_param('ii', $id, $userId);
     $stmt->execute();
     if ($stmt->affected_rows !== 1) json_response(['success' => false, 'error' => 'Notification not found'], 404);

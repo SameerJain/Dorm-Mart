@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { ChevronDownIcon } from "../../../components/Icons";
 
 export default function SellerDashboardFilters({
   categories,
@@ -98,9 +99,7 @@ export default function SellerDashboardFilters({
 function SelectChevron() {
   return (
     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
+      <ChevronDownIcon className="w-4 h-4" />
     </div>
   );
 }

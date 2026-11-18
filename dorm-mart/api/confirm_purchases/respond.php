@@ -27,7 +27,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
     $conn->begin_transaction();
 
     $selectStmt = $conn->prepare('
@@ -38,9 +37,6 @@ try {
         LIMIT 1
         FOR UPDATE
     ');
-    if (!$selectStmt) {
-        throw new RuntimeException('Failed to prepare confirm lookup');
-    }
     $selectStmt->bind_param('i', $confirmRequestId);
     $selectStmt->execute();
     $res = $selectStmt->get_result();
@@ -75,9 +71,6 @@ try {
 
     $nextStatus = $action === 'accept' ? 'buyer_accepted' : 'buyer_declined';
     $updateStmt = $conn->prepare('UPDATE confirm_purchase_requests SET status = ?, buyer_response_at = NOW() WHERE confirm_request_id = ? AND status = \'pending\' LIMIT 1');
-    if (!$updateStmt) {
-        throw new RuntimeException('Failed to prepare confirm update');
-    }
     $updateStmt->bind_param('si', $nextStatus, $confirmRequestId);
     $updateStmt->execute();
     $affected = $updateStmt->affected_rows;
@@ -136,8 +129,7 @@ try {
         }
     }
 
-
-    $conn->commit();
+$conn->commit();
 
     json_response([
         'success' => true,

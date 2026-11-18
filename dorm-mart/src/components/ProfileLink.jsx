@@ -16,7 +16,7 @@ function normalizeCandidate(value) {
   return str.replace(/\s+/g, "").replace(/[^a-zA-Z0-9._-]/g, "");
 }
 
-export function buildProfileUsername({ username, email, fallback } = {}) {
+function buildProfileUsername({ username, email, fallback } = {}) {
   return (
     normalizeCandidate(username) ||
     normalizeCandidate(email) ||
@@ -24,7 +24,7 @@ export function buildProfileUsername({ username, email, fallback } = {}) {
   );
 }
 
-export function buildProfilePath(options) {
+function buildProfilePath(options) {
   const username = buildProfileUsername(
     typeof options === "string" ? { fallback: options } : options,
   );

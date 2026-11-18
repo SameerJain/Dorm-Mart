@@ -16,7 +16,6 @@ function confirm_purchase_conversation(mysqli $conn, int $conversationId, int $p
           WHERE c.conv_id = ? AND c.product_id = ?
           LIMIT 1'
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare conversation lookup');
     $stmt->bind_param('ii', $conversationId, $productId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -43,7 +42,6 @@ function confirm_purchase_latest_accepted_schedule(
           ORDER BY COALESCE(spr.updated_at, spr.buyer_response_at) DESC, spr.request_id DESC
           LIMIT 1'
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare scheduled purchase lookup');
     $sellerFilter = $sellerId ?? 0;
     $stmt->bind_param('iiii', $conversationId, $productId, $sellerFilter, $sellerFilter);
     $stmt->execute();
@@ -55,9 +53,6 @@ function confirm_purchase_latest_accepted_schedule(
 function get_conversation_receiver_id(mysqli $conn, int $conversationId, int $senderId): ?int
 {
     $stmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? LIMIT 1');
-    if (!$stmt) {
-        return null;
-    }
 
     $stmt->bind_param('i', $conversationId);
     $stmt->execute();
@@ -85,16 +80,9 @@ function delete_confirm_request_message(mysqli $conn, int $conversationId, int $
 {
     try {
         $findStmt = $conn->prepare('SELECT message_id, metadata FROM messages WHERE conv_id = ? ORDER BY message_id DESC');
-        if (!$findStmt) {
-            return;
-        }
 
         $findStmt->bind_param('i', $conversationId);
-        if (!$findStmt->execute()) {
-            error_log('Failed to execute confirm message lookup' . $logContext . ': ' . $findStmt->error);
-            $findStmt->close();
-            return;
-        }
+        $findStmt->execute();
 
         $findRes = $findStmt->get_result();
         $originalMsgId = null;
@@ -118,14 +106,9 @@ function delete_confirm_request_message(mysqli $conn, int $conversationId, int $
         }
 
         $deleteStmt = $conn->prepare('DELETE FROM messages WHERE message_id = ? LIMIT 1');
-        if (!$deleteStmt) {
-            return;
-        }
 
         $deleteStmt->bind_param('i', $originalMsgId);
-        if (!$deleteStmt->execute()) {
-            error_log('Failed to execute confirm message deletion' . $logContext . ': ' . $deleteStmt->error);
-        }
+        $deleteStmt->execute();
         $deleteStmt->close();
     } catch (Throwable $e) {
         error_log('Error deleting original confirm_request message' . $logContext . ': ' . $e->getMessage() . ' for confirm_request_id=' . $confirmRequestId);
@@ -160,13 +143,8 @@ function record_purchase_history(mysqli $conn, int $userId, int $productId, arra
             items      = JSON_ARRAY_APPEND(items, \'$\', JSON_EXTRACT(?, \'$\')),
             updated_at = NOW()
     ');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare purchase history upsert');
-    }
     $stmt->bind_param('iss', $userId, $entryJson, $entryJson);
-    if (!$stmt->execute()) {
-        throw new RuntimeException('Failed to execute purchase history upsert');
-    }
+    $stmt->execute();
     $stmt->close();
 }
 
@@ -194,9 +172,6 @@ function resolve_confirm_final_price(mysqli $conn, array $row, array $snapshot):
     }
 
     $priceStmt = $conn->prepare('SELECT listing_price FROM INVENTORY WHERE product_id = ? LIMIT 1');
-    if (!$priceStmt) {
-        return null;
-    }
     $priceStmt->bind_param('i', $productId);
     $priceStmt->execute();
     $res = $priceStmt->get_result();
@@ -229,7 +204,6 @@ function mark_inventory_as_sold(mysqli $conn, array $row): void
     }
 
     $itemStmt = $conn->prepare('SELECT title, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
-    if (!$itemStmt) throw new RuntimeException('Failed to prepare item notification snapshot');
     $itemStmt->bind_param('i', $productId);
     $itemStmt->execute();
     $item = $itemStmt->get_result()->fetch_assoc();
@@ -240,9 +214,6 @@ function mark_inventory_as_sold(mysqli $conn, array $row): void
     $status = 'Sold';
     $updateSql = 'UPDATE INVENTORY SET item_status = ?, sold = 1, wishlisted = 0, final_price = ?, date_sold = CURDATE(), sold_to = ? WHERE product_id = ?';
     $stmt = $conn->prepare($updateSql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare inventory sold update');
-    }
     $stmt->bind_param('sdii', $status, $finalPrice, $buyerId, $productId);
     $stmt->execute();
     $stmt->close();
@@ -274,7 +245,6 @@ function mark_inventory_as_sold(mysqli $conn, array $row): void
         ]);
     }
     $wishlistDelete = $conn->prepare('DELETE FROM wishlist WHERE product_id = ?');
-    if (!$wishlistDelete) throw new RuntimeException('Failed to remove sold item from wishlists');
     $wishlistDelete->bind_param('i', $productId);
     $wishlistDelete->execute();
     $wishlistDelete->close();
@@ -332,9 +302,6 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
     // A form left pending under a schedule that was since cancelled must not
     // complete the sale; void it instead.
     $scheduleStmt = $conn->prepare('SELECT status FROM scheduled_purchase_requests WHERE request_id = ? LIMIT 1');
-    if (!$scheduleStmt) {
-        throw new RuntimeException('Failed to prepare schedule status lookup');
-    }
     $scheduledRequestId = (int)($row['scheduled_request_id'] ?? 0);
     $scheduleStmt->bind_param('i', $scheduledRequestId);
     $scheduleStmt->execute();
@@ -342,9 +309,6 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
     $scheduleStmt->close();
     if (!$schedule || $schedule['status'] !== 'accepted') {
         $voidStmt = $conn->prepare("UPDATE confirm_purchase_requests SET status = 'seller_cancelled' WHERE confirm_request_id = ? AND status = 'pending'");
-        if (!$voidStmt) {
-            throw new RuntimeException('Failed to prepare confirm void');
-        }
         $voidStmt->bind_param('i', $confirmId);
         $voidStmt->execute();
         $voidStmt->close();
@@ -353,9 +317,6 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
     }
 
     $updateStmt = $conn->prepare("UPDATE confirm_purchase_requests SET status = 'auto_accepted', auto_processed_at = NOW(), buyer_response_at = NOW() WHERE confirm_request_id = ? AND status = 'pending' LIMIT 1");
-    if (!$updateStmt) {
-        throw new RuntimeException('Failed to prepare auto-finalize update');
-    }
     $updateStmt->bind_param('i', $confirmId);
     $updateStmt->execute();
     $wasUpdated = $updateStmt->affected_rows > 0;
@@ -367,9 +328,6 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
     notification_clear_prompt($conn, (int)($row['scheduled_request_id'] ?? 0), 'confirm_request');
 
     $selectStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE confirm_request_id = ? LIMIT 1');
-    if (!$selectStmt) {
-        throw new RuntimeException('Failed to prepare confirm lookup');
-    }
     $selectStmt->bind_param('i', $confirmId);
     $selectStmt->execute();
     $res = $selectStmt->get_result();
@@ -483,7 +441,6 @@ function notify_seller_confirm_outcome(mysqli $conn, array $row, string $outcome
         $item = [];
         if ($productId > 0) {
             $stmt = $conn->prepare('SELECT title, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
-            if (!$stmt) throw new RuntimeException('Failed to prepare confirm outcome item lookup');
             $stmt->bind_param('i', $productId);
             $stmt->execute();
             $item = $stmt->get_result()->fetch_assoc() ?: [];

@@ -26,7 +26,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $convRow = confirm_purchase_conversation($conn, $conversationId, $productId);
 
@@ -123,7 +122,6 @@ try {
             $lockedConfirm = $conn->prepare(
                 'SELECT * FROM confirm_purchase_requests WHERE confirm_request_id = ? LIMIT 1 FOR UPDATE'
             );
-            if (!$lockedConfirm) throw new RuntimeException('Failed to prepare confirmation lock');
             $confirmId = (int)$confirmRow['confirm_request_id'];
             $lockedConfirm->bind_param('i', $confirmId);
             $lockedConfirm->execute();

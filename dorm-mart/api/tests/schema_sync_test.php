@@ -109,13 +109,13 @@ expect_same($ops[6]["sql"], 'ALTER TABLE `t` DROP INDEX `idx_name`, ADD KEY `idx
 mysqli_report(MYSQLI_REPORT_OFF);
 $host = getenv('DB_HOST') ?: '127.0.0.1';
 if (!in_array(strtolower($host), ['127.0.0.1', 'localhost', '::1'], true)) {
-    echo "PASS: {$checks} schema sync checks (database section skipped: DB_HOST is not local)\n";
+    echo "PASS: {$checks} schema sync checks without a database. SKIPPED: the scratch-database section (DB_HOST is not local)\n";
     exit(0);
 }
 $scratch = 'dm_schema_sync_test_' . getmypid();
 $conn = @new mysqli($host, getenv('DB_USERNAME') ?: 'root', getenv('DB_PASSWORD') ?: '');
 if ($conn->connect_errno) {
-    echo "PASS: {$checks} schema sync checks (database section skipped: no local database)\n";
+    echo "PASS: {$checks} schema sync checks without a database. SKIPPED: the scratch-database section (no local database)\n";
     exit(0);
 }
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);

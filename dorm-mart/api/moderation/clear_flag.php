@@ -23,7 +23,6 @@ if ($messageId <= 0) {
 
 try {
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $stmt = $conn->prepare('SELECT sender_id, is_flagged FROM messages WHERE message_id = ? LIMIT 1');
     $stmt->bind_param('i', $messageId);

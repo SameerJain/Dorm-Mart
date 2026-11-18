@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 // The database workflow end to end, on a scratch database: schema/ builds from
 // nothing and then converges, and migrate_data.php resets the test fixtures
-// without touching real users' data. Skipped when no local database is reachable.
+// without touching real users' data. Needs a local database, so it runs with the
+// integration suites and fails without one instead of reporting a pass.
 
 if (PHP_SAPI !== 'cli') {
     http_response_code(404);
@@ -29,14 +30,14 @@ function expect_same($actual, $expected, string $message): void
 
 $host = strtolower((string)getenv('DB_HOST'));
 if (!in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
-    echo "PASS: 0 database migration checks (skipped: DB_HOST is not local)\n";
-    exit(0);
+    fwrite(STDERR, "FAIL: database migration checks need a local database (DB_HOST is not local)\n");
+    exit(1);
 }
 mysqli_report(MYSQLI_REPORT_OFF);
 $conn = @new mysqli($host, (string)getenv('DB_USERNAME'), (string)getenv('DB_PASSWORD'));
 if ($conn->connect_errno) {
-    echo "PASS: 0 database migration checks (skipped: no local database)\n";
-    exit(0);
+    fwrite(STDERR, "FAIL: database migration checks need a local database (none is reachable)\n");
+    exit(1);
 }
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 

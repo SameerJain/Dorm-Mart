@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
 import logger from "../../utils/logger";
+import { ChevronDownIcon } from "../../components/Icons";
 
 async function fetchPurchasedItems(filters, signal) {
   const r = await csrfFetch(`${API_BASE}/purchase_history/purchase_history.php`, {
@@ -120,19 +121,7 @@ function PurchaseHistoryPage() {
                     <option value="Last Year">Last Year</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
+                    <ChevronDownIcon className="w-4 h-4" />
                   </div>
                 </div>
               </div>
@@ -158,19 +147,7 @@ function PurchaseHistoryPage() {
                     </option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
+                    <ChevronDownIcon className="w-4 h-4" />
                   </div>
                 </div>
               </div>

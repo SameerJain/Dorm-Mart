@@ -25,7 +25,6 @@ moderation_require_report_quota('report_message', $reporterId);
 
 try {
     $conn = db();
-    $conn->set_charset('utf8mb4');
     $stmt = $conn->prepare(
         'SELECT m.sender_id, m.metadata, m.deleted_at
            FROM messages m

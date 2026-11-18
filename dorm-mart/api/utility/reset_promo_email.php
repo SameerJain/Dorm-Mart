@@ -9,9 +9,6 @@ declare(strict_types=1);
 //   php api/utility/reset_promo_email.php <email>  the same, for one user
 //
 // Refuses to run against a non-local database, like migrate_data.php.
-// (It used to also require REQUEST_METHOD=POST, which the CLI never sets, so
-// it could not run at all; and it never reset promo_last_sent_at, which is what
-// decides when the next digest goes out.)
 
 if (php_sapi_name() !== 'cli') {
     http_response_code(403);

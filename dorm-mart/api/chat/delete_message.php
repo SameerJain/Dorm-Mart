@@ -22,7 +22,6 @@ $conn = null;
 
 try {
     $conn = db();
-    $conn->set_charset('utf8mb4');
     $conn->begin_transaction();
 
     $messageStmt = $conn->prepare(
@@ -32,9 +31,6 @@ try {
           LIMIT 1
           FOR UPDATE'
     );
-    if (!$messageStmt) {
-        throw new RuntimeException('Failed to prepare message lookup');
-    }
     $messageStmt->bind_param('ii', $messageId, $userId);
     $messageStmt->execute();
     $message = $messageStmt->get_result()->fetch_assoc();
@@ -75,9 +71,6 @@ try {
           LIMIT 1
           FOR UPDATE'
     );
-    if (!$latestStmt) {
-        throw new RuntimeException('Failed to prepare latest message lookup');
-    }
     $latestStmt->bind_param('ii', $convId, $userId);
     $latestStmt->execute();
     $latest = $latestStmt->get_result()->fetch_assoc();
@@ -93,9 +86,6 @@ try {
             SET deleted_at = UTC_TIMESTAMP()
           WHERE message_id = ? AND sender_id = ? AND deleted_at IS NULL'
     );
-    if (!$deleteStmt) {
-        throw new RuntimeException('Failed to prepare message deletion');
-    }
     $deleteStmt->bind_param('ii', $messageId, $userId);
     $deleteStmt->execute();
     if ($deleteStmt->affected_rows !== 1) {
@@ -115,9 +105,6 @@ try {
             AND first_unread_msg_id > 0
             AND first_unread_msg_id <= ?'
     );
-    if (!$unreadStmt) {
-        throw new RuntimeException('Failed to prepare unread count update');
-    }
     $unreadStmt->bind_param('iii', $convId, $receiverId, $messageId);
     $unreadStmt->execute();
     $unreadStmt->close();
@@ -127,9 +114,6 @@ try {
            FROM messages
           WHERE message_id = ?'
     );
-    if (!$timeStmt) {
-        throw new RuntimeException('Failed to prepare deletion time lookup');
-    }
     $timeStmt->bind_param('i', $messageId);
     $timeStmt->execute();
     $deletedAt = $timeStmt->get_result()->fetch_assoc()['deleted_at'] ?? gmdate('Y-m-d\TH:i:s\Z');

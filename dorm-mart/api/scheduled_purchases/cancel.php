@@ -26,7 +26,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
     $conn->begin_transaction();
 
     $selectSql = <<<SQL
@@ -42,9 +41,6 @@ try {
     SQL;
 
     $selectStmt = $conn->prepare($selectSql);
-    if (!$selectStmt) {
-        throw new RuntimeException('Failed to prepare select');
-    }
     $selectStmt->bind_param('i', $requestId);
     $selectStmt->execute();
     $res = $selectStmt->get_result();
@@ -98,7 +94,6 @@ try {
               LIMIT 1
               FOR UPDATE"
         );
-        if (!$intentStmt) throw new RuntimeException('Failed to prepare intent cancellation lookup');
         $intentStmt->bind_param('i', $requestId);
         $intentStmt->execute();
         $intentToCancel = $intentStmt->get_result()->fetch_assoc() ?: null;
@@ -110,9 +105,6 @@ try {
     }
 
     $updateStmt = $conn->prepare('UPDATE scheduled_purchase_requests SET status = ?, canceled_by_user_id = ? WHERE request_id = ? LIMIT 1');
-    if (!$updateStmt) {
-        throw new RuntimeException('Failed to prepare update');
-    }
     $status = 'cancelled';
     $updateStmt->bind_param('sii', $status, $userId, $requestId);
     $updateStmt->execute();
@@ -126,9 +118,6 @@ try {
         "UPDATE confirm_purchase_requests SET status = 'seller_cancelled'
           WHERE scheduled_request_id = ? AND status = 'pending'"
     );
-    if (!$voidConfirm) {
-        throw new RuntimeException('Failed to prepare confirm void');
-    }
     $voidConfirm->bind_param('i', $requestId);
     $voidConfirm->execute();
     $voidConfirm->close();

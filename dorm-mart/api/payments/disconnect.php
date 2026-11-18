@@ -59,7 +59,6 @@ try {
               WHERE scheduled_request_id = ?
                 AND status NOT IN ('succeeded','refund_pending','refund_failed','refunded','disputed','canceled')"
         );
-        if (!$intentStmt) throw new RuntimeException('Failed to prepare intent cancellation lookup');
         $scheduleId = (int)$schedule['request_id'];
         $intentStmt->bind_param('i', $scheduleId);
         $intentStmt->execute();

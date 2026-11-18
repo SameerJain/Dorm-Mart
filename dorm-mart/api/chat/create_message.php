@@ -13,7 +13,6 @@ require_once __DIR__ . '/../helpers/moderation.php';
 init_json_endpoint('POST');
 
 $conn = db();
-$conn->set_charset('utf8mb4');
 
 auth_boot_session();
 

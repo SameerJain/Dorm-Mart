@@ -241,7 +241,7 @@ From the repository root, run:
 build-scripts-win\dev.bat
 ```
 
-The launcher starts XAMPP Apache/MySQL when their ports are free, then opens React on port 3000 and PHP on port 8080. It resolves paths relative to the repository, so it need not be launched from a specific working directory.
+The launcher starts XAMPP Apache/MySQL when their ports are free, runs `migrate_schema.php` and then `migrate_data.php` (so every start syncs the tables and resets the seed accounts' data), then opens React on port 3000 and PHP on port 8080. It resolves paths relative to the repository, so it need not be launched from a specific working directory.
 
 Manual equivalent from `dorm-mart`:
 

@@ -4,6 +4,7 @@ import { API_BASE } from "../../../utils/apiConfig";
 import { resolveProductPhotoUrl } from "../../../utils/imageFallback";
 import logger from "../../../utils/logger";
 import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
+import { CloseIcon } from "../../../components/Icons";
 
 const reviewImageUrl = (url) =>
   resolveProductPhotoUrl(url, { apiBase: API_BASE, proxyUnknown: true });
@@ -143,19 +144,7 @@ export default function ReviewImageGallery({ review, viewMode }) {
               className="absolute top-4 right-4 bg-white hover:bg-gray-100 text-gray-900 rounded-full p-2 shadow-lg"
               aria-label="Close"
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <CloseIcon className="w-6 h-6" />
             </button>
           </div>
         </div>

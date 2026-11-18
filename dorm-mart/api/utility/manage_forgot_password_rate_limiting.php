@@ -18,12 +18,6 @@
  * - Use this during development/testing to reset rate limits
  */
 
-// NOTE: The per-email check helpers that used to live here were deleted.
-// forgot_password.php enforces its own atomic 10-minute limiter in SQL, and
-// nothing called check_forgot_password_rate_limit(),
-// update_reset_request_timestamp() or get_forgot_password_rate_limit_minutes().
-// What remains below is the CLI that clears last_reset_request for all users.
-
 if (basename(__FILE__) === basename($_SERVER['SCRIPT_NAME'])) {
     if (php_sapi_name() !== 'cli') {
         http_response_code(404);

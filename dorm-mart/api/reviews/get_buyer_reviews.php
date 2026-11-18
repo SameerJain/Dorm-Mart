@@ -17,7 +17,6 @@ try {
     $buyerId = $userId;
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $sql = <<<SQL
 SELECT 
@@ -41,9 +40,6 @@ ORDER BY br.created_at DESC
 SQL;
 
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare buyer reviews lookup');
-    }
     $stmt->bind_param('i', $buyerId);
     $stmt->execute();
     $result = $stmt->get_result();

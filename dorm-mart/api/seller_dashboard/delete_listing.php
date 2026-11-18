@@ -15,7 +15,6 @@ try {
     $userId = require_login();
     
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $input = json_request_body();
     
@@ -29,7 +28,6 @@ try {
     $conn->begin_transaction();
     // Locked so a sale completing right now cannot slip between check and delete.
     $itemStmt = $conn->prepare('SELECT title, photos, sold, item_status FROM INVENTORY WHERE product_id = ? AND seller_id = ? LIMIT 1 FOR UPDATE');
-    if (!$itemStmt) throw new RuntimeException('Failed to prepare listing snapshot');
     $itemStmt->bind_param('ii', $id, $userId);
     $itemStmt->execute();
     $item = $itemStmt->get_result()->fetch_assoc();

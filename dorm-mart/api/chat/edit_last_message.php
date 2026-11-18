@@ -22,12 +22,10 @@ try {
     if ($length > 500) json_response(['success' => false, 'error' => 'Message cannot exceed 500 characters'], 400);
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
     $stmt = $conn->prepare(
         'SELECT message_id, conv_id, content, image_url, metadata
          FROM messages WHERE message_id = ? AND sender_id = ? AND deleted_at IS NULL LIMIT 1'
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare message lookup');
     $stmt->bind_param('ii', $messageId, $userId);
     $stmt->execute();
     $message = $stmt->get_result()->fetch_assoc();
@@ -42,7 +40,6 @@ try {
          WHERE conv_id = ? AND sender_id = ? AND image_url IS NULL AND metadata IS NULL AND deleted_at IS NULL
          ORDER BY message_id DESC LIMIT 1'
     );
-    if (!$latestStmt) throw new RuntimeException('Failed to prepare latest message lookup');
     $latestStmt->bind_param('ii', $convId, $userId);
     $latestStmt->execute();
     $latest = $latestStmt->get_result()->fetch_assoc();
@@ -56,7 +53,6 @@ try {
     // A reported message stays as the moderator will see it until the report
     // is handled; editing it away would erase the evidence.
     $reportStmt = $conn->prepare("SELECT 1 FROM message_reports WHERE message_id = ? AND status = 'open' LIMIT 1");
-    if (!$reportStmt) throw new RuntimeException('Failed to prepare report lookup');
     $reportStmt->bind_param('i', $messageId);
     $reportStmt->execute();
     $hasOpenReport = $reportStmt->get_result()->num_rows > 0;
@@ -76,7 +72,6 @@ try {
                 edited_at = NOW()
           WHERE message_id = ? AND sender_id = ? AND deleted_at IS NULL'
     );
-    if (!$update) throw new RuntimeException('Failed to prepare message update');
     $update->bind_param('siii', $content, $isFlagged, $messageId, $userId);
     $update->execute();
     $updated = $update->affected_rows;

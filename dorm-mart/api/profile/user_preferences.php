@@ -145,18 +145,10 @@ try {
     // SQL INJECTION PROTECTION: column names come from the fixed list above;
     // every value is bound as a parameter.
     $stmt = $conn->prepare('UPDATE user_accounts SET ' . implode(', ', $sets) . ' WHERE user_id = ?');
-    if (!$stmt) {
-      throw new RuntimeException('Failed to prepare preferences update');
-    }
     $types .= 'i';
     $values[] = $userId;
     $stmt->bind_param($types, ...$values);
-    if (!$stmt->execute()) {
-      error_log('user_preferences: update failed: ' . $stmt->error);
-      $stmt->close();
-      $conn->close();
-      json_response(['ok' => false, 'error' => 'Unable to save preferences.'], 500);
-    }
+    $stmt->execute();
     $stmt->close();
 
     if ($shouldSendEmail) {

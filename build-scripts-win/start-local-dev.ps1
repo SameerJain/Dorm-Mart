@@ -37,6 +37,25 @@ if (!(Test-Path (Join-Path $dormMartPath "package.json"))) {
     throw "Could not find dorm-mart/package.json under $projectRoot"
 }
 
+# Same schema sync Railway runs before each deploy, plus the local-only seed reset
+# (migrate_data.php resets only the seed accounts and refuses non-local databases).
+$waited = 0
+while (-not (Test-ListeningPort 3306) -and $waited -lt 30) { Start-Sleep -Seconds 1; $waited++ }
+Write-Host "Syncing the database schema and resetting seed data..." -ForegroundColor Yellow
+Push-Location $dormMartPath
+try {
+    foreach ($migration in "api/database/migrate_schema.php", "api/database/migrate_data.php") {
+        $output = & "C:\xampp\php\php.exe" $migration 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "$migration failed; starting the app anyway:" -ForegroundColor Red
+            $output | Out-Host
+            break
+        }
+    }
+} finally {
+    Pop-Location
+}
+
 if (Test-ListeningPort 3000) {
     Write-Host "React is already listening on port 3000; not starting a duplicate." -ForegroundColor DarkYellow
 } else {

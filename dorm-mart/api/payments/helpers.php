@@ -71,7 +71,6 @@ function payment_user(mysqli $conn, int $userId): ?array
           WHERE user_id = ?
           LIMIT 1'
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare payment user lookup');
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -86,7 +85,6 @@ function payment_account(mysqli $conn, int $userId, string $mode, bool $forUpdat
     $sql = 'SELECT * FROM connected_payment_accounts WHERE user_id = ? AND payment_mode = ? LIMIT 1';
     if ($forUpdate) $sql .= ' FOR UPDATE';
     $stmt = $conn->prepare($sql);
-    if (!$stmt) throw new RuntimeException('Failed to prepare payment account lookup');
     $stmt->bind_param('is', $userId, $mode);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -139,7 +137,6 @@ function payment_upsert_account(mysqli $conn, int $userId, string $mode, array $
             disconnected_at = NULL,
             last_synced_at = NOW()'
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare payment account upsert');
     $stmt->bind_param('issiii', $userId, $mode, $stripeId, $detailsSubmitted, $chargesEnabled, $payoutsEnabled);
     $stmt->execute();
     $stmt->close();
@@ -150,7 +147,6 @@ function payment_upsert_account(mysqli $conn, int $userId, string $mode, array $
 function payment_modes_for_pair(mysqli $conn, int $sellerId, int $buyerId): ?string
 {
     $stmt = $conn->prepare('SELECT user_id, email, is_protected FROM user_accounts WHERE user_id IN (?, ?)');
-    if (!$stmt) throw new RuntimeException('Failed to prepare payment mode lookup');
     $stmt->bind_param('ii', $sellerId, $buyerId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -232,7 +228,6 @@ function payment_schedule(mysqli $conn, int $requestId, bool $forUpdate = false)
     }
     if ($forUpdate) $sql .= ' FOR UPDATE';
     $stmt = $conn->prepare($sql);
-    if (!$stmt) throw new RuntimeException('Failed to prepare payment schedule lookup');
     $stmt->bind_param('i', $requestId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -349,7 +344,6 @@ function payment_apply_fallback(mysqli $conn, array $schedule, string $reason): 
                    AND ep.status IN ('succeeded','refund_pending','refund_failed','refunded','disputed')
             )"
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare payment fallback');
     $stmt->bind_param('si', $reason, $requestId);
     $stmt->execute();
     $changed = $stmt->affected_rows > 0;
@@ -384,7 +378,6 @@ function payment_webhook_event_once(
             (payment_mode, stripe_event_id, event_type, stripe_object_id)
          VALUES (?, ?, ?, ?)'
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare Stripe event insert');
     $stmt->bind_param('ssss', $mode, $eventId, $eventType, $objectId);
     $stmt->execute();
     $inserted = $stmt->affected_rows > 0;
@@ -397,7 +390,6 @@ function payment_row_by_intent(mysqli $conn, string $mode, string $intentId, boo
     $sql = 'SELECT * FROM electronic_payments WHERE payment_mode = ? AND stripe_payment_intent_id = ? LIMIT 1';
     if ($forUpdate) $sql .= ' FOR UPDATE';
     $stmt = $conn->prepare($sql);
-    if (!$stmt) throw new RuntimeException('Failed to prepare electronic payment lookup');
     $stmt->bind_param('ss', $mode, $intentId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -473,7 +465,6 @@ function payment_finalize_refund_transaction(
           LIMIT 1
           FOR UPDATE'
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare refunded payment lookup');
     $stmt->bind_param('i', $electronicPaymentId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -486,7 +477,6 @@ function payment_finalize_refund_transaction(
             SET status = 'refunded', stripe_refund_id = ?, refunded_at = NOW(), last_error_code = NULL
           WHERE electronic_payment_id = ?"
     );
-    if (!$update) throw new RuntimeException('Failed to prepare refunded payment update');
     $update->bind_param('si', $stripeRefundId, $electronicPaymentId);
     $update->execute();
     $update->close();
@@ -499,7 +489,6 @@ function payment_finalize_refund_transaction(
                 SET item_status = ?, sold = 0, final_price = NULL, date_sold = NULL, sold_to = NULL
               WHERE product_id = ?'
         );
-        if (!$relist) throw new RuntimeException('Failed to prepare refunded item relist');
         $relist->bind_param('si', $active, $productId);
         $relist->execute();
         $relist->close();

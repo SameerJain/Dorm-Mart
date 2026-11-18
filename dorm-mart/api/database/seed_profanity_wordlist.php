@@ -57,7 +57,6 @@ function seed_profanity_wordlist(mysqli $conn): array
     $excluded = array_flip(PROFANITY_WORDLIST_EXCLUDED);
 
     $insertStmt = $conn->prepare('INSERT IGNORE INTO profanity_words (word) VALUES (?)');
-    if (!$insertStmt) throw new RuntimeException('Failed to prepare profanity word seed insert');
 
     $seeded = 0;
     foreach ($words as $word) {
@@ -75,7 +74,6 @@ function seed_profanity_wordlist(mysqli $conn): array
     // Remove any excluded words a prior, less-curated seed run may have already inserted.
     $removed = 0;
     $deleteStmt = $conn->prepare('DELETE FROM profanity_words WHERE word = ?');
-    if (!$deleteStmt) throw new RuntimeException('Failed to prepare profanity word cleanup delete');
     foreach (PROFANITY_WORDLIST_EXCLUDED as $word) {
         $deleteStmt->bind_param('s', $word);
         $deleteStmt->execute();

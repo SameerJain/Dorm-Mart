@@ -27,9 +27,6 @@ try {
           AND reset_token_expires > UTC_TIMESTAMP()
         LIMIT 1
     ');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare token lookup');
-    }
     $stmt->bind_param('i', $uid);
     $stmt->execute();
     $result = $stmt->get_result();

@@ -33,7 +33,7 @@ const NEW_MSG_POLL_MS = 1500;
 const UNREAD_MSG_POLL_MS = 3000;
 const UNREAD_NOTIFICATION_POLL_MS = 5000;
 
-export function startVisiblePolling(tick, intervalMs) {
+function startVisiblePolling(tick, intervalMs) {
   let running = false;
   const run = async () => {
     if (running || document.visibilityState !== "visible") return;

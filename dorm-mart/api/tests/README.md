@@ -5,7 +5,7 @@ and the local `.htaccess`) — everything here runs from the command line only.
 
 ## Automated (no setup required)
 
-Run with `npm run test:backend`, or individually (nine scripts):
+Run with `npm run test:backend`, or individually (eight scripts):
 
 - `adversarial_validation_test.php` — boundary/validation checks for request helpers,
   image upload, and payment helpers.
@@ -19,8 +19,9 @@ Run with `npm run test:backend`, or individually (nine scripts):
 - `schedule_proposal_test.php` — the Scheduled Purchase proposal rules in
   `scheduled_purchases/proposal.php` (meeting window, price, trade, meet location)
   at their exact edges, with a fixed clock.
-- `schema_sync_test.php` — the declarative `schema/` directory builds and converges.
-- `database_migrations_test.php` — fixture resets leave real users and table sizes alone.
+- `schema_sync_test.php` — the declarative `schema/` parser and diff. Its
+  scratch-database section runs only with a local database; without one the
+  output says `SKIPPED`.
 - `browser_push_crypto_test.php` — real Web Push encryption and signing against a
   mocked HTTP client, with no external delivery.
 
@@ -31,6 +32,10 @@ randomly named database, starts a private `php -S`, never sends email, and refus
 non-local hosts. The shared setup is `support/integration_harness.php`; set
 `HARNESS_KEEP_LOG=1` to keep the server's PHP error log after a failure.
 
+- `schema_sync_test.php` — runs again here so the full `schema/` directory is
+  built and converged on a real database.
+- `database_migrations_test.php` — fixture resets leave real users and table
+  sizes alone. Fails without a local database.
 - `purchase_lifecycle_test.php` — schedule/confirm/relist/cancel, reviews, listing
   edits, account deletion and bans.
 - `card_acceptance_test.php` — the acceptance tests from the closed Scrum Board

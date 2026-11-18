@@ -20,9 +20,7 @@ try {
 
   require_csrf_token($_POST['csrf_token'] ?? null);
 
-  mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
   $conn = db();
-  $conn->set_charset('utf8mb4');
 
   $mode = is_string($_POST['mode'] ?? null) ? trim($_POST['mode']) : 'create';
   $itemId = request_int($_POST, 'id');

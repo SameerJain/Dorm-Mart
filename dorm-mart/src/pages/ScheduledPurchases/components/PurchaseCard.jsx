@@ -9,6 +9,7 @@ import {
   getStatusBadgeClass,
   getStatusLabel,
 } from "../utils/ongoingPurchaseViewUtils";
+import { InfoIcon } from "../../../components/Icons";
 
 function StatusInfoBox({
   color = "red",
@@ -196,19 +197,7 @@ function NextStepsInfo({ req }) {
   return (
     <div className="bg-orange-50 dark:bg-orange-900/30 border-2 border-orange-400 dark:border-orange-600 rounded-lg p-2 mb-1.5">
       <div className="flex items-start gap-1.5">
-        <svg
-          className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
+        <InfoIcon className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-0.5">
             Next Steps

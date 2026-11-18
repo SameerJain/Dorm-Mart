@@ -29,7 +29,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     expire_stale_requests($conn);
     $conn->begin_transaction();
@@ -49,9 +48,6 @@ try {
     SQL;
 
     $selectStmt = $conn->prepare($selectSql);
-    if (!$selectStmt) {
-        throw new RuntimeException('Failed to prepare select');
-    }
     $selectStmt->bind_param('i', $requestId);
     $selectStmt->execute();
     $res = $selectStmt->get_result();
@@ -72,7 +68,6 @@ try {
 
     // Lock the listing so two buyers cannot accept schedules for it concurrently.
     $inventoryLock = $conn->prepare('SELECT product_id FROM INVENTORY WHERE product_id = ? LIMIT 1 FOR UPDATE');
-    if (!$inventoryLock) throw new RuntimeException('Failed to prepare inventory lock');
     $inventoryProductId = (int)$row['inventory_product_id'];
     $inventoryLock->bind_param('i', $inventoryProductId);
     $inventoryLock->execute();
@@ -95,9 +90,6 @@ try {
 
     $nextStatus = $action === 'accept' ? 'accepted' : 'declined';
     $updateStmt = $conn->prepare('UPDATE scheduled_purchase_requests SET status = ?, buyer_response_at = NOW() WHERE request_id = ? LIMIT 1');
-    if (!$updateStmt) {
-        throw new RuntimeException('Failed to prepare update');
-    }
     $updateStmt->bind_param('si', $nextStatus, $requestId);
     $updateStmt->execute();
     $updateStmt->close();

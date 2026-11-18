@@ -14,7 +14,6 @@ try {
     $userId = require_login();
     
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $input = json_request_body();
     
@@ -23,9 +22,6 @@ try {
     $productId = require_product_id($input);
 
     $stmt = $conn->prepare('DELETE FROM wishlist WHERE user_id = ? AND product_id = ?');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare delete');
-    }
     $stmt->bind_param('ii', $userId, $productId);
     $stmt->execute();
 

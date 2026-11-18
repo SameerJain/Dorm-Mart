@@ -18,7 +18,6 @@ try {
     $userId = require_login();
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     // Stale-listing nudges have no scheduler, so they are generated here. The
     // page polls every few seconds; checking once an hour per session is plenty.
@@ -35,9 +34,6 @@ try {
         'SELECT COUNT(*) AS unread FROM notifications
           WHERE recipient_user_id = ? AND available_at <= NOW() AND is_read = 0'
     );
-    if (!$countStmt) {
-        throw new RuntimeException('Failed to prepare unread count');
-    }
     $countStmt->bind_param('i', $userId);
     $countStmt->execute();
     $unreadTotal = (int)($countStmt->get_result()->fetch_assoc()['unread'] ?? 0);
@@ -57,9 +53,6 @@ try {
           ORDER BY n.created_at DESC, n.notification_id DESC
           LIMIT ?'
     );
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare query');
-    }
 
     $limit = NOTIFICATION_LIST_LIMIT;
     $stmt->bind_param('ii', $userId, $limit);

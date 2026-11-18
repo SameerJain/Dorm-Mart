@@ -34,7 +34,6 @@ $mediaOwner = 0;
 
 try {
     $conn = db();
-    $conn->set_charset('utf8mb4');
     $conn->begin_transaction();
 
     $stmt = $conn->prepare('SELECT * FROM listing_reports WHERE report_id = ? LIMIT 1 FOR UPDATE');

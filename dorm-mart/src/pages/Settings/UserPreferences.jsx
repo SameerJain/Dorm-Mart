@@ -7,6 +7,7 @@ import logger from "../../utils/logger";
 import { API_BASE } from "../../utils/apiConfig";
 import { csrfFetch } from "../../utils/csrfFetch";
 import { preferenceChanges } from "./userPreferencesUtils";
+import { CloseIcon } from "../../components/Icons";
 
 const SAVE_DEBOUNCE_MS = 600;
 
@@ -260,19 +261,7 @@ function UserPreferences() {
                       aria-label={`Remove ${interest}`}
                       className="ml-2 text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-100"
                     >
-                      <svg
-                        className="h-3 w-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
+                      <CloseIcon className="h-3 w-3" />
                     </button>
                   </span>
                 ))}

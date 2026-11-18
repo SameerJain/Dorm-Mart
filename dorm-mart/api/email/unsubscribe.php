@@ -72,9 +72,6 @@ if ($method !== 'POST') {
 try {
     $conn = db();
     $stmt = $conn->prepare("UPDATE user_accounts SET promotional = 0, promo_frequency = 'off' WHERE user_id = ?");
-    if (!$stmt) {
-        throw new RuntimeException('prepare failed');
-    }
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $stmt->close();

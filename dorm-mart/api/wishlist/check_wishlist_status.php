@@ -13,14 +13,10 @@ try {
     $userId = require_login();
     
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $productId = require_product_id($_GET);
 
     $stmt = $conn->prepare('SELECT wishlist_id FROM wishlist WHERE user_id = ? AND product_id = ?');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare query');
-    }
     $stmt->bind_param('ii', $userId, $productId);
     $stmt->execute();
     $result = $stmt->get_result();

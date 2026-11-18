@@ -16,9 +16,6 @@ init_json_endpoint('GET');
 function seller_stats_row(mysqli $conn, string $sql, string $types, ...$params): array
 {
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare seller stats query');
-    }
     $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc() ?: [];
@@ -30,7 +27,6 @@ try {
     $userId = require_login();
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     // Items sold, however they were marked sold, and how long they took.
     $sales = seller_stats_row(

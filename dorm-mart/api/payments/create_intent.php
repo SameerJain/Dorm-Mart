@@ -92,7 +92,6 @@ try {
     $stripe = payment_stripe_client($mode);
 
     $existingStmt = $conn->prepare('SELECT * FROM electronic_payments WHERE scheduled_request_id = ? LIMIT 1');
-    if (!$existingStmt) throw new RuntimeException('Failed to prepare electronic payment lookup');
     $existingStmt->bind_param('i', $requestId);
     $existingStmt->execute();
     $payment = $existingStmt->get_result()->fetch_assoc();
@@ -145,7 +144,6 @@ try {
              VALUES (?, ?, ?, ?, ?, ?, \'usd\', ?, ?, ?)
              ON DUPLICATE KEY UPDATE stripe_payment_intent_id = VALUES(stripe_payment_intent_id)'
         );
-        if (!$insert) throw new RuntimeException('Failed to prepare electronic payment insert');
         $insert->bind_param(
             'iiiisisss',
             $requestId,

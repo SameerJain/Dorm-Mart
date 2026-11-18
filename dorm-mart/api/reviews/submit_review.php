@@ -89,7 +89,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $productRow = review_product($conn, $productId);
 
@@ -106,9 +105,6 @@ try {
     $hasPurchased = false;
 
     $stmt = $conn->prepare('SELECT items FROM purchase_history WHERE user_id = ? LIMIT 1');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare purchase history lookup');
-    }
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -136,9 +132,6 @@ try {
     }
 
     $stmt = $conn->prepare('SELECT review_id FROM product_reviews WHERE buyer_user_id = ? AND product_id = ? LIMIT 1');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare existing review check');
-    }
     $stmt->bind_param('ii', $userId, $productId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -153,9 +146,6 @@ try {
         'INSERT INTO product_reviews (product_id, buyer_user_id, seller_user_id, rating, product_rating, review_text, image1_url, image2_url, image3_url, video_url)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare review insert');
-    }
     $stmt->bind_param('iiiddsssss', $productId, $userId, $sellerId, $rating, $productRating, $reviewText, $image1Url, $image2Url, $image3Url, $videoUrl);
     try {
         $success = $stmt->execute();

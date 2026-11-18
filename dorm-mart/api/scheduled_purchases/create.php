@@ -35,12 +35,8 @@ try {
     $meetingAtDb = $meetingAt->format('Y-m-d H:i:s');
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $itemStmt = $conn->prepare('SELECT product_id, title, seller_id, price_nego, trades, item_location, listing_price, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
-    if (!$itemStmt) {
-        throw new RuntimeException('Failed to prepare inventory query');
-    }
     $itemStmt->bind_param('i', $inventoryId);
     $itemStmt->execute();
     $itemRes = $itemStmt->get_result();
@@ -59,9 +55,6 @@ try {
     $snapshotMeetLocation = isset($itemRow['item_location']) ? trim((string)$itemRow['item_location']) : null;
 
     $convStmt = $conn->prepare('SELECT conv_id, product_id, user1_id, user2_id, user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
-    if (!$convStmt) {
-        throw new RuntimeException('Failed to prepare conversation query');
-    }
     $convStmt->bind_param('i', $conversationId);
     $convStmt->execute();
     $convRes = $convStmt->get_result();
@@ -125,9 +118,6 @@ try {
     // respond.php takes the same INVENTORY row lock before accepting.
     $conn->begin_transaction();
     $inventoryLock = $conn->prepare('SELECT item_status, sold FROM INVENTORY WHERE product_id = ? LIMIT 1 FOR UPDATE');
-    if (!$inventoryLock) {
-        throw new RuntimeException('Failed to prepare inventory lock');
-    }
     $inventoryLock->bind_param('i', $inventoryId);
     $inventoryLock->execute();
     $lockedItem = $inventoryLock->get_result()->fetch_assoc();
@@ -163,18 +153,10 @@ try {
         implode(', ', array_keys($columns)),
         implode(', ', array_fill(0, count($columns), '?'))
     ));
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare insert');
-    }
     $values = array_column($columns, 1);
     $stmt->bind_param(implode('', array_column($columns, 0)), ...$values);
     
-    if (!$stmt->execute()) {
-        $error = $stmt->error;
-        $stmt->close();
-        error_log('Failed to execute scheduled purchase insert: ' . $error);
-        throw new RuntimeException('Failed to create scheduled purchase: ' . $error);
-    }
+    $stmt->execute();
     $requestId = $stmt->insert_id;
     $stmt->close();
     
@@ -250,9 +232,6 @@ function generate_unique_code(mysqli $conn): string
     $length = strlen($alphabet) - 1;
 
     $checkStmt = $conn->prepare('SELECT request_id FROM scheduled_purchase_requests WHERE verification_code = ? LIMIT 1');
-    if (!$checkStmt) {
-        throw new RuntimeException('Failed to prepare code check');
-    }
 
     try {
         while (true) {

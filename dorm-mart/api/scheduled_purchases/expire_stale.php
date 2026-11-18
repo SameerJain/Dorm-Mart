@@ -30,7 +30,7 @@ function expire_stale_requests(mysqli $conn): void
     SQL;
 
     $result = $conn->query($selectSql);
-    if (!$result || $result->num_rows === 0) {
+    if ($result->num_rows === 0) {
         return;
     }
 
@@ -50,9 +50,6 @@ function expire_stale_requests(mysqli $conn): void
          WHERE request_id = ? AND status = 'pending'
            AND (meeting_at < NOW() OR created_at < NOW() - INTERVAL 3 DAY)"
     );
-    if (!$claimStmt) {
-        return;
-    }
 
     foreach ($rows as $row) {
         $requestId = (int)$row['request_id'];
@@ -73,9 +70,6 @@ function expire_stale_requests(mysqli $conn): void
         $itemTitle = $row['item_title'] ?? 'an item';
 
         $nameStmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?) LIMIT 2');
-        if (!$nameStmt) {
-            continue;
-        }
         $nameStmt->bind_param('ii', $sellerId, $buyerId);
         $nameStmt->execute();
         $nameRes = $nameStmt->get_result();
@@ -103,9 +97,6 @@ function expire_stale_requests(mysqli $conn): void
             'INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata)
              VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
-        if (!$msgStmt) {
-            continue;
-        }
         $msgStmt->bind_param('iiissss', $conversationId, $sellerId, $buyerId, $senderName, $receiverName, $messageContent, $metadata);
         $msgStmt->execute();
         $msgId = $msgStmt->insert_id;

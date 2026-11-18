@@ -47,7 +47,7 @@ async function readJson(response) {
  * Message text as a moderator needs it: current text, the text before any edit,
  * and whether the sender later edited or deleted it.
  */
-export function ModeratedMessageText({ message }) {
+function ModeratedMessageText({ message }) {
   const edited = Boolean(message.edited_at);
   const deleted = Boolean(message.deleted_at);
   const original = message.original_content;

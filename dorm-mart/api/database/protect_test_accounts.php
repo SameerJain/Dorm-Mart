@@ -33,7 +33,6 @@ function protect_test_accounts(mysqli $conn, ?string $dataDir = null): array
     $stmt = $conn->prepare(
         'UPDATE user_accounts SET is_protected = 1 WHERE email IN (' . $placeholders . ')'
     );
-    if (!$stmt) throw new RuntimeException('Failed to prepare test account protection update');
 
     $types = str_repeat('s', count($emails));
     $params = [$types];

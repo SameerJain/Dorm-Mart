@@ -7,6 +7,7 @@ import { csrfFetch } from "../../utils/csrfFetch";
 import { useSubmitLock } from "../../hooks/useSubmitLock";
 import { formatCurrency, formatDateTime } from "../../utils/formatters";
 import { MAX_LISTING_PRICE } from "../../utils/priceValidation";
+import { InfoIcon } from "../../components/Icons";
 // Price limits - max matches ProductListingPage and SchedulePurchasePage exactly
 const PRICE_LIMITS = {
   max: MAX_LISTING_PRICE,
@@ -238,19 +239,7 @@ export default function ConfirmPurchasePage() {
           <>
             <section className="bg-indigo-50 dark:bg-indigo-900/30 border-2 border-indigo-200 dark:border-indigo-700 rounded-lg p-5 mb-6 overflow-hidden">
               <div className="flex items-start gap-3 min-w-0">
-                <svg
-                  className="w-6 h-6 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <InfoIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1 overflow-hidden">
                   <p className="text-base font-semibold text-indigo-900 dark:text-indigo-100 mb-2 break-words">
                     Fill this form out after you and the buyer have met in

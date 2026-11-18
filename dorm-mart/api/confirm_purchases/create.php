@@ -87,7 +87,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
     $conn->begin_transaction();
 
     $schedStmt = $conn->prepare('
@@ -111,9 +110,6 @@ try {
         LIMIT 1
         FOR UPDATE
     ');
-    if (!$schedStmt) {
-        throw new RuntimeException('Failed to prepare scheduled lookup');
-    }
     $schedStmt->bind_param('iii', $scheduledRequestId, $productId, $conversationId);
     $schedStmt->execute();
     $schedRes = $schedStmt->get_result();
@@ -146,9 +142,6 @@ try {
 
     // Note: buyer_declined status allows new confirm purchases to be created
     $pendingStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE scheduled_request_id = ? AND status = \'pending\' ORDER BY confirm_request_id DESC LIMIT 1');
-    if (!$pendingStmt) {
-        throw new RuntimeException('Failed to prepare pending confirm lookup');
-    }
     $pendingStmt->bind_param('i', $scheduledRequestId);
     $pendingStmt->execute();
     $pendingRes = $pendingStmt->get_result();
@@ -163,9 +156,6 @@ try {
     }
     
     $latestStmt = $conn->prepare('SELECT status, is_successful FROM confirm_purchase_requests WHERE scheduled_request_id = ? ORDER BY confirm_request_id DESC LIMIT 1');
-    if (!$latestStmt) {
-        throw new RuntimeException('Failed to prepare latest confirm lookup');
-    }
     $latestStmt->bind_param('i', $scheduledRequestId);
     $latestStmt->execute();
     $latestRes = $latestStmt->get_result();
@@ -216,9 +206,6 @@ try {
              final_price, seller_notes, failure_reason, failure_reason_notes, status, expires_at, payload_snapshot)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'pending\', ?, ?)
     ');
-    if (!$insertStmt) {
-        throw new RuntimeException('Failed to prepare confirm insert');
-    }
     $isSuccessfulInt = $isSuccessful ? 1 : 0;
     $insertStmt->bind_param(
         'iiiiiidsssss',

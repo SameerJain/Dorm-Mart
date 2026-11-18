@@ -4,7 +4,7 @@ import { apiGetJson, csrfPostJson } from "./apiClient";
 const endpoint = `${API_BASE}/push/subscription.php`;
 export const browserPushWorkerUrl = () => new URL(`${(process.env.PUBLIC_URL || ".").replace(/\/$/, "")}/push-worker.js`, window.location.href).href;
 
-export function browserPushSupported() {
+function browserPushSupported() {
   return window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 

@@ -32,6 +32,15 @@ function confirm(int $product, int $conversation, int $schedule, bool $success =
         'scheduled_request_id' => $schedule, 'is_successful' => $success, 'final_price' => 25,
         'failure_reason' => $success ? null : 'buyer_no_show']);
 }
+/** Chat card metadata from a list of messages, keyed by card type. */
+function chat_cards(array $messages): array {
+    $cards = [];
+    foreach ($messages as $message) {
+        $card = json_decode((string)($message['metadata'] ?? ''), true) ?: [];
+        $cards[$card['type'] ?? ''] = $card;
+    }
+    return $cards;
+}
 
 harness_start('lifecycle', 4);
 
@@ -75,10 +84,35 @@ $request = accepted($product, $conversation);
 $confirmation = confirm($product, $conversation, $request);
 check(ok($confirmation), 'seller can confirm an accepted schedule');
 $confirmationId = (int)$confirmation['body']['data']['confirm_request_id'];
+$confirmCard = chat_cards(api(2, 'chat/fetch_conversation.php?conv_id=' . $conversation, null)['body']['messages'] ?? [])['confirm_request'] ?? [];
+check(($confirmCard['confirm_purchase_status'] ?? null) === 'pending' && !isset($confirmCard['buyer_response_at']), 'the confirmation card shows the request as still pending');
 check(rejected(api(3, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept'])), 'unrelated buyer cannot accept confirmation');
 check(ok(api(2, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept'])), 'buyer completes purchase');
 check(rejected(api(2, 'confirm_purchases/respond.php', ['confirm_request_id' => $confirmationId, 'action' => 'accept'])), 'repeat confirmation is rejected');
 check((int)row("SELECT sold FROM INVENTORY WHERE product_id=$product")['sold'] === 1, 'completion marks listing sold');
+$listed = static function (int $user, string $role) use ($request): array {
+    foreach (api($user, "scheduled_purchases/list_$role.php", null)['body']['data'] ?? [] as $entry) {
+        if ($entry['request_id'] === $request) return $entry;
+    }
+    return [];
+};
+$asBuyer = $listed(2, 'buyer');
+$asSeller = $listed(1, 'seller');
+check(($asBuyer['seller'] ?? null) === ['first_name' => 'Harness', 'last_name' => 'Test'] && $asBuyer['has_completed_confirm'] === true
+    && $asBuyer['has_review'] === false && $asBuyer['buyer_user_id'] === 2 && $asBuyer['seller_user_id'] === 1
+    && strtotime((string)$asBuyer['meeting_at']) > time(), 'buyer list shows the completed purchase and the seller');
+check(($asSeller['buyer'] ?? null) === ['first_name' => 'Harness', 'last_name' => 'Test'] && !array_key_exists('has_review', $asSeller)
+    && !array_key_exists('seller', $asSeller) && $asSeller['item'] === ['title' => 'Lifecycle desk', 'photos' => ['/test.jpg'], 'listing_price' => 25]
+    && $asSeller['is_trade'] === false && $asSeller['canceled_by'] === null, 'seller list shows the same purchase and the buyer');
+check($listed(3, 'buyer') === [] && $listed(2, 'seller') === [], 'a purchase is listed only for its own buyer and seller');
+$thread = api(2, 'chat/fetch_conversation.php?conv_id=' . $conversation, null)['body']['messages'] ?? [];
+$scheduleCard = chat_cards($thread)['schedule_request'] ?? [];
+check(($scheduleCard['scheduled_purchase_status'] ?? null) === 'accepted' && strtotime((string)($scheduleCard['buyer_response_at'] ?? '')) > time() - 300,
+    'the schedule card shows the request as accepted, with when the buyer answered');
+$poll = api(2, 'chat/fetch_new_messages.php?conv_id=' . $conversation . '&ts=0', null)['body']['messages'] ?? [];
+check(count($thread) > 1 && array_column($poll, 'metadata') === array_column($thread, 'metadata'), 'polling from the start returns the same messages as opening the chat');
+check(api(3, 'chat/fetch_conversation.php?conv_id=' . $conversation, null)['status'] === 403
+    && api(3, 'chat/fetch_new_messages.php?conv_id=' . $conversation . '&ts=0', null)['status'] === 403, 'an outsider cannot read the conversation');
 check(rejected(api(2, 'scheduled_purchases/cancel.php', ['request_id' => $request])), 'completed purchase cannot be cancelled');
 check(rejected(api(1, 'seller_dashboard/delete_listing.php', ['id' => $product])), 'sold listing and receipt cannot be deleted');
 

@@ -42,9 +42,6 @@ function listing_delete(mysqli $conn, int $productId, int $sellerId, array $item
     ]);
 
     $convStmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_fname, user2_fname FROM conversations WHERE product_id = ?');
-    if (!$convStmt) {
-        throw new RuntimeException('Failed to prepare conversation query');
-    }
     $convStmt->bind_param('i', $productId);
     $convStmt->execute();
     $conversations = $convStmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -74,18 +71,12 @@ function listing_delete(mysqli $conn, int $productId, int $sellerId, array $item
         $msgStmt->close();
 
         $updateStmt = $conn->prepare('UPDATE conversations SET item_deleted = TRUE WHERE conv_id = ?');
-        if (!$updateStmt) {
-            throw new RuntimeException('Failed to prepare conversation close');
-        }
         $updateStmt->bind_param('i', $convId);
         $updateStmt->execute();
         $updateStmt->close();
     }
 
     $stmt = $conn->prepare('DELETE FROM INVENTORY WHERE product_id = ? AND seller_id = ?');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare delete');
-    }
     $stmt->bind_param('ii', $productId, $sellerId);
     $stmt->execute();
     $deleted = $stmt->affected_rows > 0;

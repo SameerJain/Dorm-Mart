@@ -26,7 +26,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $convRow = confirm_purchase_conversation($conn, $conversationId, $productId);
 

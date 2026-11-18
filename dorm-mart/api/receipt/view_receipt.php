@@ -25,7 +25,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     [$confirmRow, $resolvedProductId, $isAuthorized] = fetch_confirm_row($conn, $userId, $productId, $confirmRequestId);
     if (!$confirmRow) {
@@ -46,7 +45,6 @@ try {
         $lock = $conn->prepare(
             'SELECT * FROM confirm_purchase_requests WHERE confirm_request_id = ? LIMIT 1 FOR UPDATE'
         );
-        if (!$lock) throw new RuntimeException('Failed to prepare receipt confirmation lock');
         $confirmId = (int)$confirmRow['confirm_request_id'];
         $lock->bind_param('i', $confirmId);
         $lock->execute();
@@ -110,9 +108,6 @@ function fetch_confirm_row(mysqli $conn, int $userId, int $productId, int $confi
         }
         $sql .= ' LIMIT 1';
         $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            throw new RuntimeException('Failed to prepare confirm lookup');
-        }
         $stmt->bind_param($types, ...$params);
     } else {
         if ($productId <= 0) {
@@ -122,9 +117,6 @@ function fetch_confirm_row(mysqli $conn, int $userId, int $productId, int $confi
                                 WHERE cpr.inventory_product_id = ?
                                   AND (cpr.buyer_user_id = ? OR cpr.seller_user_id = ?)
                                 ORDER BY cpr.confirm_request_id DESC LIMIT 1');
-        if (!$stmt) {
-            throw new RuntimeException('Failed to prepare confirm lookup');
-        }
         $stmt->bind_param('iii', $productId, $userId, $userId);
     }
 
@@ -159,9 +151,6 @@ function fetch_scheduled_request(mysqli $conn, int $requestId): ?array
         LIMIT 1
     ';
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare scheduled lookup');
-    }
     $stmt->bind_param('i', $requestId);
     $stmt->execute();
     $res = $stmt->get_result();
@@ -200,9 +189,6 @@ function fetch_product_payload(mysqli $conn, int $productId): ?array
     ";
 
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare product lookup');
-    }
     $stmt->bind_param('i', $productId);
     $stmt->execute();
     $res = $stmt->get_result();

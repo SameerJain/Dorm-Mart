@@ -6,11 +6,11 @@ require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../helpers/profanity.php';
 require_once __DIR__ . '/../helpers/request.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/helpers.php';
 
 init_json_endpoint();
 
 $conn = db();
-$conn->set_charset('utf8mb4');
 
 $userId = require_login();
 
@@ -19,88 +19,15 @@ if ($convId <= 0) {
     json_response(['success' => false, 'error' => 'conv_id is required'], 400);
 }
 
-$authStmt = $conn->prepare('SELECT conv_id FROM conversations WHERE conv_id = ? AND (user1_id = ? OR user2_id = ?) LIMIT 1');
-$authStmt->bind_param('iii', $convId, $userId, $userId);
-$authStmt->execute();
-if ($authStmt->get_result()->num_rows === 0) {
-    json_response(['success' => false, 'error' => 'Unauthorized'], 403);
-}
-$authStmt->close();
+chat_require_participant($conn, $convId, $userId);
 
-$stmt = $conn->prepare(
-    'SELECT
-         message_id, conv_id, sender_id, receiver_id,
-         CASE WHEN deleted_at IS NULL THEN content ELSE \'This message was deleted\' END AS content,
-         CASE WHEN deleted_at IS NULL THEN is_flagged ELSE 0 END AS is_flagged,
-         CASE WHEN deleted_at IS NULL THEN image_url ELSE NULL END AS image_url,
-         CASE WHEN deleted_at IS NULL THEN metadata ELSE NULL END AS metadata,
-         DATE_FORMAT(created_at, "%Y-%m-%dT%H:%i:%sZ") AS created_at,  -- ISO UTC
-         DATE_FORMAT(edited_at,  "%Y-%m-%dT%H:%i:%sZ") AS edited_at,   -- ISO UTC (NULL stays NULL)
-         DATE_FORMAT(deleted_at, "%Y-%m-%dT%H:%i:%sZ") AS deleted_at
-       FROM messages
-      WHERE conv_id = ?
-      ORDER BY message_id ASC'
-);
-
+$stmt = $conn->prepare('SELECT ' . CHAT_MESSAGE_COLUMNS . ' FROM messages WHERE conv_id = ? ORDER BY message_id ASC');
 $stmt->bind_param('i', $convId);
 $stmt->execute();
-$res = $stmt->get_result(); // requires mysqlnd; if unavailable, switch to bind_result loop
+$res = $stmt->get_result();
 $messages = [];
 while ($row = $res->fetch_assoc()) {
-    $metadata = json_decode($row['metadata'] ?? '{}', true);
-    if (isset($metadata['type']) && $metadata['type'] === 'schedule_request' && isset($metadata['request_id'])) {
-        $requestId = (int)$metadata['request_id'];
-        $statusStmt = $conn->prepare('SELECT status, buyer_response_at FROM scheduled_purchase_requests WHERE request_id = ? LIMIT 1');
-        if ($statusStmt) {
-            $statusStmt->bind_param('i', $requestId);
-            $statusStmt->execute();
-            $statusRes = $statusStmt->get_result();
-            if ($statusRes && $statusRes->num_rows > 0) {
-                $statusRow = $statusRes->fetch_assoc();
-                $metadata['scheduled_purchase_status'] = (string)$statusRow['status'];
-                if (!empty($statusRow['buyer_response_at'])) {
-                    $dt = date_create($statusRow['buyer_response_at'], new DateTimeZone('UTC'));
-                    if ($dt) {
-                        $metadata['buyer_response_at'] = $dt->format(DateTime::ATOM);
-                    }
-                }
-                $row['metadata'] = json_encode($metadata, JSON_UNESCAPED_SLASHES);
-            }
-            $statusStmt->close();
-        }
-    }
-    if (isset($metadata['type']) && $metadata['type'] === 'confirm_request' && isset($metadata['confirm_request_id'])) {
-        $confirmRequestId = (int)$metadata['confirm_request_id'];
-        $confirmStatusStmt = $conn->prepare('SELECT status, buyer_response_at FROM confirm_purchase_requests WHERE confirm_request_id = ? LIMIT 1');
-        if ($confirmStatusStmt) {
-            $confirmStatusStmt->bind_param('i', $confirmRequestId);
-            $confirmStatusStmt->execute();
-            $confirmStatusRes = $confirmStatusStmt->get_result();
-            if ($confirmStatusRes && $confirmStatusRes->num_rows > 0) {
-                $confirmStatusRow = $confirmStatusRes->fetch_assoc();
-                $metadata['confirm_purchase_status'] = (string)$confirmStatusRow['status'];
-                if (!empty($confirmStatusRow['buyer_response_at'])) {
-                    $dt = date_create($confirmStatusRow['buyer_response_at'], new DateTimeZone('UTC'));
-                    if ($dt) {
-                        $metadata['buyer_response_at'] = $dt->format(DateTime::ATOM);
-                    }
-                }
-                $row['metadata'] = json_encode($metadata, JSON_UNESCAPED_SLASHES);
-            }
-            $confirmStatusStmt->close();
-        }
-    }
-    $rawContent = (string)$row['content'];
-    // System cards (schedule, intro, ...) carry names and titles, not chat text.
-    $row['content'] = $row['metadata'] === null ? filter_profanity($conn, $rawContent) : $rawContent;
-    // The sender may see their own words uncensored, so editing a message
-    // starts from what they typed instead of saving literal asterisks.
-    if ((int)$row['sender_id'] === $userId && $row['deleted_at'] === null && $row['metadata'] === null) {
-        $row['raw_content'] = $rawContent;
-    }
-    $row['is_flagged'] = (bool)$row['is_flagged'];
-    $row['is_deleted'] = $row['deleted_at'] !== null;
-    $messages[] = $row;
+    $messages[] = chat_message_payload($conn, $row, $userId);
 }
 $stmt->close();
 

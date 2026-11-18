@@ -19,12 +19,10 @@ try {
     require_csrf_token($input['csrf_token'] ?? null);
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $accountStmt = $conn->prepare(
         'SELECT hash_pass, is_protected, profile_photo, email FROM user_accounts WHERE user_id = ? LIMIT 1'
     );
-    if (!$accountStmt) throw new RuntimeException('Failed to prepare account lookup');
     $accountStmt->bind_param('i', $userId);
     $accountStmt->execute();
     $account = $accountStmt->get_result()->fetch_assoc();
@@ -67,7 +65,6 @@ try {
     $listingStmt = $conn->prepare(
         'SELECT product_id, title, photos FROM INVENTORY WHERE seller_id = ? FOR UPDATE'
     );
-    if (!$listingStmt) throw new RuntimeException('Failed to prepare listing lookup');
     $listingStmt->bind_param('i', $userId);
     $listingStmt->execute();
     $listingResult = $listingStmt->get_result();
@@ -98,7 +95,6 @@ try {
             'SELECT conv_id, user1_id, user2_id, user1_fname, user2_fname
              FROM conversations WHERE product_id = ?'
         );
-        if (!$conversationStmt) throw new RuntimeException('Failed to prepare conversation lookup');
         $conversationStmt->bind_param('i', $productId);
         $conversationStmt->execute();
         $conversationResult = $conversationStmt->get_result();
@@ -117,7 +113,6 @@ try {
                  (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata)
                  VALUES (?, ?, ?, ?, ?, ?, ?)'
             );
-            if (!$messageStmt) throw new RuntimeException('Failed to prepare account deletion message');
             $messageStmt->bind_param(
                 'iiissss',
                 $convId,
@@ -132,7 +127,6 @@ try {
             $messageStmt->close();
 
             $closeStmt = $conn->prepare('UPDATE conversations SET item_deleted = TRUE WHERE conv_id = ?');
-            if (!$closeStmt) throw new RuntimeException('Failed to prepare conversation close');
             $closeStmt->bind_param('i', $convId);
             $closeStmt->execute();
             $closeStmt->close();
@@ -311,9 +305,8 @@ try {
 function account_delete_run(mysqli $conn, string $sql, string $types = '', mixed ...$params): int
 {
     $stmt = $conn->prepare($sql);
-    if (!$stmt) throw new RuntimeException('Failed to prepare account deletion statement');
     if ($types !== '') $stmt->bind_param($types, ...$params);
-    if (!$stmt->execute()) throw new RuntimeException('Failed to execute account deletion statement');
+    $stmt->execute();
     $affectedRows = $stmt->affected_rows;
     $stmt->close();
     return $affectedRows;

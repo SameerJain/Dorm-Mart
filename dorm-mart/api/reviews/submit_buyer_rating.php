@@ -42,7 +42,6 @@ try {
     }
     
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $productRow = review_product($conn, $productId);
 
@@ -65,9 +64,6 @@ try {
     }
 
     $stmt = $conn->prepare('SELECT rating_id FROM buyer_ratings WHERE seller_user_id = ? AND buyer_user_id = ? AND product_id = ? LIMIT 1');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare existing rating check');
-    }
     $stmt->bind_param('iii', $userId, $buyerId, $productId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -82,9 +78,6 @@ try {
         'INSERT INTO buyer_ratings (product_id, seller_user_id, buyer_user_id, rating, review_text) 
          VALUES (?, ?, ?, ?, ?)'
     );
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare buyer rating insert');
-    }
     $stmt->bind_param('iiids', $productId, $userId, $buyerId, $rating, $reviewText);
     try {
         $success = $stmt->execute();
@@ -126,9 +119,6 @@ try {
         'SELECT rating_id, product_id, seller_user_id, buyer_user_id, rating, review_text, created_at, updated_at
          FROM buyer_ratings WHERE rating_id = ? LIMIT 1'
     );
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare rating fetch');
-    }
     $stmt->bind_param('i', $ratingId);
     $stmt->execute();
     $result = $stmt->get_result();

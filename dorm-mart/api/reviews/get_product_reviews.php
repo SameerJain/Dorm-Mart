@@ -17,7 +17,6 @@ try {
     $productId = require_product_id($_GET);
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $productRow = review_product($conn, $productId);
 
@@ -40,9 +39,6 @@ try {
          WHERE pr.product_id = ?
          ORDER BY pr.created_at DESC'
     );
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare reviews lookup');
-    }
     $stmt->bind_param('i', $productId);
     $stmt->execute();
     $result = $stmt->get_result();

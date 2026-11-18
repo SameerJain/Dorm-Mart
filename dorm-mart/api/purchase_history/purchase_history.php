@@ -20,23 +20,13 @@ try {
 
     require_csrf_token($payload['csrf_token'] ?? null);
 
-    $dateRange = $payload['dateRange'] ?? (isset($payload['year']) ? 'Last Year' : 'All Time');
+    $dateRange = $payload['dateRange'] ?? 'All Time';
     $sort = $payload['sort'] ?? 'Newest First';
     $allowedDateRanges = ['Last 30 Days', 'Last 3 Months', 'Last Year', 'All Time'];
     $allowedSorts = ['Newest First', 'Oldest First', 'Price: Low to High', 'Price: High to Low'];
     if (!is_string($dateRange) || !in_array($dateRange, $allowedDateRanges, true)
         || !is_string($sort) || !in_array($sort, $allowedSorts, true)) {
         json_response(['success' => false, 'error' => 'Invalid purchase history filters'], 400);
-    }
-    
-    // Handle legacy year parameter for backward compatibility
-    if (isset($payload['year']) && !isset($payload['dateRange'])) {
-        $year = strict_integer_value($payload['year']);
-        $currentYear = (int)date('Y');
-        if ($year === null || $year < 2016 || $year > $currentYear + 1) {
-            json_response(['success' => false, 'error' => 'Invalid purchase history year'], 400);
-        }
-        $dateRange = 'Last Year'; // Approximate legacy conversion
     }
 
     $tz = new DateTimeZone('UTC');
@@ -61,7 +51,6 @@ try {
     }
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $historyItems = [];
     $legacyItems = [];
@@ -144,9 +133,6 @@ try {
 function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutable $start, DateTimeImmutable $end): array
 {
     $stmt = $conn->prepare('SELECT items FROM purchase_history WHERE user_id = ? LIMIT 1');
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare purchase history lookup');
-    }
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $res = $stmt->get_result();
@@ -214,7 +200,6 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
         $ids = array_values($paymentIds);
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $paymentStmt = $conn->prepare("SELECT electronic_payment_id, status, payment_mode, refunded_at, dispute_status FROM electronic_payments WHERE electronic_payment_id IN ($placeholders)");
-        if (!$paymentStmt) throw new RuntimeException('Failed to prepare purchase payment status lookup');
         $types = str_repeat('i', count($ids));
         $bind = [$types];
         foreach ($ids as $index => $id) { $ids[$index] = (int)$id; $bind[] = &$ids[$index]; }
@@ -272,9 +257,6 @@ function load_inventory_metadata(mysqli $conn, array $productIds): array
     );
 
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare inventory metadata lookup: ' . $conn->error);
-    }
 
     $types = str_repeat('i', count($productIds));
     $params = [$types];
@@ -284,10 +266,7 @@ function load_inventory_metadata(mysqli $conn, array $productIds): array
     }
     call_user_func_array([$stmt, 'bind_param'], $params);
 
-    if (!$stmt->execute()) {
-        $stmt->close();
-        throw new RuntimeException('Failed to execute inventory metadata query: ' . $conn->error);
-    }
+    $stmt->execute();
     
     $res = $stmt->get_result();
     if (!$res) {
@@ -335,9 +314,6 @@ function load_legacy_purchased_items(mysqli $conn, int $userId, string $start, s
             ORDER BY transacted_at DESC';
 
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare legacy purchase lookup');
-    }
 
     $stmt->bind_param('iss', $userId, $start, $end);
     $stmt->execute();

@@ -44,7 +44,6 @@ function payment_refund_late_or_conflicting_intent(
                 refund_relist = 0, refund_reason = ?, last_error_code = NULL
           WHERE electronic_payment_id = ? AND status <> 'refunded'"
     );
-    if (!$update) throw new RuntimeException('Failed to prepare late refund update');
     $update->bind_param('ssi', $refundId, $reason, $paymentId);
     $update->execute();
     $update->close();
@@ -144,7 +143,6 @@ function payment_handle_intent_succeeded(mysqli $conn, string $mode, \Stripe\Eve
                  stripe_payment_intent_id, status)
              VALUES (?, ?, ?, ?, ?, ?, 'usd', ?, ?, 'processing')"
         );
-        if (!$insert) throw new RuntimeException('Failed to prepare orphaned PaymentIntent recovery');
         $accountId = (int)$schedule['payment_account_id'];
         $sellerId = (int)$schedule['seller_user_id'];
         $buyerId = (int)$schedule['buyer_user_id'];
@@ -282,7 +280,6 @@ function payment_handle_refund(mysqli $conn, string $mode, \Stripe\Event $event)
                         last_error_code = 'partial_refund'
                   WHERE electronic_payment_id = ? AND status <> 'refunded'"
             );
-            if (!$partial) throw new RuntimeException('Failed to prepare partial refund update');
             $partial->bind_param('si', $refundId, $paymentId);
             $partial->execute();
             $partial->close();
@@ -371,7 +368,6 @@ function payment_handle_dispute(mysqli $conn, string $mode, \Stripe\Event $event
           WHERE electronic_payment_id = ?
             AND (dispute_status IS NULL OR dispute_status NOT IN ('won','lost','prevented','warning_closed') OR dispute_status = ?)"
     );
-    if (!$update) throw new RuntimeException('Failed to prepare dispute update');
     $keptFlag = $sellerKeptFunds ? 1 : 0;
     $update->bind_param('issis', $keptFlag, $disputeId, $disputeStatus, $paymentId, $disputeStatus);
     $update->execute();
@@ -499,7 +495,6 @@ function handle_payment_account_webhook(string $mode): void
               WHERE payment_mode = ? AND stripe_account_id = ?
               LIMIT 1 FOR UPDATE'
         );
-        if (!$lookup) throw new RuntimeException('Failed to prepare Accounts v2 webhook lookup');
         $lookup->bind_param('ss', $mode, $accountId);
         $lookup->execute();
         $local = $lookup->get_result()->fetch_assoc();
@@ -517,7 +512,6 @@ function handle_payment_account_webhook(string $mode): void
                     AND status = 'accepted' AND payment_fallback_at IS NULL
                   FOR UPDATE"
             );
-            if (!$scheduleStmt) throw new RuntimeException('Failed to prepare Accounts v2 fallback lookup');
             $sellerId = (int)$local['user_id'];
             $scheduleStmt->bind_param('is', $sellerId, $mode);
             $scheduleStmt->execute();

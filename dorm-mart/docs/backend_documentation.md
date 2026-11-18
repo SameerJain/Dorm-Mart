@@ -68,9 +68,11 @@ full breakdown.
 - `adversarial_validation_test.php`, `login_location_test.php`,
   `promotional_digest_test.php`, `helpers_unit_test.php`, `profanity_test.php`,
   `schedule_proposal_test.php`, `schema_sync_test.php`,
-  `database_migrations_test.php`, `browser_push_crypto_test.php` - automated,
-  offline; run together via `npm run test:backend`.
-- `purchase_lifecycle_test.php`, `card_acceptance_test.php`,
+  `browser_push_crypto_test.php` - automated, offline; run together via
+  `npm run test:backend`.
+- `schema_sync_test.php` (its scratch-database section),
+  `database_migrations_test.php`,
+  `purchase_lifecycle_test.php`, `card_acceptance_test.php`,
   `mock_payment_test.php`, `recent_searches_test.php`, `browser_push_test.php`,
   `input_fuzz_test.php` - automated, need a local database; run together via
   `npm run test:backend:integration`.

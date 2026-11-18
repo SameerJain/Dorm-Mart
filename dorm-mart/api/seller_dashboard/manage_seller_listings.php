@@ -18,7 +18,6 @@ try {
     require_csrf_token($payload['csrf_token'] ?? null);
 
     $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $sql = "SELECT
                 i.product_id,
@@ -59,15 +58,8 @@ try {
             ORDER BY i.product_id DESC";
 
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        $error = $conn->error;
-        throw new RuntimeException('Failed to prepare query: ' . $error);
-    }
     $stmt->bind_param('i', $userId);
-    if (!$stmt->execute()) {
-        $error = $stmt->error;
-        throw new RuntimeException('Failed to execute query: ' . $error);
-    }
+    $stmt->execute();
     $res = $stmt->get_result();
 
     $data = [];

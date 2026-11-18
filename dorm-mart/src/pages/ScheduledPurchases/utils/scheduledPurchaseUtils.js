@@ -5,11 +5,11 @@ import { dateTimestamp } from "../../../utils/formatters";
 /** Grace period after scheduled meet time before the card moves to Past */
 const ACTIVE_AFTER_MEETING_MS = 30 * 60 * 1000;
 
-export function parseMeetingAtMs(req) {
+function parseMeetingAtMs(req) {
   return dateTimestamp(req?.meeting_at, null);
 }
 
-export function createdAtMs(req) {
+function createdAtMs(req) {
   return dateTimestamp(req?.created_at, 0);
 }
 

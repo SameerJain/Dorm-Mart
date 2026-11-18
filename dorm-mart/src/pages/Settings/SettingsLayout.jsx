@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { logout } from "../../utils/handleAuth";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { CloseIcon } from "../../components/Icons";
 
 const SETTINGS_LINKS = [
   { label: "My Profile", to: "/app/setting/my-profile" },
@@ -128,19 +129,7 @@ function SettingsLayout({ children }) {
                 aria-label="Close settings menu"
                 className="-m-2 p-2 text-white hover:text-gray-300"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <CloseIcon className="w-6 h-6" />
               </button>
             </div>
             <div className="h-px w-full bg-white/25" />
